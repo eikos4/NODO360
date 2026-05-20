@@ -1,0 +1,49 @@
+# Blueprint Render — https://render.com/docs/blueprint-spec
+# Conectar repo: https://github.com/eikos4/NODO360
+services:
+  - type: web
+    name: nodo360-api
+    runtime: node
+    region: oregon
+    plan: free
+    rootDir: .
+    buildCommand: >-
+      npm install &&
+      npx prisma generate --schema=apps/api/prisma/schema.prisma &&
+      npx prisma migrate deploy --schema=apps/api/prisma/schema.prisma &&
+      npm run build:api
+    startCommand: npm run start --workspace=apps/api
+    envVars:
+      - key: NODE_VERSION
+        value: "20"
+      - key: DATABASE_URL
+        fromDatabase:
+          name: nodo360-db
+          property: connectionString
+      - key: JWT_SECRET
+        generateValue: true
+      - key: JWT_EXPIRES_IN
+        value: 7d
+      - key: FRONTEND_URL
+        value: https://nodo360-web.onrender.com
+
+  - type: web
+    name: nodo360-web
+    runtime: static
+    rootDir: .
+    buildCommand: npm install && npm run build:render --workspace=apps/web
+    staticPublishPath: apps/web/dist
+    routes:
+      - type: rewrite
+        source: /*
+        destination: /index.html
+    envVars:
+      - key: VITE_API_URL
+        value: https://nodo360-api.onrender.com/api
+
+databases:
+  - name: nodo360-db
+    plan: free
+    region: oregon
+    databaseName: nodo360
+    user: nodo360

@@ -11,7 +11,12 @@ async function bootstrap() {
   const uploadsDir = join(process.cwd(), 'uploads');
   if (!existsSync(uploadsDir)) mkdirSync(uploadsDir, { recursive: true });
 
-  app.enableCors({ origin: ['http://localhost:5173', 'http://localhost:5174'], credentials: true });
+  const corsOrigins = [
+    'http://localhost:5173',
+    'http://localhost:5174',
+    ...(process.env.FRONTEND_URL ? process.env.FRONTEND_URL.split(',').map((o) => o.trim()) : []),
+  ];
+  app.enableCors({ origin: corsOrigins, credentials: true });
   app.setGlobalPrefix('api');
   app.useGlobalPipes(new ValidationPipe({ whitelist: true, transform: true }));
   app.useStaticAssets(uploadsDir, { prefix: '/uploads' });
