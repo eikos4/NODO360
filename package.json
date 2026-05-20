@@ -1,0 +1,27 @@
+{
+  "name": "nodo360",
+  "version": "1.0.0",
+  "private": true,
+  "workspaces": [
+    "apps/*",
+    "packages/*"
+  ],
+  "scripts": {
+    "dev:api": "npm run dev --workspace=apps/api",
+    "dev:web": "npm run dev --workspace=apps/web",
+    "build:api": "npm run build --workspace=apps/api",
+    "build:web": "npm run build --workspace=apps/web",
+    "prisma:generate": "npm run prisma:generate --workspace=apps/api",
+    "prisma:migrate": "npm run prisma:migrate --workspace=apps/api",
+    "prisma:studio": "npm run prisma:studio --workspace=apps/api",
+    "seed": "ts-node --project apps/api/tsconfig.json apps/api/prisma/seed.ts",
+    "seed:api": "npm run seed --workspace=apps/api"
+  },
+  "devDependencies": {
+    "@nestjs/cli": "^10.3.0",
+    "prisma": "^5.10.0"
+  },
+  "engines": {
+    "node": ">=18.0.0"
+  }
+}

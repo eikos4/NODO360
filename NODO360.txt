@@ -1,0 +1,336 @@
+Para una plataforma orientada a la gestión operativa y documental de compañías de bomberos —especialmente pensando en una federación o zona como Maule Region— la clave está en separar bien:
+
+Módulos funcionales (qué hace la plataforma)
+
+Perfiles y permisos (quién puede ver o modificar qué)
+
+Módulos principales de la plataforma
+1. Módulo de Inventario Operativo
+Control total del material y equipamiento.
+
+Funciones
+Registro de equipos y herramientas
+
+Control por cuartel / compañía / carro
+
+Estado del material:
+
+Operativo
+
+En reparación
+
+Fuera de servicio
+
+Historial de mantenimiento
+
+Vida útil y vencimientos
+
+Control de EPP:
+
+Cascos
+
+ERA
+
+Uniformes
+
+Botas
+
+QR o código de barras para trazabilidad
+
+Beneficio
+Evita pérdidas, duplicidad y “¿dónde quedó el pitón?” versión operativa.
+
+2. Módulo de Compras y Facturación
+Para la parte administrativa-operativa.
+
+Funciones
+Registro de compras
+
+Subida de facturas PDF/XML
+
+Relación factura ↔ inventario
+
+Control presupuestario
+
+Órdenes de compra
+
+Historial de proveedores
+
+Alertas de pagos o rendiciones pendientes
+
+Muy importante
+Cada factura debería poder asociarse automáticamente a:
+
+un carro,
+
+una compañía,
+
+una emergencia,
+
+o un tipo de material.
+
+3. Módulo Documental
+El “Google Drive serio” del cuartel.
+
+Funciones
+Subida de:
+
+protocolos,
+
+actas,
+
+informes,
+
+circulares,
+
+certificados,
+
+convenios.
+
+Versionado de documentos
+
+Firma digital
+
+Búsqueda inteligente
+
+Control de acceso por rango
+
+Historial de cambios
+
+Extra potente
+Un sistema de vencimientos:
+
+revisión de carros,
+
+certificaciones,
+
+licencias,
+
+seguros,
+
+mantenciones.
+
+4. Módulo de Guardia y Personal
+Gestión humana operativa.
+
+Funciones
+Turnos
+
+Guardias
+
+Disponibilidad
+
+Asistencia
+
+Historial operativo
+
+Especialidades:
+
+rescate,
+
+HazMat,
+
+forestal,
+
+ventilación,
+
+etc.
+
+Bonus
+Ranking de horas operativas y capacitaciones.
+
+5. Módulo de Emergencias e Intervenciones
+Registro completo de salidas.
+
+Funciones
+Bitácora de incidentes
+
+Hora de despacho
+
+Material utilizado
+
+Personal participante
+
+Fotografías
+
+Geolocalización
+
+Informe post-incidente
+
+Oro puro
+Después puedes generar estadísticas reales:
+
+tiempos de respuesta,
+
+tipos de emergencia,
+
+desgaste de material,
+
+consumo de combustible.
+
+6. Módulo de Mantención
+Vital para flota y equipamiento.
+
+Funciones
+Mantención preventiva
+
+Mantención correctiva
+
+Alertas automáticas
+
+Kilometraje de carros
+
+Costos históricos
+
+Talleres asociados
+
+7. Módulo Financiero
+Más estratégico.
+
+Funciones
+Presupuesto anual
+
+Rendiciones
+
+Gastos por compañía
+
+Flujo operacional
+
+Dashboard financiero
+
+8. Dashboard Ejecutivo
+El “centro de mando”.
+
+Mostraría:
+estado de flota,
+
+inventario crítico,
+
+emergencias del mes,
+
+gastos,
+
+documentos pendientes,
+
+personal disponible,
+
+equipos vencidos.
+
+Con gráficos simples y rápidos. El comandante no quiere pelear con Excel a las 2 AM.
+
+Perfiles y Roles
+1. Super Administrador
+Nivel regional o federación.
+
+Acceso
+Todo el sistema
+
+Configuración general
+
+Usuarios
+
+Auditoría
+
+2. Comandante
+Visión global operativa.
+
+Acceso
+Emergencias
+
+Personal
+
+Estadísticas
+
+Inventario
+
+Documentación crítica
+
+3. Capitán / Oficial Operativo
+Gestión diaria.
+
+Acceso
+Registro de incidentes
+
+Material
+
+Turnos
+
+Reportes
+
+4. Encargado de Material Mayor
+Especialista técnico.
+
+Acceso
+Inventario
+
+Mantenciones
+
+Compras asociadas
+
+Estado de carros
+
+5. Secretario(a)
+Documentación institucional.
+
+Acceso
+Actas
+
+Certificados
+
+Circulares
+
+Firma documental
+
+6. Tesorero(a)
+Finanzas.
+
+Acceso
+Facturas
+
+Presupuestos
+
+Compras
+
+Rendiciones
+
+7. Bombero Operativo
+Perfil básico.
+
+Acceso
+Ver turnos
+
+Ver procedimientos
+
+Reportar novedades
+
+Consultar inventario asignado
+
+8. Auditor / Inspector
+Solo lectura.
+
+Acceso
+Reportes
+
+Historial
+
+Finanzas
+
+Documentación
+
+Ideal para inspecciones o subvenciones.
+
+Funciones “modernas” que marcarían diferencia
+Firma digital integrada
+Para actas y aprobaciones.
+
+App móvil
+Porque nadie abre un notebook en medio de un incendio forestal.
+
+Alertas automáticas
+vencimientos,
+
+mantenciones,
+
+documentos,
+
+stock crítico.

@@ -1,0 +1,134 @@
+@import 'leaflet/dist/leaflet.css';
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* ── Variables semánticas ── */
+@layer base {
+  /* TEMA OSCURO (default) */
+  :root, :root.dark {
+    --surface-base:    #020617; /* slate-950 */
+    --surface-raised:  #0f172a; /* slate-900 */
+    --surface-overlay: #1e293b; /* slate-800 */
+    --surface-border:  #334155; /* slate-700 */
+    --content-primary:   #f1f5f9; /* slate-100 */
+    --content-secondary: #94a3b8; /* slate-400 */
+    --content-muted:     #475569; /* slate-600 */
+  }
+
+  /* TEMA CLARO */
+  :root:not(.dark) {
+    --surface-base:    #f1f5f9; /* slate-100 */
+    --surface-raised:  #ffffff; /* white */
+    --surface-overlay: #f8fafc; /* slate-50 */
+    --surface-border:  #e2e8f0; /* slate-200 */
+    --content-primary:   #0f172a; /* slate-900 */
+    --content-secondary: #475569; /* slate-600 */
+    --content-muted:     #94a3b8; /* slate-400 */
+  }
+
+  /* Body base — usa la variable */
+  body {
+    background-color: var(--surface-base);
+    color: var(--content-primary);
+    @apply antialiased;
+    font-family: 'Inter', system-ui, sans-serif;
+    transition: background-color 0.2s ease, color 0.2s ease;
+  }
+}
+
+/* ── Overrides globales de tema claro ──
+   Reasigna las clases slate-* hardcodeadas en toda la app
+   cuando NO hay clase .dark en <html>                         */
+@layer utilities {
+  /* Scrollbar */
+  .scrollbar-thin {
+    scrollbar-width: thin;
+    scrollbar-color: #334155 transparent;
+  }
+  html:not(.dark) .scrollbar-thin {
+    scrollbar-color: #cbd5e1 transparent;
+  }
+}
+
+/* ── Overrides de slate para tema claro ──
+   Usamos CSS de alta especificidad para revertir los colores
+   sin tocar el TSX de cada página.                            */
+html:not(.dark) {
+  /* Backgrounds */
+  .bg-slate-950 { background-color: #f1f5f9 !important; }
+  .bg-slate-900 { background-color: #ffffff !important; }
+  .bg-slate-800 { background-color: #f1f5f9 !important; }
+  .bg-slate-800\/60 { background-color: rgba(241,245,249,0.8) !important; }
+  .bg-slate-800\/40 { background-color: rgba(241,245,249,0.6) !important; }
+  .bg-slate-700 { background-color: #e2e8f0 !important; }
+  .bg-slate-900\/60 { background-color: rgba(255,255,255,0.9) !important; }
+
+  /* Borders */
+  .border-slate-800 { border-color: #e2e8f0 !important; }
+  .border-slate-700 { border-color: #cbd5e1 !important; }
+  .border-slate-600 { border-color: #94a3b8 !important; }
+
+  /* Text */
+  .text-slate-100 { color: #0f172a !important; }
+  .text-slate-200 { color: #1e293b !important; }
+  .text-slate-300 { color: #334155 !important; }
+  .text-slate-400 { color: #475569 !important; }
+  .text-slate-500 { color: #64748b !important; }
+  .text-slate-600 { color: #94a3b8 !important; }
+  .text-white    { color: #0f172a !important; }
+
+  /* Hover backgrounds */
+  .hover\:bg-slate-800:hover { background-color: #e2e8f0 !important; }
+  .hover\:bg-slate-700:hover { background-color: #cbd5e1 !important; }
+  .hover\:text-slate-100:hover { color: #0f172a !important; }
+  .hover\:text-slate-300:hover { color: #334155 !important; }
+  .hover\:text-slate-200:hover { color: #1e293b !important; }
+
+  /* Focus rings */
+  .focus\:border-red-500:focus { border-color: #ef4444 !important; }
+
+  /* Inputs */
+  input, select, textarea {
+    color-scheme: light;
+  }
+
+  /* Gradientes oscuros del layout */
+  .bg-gradient-to-t.from-slate-900 { --tw-gradient-from: #e2e8f0; }
+  .bg-gradient-to-t.from-slate-900\/90 { --tw-gradient-from: rgba(226,232,240,0.95); }
+
+  /* Placeholder */
+  .placeholder-slate-600::placeholder { color: #94a3b8 !important; }
+}
+
+/* Leaflet Map Styles */
+.leaflet-container {
+  font-family: 'Inter', system-ui, sans-serif;
+}
+
+.leaflet-popup-content-wrapper {
+  background: #0f172a;
+  color: #f1f5f9;
+  border-radius: 12px;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.4);
+}
+
+.leaflet-popup-tip {
+  background: #0f172a;
+}
+
+.leaflet-popup-content {
+  margin: 12px 16px;
+  font-size: 13px;
+}
+
+html:not(.dark) .leaflet-popup-content-wrapper {
+  background: #ffffff;
+  color: #0f172a;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.15);
+}
+
+html:not(.dark) .leaflet-popup-tip {
+  background: #ffffff;
+}

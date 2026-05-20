@@ -1,0 +1,45 @@
+# Dependencies
+node_modules/
+
+# Build outputs
+dist/
+build/
+*.tsbuildinfo
+
+# Environment & secrets
+.env
+.env.*
+!.env.example
+
+# Logs
+logs/
+*.log
+npm-debug.log*
+
+# OS / IDE
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/*
+!.vscode/extensions.json
+*.swp
+
+# Uploads & local data
+apps/api/uploads/
+*.db
+*.sqlite
+
+# Prisma
+apps/api/prisma/*.db
+
+# Test / coverage
+coverage/
+.nyc_output/
+
+# Vite
+apps/web/dist/
+
+# Misc
+.cache/
+.temp/
+tmp/

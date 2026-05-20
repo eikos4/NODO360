@@ -1,0 +1,940 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum Role {
+  SUPER_ADMIN
+  COMANDANTE
+  CAPITAN
+  ENCARGADO_MATERIAL
+  SECRETARIO
+  TESORERO
+  BOMBERO
+  AUDITOR
+}
+
+enum EquipmentStatus {
+  OPERATIVO
+  EN_REPARACION
+  FUERA_DE_SERVICIO
+}
+
+model Company {
+  id        String   @id @default(cuid())
+  name      String
+  number    Int      @unique
+  region    String
+  city      String
+  address   String
+  phone     String?
+  email     String?
+  logoUrl              String?
+  headquartersImageUrl String?
+  isActive  Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  users           User[]
+  vehicles        Vehicle[]
+  equipment       Equipment[]
+  incidents       Incident[]
+  purchases       Purchase[]
+  invoices        Invoice[]
+  budgets         Budget[]
+  hydrants        Hydrant[]
+  emergencyPlans  EmergencyPlan[]
+  drills          Drill[]
+  evacuationRoutes EvacuationRoute[]
+  meetingPoints   MeetingPoint[]
+  memberProfiles  MemberProfile[]
+  membershipFees  MembershipFee[]
+  socialContributions SocialContribution[]
+  certifications      MemberCertification[]
+  guardLogs           GuardLog[]
+  inventoryAudits     InventoryAudit[]
+  fleetLogs           FleetLog[]
+  healthRecords       HealthRecord[]
+}
+
+model User {
+  id           String   @id @default(cuid())
+  rut          String   @unique
+  firstName    String
+  lastName     String
+  email        String   @unique
+  passwordHash String
+  role         Role     @default(BOMBERO)
+  isActive     Boolean  @default(true)
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  companyId    String?
+  company      Company? @relation(fields: [companyId], references: [id])
+
+  incidents       IncidentParticipant[]
+  shifts          Shift[]
+  guardLogEntries GuardLogEntry[]
+  handoversFrom   GuardHandover[] @relation("HandoverFrom")
+  handoversTo     GuardHandover[] @relation("HandoverTo")
+  guardLogsOpened GuardLog[]      @relation("GuardLogOpenedBy")
+  memberProfile   MemberProfile?
+  contributions   SocialContribution[]
+  certifications  MemberCertification[]
+  inventoryAudits InventoryAudit[] @relation("InventoryAuditAuditor")
+  fleetLogsDriven   FleetLog[]       @relation("FleetLogDriver")
+  fleetLogsRegistered FleetLog[]     @relation("FleetLogRegisteredBy")
+  healthRecord      HealthRecord?
+}
+
+model Vehicle {
+  id               String          @id @default(cuid())
+  patent           String          @unique
+  brand            String
+  model            String
+  year             Int
+  type             String
+  status           EquipmentStatus @default(OPERATIVO)
+  kilometers       Int             @default(0)
+  lastMaintenanceAt DateTime?
+  nextMaintenanceAt DateTime?
+  imageUrl         String?
+  createdAt        DateTime        @default(now())
+  updatedAt        DateTime        @updatedAt
+
+  companyId        String
+  company          Company         @relation(fields: [companyId], references: [id])
+
+  maintenances     Maintenance[]
+  incidentVehicles IncidentVehicle[]
+  auditItems       InventoryAuditItem[]
+  fleetLogs        FleetLog[]
+}
+
+model Equipment {
+  id           String          @id @default(cuid())
+  name         String
+  code         String          @unique
+  category     String
+  status       EquipmentStatus @default(OPERATIVO)
+  serial       String?
+  purchaseDate DateTime?
+  expiresAt    DateTime?
+  notes        String?
+  imageUrl     String?
+  quantity     Int             @default(1)
+  createdAt    DateTime        @default(now())
+  updatedAt    DateTime        @updatedAt
+
+  companyId    String
+  company      Company         @relation(fields: [companyId], references: [id])
+  auditItems   InventoryAuditItem[]
+}
+
+enum DispatchSource {
+  BOTONERA
+  MANUAL
+}
+
+model Incident {
+  id             String          @id @default(cuid())
+  code           String          @unique
+  type           String
+  description    String
+  address        String
+  latitude       Float?
+  longitude      Float?
+  dispatchedAt   DateTime
+  arrivedAt      DateTime?
+  closedAt       DateTime?
+  report         String?
+  imageUrl       String?
+  dispatchSource DispatchSource? @default(MANUAL)
+  dispatchNotes  String?
+  createdAt      DateTime        @default(now())
+  updatedAt      DateTime        @updatedAt
+
+  companyId       String
+  company         Company           @relation(fields: [companyId], references: [id])
+  emergencyPlanId String?
+  emergencyPlan   EmergencyPlan?    @relation(fields: [emergencyPlanId], references: [id])
+  planChecklist   Json?
+
+  participants   IncidentParticipant[]
+  vehicles       IncidentVehicle[]
+  guardLogEntries GuardLogEntry[]
+}
+
+model IncidentVehicle {
+  id         String   @id @default(cuid())
+  incidentId String
+  vehicleId  String
+  createdAt  DateTime @default(now())
+
+  incident   Incident @relation(fields: [incidentId], references: [id], onDelete: Cascade)
+  vehicle    Vehicle  @relation(fields: [vehicleId], references: [id])
+
+  @@unique([incidentId, vehicleId])
+}
+
+model IncidentParticipant {
+  id         String   @id @default(cuid())
+  incidentId String
+  userId     String
+  createdAt  DateTime @default(now())
+
+  incident   Incident @relation(fields: [incidentId], references: [id])
+  user       User     @relation(fields: [userId], references: [id])
+
+  @@unique([incidentId, userId])
+}
+
+model Maintenance {
+  id          String   @id @default(cuid())
+  type        String
+  description String
+  cost        Float?
+  date        DateTime
+  workshopName String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  vehicleId   String
+  vehicle     Vehicle  @relation(fields: [vehicleId], references: [id])
+}
+
+model Shift {
+  id        String   @id @default(cuid())
+  date      DateTime
+  startTime String
+  endTime   String
+  present   Boolean  @default(false)
+  notes     String?
+  createdAt DateTime @default(now())
+
+  userId    String
+  user      User     @relation(fields: [userId], references: [id])
+}
+
+enum GuardLogStatus {
+  OPEN
+  CLOSED
+}
+
+enum GuardLogEntryType {
+  NOVEDAD
+  REVISION
+  VISITA
+  COMUNICACION
+  MANTENIMIENTO
+  OTRO
+}
+
+model GuardLog {
+  id           String         @id @default(cuid())
+  companyId    String
+  date         DateTime
+  status       GuardLogStatus @default(OPEN)
+  openedById   String?
+  closedById   String?
+  closedAt     DateTime?
+  closingNotes String?
+  createdAt    DateTime       @default(now())
+  updatedAt    DateTime       @updatedAt
+
+  company    Company           @relation(fields: [companyId], references: [id])
+  openedBy   User?             @relation("GuardLogOpenedBy", fields: [openedById], references: [id])
+  entries    GuardLogEntry[]
+  handovers  GuardHandover[]
+
+  @@unique([companyId, date])
+}
+
+model GuardLogEntry {
+  id        String            @id @default(cuid())
+  logId     String
+  type      GuardLogEntryType @default(NOVEDAD)
+  title     String
+  content   String
+  authorId   String
+  incidentId String?           @unique
+  createdAt  DateTime          @default(now())
+
+  log      GuardLog  @relation(fields: [logId], references: [id], onDelete: Cascade)
+  author   User      @relation(fields: [authorId], references: [id])
+  incident Incident? @relation(fields: [incidentId], references: [id], onDelete: SetNull)
+}
+
+model GuardHandover {
+  id             String   @id @default(cuid())
+  logId          String
+  fromUserId     String
+  toUserId       String
+  summary        String
+  observations   String?
+  handedAt       DateTime @default(now())
+  createdAt      DateTime @default(now())
+
+  log      GuardLog @relation(fields: [logId], references: [id], onDelete: Cascade)
+  fromUser User     @relation("HandoverFrom", fields: [fromUserId], references: [id])
+  toUser   User     @relation("HandoverTo", fields: [toUserId], references: [id])
+}
+
+model Document {
+  id          String   @id @default(cuid())
+  title       String
+  category    String
+  fileUrl     String
+  version     Int      @default(1)
+  expiresAt   DateTime?
+  uploadedBy  String
+  companyId   String?
+  notes       String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+}
+
+enum PurchaseStatus {
+  PENDIENTE
+  APROBADA
+  RECIBIDA
+  RECHAZADA
+}
+
+model Purchase {
+  id          String         @id @default(cuid())
+  number      String         @unique
+  description String
+  supplier    String
+  status      PurchaseStatus @default(PENDIENTE)
+  totalAmount Float
+  requestedAt DateTime       @default(now())
+  approvedAt  DateTime?
+  receivedAt  DateTime?
+  notes       String?
+  createdAt   DateTime       @default(now())
+  updatedAt   DateTime       @updatedAt
+
+  companyId   String
+  company     Company        @relation(fields: [companyId], references: [id])
+
+  invoices    Invoice[]
+}
+
+model Invoice {
+  id          String   @id @default(cuid())
+  number      String   @unique
+  supplier    String
+  amount      Float
+  fileUrl     String?
+  issuedAt    DateTime
+  dueAt       DateTime?
+  paidAt      DateTime?
+  notes       String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  purchaseId  String?
+  purchase    Purchase? @relation(fields: [purchaseId], references: [id])
+  companyId   String
+  company     Company   @relation(fields: [companyId], references: [id])
+}
+
+enum BudgetCategory {
+  EQUIPAMIENTO
+  VEHICULOS
+  PERSONAL
+  OPERACIONAL
+  INFRAESTRUCTURA
+  CAPACITACION
+  OTRO
+}
+
+enum AnnouncementType {
+  ANNOUNCEMENT
+  OFFICIAL
+  EVENT
+}
+
+enum AnnouncementPriority {
+  LOW
+  MEDIUM
+  HIGH
+  URGENT
+}
+
+enum AnnouncementTargetAudience {
+  ALL
+  OFFICERS
+  ALL_PERSONNEL
+}
+
+enum HydrantType {
+  PIBA
+  COLUMNAR
+  SUBTERRANEO
+  OTRO
+}
+
+enum HydrantStatus {
+  OPERATIVO
+  NO_OPERATIVO
+  EN_MANTENCION
+}
+
+enum EmergencyType {
+  INCENDIO
+  TERREMOTO
+  INUNDACION
+  DERRUMBE
+  ACCIDENTE
+  OTRO
+}
+
+enum EmergencySeverity {
+  BAJA
+  MEDIA
+  ALTA
+  CRITICA
+}
+
+enum DrillStatus {
+  PROGRAMADO
+  EJECUTADO
+  CANCELADO
+}
+
+enum EmergencyPlanStatus {
+  DRAFT
+  ACTIVE
+  ARCHIVED
+}
+
+model Budget {
+  id          String         @id @default(cuid())
+  year        Int
+  category    BudgetCategory
+  description String
+  planned     Float
+  executed    Float          @default(0)
+  notes       String?
+  createdAt   DateTime       @default(now())
+  updatedAt   DateTime       @updatedAt
+
+  companyId   String
+  company     Company        @relation(fields: [companyId], references: [id])
+
+  @@unique([companyId, year, category])
+}
+
+model Announcement {
+  id               String                    @id @default(cuid())
+  title            String
+  content          String
+  type             AnnouncementType          @default(ANNOUNCEMENT)
+  priority         AnnouncementPriority      @default(MEDIUM)
+  eventDate        DateTime?
+  eventLocation    String?
+  publishedBy      String
+  publishedAt      DateTime                  @default(now())
+  expiresAt        DateTime?
+  isActive         Boolean                   @default(true)
+  targetAudience   AnnouncementTargetAudience @default(ALL)
+  attachments      String[]
+  companyId        String?
+  createdAt        DateTime                  @default(now())
+  updatedAt        DateTime                  @updatedAt
+}
+
+model Hydrant {
+  id               String        @id @default(cuid())
+  code             String        @unique
+  type             HydrantType  @default(COLUMNAR)
+  status           HydrantStatus @default(OPERATIVO)
+  diameter         Int?          // diámetro en mm
+  pressure         Float?        // presión PSI
+  flowRate         Float?        // caudal LPM
+  address          String
+  location         String?       // descripción de ubicación
+  latitude         Float?
+  longitude        Float?
+  lastInspectionAt DateTime?
+  nextInspectionAt DateTime?
+  notes            String?
+  companyId        String
+  company          Company       @relation(fields: [companyId], references: [id])
+  createdAt        DateTime      @default(now())
+  updatedAt        DateTime      @updatedAt
+}
+
+model EmergencyPlan {
+  id            String              @id @default(cuid())
+  title         String
+  description   String
+  emergencyType EmergencyType
+  severity      EmergencySeverity
+  status        EmergencyPlanStatus @default(DRAFT)
+  version       Int                 @default(1)
+  procedures    Json                // pasos a seguir
+  checklist     Json                @default("[]")
+  companyId     String
+  company       Company             @relation(fields: [companyId], references: [id])
+  drills        Drill[]
+  attachments   EmergencyPlanAttachment[]
+  versions      EmergencyPlanVersion[]
+  incidents     Incident[]
+  createdAt     DateTime            @default(now())
+  updatedAt     DateTime            @updatedAt
+}
+
+model EmergencyPlanAttachment {
+  id         String        @id @default(cuid())
+  planId     String
+  name       String
+  fileUrl    String
+  mimeType   String?
+  sizeBytes  Int?
+  uploadedAt DateTime      @default(now())
+
+  plan       EmergencyPlan @relation(fields: [planId], references: [id], onDelete: Cascade)
+}
+
+model EmergencyPlanVersion {
+  id            String            @id @default(cuid())
+  planId        String
+  version       Int
+  title         String
+  description   String
+  emergencyType EmergencyType
+  severity      EmergencySeverity
+  status        EmergencyPlanStatus
+  procedures    Json
+  checklist     Json
+  changedBy     String?
+  snapshotAt    DateTime          @default(now())
+
+  plan          EmergencyPlan     @relation(fields: [planId], references: [id], onDelete: Cascade)
+
+  @@index([planId, version])
+}
+
+model Drill {
+  id              String      @id @default(cuid())
+  title           String
+  description     String
+  scheduledAt     DateTime
+  executedAt      DateTime?
+  status          DrillStatus @default(PROGRAMADO)
+  participants    String[]
+  notes           String?
+  emergencyPlanId String?
+  emergencyPlan   EmergencyPlan? @relation(fields: [emergencyPlanId], references: [id])
+  companyId       String
+  company         Company     @relation(fields: [companyId], references: [id])
+  createdAt       DateTime    @default(now())
+  updatedAt       DateTime    @updatedAt
+}
+
+model EvacuationRoute {
+  id         String   @id @default(cuid())
+  name       String
+  description String?
+  startPoint Json     // {lat, lng}
+  endPoint   Json     // {lat, lng}
+  waypoints Json?    // array de coordenadas
+  buildingId String?
+  companyId  String
+  company    Company  @relation(fields: [companyId], references: [id])
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+}
+
+model MeetingPoint {
+  id        String   @id @default(cuid())
+  name      String
+  description String?
+  location  Json     // {lat, lng}
+  address   String?
+  capacity  Int?
+  companyId String
+  company   Company  @relation(fields: [companyId], references: [id])
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+enum FeeFrequency {
+  MENSUAL
+  ANUAL
+  EXTRAORDINARIA
+}
+
+enum MembershipStatus {
+  ACTIVO
+  MOROSO
+  SUSPENDIDO
+  INACTIVO
+}
+
+enum PaymentMethod {
+  EFECTIVO
+  TRANSFERENCIA
+  DEPOSITO
+  OTRO
+}
+
+enum ContributionStatus {
+  PAGADO
+  PARCIAL
+  EXONERADO
+}
+
+model MemberProfile {
+  id           String           @id @default(cuid())
+  memberNumber String?
+  status       MembershipStatus @default(ACTIVO)
+  joinedAt     DateTime?
+  notes        String?
+  userId       String           @unique
+  user         User             @relation(fields: [userId], references: [id], onDelete: Cascade)
+  companyId    String
+  company      Company          @relation(fields: [companyId], references: [id])
+  createdAt    DateTime         @default(now())
+  updatedAt    DateTime         @updatedAt
+}
+
+model MembershipFee {
+  id            String             @id @default(cuid())
+  name          String
+  description   String?
+  amount        Float
+  frequency     FeeFrequency       @default(MENSUAL)
+  year          Int
+  month         Int?
+  dueDate       DateTime?
+  isActive      Boolean            @default(true)
+  companyId     String
+  company       Company            @relation(fields: [companyId], references: [id])
+  contributions SocialContribution[]
+  createdAt     DateTime           @default(now())
+  updatedAt     DateTime           @updatedAt
+}
+
+model SocialContribution {
+  id            String             @id @default(cuid())
+  amount        Float
+  paidAt        DateTime
+  method        PaymentMethod      @default(EFECTIVO)
+  status        ContributionStatus @default(PAGADO)
+  receiptNumber String?
+  notes         String?
+  userId        String
+  user          User               @relation(fields: [userId], references: [id])
+  companyId     String
+  company       Company            @relation(fields: [companyId], references: [id])
+  feeId         String?
+  fee           MembershipFee?     @relation(fields: [feeId], references: [id], onDelete: SetNull)
+  recordedBy    String?
+  createdAt     DateTime           @default(now())
+  updatedAt     DateTime           @updatedAt
+
+  @@index([companyId, feeId])
+  @@index([userId, feeId])
+}
+
+enum CertificationCategory {
+  LICENCIA
+  EPP
+  MEDICO
+  CURSO
+  HABILITACION
+  OTRO
+}
+
+model MemberCertification {
+  id          String                @id @default(cuid())
+  name        String
+  category    CertificationCategory @default(OTRO)
+  issuer      String?
+  issuedAt    DateTime?
+  expiresAt   DateTime?
+  documentUrl String?
+  notes       String?
+  userId      String
+  user        User                  @relation(fields: [userId], references: [id], onDelete: Cascade)
+  companyId   String
+  company     Company               @relation(fields: [companyId], references: [id])
+  createdAt   DateTime              @default(now())
+  updatedAt   DateTime              @updatedAt
+
+  @@index([companyId])
+  @@index([userId])
+  @@index([expiresAt])
+}
+
+enum InventoryAuditStatus {
+  BORRADOR
+  EN_PROCESO
+  CERRADA
+  CANCELADA
+}
+
+enum InventoryAuditItemKind {
+  VEHICULO
+  EQUIPO
+}
+
+enum InventoryAuditItemResult {
+  PENDIENTE
+  CONFORME
+  NO_ENCONTRADO
+  DIFERENCIA
+  OBSERVACION
+}
+
+model InventoryAudit {
+  id           String               @id @default(cuid())
+  code         String               @unique
+  title        String?
+  status       InventoryAuditStatus @default(BORRADOR)
+  companyId    String
+  auditorId    String?
+  startedAt    DateTime?
+  completedAt  DateTime?
+  closingNotes String?
+  createdAt    DateTime             @default(now())
+  updatedAt    DateTime             @updatedAt
+
+  company Company              @relation(fields: [companyId], references: [id])
+  auditor User?                @relation("InventoryAuditAuditor", fields: [auditorId], references: [id])
+  items   InventoryAuditItem[]
+
+  @@index([companyId])
+  @@index([status])
+}
+
+model InventoryAuditItem {
+  id              String                   @id @default(cuid())
+  auditId         String
+  kind            InventoryAuditItemKind
+  vehicleId       String?
+  equipmentId     String?
+  expectedLabel   String
+  expectedStatus  EquipmentStatus?
+  expectedQty     Int                      @default(1)
+  found           Boolean?
+  physicalStatus  EquipmentStatus?
+  physicalQty     Int?
+  result          InventoryAuditItemResult @default(PENDIENTE)
+  observations    String?
+  verifiedAt      DateTime?
+  createdAt       DateTime                 @default(now())
+  updatedAt       DateTime                 @updatedAt
+
+  audit     InventoryAudit @relation(fields: [auditId], references: [id], onDelete: Cascade)
+  vehicle   Vehicle?       @relation(fields: [vehicleId], references: [id], onDelete: SetNull)
+  equipment Equipment?     @relation(fields: [equipmentId], references: [id], onDelete: SetNull)
+
+  @@index([auditId])
+  @@index([result])
+}
+
+enum FleetLogType {
+  COMBUSTIBLE
+  SERVICIO
+  OPERACION
+  OTRO
+}
+
+model FleetLog {
+  id               String       @id @default(cuid())
+  type             FleetLogType @default(COMBUSTIBLE)
+  date             DateTime
+  vehicleId        String
+  companyId        String
+  driverId         String?
+  registeredById   String
+  odometerKm       Int
+  fuelLiters       Float?
+  fuelCost         Float?
+  fuelStation      String?
+  fullTank         Boolean      @default(false)
+  serviceLabel     String?
+  description      String?
+  notes            String?
+  createdAt        DateTime     @default(now())
+  updatedAt        DateTime     @updatedAt
+
+  vehicle      Vehicle @relation(fields: [vehicleId], references: [id])
+  company      Company @relation(fields: [companyId], references: [id])
+  driver       User?   @relation("FleetLogDriver", fields: [driverId], references: [id])
+  registeredBy User    @relation("FleetLogRegisteredBy", fields: [registeredById], references: [id])
+
+  @@index([companyId])
+  @@index([vehicleId])
+  @@index([date])
+  @@index([type])
+}
+
+enum BloodType {
+  A_POSITIVE
+  A_NEGATIVE
+  B_POSITIVE
+  B_NEGATIVE
+  AB_POSITIVE
+  AB_NEGATIVE
+  O_POSITIVE
+  O_NEGATIVE
+  UNKNOWN
+}
+
+enum MedicalExamType {
+  LABORATORIO
+  IMAGENOLOGIA
+  CARDIOLOGICO
+  OFTALMOLOGICO
+  AUDITIVO
+  PSICOMETRICO
+  FISICO
+  OTRO
+}
+
+enum MedicalExamStatus {
+  PROGRAMADO
+  COMPLETADO
+  RESULTADO_PENDIENTE
+  ANORMAL
+  NORMAL
+}
+
+enum HealthConditionSeverity {
+  LEVE
+  MODERADO
+  SEVERO
+  CRITICO
+}
+
+model HealthRecord {
+  id                String   @id @default(cuid())
+  bloodType         BloodType @default(UNKNOWN)
+  emergencyContact  String?
+  emergencyPhone    String?
+  chronicDiseases   String?  // JSON array de enfermedades crónicas
+  surgeries         String?  // JSON array de cirugías previas
+  notes             String?
+  lastCheckupAt     DateTime?
+  nextCheckupAt     DateTime?
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+
+  userId            String   @unique
+  user              User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  companyId         String
+  company           Company  @relation(fields: [companyId], references: [id])
+
+  medicalExams      MedicalExam[]
+  conditions        MedicalCondition[]
+  allergies         Allergy[]
+  medications       Medication[]
+  vaccinations      Vaccination[]
+
+  @@index([userId])
+  @@index([companyId])
+}
+
+model MedicalExam {
+  id          String              @id @default(cuid())
+  type        MedicalExamType
+  name        String
+  description String?
+  examDate    DateTime
+  result      String?
+  status      MedicalExamStatus   @default(PROGRAMADO)
+  fileUrl     String?
+  notes       String?
+  createdAt   DateTime            @default(now())
+  updatedAt   DateTime            @updatedAt
+
+  healthRecordId String
+  healthRecord   HealthRecord @relation(fields: [healthRecordId], references: [id], onDelete: Cascade)
+
+  @@index([healthRecordId])
+  @@index([examDate])
+  @@index([status])
+}
+
+model MedicalCondition {
+  id          String                   @id @default(cuid())
+  name        String
+  description String?
+  diagnosedAt DateTime?
+  severity    HealthConditionSeverity @default(MODERADO)
+  isActive    Boolean                  @default(true)
+  notes       String?
+  createdAt   DateTime                 @default(now())
+  updatedAt   DateTime                 @updatedAt
+
+  healthRecordId String
+  healthRecord   HealthRecord @relation(fields: [healthRecordId], references: [id], onDelete: Cascade)
+
+  @@index([healthRecordId])
+  @@index([isActive])
+}
+
+model Allergy {
+  id          String   @id @default(cuid())
+  name        String
+  type        String?  // MEDICAMENTO, ALIMENTO, AMBIENTAL, OTRO
+  severity    String?  // LEVE, MODERADO, SEVERO
+  reaction    String?
+  isActive    Boolean  @default(true)
+  notes       String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  healthRecordId String
+  healthRecord   HealthRecord @relation(fields: [healthRecordId], references: [id], onDelete: Cascade)
+
+  @@index([healthRecordId])
+  @@index([isActive])
+}
+
+model Medication {
+  id          String   @id @default(cuid())
+  name        String
+  dosage      String?
+  frequency   String?
+  startDate   DateTime?
+  endDate     DateTime?
+  isActive    Boolean  @default(true)
+  notes       String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  healthRecordId String
+  healthRecord   HealthRecord @relation(fields: [healthRecordId], references: [id], onDelete: Cascade)
+
+  @@index([healthRecordId])
+  @@index([isActive])
+}
+
+model Vaccination {
+  id          String   @id @default(cuid())
+  name        String
+  vaccineType String?
+  dose        String?
+  administeredAt DateTime?
+  nextDoseAt  DateTime?
+  notes       String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  healthRecordId String
+  healthRecord   HealthRecord @relation(fields: [healthRecordId], references: [id], onDelete: Cascade)
+
+  @@index([healthRecordId])
+  @@index([administeredAt])
+}

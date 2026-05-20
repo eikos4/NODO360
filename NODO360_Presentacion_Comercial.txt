@@ -1,0 +1,344 @@
+================================================================================
+                    NODO360 — SISTEMA DE GESTIÓN OPERATIVA
+                       Para Cuerpos de Bomberos de Chile
+================================================================================
+
+                        PRESENTACIÓN COMERCIAL & TÉCNICA
+                         Versión dirigida a administración
+                         y directivos de cuerpos de bomberos
+
+================================================================================
+¿QUÉ ES NODO360?
+================================================================================
+
+NODO360 es una plataforma digital integral diseñada exclusivamente para Cuerpos
+de Bomberos de Chile. Centraliza en un único sistema todo lo que hoy se maneja
+con planillas Excel, cuadernos físicos, correos sueltos y sistemas desconectados:
+personal, inventario, emergencias, mantenimiento, documentos y finanzas.
+
+El nombre lo dice todo: 360 grados de visibilidad sobre la institución.
+
+Está disponible como aplicación web y como PWA (Progressive Web App), lo que
+significa que puede instalarse en el celular o tablet de cualquier bombero
+sin necesidad de descargar nada desde una tienda de aplicaciones.
+
+================================================================================
+¿A QUIÉN ESTÁ DIRIGIDO?
+================================================================================
+
+NODO360 está pensado para todos los actores del cuerpo de bomberos:
+
+  → Comandantes y Capitanes
+     Visión ejecutiva del estado operacional de la institución.
+     Control de personal, emergencias y recursos en tiempo real.
+
+  → Encargados de Material Mayor
+     Gestión completa de vehículos y equipamiento EPP.
+     Alertas automáticas de mantenimiento y vencimientos.
+
+  → Secretarios/as
+     Administración de documentos, actas y registros digitales.
+     Gestión de compras y proveedores.
+
+  → Tesoreros/as y Auditores
+     Control financiero, presupuestos, facturas y reportes.
+     Transparencia total del flujo de fondos.
+
+  → Bomberos Operativos
+     Consulta de turnos de guardia, emergencias y documentación.
+     Acceso desde el celular sin complicaciones.
+
+  → Super Administradores del sistema
+     Gestión multi-compañía, control de roles y accesos.
+
+================================================================================
+EL PROBLEMA QUE RESUELVE
+================================================================================
+
+Hoy, la mayoría de los cuerpos de bomberos en Chile enfrentan estos problemas:
+
+  ✗  Información dispersa en múltiples planillas Excel sin respaldo
+  ✗  Vencimientos de EPP o vehículos que se descubren tarde o nunca
+  ✗  Sin trazabilidad: nadie sabe quién modificó qué ni cuándo
+  ✗  Documentos perdidos o inaccesibles cuando se necesitan
+  ✗  Compras y gastos sin control ni historial auditabe
+  ✗  Personal que no sabe su turno de guardia hasta el día anterior
+  ✗  Emergencias sin registro formal ni estadísticas históricas
+  ✗  Sin reportes para presentar ante la Junta Nacional o municipios
+  ✗  Sistemas genéricos (Google Sheets, WhatsApp) que no fueron
+     diseñados para bomberos y generan caos operativo
+
+NODO360 resuelve todo esto desde el día uno.
+
+================================================================================
+MÓDULOS DEL SISTEMA
+================================================================================
+
+──────────────────────────────────────────────────────────────────────────────
+1. DASHBOARD EJECUTIVO
+──────────────────────────────────────────────────────────────────────────────
+Panel central con indicadores clave (KPIs) de la institución:
+
+  • Estado operacional en tiempo real de toda la flota
+  • Resumen de personal activo por compañía
+  • Alertas críticas: vencimientos, mantenimientos pendientes
+  • Últimas emergencias atendidas
+  • Acceso rápido a todos los módulos según el rol del usuario
+
+El Comandante entra al sistema y en 30 segundos tiene el pulso completo
+de la institución.
+
+──────────────────────────────────────────────────────────────────────────────
+2. GESTIÓN DE COMPAÑÍAS Y CUARTELES
+──────────────────────────────────────────────────────────────────────────────
+Administración de cada compañía del cuerpo:
+
+  • Ficha completa con dirección, contactos, región y ciudad
+  • Foto del cuartel y logo de la compañía
+  • Estadísticas por compañía: personal, flota y equipamiento
+  • Soporte multi-compañía: todo el cuerpo en un solo sistema
+  • Búsqueda y filtros instantáneos
+
+Ideal para cuerpos con múltiples compañías que hoy no tienen
+visión consolidada de sus recursos.
+
+──────────────────────────────────────────────────────────────────────────────
+3. GESTIÓN DE PERSONAL
+──────────────────────────────────────────────────────────────────────────────
+Directorio completo de bomberos y personal administrativo:
+
+  • Ficha personal con RUT, contacto, rol y compañía asignada
+  • Control de estado activo/inactivo
+  • Asignación de roles con accesos diferenciados (8 roles disponibles)
+  • Historial de cambios de cargo
+  • Filtros por compañía, rol y estado
+
+Se acabó el "¿quién es el encargado de material?" — todo está en el sistema.
+
+──────────────────────────────────────────────────────────────────────────────
+4. INVENTARIO OPERATIVO (Vehículos y Equipamiento)
+──────────────────────────────────────────────────────────────────────────────
+Control total del material mayor y equipamiento EPP:
+
+VEHÍCULOS:
+  • Ficha por vehículo: patente, marca, modelo, año, tipo, kilómetros
+  • Estado operacional: Operativo / En Reparación / Fuera de Servicio
+  • Fechas de última y próxima mantención con alertas automáticas
+  • Foto del vehículo
+  • Historial de mantenimientos
+
+EQUIPAMIENTO (EPP y otros):
+  • Registro de cascos, chaquetones, botas, equipos ERA, HazMat,
+    herramientas, material médico, comunicaciones, rescate y más
+  • Control de cantidad por ítem
+  • Fechas de compra y vencimiento
+  • Alertas de equipos próximos a vencer o vencidos
+  • Número de serie para trazabilidad
+  • Foto del equipo
+
+El encargado de material mayor tiene todo su inventario digitalizado,
+con alertas que le avisan antes de que algo venza o falle.
+
+──────────────────────────────────────────────────────────────────────────────
+5. ALERTAS Y VENCIMIENTOS
+──────────────────────────────────────────────────────────────────────────────
+Sistema proactivo de alertas críticas para la institución:
+
+  • Vencimientos de EPP próximos (30, 15, 7 días)
+  • Mantenimientos de vehículos vencidos o próximos
+  • Documentos por vencer
+  • Panel de alertas con nivel de urgencia: Crítico / Alto / Medio
+  • Filtros por compañía y tipo de alerta
+
+Ya no se pierde un vencimiento. El sistema alerta antes.
+
+──────────────────────────────────────────────────────────────────────────────
+6. EMERGENCIAS E INCIDENTES
+──────────────────────────────────────────────────────────────────────────────
+Registro y seguimiento de todas las emergencias atendidas:
+
+  • Tipos: Incendio, Accidente de tránsito, Rescate, Inundación,
+    HazMat, Explosión, Búsqueda y otros
+  • Estado del incidente: Despachado / En Proceso / Cerrado
+  • Código único por incidente, dirección y descripción
+  • Estadísticas e historial para reportes institucionales
+  • Base para futuras integraciones con CONRED/municipios
+
+──────────────────────────────────────────────────────────────────────────────
+7. MANTENIMIENTO DE FLOTA
+──────────────────────────────────────────────────────────────────────────────
+Módulo dedicado al historial técnico de cada vehículo:
+
+  • Registro de mantenciones preventivas y correctivas
+  • Costo, descripción y fecha de cada intervención
+  • Historial completo por vehículo
+  • Vinculado al inventario para trazabilidad total
+
+──────────────────────────────────────────────────────────────────────────────
+8. GUARDIA Y TURNOS
+──────────────────────────────────────────────────────────────────────────────
+Organización del sistema de guardia y asistencia:
+
+  • Programación de turnos con fecha y horario
+  • Registro de asistencia por turno
+  • Visibilidad para todo el personal de su próximo turno
+  • Historial de guardias realizadas
+
+──────────────────────────────────────────────────────────────────────────────
+9. GESTIÓN DOCUMENTAL
+──────────────────────────────────────────────────────────────────────────────
+Repositorio digital de documentos institucionales:
+
+  • Subida y descarga de documentos (PDF, Word, Excel, imágenes)
+  • Categorización por tipo: Normativa, Actas, Contratos, Certificados
+  • Control de vencimiento de documentos
+  • Acceso diferenciado por rol
+
+Se acabaron los documentos perdidos o almacenados en el computador
+personal de alguien que ya no está.
+
+──────────────────────────────────────────────────────────────────────────────
+10. COMPRAS Y FACTURACIÓN
+──────────────────────────────────────────────────────────────────────────────
+Control del proceso de adquisiciones:
+
+  • Registro de órdenes de compra con proveedor, monto y estado
+  • Vinculación con facturas recibidas
+  • Historial de compras por período y proveedor
+  • Estados: Pendiente / Aprobada / Recibida / Pagada
+
+──────────────────────────────────────────────────────────────────────────────
+11. FINANZAS Y PRESUPUESTO
+──────────────────────────────────────────────────────────────────────────────
+Módulo financiero para el Tesorero y Auditor:
+
+  • Presupuestos anuales por categoría
+  • Registro de ingresos y egresos
+  • Control de facturas emitidas y recibidas
+  • Reportes para rendir cuentas ante la Junta Nacional
+  • Auditoría: log de todas las transacciones
+
+================================================================================
+SEGURIDAD Y CONTROL DE ACCESO
+================================================================================
+
+NODO360 implementa un sistema robusto de control de acceso por roles (RBAC):
+
+  8 roles disponibles:
+  ┌─────────────────────────────────────────────────────────────────────────┐
+  │ 1. Super Administrador  → Acceso total al sistema                       │
+  │ 2. Comandante           → Visión completa de la institución             │
+  │ 3. Capitán / Oficial    → Operaciones y personal                       │
+  │ 4. Encargado Material   → Inventario y mantenimiento                   │
+  │ 5. Secretario/a         → Documentos y registros                       │
+  │ 6. Tesorero/a           → Finanzas y compras                           │
+  │ 7. Bombero Operativo    → Consulta de turnos y documentos              │
+  │ 8. Auditor/Inspector    → Solo lectura, reportes y auditoría           │
+  └─────────────────────────────────────────────────────────────────────────┘
+
+Cada usuario ve exactamente lo que necesita. Nada más, nada menos.
+
+Autenticación segura con JWT (tokens de sesión) y protección de todas
+las rutas tanto en frontend como en backend.
+
+================================================================================
+TECNOLOGÍA
+================================================================================
+
+NODO360 está construido con tecnología moderna, robusta y escalable:
+
+  Frontend:   React + Vite + TailwindCSS (web + PWA instalable en celular)
+  Backend:    NestJS (Node.js empresarial)
+  Base datos: PostgreSQL + Prisma ORM
+  Auth:       JWT + RBAC (control de acceso por roles)
+  Archivos:   Almacenamiento de imágenes y documentos en servidor/nube
+  Deploy:     Railway (backend) + Vercel (frontend) — alta disponibilidad
+
+No requiere instalar nada en los computadores de la institución.
+Funciona desde cualquier navegador o como app en el celular.
+
+================================================================================
+BENEFICIOS CONCRETOS
+================================================================================
+
+  ✓  UN SOLO SISTEMA para toda la gestión institucional
+  ✓  ACCESO DESDE CUALQUIER DISPOSITIVO (PC, tablet, celular)
+  ✓  SIN PÉRDIDA DE INFORMACIÓN — todo en la nube con respaldo
+  ✓  ALERTAS PROACTIVAS antes de que venzan EPP o fallen vehículos
+  ✓  TRANSPARENCIA TOTAL para rendir cuentas ante la Junta Nacional
+  ✓  TRAZABILIDAD COMPLETA — quién hizo qué y cuándo
+  ✓  AHORRO DE TIEMPO en tareas administrativas repetitivas
+  ✓  CUMPLIMIENTO NORMATIVO — registro formal de todo lo exigido
+  ✓  MULTI-COMPAÑÍA — toda la organización en un solo sistema
+  ✓  PERSONALIZABLE por rol — cada usuario ve su área de trabajo
+  ✓  DISPONIBLE 24/7 — el sistema no descansa aunque el cuartel sí
+  ✓  ESCALABLE — crece con la institución
+
+================================================================================
+PREGUNTAS FRECUENTES
+================================================================================
+
+¿Necesitamos un servidor propio?
+  No. NODO360 funciona en la nube. Solo necesitan conexión a internet.
+
+¿Es difícil de usar?
+  No. Fue diseñado para personas no técnicas. Interfaz intuitiva
+  con capacitación incluida en la implementación.
+
+¿Qué pasa con los datos si dejamos de usar el sistema?
+  Todos los datos son de la institución. Se puede exportar
+  el historial completo en cualquier momento.
+
+¿Se puede adaptar a nuestra realidad específica?
+  Sí. El sistema es configurable por compañía, roles y necesidades.
+
+¿Funciona sin internet?
+  Las funciones principales requieren conexión. La PWA permite
+  consulta de información básica en modo offline.
+
+¿Cuánto tiempo toma implementarlo?
+  La implementación base (carga de datos, usuarios y compañías)
+  toma entre 1 y 3 días según el tamaño de la institución.
+
+================================================================================
+INVERSIÓN
+================================================================================
+
+NODO360 se comercializa como Software como Servicio (SaaS):
+
+  → Sin costo de instalación de servidores
+  → Sin mantenimiento técnico a cargo de la institución
+  → Actualizaciones automáticas incluidas
+  → Soporte técnico incluido
+  → Capacitación inicial incluida
+
+Para cotización formal según tamaño de la institución (número de
+compañías y usuarios), contactar directamente.
+
+================================================================================
+PRÓXIMOS MÓDULOS EN DESARROLLO
+================================================================================
+
+  • Integración con CONRED / municipios (reporte automático)
+  • App nativa iOS y Android
+  • Módulo de capacitación y certificaciones del personal
+  • Integración con sistema de despacho 132
+  • Reportes automáticos para Junta Nacional de Bomberos
+  • Firma digital de documentos
+  • Módulo de comunicaciones internas
+
+================================================================================
+CONTACTO
+================================================================================
+
+  Sistema:    NODO360 — Gestión Operativa para Bomberos de Chile
+  Web:        nodo360.cl
+  Correo:     contacto@nodo360.cl
+
+  "Diseñado por quienes entienden que detrás de cada compañía
+   hay personas que se juegan la vida. La administración
+   no debería ser el problema — nosotros la resolvemos."
+
+================================================================================
+           NODO360 © 2025 — Sistema de Gestión Operativa para Bomberos
+================================================================================
