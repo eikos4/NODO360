@@ -27,12 +27,12 @@ const MODULES = [
     color: 'from-cyan-500 to-cyan-600',
   },
   {
-    id: 'botonera',
-    title: 'Botonera de Emergencia',
-    description: 'Activación rápida de tipos de emergencia con alertas sonoras para el cuartel.',
-    features: ['Tipos de intervención preconfigurados', 'Alertas de audio', 'Registro inmediato'],
+    id: 'central-despachos',
+    title: 'Central de Despachos',
+    description: 'Despacho operativo con alertas sonoras y URL pública de estado por cuartel.',
+    features: ['Tipos de intervención preconfigurados', 'Alertas de audio', 'URL pública disponible/no disponible'],
     icon: Siren,
-    route: '/botonera',
+    route: '/despacho360',
     color: 'from-red-500 to-orange-600',
   },
   {

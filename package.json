@@ -15,7 +15,8 @@
     "prisma:migrate": "npm run prisma:migrate --workspace=apps/api",
     "prisma:studio": "npm run prisma:studio --workspace=apps/api",
     "seed": "ts-node --project apps/api/tsconfig.json apps/api/prisma/seed.ts",
-    "seed:api": "npm run seed --workspace=apps/api"
+    "seed:api": "npm run seed --workspace=apps/api",
+    "repair:dispatch-public": "npm run repair:dispatch-public --workspace=apps/api"
   },
   "devDependencies": {
     "@nestjs/cli": "^10.3.0",

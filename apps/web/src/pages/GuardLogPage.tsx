@@ -147,10 +147,10 @@ export default function GuardLogPage() {
             <Calendar className="w-4 h-4" /> Turnos
           </Link>
           <Link
-            to="/botonera"
+            to="/despacho360"
             className="flex items-center gap-2 text-xs font-semibold px-3 py-2 rounded-xl bg-red-600/20 border border-red-500/40 text-red-300 hover:bg-red-600/30"
           >
-            <Siren className="w-4 h-4" /> Botonera
+            <Siren className="w-4 h-4" /> Central Despachos
           </Link>
         </div>
       </div>
@@ -526,10 +526,10 @@ export default function GuardLogPage() {
                   Emergencias despachadas — {fmtDate(date)}
                 </h2>
                 <Link
-                  to="/botonera"
+                  to="/despacho360"
                   className="text-xs font-semibold text-red-400 hover:text-red-300 flex items-center gap-1"
                 >
-                  <Siren className="w-3.5 h-3.5" /> Ir a botonera
+                  <Siren className="w-3.5 h-3.5" /> Ir a central de despachos
                 </Link>
               </div>
               {!dashboard?.incidents?.length ? (
@@ -570,7 +570,7 @@ export default function GuardLogPage() {
                       <p className="text-[10px] text-slate-600 mt-2">
                         Despacho: {fmtTime(inc.dispatchedAt)}
                         {inc.dispatchSource === 'BOTONERA' && (
-                          <span className="text-red-400 ml-1">· Botonera</span>
+                          <span className="text-red-400 ml-1">· Central</span>
                         )}
                       </p>
                       <Link

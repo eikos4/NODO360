@@ -221,7 +221,10 @@ export class GuardLogService {
     authorId?: string;
   }) {
     const existing = await this.prisma.guardLogEntry.findFirst({
-      where: { incidentId: params.incidentId },
+      where: {
+        incidentId: params.incidentId,
+        log: { companyId: params.companyId },
+      },
     });
     if (existing) {
       return this.buildDashboard(existing.logId);

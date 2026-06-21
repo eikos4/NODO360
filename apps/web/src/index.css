@@ -35,6 +35,11 @@
     @apply antialiased;
     font-family: 'Inter', system-ui, sans-serif;
     transition: background-color 0.2s ease, color 0.2s ease;
+    min-height: 100%;
+  }
+
+  html, body, #root {
+    height: 100%;
   }
 }
 
@@ -98,8 +103,17 @@ html:not(.dark) {
   .bg-gradient-to-t.from-slate-900 { --tw-gradient-from: #e2e8f0; }
   .bg-gradient-to-t.from-slate-900\/90 { --tw-gradient-from: rgba(226,232,240,0.95); }
 
-  /* Placeholder */
-  .placeholder-slate-600::placeholder { color: #94a3b8 !important; }
+  /* Sidebar / nav — rojo sólido con texto blanco en tema claro */
+  aside nav a.bg-red-600,
+  aside nav button.bg-red-600,
+  aside nav .bg-red-600.text-white,
+  aside nav span.bg-red-600 {
+    color: #ffffff !important;
+  }
+  aside nav a.bg-red-600 svg,
+  aside nav button.bg-red-600 svg {
+    color: #ffffff !important;
+  }
 }
 
 /* Leaflet Map Styles */

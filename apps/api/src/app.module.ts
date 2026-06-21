@@ -23,6 +23,9 @@ import { GuardLogModule } from './guard-log/guard-log.module';
 import { InventoryAuditsModule } from './inventory-audits/inventory-audits.module';
 import { FleetLogsModule } from './fleet-logs/fleet-logs.module';
 import { HealthModule } from './health/health.module';
+import { DispatchCentralModule } from './dispatch-central/dispatch-central.module';
+import { TtsModule } from './tts/tts.module';
+import { EmergencyBitacoraModule } from './emergency-bitacora/emergency-bitacora.module';
 
 @Module({
   imports: [
@@ -50,6 +53,9 @@ import { HealthModule } from './health/health.module';
     InventoryAuditsModule,
     FleetLogsModule,
     HealthModule,
+    DispatchCentralModule,
+    TtsModule,
+    EmergencyBitacoraModule,
   ],
 })
 export class AppModule {}

@@ -53,6 +53,18 @@ npm run dev:web
 
 La app estará en `http://localhost:5173` y la API en `http://localhost:3001/api`.
 
+### Demo — Cuerpo de Bomberos de Parral
+
+Tras el seed, la instancia queda configurada para el [Cuerpo de Bomberos de Parral](https://www.bomberos.cl/cuerpo-de-bomberos-parral) con **6 compañías** (1ª–6ª) y administración central en Dieciocho 685.
+
+| Recurso | URL / dato |
+|---------|------------|
+| Vista pública | `http://localhost:5173/central/bomberos-parral` |
+| Central despachos | `http://localhost:5173/central-despachos` |
+| Login demo | `martinez@bomberosparral.cl` / `Demo1234!` |
+| Operador central | `central@bomberosparral.cl` / `Demo1234!` → `/central-operativa` |
+| Cuartel | Calle Dieciocho 685, Parral |
+
 ## Roles del sistema
 
 | Rol | Acceso |

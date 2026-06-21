@@ -1,9 +1,22 @@
 import { Injectable } from '@nestjs/common';
+import { DispatchSource } from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
 
 type LatLng = { lat: number; lng: number };
 
-const DEFAULT_CENTER: [number, number] = [-35.6632, -71.4392];
+const DEFAULT_CENTER: [number, number] = [-36.1431, -71.8261];
+
+const ROLE_LABELS: Record<string, string> = {
+  SUPER_ADMIN: 'Super Admin',
+  COMANDANTE: 'Comandante',
+  CAPITAN: 'Capitán',
+  OPERADOR_CENTRAL: 'Operador Central',
+  ENCARGADO_MATERIAL: 'Enc. Material',
+  TESORERO: 'Tesorero',
+  SECRETARIO: 'Secretario',
+  BOMBERO: 'Bombero',
+  AUDITOR: 'Auditor',
+};
 
 const CITY_COORDS: Record<string, [number, number]> = {
   santiago: [-33.4489, -70.6693],
@@ -12,6 +25,9 @@ const CITY_COORDS: Record<string, [number, number]> = {
   talca: [-35.4264, -71.6554],
   chillan: [-36.6063, -72.1034],
   chillán: [-36.6063, -72.1034],
+  parral: [-36.1431, -71.8261],
+  catillo: [-36.2876, -71.6518],
+  remulcao: [-36.1985, -71.7820],
 };
 
 function asPoint(obj: unknown): LatLng | null {
@@ -47,6 +63,40 @@ function buildBounds(points: LatLng[]): [[number, number], [number, number]] | n
   ];
 }
 
+/** Dispersión estable alrededor del cuartel para voluntarios disponibles */
+function volunteerPosition(
+  baseLat: number,
+  baseLng: number,
+  userId: string,
+  index: number,
+): LatLng {
+  let hash = 0;
+  for (let i = 0; i < userId.length; i++) {
+    hash = (hash + userId.charCodeAt(i) * (i + 1)) % 1000;
+  }
+  const angle = (hash / 1000) * 2 * Math.PI;
+  const radius = 0.0025 + (index % 6) * 0.0006;
+  return {
+    lat: baseLat + Math.cos(angle) * radius,
+    lng: baseLng + Math.sin(angle) * radius,
+  };
+}
+
+function resolveAlarmBy(
+  dispatchSource: DispatchSource | null,
+  guardAuthor: { firstName: string; lastName: string } | undefined,
+  participants: { user: { firstName: string; lastName: string; role: string } }[],
+): string {
+  if (guardAuthor) return `${guardAuthor.firstName} ${guardAuthor.lastName}`;
+  if (dispatchSource === DispatchSource.BOTONERA) return 'Central de Despachos';
+  const lead = participants.find((p) => ['COMANDANTE', 'CAPITAN'].includes(p.user.role));
+  if (lead) return `${lead.user.firstName} ${lead.user.lastName}`;
+  if (participants[0]) {
+    return `${participants[0].user.firstName} ${participants[0].user.lastName}`;
+  }
+  return 'Central de despacho';
+}
+
 @Injectable()
 export class OperationalMapService {
   constructor(private prisma: PrismaService) {}
@@ -56,7 +106,7 @@ export class OperationalMapService {
     const since = new Date();
     since.setDate(since.getDate() - incidentDays);
 
-    const [hydrants, meetingPoints, routes, incidents, companies] = await Promise.all([
+    const [hydrants, meetingPoints, routes, incidents, companies, activeAlarmRows, volunteerRows] = await Promise.all([
       this.prisma.hydrant.findMany({
         where,
         select: {
@@ -113,6 +163,57 @@ export class OperationalMapService {
           address: true,
         },
         orderBy: { number: 'asc' },
+      }),
+      this.prisma.incident.findMany({
+        where: {
+          ...where,
+          closedAt: null,
+        },
+        select: {
+          id: true,
+          code: true,
+          type: true,
+          description: true,
+          address: true,
+          latitude: true,
+          longitude: true,
+          dispatchedAt: true,
+          dispatchSource: true,
+          companyId: true,
+          company: { select: { name: true, number: true, city: true } },
+          guardLogEntries: {
+            take: 1,
+            orderBy: { createdAt: 'asc' },
+            select: { author: { select: { firstName: true, lastName: true } } },
+          },
+          participants: {
+            take: 5,
+            select: { user: { select: { firstName: true, lastName: true, role: true } } },
+          },
+          vehicles: {
+            select: { vehicle: { select: { patent: true, type: true } } },
+          },
+        },
+        orderBy: { dispatchedAt: 'desc' },
+        take: 50,
+      }),
+      this.prisma.user.findMany({
+        where: {
+          isActive: true,
+          stationAvailable: true,
+          ...(companyId ? { companyId } : {}),
+        },
+        select: {
+          id: true,
+          firstName: true,
+          lastName: true,
+          role: true,
+          photoUrl: true,
+          stationAvailableAt: true,
+          companyId: true,
+          company: { select: { id: true, name: true, number: true, city: true } },
+        },
+        orderBy: [{ stationAvailableAt: 'desc' }, { lastName: 'asc' }],
       }),
     ]);
 
@@ -201,11 +302,76 @@ export class OperationalMapService {
       };
     });
 
+    const companyById = new Map(companyFeatures.map((c) => [c.id, c]));
+
+    const activeAlarms = activeAlarmRows.map((i) => {
+      const companyLoc = companyCoords(i.company.city, i.company.number);
+      const hasGps = i.latitude != null && i.longitude != null;
+      const lat = hasGps ? i.latitude! : companyLoc[0];
+      const lng = hasGps ? i.longitude! : companyLoc[1];
+      const desc = i.description?.trim() ?? '';
+      const radioMessage = /SECTOR/i.test(desc) && /CONCURRE/i.test(desc) ? desc : undefined;
+      return {
+        id: i.id,
+        code: i.code,
+        type: i.type,
+        description: i.description,
+        address: i.address,
+        lat,
+        lng,
+        hasGps,
+        approximate: !hasGps,
+        dispatchedAt: i.dispatchedAt,
+        alarmBy: resolveAlarmBy(
+          i.dispatchSource,
+          i.guardLogEntries[0]?.author,
+          i.participants,
+        ),
+        dispatchSource: i.dispatchSource,
+        companyName: i.company.name,
+        companyNumber: i.company.number,
+        vehicles: i.vehicles.map((v) => ({
+          patent: v.vehicle.patent,
+          type: v.vehicle.type,
+        })),
+        radioMessage,
+        isLive: true,
+      };
+    });
+
+    const volunteersByCompany = new Map<string, number>();
+    const volunteerFeatures = volunteerRows.map((u) => {
+      const company = companyById.get(u.companyId);
+      const baseLat = company?.lat ?? DEFAULT_CENTER[0];
+      const baseLng = company?.lng ?? DEFAULT_CENTER[1];
+      const idx = volunteersByCompany.get(u.companyId) ?? 0;
+      volunteersByCompany.set(u.companyId, idx + 1);
+      const pos = volunteerPosition(baseLat, baseLng, u.id, idx);
+      return {
+        id: u.id,
+        firstName: u.firstName,
+        lastName: u.lastName,
+        role: u.role,
+        roleLabel: ROLE_LABELS[u.role] ?? u.role,
+        photoUrl: u.photoUrl,
+        stationAvailableAt: u.stationAvailableAt,
+        lat: pos.lat,
+        lng: pos.lng,
+        nearCompany: company
+          ? `${company.number}ª ${company.name}`
+          : u.company.name,
+        companyId: u.companyId,
+        approximate: true,
+      };
+    });
+
     const allPoints: LatLng[] = [
       ...hydrantFeatures.map(h => ({ lat: h.lat, lng: h.lng })),
       ...meetingFeatures.map((m: any) => ({ lat: m.lat, lng: m.lng })),
       ...routeFeatures.flatMap((r: any) => r.path),
       ...incidentFeatures.map(i => ({ lat: i.lat, lng: i.lng })),
+      ...activeAlarms.map((a) => ({ lat: a.lat, lng: a.lng })),
+      ...volunteerFeatures.map((v) => ({ lat: v.lat, lng: v.lng })),
       ...companyFeatures.map(c => ({ lat: c.lat, lng: c.lng })),
     ];
 
@@ -227,6 +393,8 @@ export class OperationalMapService {
         incidents: incidentFeatures.length,
         companies: companyFeatures.length,
         incidentsOpen: incidentFeatures.filter(i => i.isOpen).length,
+        activeAlarms: activeAlarms.length,
+        volunteersAvailable: volunteerFeatures.length,
       },
       layers: {
         hydrants: hydrantFeatures,
@@ -234,6 +402,13 @@ export class OperationalMapService {
         routes: routeFeatures,
         incidents: incidentFeatures,
         companies: companyFeatures,
+        activeAlarms,
+        volunteers: volunteerFeatures,
+      },
+      live: {
+        updatedAt: new Date().toISOString(),
+        activeAlarms,
+        volunteers: volunteerFeatures,
       },
     };
   }

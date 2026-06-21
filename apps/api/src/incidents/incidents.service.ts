@@ -28,7 +28,7 @@ const INCLUDE = {
   vehicles: {
     include: {
       vehicle: {
-        select: { id: true, patent: true, brand: true, model: true, type: true, status: true, imageUrl: true },
+        select: { id: true, patent: true, brand: true, model: true, type: true, status: true, imageUrl: true, companyId: true },
       },
     },
   },
@@ -134,7 +134,53 @@ export class IncidentsService {
       userId,
     );
 
+    await this.recordMutualAidGuardLogs(incident, userId);
+
     return incident;
+  }
+
+  /** Bitácora en compañías de apoyo cuando despachan carros al mismo incidente. */
+  private async recordMutualAidGuardLogs(incident: {
+    id: string;
+    companyId: string;
+    code: string;
+    type: string;
+    address: string;
+    description?: string | null;
+    dispatchNotes?: string | null;
+    guardLogLinked?: boolean;
+    vehicles?: { vehicle: { companyId: string; patent: string; brand: string } }[];
+  }, userId?: string) {
+    if (!incident.vehicles?.length) return;
+
+    const byCompany = new Map<string, string[]>();
+    for (const row of incident.vehicles) {
+      const cid = row.vehicle.companyId;
+      if (!cid || cid === incident.companyId) continue;
+      const line = `${row.vehicle.patent} ${row.vehicle.brand}`.trim();
+      const list = byCompany.get(cid) ?? [];
+      list.push(line);
+      byCompany.set(cid, list);
+    }
+
+    for (const [companyId, vehicleLines] of byCompany) {
+      try {
+        await this.guardLogService.recordDispatchFromIncident({
+          companyId,
+          incidentId: incident.id,
+          code: incident.code,
+          type: incident.type,
+          address: incident.address,
+          description: `Apoyo mutuo — ${incident.description ?? incident.type}`,
+          dispatchNotes: incident.dispatchNotes ?? undefined,
+          vehicleLines,
+          participantLines: [],
+          authorId: userId,
+        });
+      } catch {
+        /* bitácora secundaria opcional */
+      }
+    }
   }
 
   async create(dto: CreateIncidentDto, userId?: string) {

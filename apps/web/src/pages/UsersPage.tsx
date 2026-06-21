@@ -1,20 +1,22 @@
-import { useState } from 'react';
+import { useState, useRef } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import {
   Plus, Users, Shield, Building2, Pencil, UserX,
-  Mail, Phone, CreditCard, Lock, X, CheckCircle2,
-  ChevronRight, Search, SlidersHorizontal, FileDown,
+  Mail, CreditCard, Lock, X, CheckCircle2,
+  ChevronRight, Search, SlidersHorizontal, FileDown, Camera, Hash,
 } from 'lucide-react';
 import { api } from '../lib/api';
 import toast from 'react-hot-toast';
 import { createElement } from 'react';
 import { UsersReport } from '../lib/pdf/UsersReport';
 import { downloadPdf } from '../lib/pdf/usePdfDownload';
+import FirefighterAvatar from '../components/FirefighterAvatar';
 
 const ROLES = [
   { value: 'SUPER_ADMIN',        label: 'Super Administrador',        short: 'S.Admin',    color: 'from-red-600 to-red-800',         badge: 'bg-red-600/20 text-red-400 border-red-600/20' },
   { value: 'COMANDANTE',         label: 'Comandante',                  short: 'Cdte.',      color: 'from-orange-600 to-orange-800',   badge: 'bg-orange-600/20 text-orange-400 border-orange-600/20' },
   { value: 'CAPITAN',            label: 'Capitán / Oficial Operativo', short: 'Capitán',    color: 'from-yellow-600 to-yellow-800',   badge: 'bg-yellow-600/20 text-yellow-400 border-yellow-600/20' },
+  { value: 'OPERADOR_CENTRAL',   label: 'Operador Central de Despacho', short: 'Central', color: 'from-red-700 to-red-900',       badge: 'bg-red-600/25 text-red-300 border-red-500/30' },
   { value: 'ENCARGADO_MATERIAL', label: 'Encargado Material Mayor',    short: 'Enc.Mat.',   color: 'from-blue-600 to-blue-800',       badge: 'bg-blue-600/20 text-blue-400 border-blue-600/20' },
   { value: 'SECRETARIO',         label: 'Secretario/a',                short: 'Secret.',    color: 'from-purple-600 to-purple-800',   badge: 'bg-purple-600/20 text-purple-400 border-purple-600/20' },
   { value: 'TESORERO',           label: 'Tesorero/a',                  short: 'Tesorero',   color: 'from-emerald-600 to-emerald-800', badge: 'bg-emerald-600/20 text-emerald-400 border-emerald-600/20' },
@@ -33,9 +35,13 @@ const avatarColor = (name: string) => AVATAR_COLORS[name.charCodeAt(0) % AVATAR_
 
 interface UserFormData {
   rut: string; firstName: string; lastName: string;
-  email: string; password: string; role: string; companyId: string;
+  email: string; password: string; role: string; companyId: string; photoUrl: string;
+  operativeNumber: string;
 }
-const EMPTY_FORM: UserFormData = { rut: '', firstName: '', lastName: '', email: '', password: '', role: 'BOMBERO', companyId: '' };
+const EMPTY_FORM: UserFormData = {
+  rut: '', firstName: '', lastName: '', email: '', password: '', role: 'BOMBERO',
+  companyId: '', photoUrl: '', operativeNumber: '',
+};
 
 export default function UsersPage() {
   const qc = useQueryClient();
@@ -46,6 +52,8 @@ export default function UsersPage() {
   const [search, setSearch] = useState('');
   const [filterRole, setFilterRole] = useState('');
   const [filterCia, setFilterCia] = useState('');
+  const [uploadingPhoto, setUploadingPhoto] = useState(false);
+  const photoRef = useRef<HTMLInputElement>(null);
 
   const { data: users, isLoading } = useQuery({ queryKey: ['users'], queryFn: () => api.get('/users').then(r => r.data) });
   const { data: companies } = useQuery({ queryKey: ['companies'], queryFn: () => api.get('/companies').then(r => r.data) });
@@ -70,14 +78,53 @@ export default function UsersPage() {
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    const payload: any = { ...form, companyId: form.companyId || undefined };
-    if (editing && !payload.password) delete payload.password;
+    const opRaw = form.operativeNumber.trim();
+    if (opRaw && (!/^\d{1,3}$/.test(opRaw) || Number(opRaw) < 1 || Number(opRaw) > 999)) {
+      toast.error('N° operativo: use 1 a 3 dígitos (1–999)');
+      return;
+    }
+    const payload: any = {
+      rut: form.rut,
+      firstName: form.firstName,
+      lastName: form.lastName,
+      email: form.email,
+      role: form.role,
+      companyId: form.companyId || undefined,
+      photoUrl: form.photoUrl || undefined,
+    };
+    if (!editing) payload.password = form.password;
+    else if (form.password) payload.password = form.password;
+
+    if (opRaw) payload.operativeNumber = Number(opRaw);
+    else if (editing) payload.operativeNumber = null;
+
     editing ? updateMutation.mutate({ id: editing.id, data: payload }) : createMutation.mutate(payload);
+  };
+
+  const handlePhotoUpload = async (file: File) => {
+    setUploadingPhoto(true);
+    try {
+      const fd = new FormData();
+      fd.append('file', file);
+      const { data } = await api.post('/users/upload-photo', fd, {
+        headers: { 'Content-Type': 'multipart/form-data' },
+      });
+      setForm((f) => ({ ...f, photoUrl: data.photoUrl }));
+      toast.success('Foto cargada');
+    } catch {
+      toast.error('Error al subir la foto');
+    } finally {
+      setUploadingPhoto(false);
+    }
   };
 
   const handleEdit = (u: any) => {
     setEditing(u); setSelected(null);
-    setForm({ rut: u.rut, firstName: u.firstName, lastName: u.lastName, email: u.email, password: '', role: u.role, companyId: u.companyId ?? '' });
+    setForm({
+      rut: u.rut, firstName: u.firstName, lastName: u.lastName, email: u.email,
+      password: '', role: u.role, companyId: u.companyId ?? '', photoUrl: u.photoUrl ?? '',
+      operativeNumber: u.operativeNumber != null ? String(u.operativeNumber) : '',
+    });
     setShowForm(true);
     window.scrollTo({ top: 0, behavior: 'smooth' });
   };
@@ -86,7 +133,7 @@ export default function UsersPage() {
 
   const filtered = (users ?? []).filter((u: any) => {
     const q = search.toLowerCase();
-    const matchSearch = !q || `${u.firstName} ${u.lastName} ${u.email} ${u.rut}`.toLowerCase().includes(q);
+    const matchSearch = !q || `${u.firstName} ${u.lastName} ${u.email} ${u.rut} ${u.operativeNumber ?? ''}`.toLowerCase().includes(q);
     const matchRole = !filterRole || u.role === filterRole;
     const matchCia = !filterCia || u.companyId === filterCia;
     return matchSearch && matchRole && matchCia;
@@ -161,7 +208,55 @@ export default function UsersPage() {
             </button>
           </div>
 
-          <form onSubmit={handleSubmit} className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+          <form onSubmit={handleSubmit} className="space-y-4">
+            {/* Foto opcional */}
+            <div className="flex flex-col sm:flex-row items-center gap-4 p-4 bg-slate-950/60 border border-slate-800 rounded-xl">
+              <FirefighterAvatar
+                photoUrl={form.photoUrl}
+                fullName={`${form.firstName || 'Nuevo'} ${form.lastName || 'bombero'}`}
+                available
+                size="lg"
+                variant="bombero"
+                statusDot={false}
+              />
+              <div className="flex-1 text-center sm:text-left space-y-2">
+                <p className="text-sm font-semibold text-white">Foto del bombero <span className="text-slate-500 font-normal">(opcional)</span></p>
+                <p className="text-xs text-slate-500">Se muestra en la vista pública de disponibilidad del cuartel</p>
+                <div className="flex flex-wrap gap-2 justify-center sm:justify-start">
+                  <button
+                    type="button"
+                    onClick={() => photoRef.current?.click()}
+                    disabled={uploadingPhoto}
+                    className="flex items-center gap-2 px-3 py-2 rounded-xl bg-slate-800 border border-slate-700 text-slate-300 text-xs hover:border-slate-600 disabled:opacity-50"
+                  >
+                    <Camera className="w-3.5 h-3.5" />
+                    {uploadingPhoto ? 'Subiendo…' : 'Seleccionar foto'}
+                  </button>
+                  {form.photoUrl && (
+                    <button
+                      type="button"
+                      onClick={() => setForm((f) => ({ ...f, photoUrl: '' }))}
+                      className="px-3 py-2 rounded-xl text-xs text-slate-500 hover:text-slate-300 hover:bg-slate-800"
+                    >
+                      Quitar foto
+                    </button>
+                  )}
+                </div>
+                <input
+                  ref={photoRef}
+                  type="file"
+                  accept="image/jpeg,image/png,image/webp,image/gif"
+                  className="hidden"
+                  onChange={(e) => {
+                    const file = e.target.files?.[0];
+                    if (file) handlePhotoUpload(file);
+                    e.target.value = '';
+                  }}
+                />
+              </div>
+            </div>
+
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
             {[
               { k: 'rut' as const,       label: 'RUT',         icon: CreditCard, placeholder: '12.345.678-9', req: true },
               { k: 'firstName' as const, label: 'Nombres',     icon: Users,      placeholder: 'Ej: Mario',    req: true },
@@ -202,8 +297,28 @@ export default function UsersPage() {
               </div>
             </div>
 
-            <div className="sm:col-span-2 lg:col-span-3 flex gap-3 pt-2">
-              <button type="submit" disabled={createMutation.isPending || updateMutation.isPending}
+            <div>
+              <label className="block text-xs font-semibold text-slate-400 mb-1.5 uppercase tracking-wide">N° operativo</label>
+              <div className="relative">
+                <Hash className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-slate-500" />
+                <input
+                  type="text"
+                  inputMode="numeric"
+                  pattern="[0-9]*"
+                  maxLength={3}
+                  value={form.operativeNumber}
+                  onChange={(e) => setForm((f) => ({ ...f, operativeNumber: e.target.value.replace(/\D/g, '').slice(0, 3) }))}
+                  placeholder="1–999"
+                  className="w-full bg-slate-800 border border-slate-700 rounded-xl pl-9 pr-3 py-2.5 text-sm text-slate-100 placeholder-slate-600 focus:outline-none focus:border-red-500 focus:ring-1 focus:ring-red-500/50 transition-all"
+                />
+              </div>
+              <p className="text-[10px] text-slate-600 mt-1">Único por compañía · visible en sala pública</p>
+            </div>
+
+            </div>
+
+            <div className="flex gap-3 pt-2">
+              <button type="submit" disabled={createMutation.isPending || updateMutation.isPending || uploadingPhoto}
                 className="flex items-center gap-2 bg-red-600 hover:bg-red-700 disabled:opacity-50 text-white text-sm font-semibold px-5 py-2.5 rounded-xl transition-colors">
                 <CheckCircle2 className="w-4 h-4" />{editing ? 'Guardar cambios' : 'Registrar bombero'}
               </button>
@@ -293,9 +408,15 @@ export default function UsersPage() {
               <div className="absolute inset-0 opacity-10" style={{ backgroundImage: 'radial-gradient(circle at 80% 20%, white 1px, transparent 1px)', backgroundSize: '20px 20px' }} />
               <div className="relative z-10 flex items-start justify-between">
                 <div className="flex items-center gap-4">
-                  <div className={`w-16 h-16 bg-gradient-to-br ${avatarColor(selected.firstName)} rounded-2xl flex items-center justify-center text-xl font-black text-white shadow-lg border-2 border-white/20`}>
-                    {selected.firstName[0]}{selected.lastName[0]}
-                  </div>
+                  <FirefighterAvatar
+                    photoUrl={selected.photoUrl}
+                    fullName={`${selected.firstName} ${selected.lastName}`}
+                    available={selected.isActive}
+                    size="lg"
+                    variant="bombero"
+                    statusDot={false}
+                    className="!w-16 !h-16"
+                  />
                   <div>
                     <p className="text-white font-bold text-lg leading-tight">{selected.firstName} {selected.lastName}</p>
                     <p className="text-white/60 text-xs mt-0.5">{roleInfo(selected.role).label}</p>
@@ -318,6 +439,9 @@ export default function UsersPage() {
                 { icon: Mail, label: 'Correo', value: selected.email },
                 { icon: Building2, label: 'Compañía', value: selected.company ? `Cía. ${selected.company.number} — ${selected.company.name}` : 'Sin compañía asignada' },
                 { icon: Shield, label: 'Rol', value: roleInfo(selected.role).label },
+                ...(selected.operativeNumber != null
+                  ? [{ icon: Hash, label: 'N° operativo', value: String(selected.operativeNumber) }]
+                  : []),
               ].map(({ icon: Icon, label, value }) => (
                 <div key={label} className="flex items-center gap-3 bg-slate-800/60 rounded-xl px-4 py-3">
                   <div className="w-7 h-7 bg-slate-700 rounded-lg flex items-center justify-center shrink-0">
@@ -362,13 +486,23 @@ function UserCard({ u, onSelect, onEdit }: { u: any; onSelect: (u: any) => void;
       <div className={`absolute top-3 right-3 w-2 h-2 rounded-full ${u.isActive ? 'bg-emerald-500' : 'bg-slate-600'}`} />
 
       <div className="flex items-center gap-3 mb-3">
-        <div className={`w-11 h-11 bg-gradient-to-br ${avatarColor(u.firstName)} rounded-xl flex items-center justify-center text-sm font-black text-white shadow-md shrink-0`}>
-          {u.firstName[0]}{u.lastName[0]}
-        </div>
-        <div className="min-w-0">
+        <FirefighterAvatar
+          photoUrl={u.photoUrl}
+          fullName={`${u.firstName} ${u.lastName}`}
+          available={u.isActive}
+          variant="bombero"
+          statusDot={false}
+          className="!w-11 !h-11"
+        />
+        <div className="min-w-0 flex-1">
           <p className="font-semibold text-slate-100 text-sm truncate">{u.firstName} {u.lastName}</p>
           <p className="text-[11px] text-slate-500 truncate">{u.email}</p>
         </div>
+        {u.operativeNumber != null && (
+          <span className="shrink-0 w-8 h-8 rounded-lg bg-red-600/20 border border-red-600/30 text-red-300 text-xs font-black flex items-center justify-center">
+            {u.operativeNumber}
+          </span>
+        )}
       </div>
 
       <div className="flex items-center justify-between">

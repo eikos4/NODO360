@@ -7,7 +7,9 @@
     "start": "node dist/main",
     "prisma:generate": "prisma generate",
     "prisma:migrate": "prisma migrate dev",
-    "seed": "ts-node --compiler-options \"{\\\"module\\\":\\\"commonjs\\\"}\" prisma/seed.ts"
+    "seed": "ts-node --compiler-options \"{\\\"module\\\":\\\"commonjs\\\"}\" prisma/seed.ts",
+    "repair:dispatch-public": "ts-node --compiler-options \"{\\\"module\\\":\\\"commonjs\\\"}\" prisma/repair-dispatch-public.ts",
+    "repair:operative-numbers": "ts-node --compiler-options \"{\\\"module\\\":\\\"commonjs\\\"}\" prisma/repair-operative-numbers.ts"
   },
   "dependencies": {
     "@nestjs/common": "^10.3.0",
@@ -21,6 +23,7 @@
     "bcryptjs": "^2.4.3",
     "class-transformer": "^0.5.1",
     "class-validator": "^0.14.1",
+    "msedge-tts": "^2.0.6",
     "passport": "^0.7.0",
     "passport-jwt": "^4.0.1",
     "passport-local": "^1.0.0",

@@ -1,4 +1,5 @@
 import axios from 'axios';
+import { useAuthStore } from '../store/authStore';
 
 const apiBase =
   import.meta.env.VITE_API_URL?.replace(/\/$/, '') ||
@@ -19,9 +20,13 @@ api.interceptors.response.use(
   (res) => res,
   (error) => {
     if (error.response?.status === 401) {
-      localStorage.removeItem('nodo360_token');
-      window.location.href = '/login';
+      const path = window.location.pathname;
+      if (path !== '/login' && path !== '/') {
+        localStorage.removeItem('nodo360_token');
+        useAuthStore.getState().logout();
+        window.location.href = '/login';
+      }
     }
     return Promise.reject(error);
-  }
+  },
 );

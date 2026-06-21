@@ -1,13 +1,15 @@
 import { Link } from 'react-router-dom';
 import {
-  Zap, ShieldAlert, Siren, Bell, Megaphone, Building2, Users, Network,
+  Zap, ShieldAlert, Siren, Bell, Megaphone, Building2, Users, Network, Flame,
   Package, Wrench, Gauge, Droplets, Shield, Calendar, FileText, ShoppingCart,
   DollarSign, HandCoins,   BarChart3, ChevronRight, Signpost, GraduationCap, Map, BookOpen, ClipboardCheck, Fuel, HeartPulse,
 } from 'lucide-react';
 
 const HUB_MODULES = [
   { label: 'Emergencias', icon: ShieldAlert, route: '/incidents', color: '#ef4444', group: 'Operaciones' },
-  { label: 'Botonera', icon: Siren, route: '/botonera', color: '#f97316', group: 'Operaciones' },
+  { label: 'Despacho360', icon: Siren, route: '/despacho360', color: '#f97316', group: 'Operaciones' },
+  { label: 'Central Express', icon: Zap, route: '/central-express', color: '#8b5cf6', group: 'Operaciones' },
+  { label: 'Central Parral', icon: Flame, route: '/central-despachos-parral', color: '#ea580c', group: 'Operaciones' },
   { label: 'Alertas', icon: Bell, route: '/alerts', color: '#eab308', group: 'Operaciones' },
   { label: 'Mapa 360', icon: Map, route: '/operational-map', color: '#06b6d4', group: 'Operaciones' },
   { label: 'Hidrantes', icon: Droplets, route: '/hydrants', color: '#0ea5e9', group: 'Operaciones' },

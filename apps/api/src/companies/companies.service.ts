@@ -10,7 +10,7 @@ export class CompaniesService {
   async findAll() {
     return this.prisma.company.findMany({
       where: { isActive: true },
-      include: { _count: { select: { users: true, vehicles: true, equipment: true } } },
+      include: { _count: { select: { users: true, vehicles: true, equipment: true, emergencyBitacora: true } } },
       orderBy: { number: 'asc' },
     });
   }

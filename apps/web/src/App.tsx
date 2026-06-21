@@ -1,6 +1,10 @@
-import { Routes, Route, Navigate } from 'react-router-dom';
+import { Routes, Route, Navigate, useLocation } from 'react-router-dom';
 import { useAuthStore } from './store/authStore';
+import { canCentralOperatorAccess, getDefaultRouteForRole, isCentralOperator } from './lib/roleAccess';
+import { useAuthHydrated } from './hooks/useAuthHydrated';
+import ErrorBoundary from './components/ErrorBoundary';
 import LoginPage from './pages/LoginPage';
+import LandingPage from './pages/LandingPage';
 import AppLayout from './components/layout/AppLayout';
 import DashboardPage from './pages/DashboardPage';
 import CompaniesPage from './pages/CompaniesPage';
@@ -16,7 +20,9 @@ import FinancePage from './pages/FinancePage';
 import Nodo360Page from './pages/Nodo360Page';
 import MotoresPage from './pages/MotoresPage';
 import OrganigramaPage from './pages/OrganigramaPage';
-import BotoneraPage from './pages/BotoneraPage';
+import DispatchPublicPage from './pages/DispatchPublicPage';
+import Despacho360Page from './pages/Despacho360Page';
+import BotoneraShell from './pages/BotoneraShell';
 import AnnouncementsPage from './pages/AnnouncementsPage';
 import HydrantsPage from './pages/HydrantsPage';
 import EmergencyPlansPage from './pages/EmergencyPlansPage';
@@ -28,25 +34,49 @@ import OperationalMapPage from './pages/OperationalMapPage';
 import GuardLogPage from './pages/GuardLogPage';
 import InventoryAuditsPage from './pages/InventoryAuditsPage';
 import FleetLogPage from './pages/FleetLogPage';
+import CentralOperativaPage from './pages/CentralOperativaPage';
+import CentralDespachosParralPage from './pages/CentralDespachosParralPage';
+import CentralExpressPage from './pages/CentralExpressPage';
 
 function PrivateRoute({ children }: { children: React.ReactNode }) {
+  const hydrated = useAuthHydrated();
   const isAuthenticated = useAuthStore((s) => s.isAuthenticated);
-  return isAuthenticated ? <>{children}</> : <Navigate to="/login" replace />;
+  const user = useAuthStore((s) => s.user);
+  const location = useLocation();
+
+  if (!hydrated) {
+    return (
+      <div className="min-h-screen bg-slate-950 flex items-center justify-center">
+        <div className="w-10 h-10 border-2 border-red-500 border-t-transparent rounded-full animate-spin" />
+      </div>
+    );
+  }
+
+  if (!isAuthenticated) {
+    return <Navigate to="/login" replace />;
+  }
+
+  if (isCentralOperator(user?.role) && !canCentralOperatorAccess(location.pathname)) {
+    return <Navigate to={getDefaultRouteForRole(user?.role)} replace />;
+  }
+
+  return <>{children}</>;
 }
 
 export default function App() {
   return (
-    <Routes>
+    <ErrorBoundary>
+      <Routes>
+      <Route path="/" element={<LandingPage />} />
       <Route path="/login" element={<LoginPage />} />
+      <Route path="/central/:slug" element={<DispatchPublicPage />} />
       <Route
-        path="/"
         element={
           <PrivateRoute>
             <AppLayout />
           </PrivateRoute>
         }
       >
-        <Route index element={<Navigate to="/dashboard" replace />} />
         <Route path="dashboard" element={<DashboardPage />} />
         <Route path="companies" element={<CompaniesPage />} />
         <Route path="users" element={<UsersPage />} />
@@ -72,9 +102,16 @@ export default function App() {
         <Route path="motores" element={<MotoresPage />} />
         <Route path="fleet-logs" element={<FleetLogPage />} />
         <Route path="organigrama" element={<OrganigramaPage />} />
-        <Route path="botonera" element={<BotoneraPage />} />
+        <Route path="despacho360" element={<Despacho360Page />} />
+        <Route path="central-despachos-parral" element={<CentralDespachosParralPage />} />
+        <Route path="central-express" element={<CentralExpressPage />} />
+        <Route path="central-operativa" element={<CentralOperativaPage />} />
+        <Route path="central-despachos" element={<Navigate to="/despacho360" replace />} />
+        <Route path="central-despachos/variantes" element={<BotoneraShell />} />
+        <Route path="botonera" element={<Navigate to="/despacho360" replace />} />
       </Route>
       <Route path="*" element={<Navigate to="/" replace />} />
     </Routes>
+    </ErrorBoundary>
   );
 }

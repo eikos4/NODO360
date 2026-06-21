@@ -11,6 +11,7 @@ enum Role {
   SUPER_ADMIN
   COMANDANTE
   CAPITAN
+  OPERADOR_CENTRAL
   ENCARGADO_MATERIAL
   SECRETARIO
   TESORERO
@@ -35,6 +36,9 @@ model Company {
   email     String?
   logoUrl              String?
   headquartersImageUrl String?
+  dispatchSlug           String?  @unique
+  dispatchPublicEnabled  Boolean  @default(false)
+  dispatchAvailable      Boolean  @default(true)
   isActive  Boolean  @default(true)
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -59,6 +63,7 @@ model Company {
   inventoryAudits     InventoryAudit[]
   fleetLogs           FleetLog[]
   healthRecords       HealthRecord[]
+  emergencyBitacora   EmergencyBitacoraEntry[]
 }
 
 model User {
@@ -70,12 +75,20 @@ model User {
   passwordHash String
   role         Role     @default(BOMBERO)
   isActive     Boolean  @default(true)
+  stationAvailable   Boolean   @default(false)
+  stationAvailableAt DateTime?
+  operativeNumber    Int?
+  photoUrl           String?
+  isMaquinista         Boolean   @default(false)
+  maquinistaAvailable  Boolean   @default(false)
+  maquinistaPrincipal  Boolean   @default(false)
   createdAt    DateTime @default(now())
   updatedAt    DateTime @updatedAt
 
   companyId    String?
   company      Company? @relation(fields: [companyId], references: [id])
 
+  @@unique([companyId, operativeNumber])
   incidents       IncidentParticipant[]
   shifts          Shift[]
   guardLogEntries GuardLogEntry[]
@@ -89,6 +102,8 @@ model User {
   fleetLogsDriven   FleetLog[]       @relation("FleetLogDriver")
   fleetLogsRegistered FleetLog[]     @relation("FleetLogRegisteredBy")
   healthRecord      HealthRecord?
+  vehiclesAsPrincipalMaquinista Vehicle[] @relation("VehiclePrincipalMaquinista")
+  emergencyBitacoraEntries EmergencyBitacoraEntry[]
 }
 
 model Vehicle {
@@ -103,11 +118,13 @@ model Vehicle {
   lastMaintenanceAt DateTime?
   nextMaintenanceAt DateTime?
   imageUrl         String?
+  principalMaquinistaId String?
   createdAt        DateTime        @default(now())
   updatedAt        DateTime        @updatedAt
 
   companyId        String
   company          Company         @relation(fields: [companyId], references: [id])
+  principalMaquinista User?        @relation("VehiclePrincipalMaquinista", fields: [principalMaquinistaId], references: [id])
 
   maintenances     Maintenance[]
   incidentVehicles IncidentVehicle[]
@@ -167,6 +184,7 @@ model Incident {
   participants   IncidentParticipant[]
   vehicles       IncidentVehicle[]
   guardLogEntries GuardLogEntry[]
+  bitacoraEntry  EmergencyBitacoraEntry?
 }
 
 model IncidentVehicle {
@@ -740,6 +758,39 @@ model InventoryAuditItem {
 
   @@index([auditId])
   @@index([result])
+}
+
+enum EmergencyBitacoraSource {
+  MANUAL
+  SALA_MAQUINAS
+  INCIDENTE
+}
+
+model EmergencyBitacoraEntry {
+  id             String                  @id @default(cuid())
+  companyId      String
+  incidentId     String?                 @unique
+  title          String
+  emergencyType  String?
+  address        String?
+  occurredAt     DateTime
+  summary        String
+  actionsTaken   String?
+  personnelNotes String?
+  vehicleNotes   String?
+  outcome        String?
+  observations   String?
+  source         EmergencyBitacoraSource @default(MANUAL)
+  authorId       String?
+  createdAt      DateTime                @default(now())
+  updatedAt      DateTime                @updatedAt
+
+  company  Company   @relation(fields: [companyId], references: [id])
+  incident Incident? @relation(fields: [incidentId], references: [id], onDelete: SetNull)
+  author   User?     @relation(fields: [authorId], references: [id])
+
+  @@index([companyId])
+  @@index([occurredAt])
 }
 
 enum FleetLogType {

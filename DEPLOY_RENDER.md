@@ -107,7 +107,11 @@ Endpoints: `https://nodo360-api.onrender.com/api/...`
 | Rol | Email | Password |
 |-----|-------|----------|
 | Super Admin | `admin@nodo360.cl` | `Admin1234!` |
-| Capitán | `martinez@cia5.cl` | `Demo1234!` |
+| Capitán | `martinez@bomberosparral.cl` | `Demo1234!` |
+| Operador Central | `central@bomberosparral.cl` | `Demo1234!` |
+
+Vista pública demo: `/central/bomberos-parral`  
+Perfil operador central: `/central-operativa`
 
 ---
 

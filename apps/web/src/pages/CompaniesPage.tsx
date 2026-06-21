@@ -3,13 +3,14 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import {
   Plus, Building2, MapPin, Phone, Users, Truck,
   Pencil, Mail, Hash, Globe, X, Flame, CheckCircle2,
-  Camera, ImageOff, Package, ChevronRight, Search, FileDown,
+  Camera, ImageOff, Package, ChevronRight, Search, FileDown, BookOpen,
 } from 'lucide-react';
 import { api } from '../lib/api';
 import toast from 'react-hot-toast';
 import { createElement } from 'react';
 import { CompanyReport } from '../lib/pdf/CompanyReport';
 import { downloadPdf } from '../lib/pdf/usePdfDownload';
+import CompanyEmergencyBitacoraPanel from '../components/companies/CompanyEmergencyBitacoraPanel';
 
 interface CompanyFormData {
   name: string; number: string; region: string; city: string;
@@ -53,6 +54,7 @@ export default function CompaniesPage() {
   const [editing, setEditing] = useState<any>(null);
   const [form, setForm] = useState<CompanyFormData>(EMPTY_FORM);
   const [detail, setDetail] = useState<any>(null);
+  const [detailTab, setDetailTab] = useState<'info' | 'bitacora'>('info');
   const [search, setSearch] = useState('');
   const [uploadingLogo, setUploadingLogo] = useState(false);
   const [uploadingHq, setUploadingHq] = useState(false);
@@ -299,8 +301,8 @@ export default function CompaniesPage() {
 
       {/* Modal detalle */}
       {detail && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/70 backdrop-blur-sm" onClick={() => setDetail(null)}>
-          <div className="bg-slate-900 border border-slate-700 rounded-2xl w-full max-w-lg overflow-hidden" onClick={e => e.stopPropagation()}>
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/70 backdrop-blur-sm" onClick={() => { setDetail(null); setDetailTab('info'); }}>
+          <div className="bg-slate-900 border border-slate-700 rounded-2xl w-full max-w-2xl max-h-[90vh] overflow-hidden flex flex-col" onClick={e => e.stopPropagation()}>
             {/* Foto cuartel header */}
             <div className="relative h-52 bg-slate-800 overflow-hidden">
               {detail.headquartersImageUrl
@@ -310,7 +312,7 @@ export default function CompaniesPage() {
                   </div>
               }
               <div className="absolute inset-0 bg-gradient-to-t from-slate-900/90 to-transparent" />
-              <button onClick={() => setDetail(null)} className="absolute top-3 right-3 p-2 bg-slate-900/60 hover:bg-slate-900 rounded-xl transition-colors">
+              <button onClick={() => { setDetail(null); setDetailTab('info'); }} className="absolute top-3 right-3 p-2 bg-slate-900/60 hover:bg-slate-900 rounded-xl transition-colors">
                 <X className="w-4 h-4 text-white" />
               </button>
               {/* Logo sobre la foto */}
@@ -331,7 +333,30 @@ export default function CompaniesPage() {
               </div>
             </div>
 
-            <div className="p-5 space-y-4">
+            <div className="flex border-b border-slate-800 px-5 shrink-0">
+              {([
+                { id: 'info' as const, label: 'Perfil', icon: Building2 },
+                { id: 'bitacora' as const, label: 'Bitácora emergencias', icon: BookOpen },
+              ]).map((tab) => (
+                <button
+                  key={tab.id}
+                  type="button"
+                  onClick={() => setDetailTab(tab.id)}
+                  className={`flex items-center gap-1.5 px-4 py-3 text-xs font-semibold border-b-2 transition-colors ${
+                    detailTab === tab.id
+                      ? 'border-red-500 text-red-400'
+                      : 'border-transparent text-slate-500 hover:text-slate-300'
+                  }`}
+                >
+                  <tab.icon className="w-3.5 h-3.5" />
+                  {tab.label}
+                </button>
+              ))}
+            </div>
+
+            <div className="p-5 space-y-4 overflow-y-auto flex-1">
+              {detailTab === 'info' ? (
+              <>
               {/* Ubicación */}
               <div className="flex items-start gap-2.5">
                 <div className="w-8 h-8 bg-slate-800 rounded-xl flex items-center justify-center shrink-0 mt-0.5">
@@ -376,10 +401,31 @@ export default function CompaniesPage() {
                 </div>
               </div>
 
+              {detail._count?.emergencyBitacora != null && (
+                <button
+                  type="button"
+                  onClick={() => setDetailTab('bitacora')}
+                  className="w-full flex items-center justify-between bg-red-950/30 hover:bg-red-950/50 border border-red-800/40 rounded-xl px-4 py-3 text-left transition-colors"
+                >
+                  <div className="flex items-center gap-2">
+                    <BookOpen className="w-4 h-4 text-red-400" />
+                    <span className="text-sm text-slate-200">Bitácora de emergencias</span>
+                  </div>
+                  <span className="text-sm font-bold text-red-400">{detail._count.emergencyBitacora} registro{detail._count.emergencyBitacora !== 1 ? 's' : ''}</span>
+                </button>
+              )}
+
               <button onClick={() => handleEdit(detail)}
                 className="w-full flex items-center justify-center gap-2 bg-slate-800 hover:bg-slate-700 border border-slate-600 text-slate-300 text-sm font-medium py-2.5 rounded-xl transition-colors">
                 <Pencil className="w-3.5 h-3.5" />Editar compañía
               </button>
+              </>
+              ) : (
+                <CompanyEmergencyBitacoraPanel
+                  companyId={detail.id}
+                  companyName={`${ordinal(detail.number)} Compañía ${detail.name}`}
+                />
+              )}
             </div>
           </div>
         </div>
@@ -408,7 +454,7 @@ export default function CompaniesPage() {
           {filtered.map((c: any) => {
             const [grad, borderAccent] = getGrad(c.number);
             return (
-              <div key={c.id} onClick={() => setDetail(c)}
+              <div key={c.id} onClick={() => { setDetail(c); setDetailTab('info'); }}
                 className="group bg-slate-900 border border-slate-800 hover:border-slate-600 rounded-2xl overflow-hidden transition-all hover:shadow-xl hover:shadow-black/30 cursor-pointer">
 
                 {/* Imagen cuartel con overlay */}

@@ -1,0 +1,23 @@
+# Postgres para desarrollo local (misma credencial que apps/api/.env)
+# Si ya tienes PostgreSQL en el puerto 5432, detén el servicio local o cambia el puerto aquí.
+services:
+  db:
+    image: postgres:16-alpine
+    container_name: nodo360-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: nodo360
+      POSTGRES_DB: nodo360
+    ports:
+      - "5433:5432"
+    volumes:
+      - nodo360_pg_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d nodo360"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+volumes:
+  nodo360_pg_data:

@@ -1,7 +1,9 @@
 import { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, Link, Navigate } from 'react-router-dom';
 import { Flame, Loader2, Eye, EyeOff, Shield, Zap, BarChart3, Bell, Sun, Moon } from 'lucide-react';
 import { useAuthStore } from '../store/authStore';
+import { getDefaultRouteForRole } from '../lib/roleAccess';
+import { useAuthHydrated } from '../hooks/useAuthHydrated';
 import { useThemeStore } from '../store/themeStore';
 import toast from 'react-hot-toast';
 
@@ -13,6 +15,9 @@ const FEATURES = [
 ];
 
 export default function LoginPage() {
+  const hydrated = useAuthHydrated();
+  const isAuthenticated = useAuthStore((s) => s.isAuthenticated);
+  const user = useAuthStore((s) => s.user);
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
@@ -22,12 +27,25 @@ export default function LoginPage() {
   const { theme, toggleTheme } = useThemeStore();
   const isDark = theme === 'dark';
 
+  if (!hydrated) {
+    return (
+      <div className="min-h-screen bg-slate-950 flex items-center justify-center">
+        <div className="w-10 h-10 border-2 border-red-500 border-t-transparent rounded-full animate-spin" />
+      </div>
+    );
+  }
+
+  if (isAuthenticated) {
+    return <Navigate to={getDefaultRouteForRole(user?.role)} replace />;
+  }
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
     try {
       await login(email, password);
-      navigate('/dashboard');
+      const role = useAuthStore.getState().user?.role;
+      navigate(getDefaultRouteForRole(role));
     } catch {
       toast.error('Credenciales incorrectas');
     } finally {
@@ -114,7 +132,7 @@ export default function LoginPage() {
               </div>
             ))}
           </div>
-          <p className="text-slate-500 text-xs">14 usuarios activos en demo</p>
+          <p className="text-slate-500 text-xs">25 usuarios demo · 6 compañías Parral</p>
         </div>
       </div>
 
@@ -137,6 +155,9 @@ export default function LoginPage() {
 
           {/* Header form */}
           <div className="mb-8">
+            <Link to="/" className="inline-flex items-center gap-1 text-xs text-slate-500 hover:text-slate-300 mb-4 transition-colors">
+              ← Volver al inicio
+            </Link>
             <h2 className="text-2xl font-bold text-white mb-1">Bienvenido</h2>
             <p className="text-slate-400 text-sm">Ingresa tus credenciales para continuar</p>
           </div>

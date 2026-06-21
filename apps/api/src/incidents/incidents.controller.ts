@@ -65,7 +65,7 @@ export class IncidentsController {
   }
 
   @Post('dispatch')
-  @Roles('SUPER_ADMIN', 'COMANDANTE', 'CAPITAN')
+  @Roles('SUPER_ADMIN', 'COMANDANTE', 'CAPITAN', 'OPERADOR_CENTRAL')
   dispatch(@Body() dto: DispatchIncidentDto, @Req() req: any) {
     return this.service.dispatch(dto, req.user?.id);
   }

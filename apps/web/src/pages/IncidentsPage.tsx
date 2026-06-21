@@ -414,7 +414,7 @@ export default function IncidentsPage() {
                       <p className="font-mono font-bold text-white text-xs">{inc.code}</p>
                       <p className="text-[10px] text-slate-400">
                         {inc.type}
-                        {inc.dispatchSource === 'BOTONERA' && <span className="ml-1 text-red-400">· Botonera</span>}
+                        {inc.dispatchSource === 'BOTONERA' && <span className="ml-1 text-red-400">· Central</span>}
                         {inc.emergencyPlanId && <span className="ml-1 text-amber-400">· Plan</span>}
                       </p>
                     </div>
