@@ -48,11 +48,15 @@ export function companyIdsFromDispatchResponse(data: {
 export function subscribeDispatchLive(
   companyId: string | undefined,
   onRefresh: () => void,
+  onDispatch?: (event: DispatchLiveEvent) => void,
 ): () => void {
   if (!companyId) return () => {};
 
   const handle = (event: DispatchLiveEvent) => {
-    if (event.companyIds.includes(companyId)) onRefresh();
+    if (event.companyIds.includes(companyId)) {
+      onDispatch?.(event);
+      onRefresh();
+    }
   };
 
   let channel: BroadcastChannel | null = null;

@@ -4,21 +4,25 @@ import {
   LayoutDashboard, Building2, Users, Package,
   Truck, FileText, ShieldAlert, Wrench, DollarSign,
   Flame, Bell, ShoppingCart, Zap, Gauge, Network, Siren, Megaphone, Droplets, Shield, HandCoins, Signpost,
-  GraduationCap, Map, BookOpen, ClipboardCheck, Fuel, HeartPulse, PanelLeftClose, PanelLeft, Radio,
+  GraduationCap, Map, BookOpen, ClipboardCheck, Fuel, HeartPulse, PanelLeftClose, PanelLeft, Radio, Globe
 } from 'lucide-react';
 import { useAuthStore } from '../../store/authStore';
 import { cn } from '../../lib/utils';
 import SidebarCompanias360 from './SidebarCompanias360';
+import UserIdentityBlock from './UserIdentityBlock';
+import { useAuthCompany } from '../../hooks/useAuthCompany';
 
 const SIDEBAR_COMPACT_KEY = 'nodo360_sidebar_compact';
 
-type NavItem = { to: string; label: string; icon: React.ElementType; roles: string[]; soon?: boolean };
-const navItems: NavItem[] = [
+export type NavItem = { to: string; label: string; icon: React.ElementType; roles: string[]; soon?: boolean };
+export const navItems: NavItem[] = [
+  { to: '/emergencia-respuesta', label: 'Mi emergencia', icon: Siren, roles: ['SUPER_ADMIN', 'COMANDANTE', 'CAPITAN', 'BOMBERO', 'ENCARGADO_MATERIAL'] },
   { to: '/nodo360',    label: 'NODO360',      icon: Zap,             roles: ['ALL'] },
   { to: '/central-operativa', label: 'Central en vivo', icon: Radio, roles: ['OPERADOR_CENTRAL', 'SUPER_ADMIN', 'COMANDANTE', 'CAPITAN'] },
   { to: '/despacho360', label: 'Despacho360', icon: Siren, roles: ['SUPER_ADMIN', 'COMANDANTE', 'CAPITAN', 'OPERADOR_CENTRAL'] },
   { to: '/central-express', label: 'Central Express', icon: Zap, roles: ['SUPER_ADMIN', 'COMANDANTE', 'CAPITAN', 'OPERADOR_CENTRAL'] },
   { to: '/central-despachos-parral', label: 'Central Parral', icon: Flame, roles: ['SUPER_ADMIN', 'COMANDANTE', 'CAPITAN', 'OPERADOR_CENTRAL'] },
+  { to: '/dispatch/global', label: 'Central Global', icon: Globe, roles: ['SUPER_ADMIN', 'COMANDANTE', 'CAPITAN', 'OPERADOR_CENTRAL', 'SECRETARIO'] },
   { to: '/dashboard',  label: 'Dashboard',   icon: LayoutDashboard, roles: ['ALL'] },
   { to: '/alerts',     label: 'Alertas',      icon: Bell,            roles: ['ALL'] },
   { to: '/announcements', label: 'Comunicados', icon: Megaphone,     roles: ['ALL'] },
@@ -51,6 +55,7 @@ interface SidebarProps {
 
 export default function Sidebar({ onStartTour }: SidebarProps) {
   const user = useAuthStore((s) => s.user);
+  const company = useAuthCompany();
   const role = user?.role ?? '';
   const [compact, setCompact] = useState(
     () => localStorage.getItem(SIDEBAR_COMPACT_KEY) === 'true',
@@ -74,7 +79,7 @@ export default function Sidebar({ onStartTour }: SidebarProps) {
   return (
     <aside
       className={cn(
-        'bg-slate-900 border-r border-slate-800 flex flex-col shrink-0 transition-[width] duration-200',
+        'hidden md:flex bg-slate-900 border-r border-slate-800 flex-col shrink-0 transition-[width] duration-200',
         compact ? 'w-[4.25rem]' : 'w-64',
       )}
     >
@@ -161,7 +166,12 @@ export default function Sidebar({ onStartTour }: SidebarProps) {
             <div key={item.to}>
               {node}
               {item.to === companias360After && (
-                <SidebarCompanias360 compact={compact} roles={['ALL']} userRole={role} />
+                <SidebarCompanias360
+                  compact={compact}
+                  roles={['ALL']}
+                  userRole={role}
+                  companyNumber={company?.number}
+                />
               )}
             </div>
           );
@@ -182,24 +192,7 @@ export default function Sidebar({ onStartTour }: SidebarProps) {
           {!compact && <span>Solo iconos</span>}
         </button>
 
-        <div className={cn('flex items-center', compact ? 'justify-center' : 'gap-3')}>
-          <div
-            className="w-8 h-8 bg-slate-700 rounded-full flex items-center justify-center shrink-0"
-            title={compact ? `${user?.firstName ?? ''} ${user?.lastName ?? ''}`.trim() : undefined}
-          >
-            <span className="text-xs font-bold text-slate-300">
-              {user?.firstName?.[0]}{user?.lastName?.[0]}
-            </span>
-          </div>
-          {!compact && (
-            <div className="min-w-0">
-              <p className="text-sm font-medium text-slate-200 truncate">
-                {user?.firstName} {user?.lastName}
-              </p>
-              <p className="text-xs text-slate-500 truncate">{user?.role}</p>
-            </div>
-          )}
-        </div>
+        <UserIdentityBlock variant="sidebar" compact={compact} />
       </div>
     </aside>
   );

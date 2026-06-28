@@ -4,7 +4,7 @@ import { Link } from 'react-router-dom';
 import {
   Map, Layers, Building2, Droplets, Users, Route, ShieldAlert,
   Maximize2, RefreshCw, ChevronRight, Radio, Siren, UserCheck,
-  Sun, Moon, Truck, Navigation,
+  Sun, Moon, Truck, Navigation, Satellite, Mountain
 } from 'lucide-react';
 import { MapContainer, TileLayer, Marker, Popup, Polyline, useMap } from 'react-leaflet';
 import L from 'leaflet';
@@ -18,6 +18,35 @@ import type { OperationalMapThemeTokens } from '../lib/operational-map-theme';
 const DEFAULT_CENTER: [number, number] = [-36.1431, -71.8261];
 const LIVE_POLL_IDLE = 6_000;
 const LIVE_POLL_URGENT = 2_000;
+
+const BASE_LAYERS = {
+  streets: {
+    label: 'Calles',
+    icon: Map,
+    url: 'https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',
+    attribution: '&copy; OpenStreetMap',
+  },
+  satellite: {
+    label: 'Satélite',
+    icon: Satellite,
+    url: 'https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}',
+    attribution: '&copy; Esri',
+  },
+  dark: {
+    label: 'Oscuro',
+    icon: Moon,
+    url: 'https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png',
+    attribution: '&copy; CARTO',
+  },
+  topo: {
+    label: 'Topográfico',
+    icon: Mountain,
+    url: 'https://{s}.tile.opentopomap.org/{z}/{x}/{y}.png',
+    attribution: '&copy; OpenTopoMap',
+  },
+} as const;
+
+type BaseLayerKey = keyof typeof BASE_LAYERS;
 
 const HYDRANT_STATUS: Record<string, { label: string; color: string }> = {
   OPERATIVO: { label: 'Operativo', color: '#0ea5e9' },
@@ -37,17 +66,27 @@ function divIcon(color: string, shape: 'circle' | 'square' | 'diamond' = 'circle
   });
 }
 
-function alarmIcon(approximate?: boolean) {
+function alarmIcon(approximate?: boolean, fieldConfirmed?: boolean) {
   return L.divIcon({
     className: '',
     html: `<div style="position:relative;width:34px;height:34px">
-      <div class="om-alarm-ring" style="position:absolute;inset:0;background:#ef4444;border-radius:50%"></div>
-      <div style="position:absolute;inset:7px;background:#dc2626;border-radius:50%;border:3px solid white;box-shadow:0 2px 10px rgba(220,38,38,.55)"></div>
+      <div class="om-alarm-ring" style="position:absolute;inset:0;background:${fieldConfirmed ? '#22c55e' : '#ef4444'};border-radius:50%"></div>
+      <div style="position:absolute;inset:7px;background:${fieldConfirmed ? '#16a34a' : '#dc2626'};border-radius:50%;border:3px solid white;box-shadow:0 2px 10px rgba(${fieldConfirmed ? '34,197,94' : '220,38,38'},.55)"></div>
       ${approximate ? '<div style="position:absolute;inset:-4px;border:2px dashed #fbbf24;border-radius:50%"></div>' : ''}
     </div>`,
     iconSize: [34, 34],
     iconAnchor: [17, 17],
     popupAnchor: [0, -16],
+  });
+}
+
+function dispatchPinIcon() {
+  return L.divIcon({
+    className: '',
+    html: '<div style="background:#f97316;width:16px;height:16px;border-radius:50%;border:3px solid white;box-shadow:0 2px 8px rgba(0,0,0,.35)"></div>',
+    iconSize: [16, 16],
+    iconAnchor: [8, 8],
+    popupAnchor: [0, -10],
   });
 }
 
@@ -150,6 +189,12 @@ function timeAgo(iso: string) {
 export default function OperationalMapPage() {
   const user = useAuthStore((s) => s.user);
   const { tokens: th, toggleTheme, isDark } = useOperationalMapTheme();
+  const [baseLayer, setBaseLayer] = useState<BaseLayerKey>('streets');
+  
+  useEffect(() => {
+    setBaseLayer(isDark ? 'dark' : 'streets');
+  }, [isDark]);
+
   const [companyId, setCompanyId] = useState(user?.companyId ?? '');
   const [incidentDays, setIncidentDays] = useState('90');
   const [layers, setLayers] = useState<LayersOn>({
@@ -333,6 +378,8 @@ export default function OperationalMapPage() {
 
           <VolunteersPanel th={th} volunteers={liveVolunteers} onFocus={focusOnMap} />
 
+          <BaseLayerPicker th={th} baseLayer={baseLayer} setBaseLayer={setBaseLayer} />
+
           <LayersPanel th={th} layers={layers} data={data} onToggle={toggleLayer} />
 
           {data?.stats && (
@@ -366,7 +413,7 @@ export default function OperationalMapPage() {
               style={{ height: '100%', width: '100%' }}
               className="z-0"
             >
-              <TileLayer attribution='&copy; OpenStreetMap &copy; CARTO' url={th.mapTile} />
+              <TileLayer attribution={BASE_LAYERS[baseLayer].attribution} url={BASE_LAYERS[baseLayer].url} />
               <MapFitBounds bounds={data?.bounds ?? null} />
               <MapFlyTo target={flyTarget} />
 
@@ -449,14 +496,17 @@ export default function OperationalMapPage() {
                   <Marker
                     key={`live-${a.id}`}
                     position={[a.lat, a.lng]}
-                    icon={alarmIcon(a.approximate)}
+                    icon={alarmIcon(a.approximate, a.hasFieldGps)}
                     zIndexOffset={1000}
                     eventHandlers={{ click: () => setSelected({ type: 'alarm', data: a }) }}
                   >
                     <Popup>
-                      <strong className="text-red-600">{a.code} — ACTIVA</strong>
+                      <strong className={a.hasFieldGps ? 'text-green-600' : 'text-red-600'}>{a.code} — ACTIVA</strong>
                       <p className="text-xs font-medium">{a.type}</p>
                       <p className="text-xs">{a.address}</p>
+                      {a.hasFieldGps && (
+                        <p className="text-xs text-green-600 font-semibold">GPS confirmado en terreno</p>
+                      )}
                       {a.approximate && (
                         <p className="text-xs text-amber-600">Ubicación aproximada (sin GPS)</p>
                       )}
@@ -469,6 +519,29 @@ export default function OperationalMapPage() {
                     </Popup>
                   </Marker>
                 ))}
+
+              {layers.activeAlarms &&
+                liveAlarms.map((a: any) => {
+                  if (a.dispatchLat == null || a.dispatchLng == null || !a.hasFieldGps) return null;
+                  const same =
+                    Math.abs(a.dispatchLat - a.lat) < 0.00005 &&
+                    Math.abs(a.dispatchLng - a.lng) < 0.00005;
+                  if (same) return null;
+                  return (
+                    <Marker
+                      key={`dispatch-pin-${a.id}`}
+                      position={[a.dispatchLat, a.dispatchLng]}
+                      icon={dispatchPinIcon()}
+                      zIndexOffset={950}
+                    >
+                      <Popup>
+                        <strong className="text-orange-600">Punto de despacho</strong>
+                        <p className="text-xs">{a.code}</p>
+                        <p className="text-[10px] text-gray-500">Ubicación inicial en central</p>
+                      </Popup>
+                    </Marker>
+                  );
+                })}
 
               {layers.dispatchedVehicles &&
                 liveAlarms.flatMap((a: any) =>
@@ -782,6 +855,46 @@ function DetailPanel({
           <Link to="/nodo360" className="text-xs text-red-500 flex items-center gap-1">Panel NODO360 <ChevronRight className="w-3 h-3" /></Link>
         </>
       )}
+    </div>
+  );
+}
+
+export function BaseLayerPicker({
+  th,
+  baseLayer,
+  setBaseLayer,
+}: {
+  th: OperationalMapThemeTokens;
+  baseLayer: BaseLayerKey;
+  setBaseLayer: (key: BaseLayerKey) => void;
+}) {
+  return (
+    <div className="mb-4">
+      <p className={`text-xs font-bold uppercase tracking-wide flex items-center gap-1 mb-2 ${th.panelLayers}`}>
+        <Layers className="w-3.5 h-3.5" /> Mapa base
+      </p>
+      <div className="grid grid-cols-2 gap-2">
+        {(Object.keys(BASE_LAYERS) as BaseLayerKey[]).map(key => {
+          const cfg = BASE_LAYERS[key];
+          const Icon = cfg.icon;
+          const on = baseLayer === key;
+          return (
+            <button
+              key={key}
+              type="button"
+              onClick={() => setBaseLayer(key)}
+              className={`flex flex-col items-center gap-1.5 p-2 rounded-xl text-[10px] font-bold border transition-colors ${
+                on 
+                  ? 'bg-sky-50 dark:bg-sky-900/30 border-sky-300 dark:border-sky-700 text-sky-700 dark:text-sky-300' 
+                  : 'bg-white dark:bg-[#0f172a] border-slate-200 dark:border-slate-800 text-slate-600 dark:text-slate-400 hover:border-slate-300 dark:hover:border-slate-700'
+              }`}
+            >
+              <Icon className="w-4 h-4" />
+              {cfg.label}
+            </button>
+          );
+        })}
+      </div>
     </div>
   );
 }

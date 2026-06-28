@@ -7,6 +7,7 @@ export class CreateIncidentDto {
   @IsString() @IsNotEmpty() address: string;
   @IsOptional() @IsNumber() latitude?: number;
   @IsOptional() @IsNumber() longitude?: number;
+  @IsOptional() @IsString() locationPinToken?: string;
   @IsDateString() dispatchedAt: string;
   @IsOptional() @IsDateString() arrivedAt?: string;
   @IsOptional() @IsDateString() closedAt?: string;

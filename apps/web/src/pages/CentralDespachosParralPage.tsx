@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import {
   Calendar, Copy, ExternalLink, Flame, Loader2, LogOut, Mic, MicOff, Moon, Play,
-  Search, Settings, Siren, Square, Sun, Volume2, VolumeX, X,
+  Search, Settings, Siren, Square, Sun, Volume2, VolumeX, X, Crosshair, MessageCircle
 } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { useAuthStore } from '../store/authStore';
@@ -22,6 +22,7 @@ import DispatchVoiceConfigToggle from '../components/dispatch/DispatchVoiceConfi
 import CompanyMaquinistaAlert from '../components/dispatch/CompanyMaquinistaAlert';
 import DispatchCompanyVehiclePicker from '../components/dispatch/DispatchCompanyVehiclePicker';
 import { api } from '../lib/api';
+import { buildLocationPinWhatsAppMessage, buildWhatsAppShareUrl } from '../lib/incident-location-pin';
 
 const PRIMARY_KEYS = EMERGENCY_MAIN_TYPES.filter((m) => /^10-[0-9]$/.test(m.id));
 
@@ -75,6 +76,23 @@ export default function CentralDespachosParralPage() {
   const [playingPreview, setPlayingPreview] = useState(false);
   const [selectedPersonnel, setSelectedPersonnel] = useState('');
   const [showConfig, setShowConfig] = useState(false);
+  const [waPhone, setWaPhone] = useState('');
+
+  const handleSendWa = (inc: any) => {
+    const phone = waPhone.trim();
+    if (!phone || phone.length < 8) {
+      toast.error('Ingresa un número de WhatsApp válido');
+      return;
+    }
+    const message = buildLocationPinWhatsAppMessage({
+      code: inc.code,
+      type: inc.type,
+      address: inc.address || 'Sin dirección',
+      token: inc.locationPinToken,
+    });
+    const url = buildWhatsAppShareUrl(phone, message);
+    window.open(url, '_blank');
+  };
 
   const { data: allVehicles = [] } = useQuery({
     queryKey: ['vehicles'],
@@ -215,14 +233,7 @@ export default function CentralDespachosParralPage() {
             <Settings className="w-4 h-4" />
             Ajustes
           </button>
-          <button
-            type="button"
-            onClick={() => { logout(); navigate('/login'); }}
-            className="flex items-center gap-1.5 px-4 py-2 rounded-xl bg-red-600 hover:bg-red-500 text-xs font-bold text-white"
-          >
-            <LogOut className="w-4 h-4" />
-            Salir
-          </button>
+         
         </div>
       </header>
 
@@ -314,8 +325,8 @@ export default function CentralDespachosParralPage() {
                   <EmergIcon className="w-6 h-6 text-white" />
                 </div>
                 <div>
-                  <p className="text-2xl font-black font-mono text-white">{emerg.code}</p>
-                  <p className="text-sm font-semibold text-white/90">{emerg.label}</p>
+                  <p className={`text-2xl font-black font-mono ${isDark ? 'text-white' : 'text-orange-950'}`}>{emerg.code}</p>
+                  <p className={`text-sm font-semibold ${isDark ? 'text-white/90' : 'text-orange-900'}`}>{emerg.label}</p>
                 </div>
               </div>
             ) : (
@@ -466,13 +477,41 @@ export default function CentralDespachosParralPage() {
               <button
                 type="button"
                 onClick={d.handleStop}
-                className="w-full py-2 rounded-xl border border-amber-500/50 text-amber-400 text-sm flex items-center justify-center gap-2"
+                className="w-full py-2 rounded-xl border border-amber-500/50 text-amber-500 text-sm flex items-center justify-center gap-2 font-bold"
               >
                 <Square className="w-4 h-4" />
                 Detener
               </button>
             )}
-            <p className={`text-center text-[10px] ${th.hint}`}>
+            
+            {d.lastDispatchedIncident?.locationPinToken && (
+              <div className="mt-4 pt-4 border-t border-slate-700/30 space-y-2">
+                <p className={`text-[10px] font-bold uppercase tracking-wider ${isDark ? 'text-emerald-400' : 'text-emerald-600'} flex items-center gap-1`}>
+                  <Crosshair className="w-3.5 h-3.5" />
+                  Pedir GPS (WhatsApp)
+                </p>
+                <div className="flex gap-2">
+                  <input
+                    type="tel"
+                    value={waPhone}
+                    onChange={(e) => setWaPhone(e.target.value)}
+                    placeholder="WhatsApp ej: 569..."
+                    className={`flex-1 rounded-xl border px-3 py-2 text-sm focus:outline-none ${th.input}`}
+                  />
+                  <button
+                    type="button"
+                    onClick={() => handleSendWa(d.lastDispatchedIncident)}
+                    className="bg-[#25D366] hover:bg-[#20bd5a] text-white px-4 py-2 rounded-xl flex items-center justify-center shrink-0 shadow-md font-bold text-xs gap-1.5"
+                    title="Enviar enlace al reportante"
+                  >
+                    <MessageCircle className="w-4 h-4" />
+                    Enviar
+                  </button>
+                </div>
+              </div>
+            )}
+
+            <p className={`text-center text-[10px] mt-2 ${th.hint}`}>
               Enter para despachar · Ctrl+Enter desde dirección
             </p>
           </div>

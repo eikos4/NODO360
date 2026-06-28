@@ -1,15 +1,14 @@
 import { useState, useEffect } from 'react';
 import { Building2, ChevronDown, ChevronUp, LayoutGrid } from 'lucide-react';
 import { useSimpleDispatch } from '../hooks/useQuickDispatch';
-import { useBotoneraTheme } from '../hooks/useBotoneraTheme';
-import { BOTONERA_THEMES } from '../lib/botonera-themes';
+import { BOTONERA_THEMES, type BotoneraThemeId } from '../lib/botonera-themes';
 import BotoneraThemePicker from '../components/botonera/BotoneraThemePicker';
 import { renderBotoneraVariant } from '../components/botonera/BotoneraVariants';
 import type { CuartelItem } from '../components/botonera/CuartelOverviewPanel';
 
 export default function BotoneraShell() {
   const d = useSimpleDispatch();
-  const { themeId, setThemeId } = useBotoneraTheme();
+  const [themeId, setThemeId] = useState<BotoneraThemeId>('classic');
   const theme = BOTONERA_THEMES[themeId];
   const [showCuarteles, setShowCuarteles] = useState(themeId === 'institutional' || themeId === 'command');
 

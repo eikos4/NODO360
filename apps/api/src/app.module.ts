@@ -26,6 +26,8 @@ import { HealthModule } from './health/health.module';
 import { DispatchCentralModule } from './dispatch-central/dispatch-central.module';
 import { TtsModule } from './tts/tts.module';
 import { EmergencyBitacoraModule } from './emergency-bitacora/emergency-bitacora.module';
+import { IncidentLocationPinModule } from './incident-location-pin/incident-location-pin.module';
+import { EmergencyResponseModule } from './emergency-response/emergency-response.module';
 
 @Module({
   imports: [
@@ -56,6 +58,8 @@ import { EmergencyBitacoraModule } from './emergency-bitacora/emergency-bitacora
     DispatchCentralModule,
     TtsModule,
     EmergencyBitacoraModule,
+    IncidentLocationPinModule,
+    EmergencyResponseModule,
   ],
 })
 export class AppModule {}

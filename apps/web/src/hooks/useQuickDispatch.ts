@@ -176,10 +176,13 @@ export function useQuickDispatch() {
     refetchInterval: 8000,
   });
 
+  const [lastDispatchedIncident, setLastDispatchedIncident] = useState<any>(null);
+
   const persistDispatch = useMutation({
     mutationFn: (payload: unknown) => api.post('/incidents/dispatch', payload),
     onSuccess: (res) => {
       const d = res.data;
+      setLastDispatchedIncident(d);
       notifyDispatchLive({
         companyIds: companyIdsFromDispatchResponse(d),
         incidentId: d.id,
@@ -187,6 +190,7 @@ export function useQuickDispatch() {
       qc.invalidateQueries({ queryKey: ['incidents'] });
       qc.invalidateQueries({ queryKey: ['operational-map'] });
       qc.invalidateQueries({ queryKey: ['dispatch-live'] });
+      qc.invalidateQueries({ queryKey: ['emergency-response-active'] });
       refetchLive();
       toast.success(`Emergencia ${d.code} despachada`, { duration: 4000 });
     },
@@ -578,6 +582,7 @@ export function useQuickDispatch() {
     dispatchConfig,
     publicUrl: slug ? `${window.location.origin}/central/${slug}` : null,
     mapCenter,
+    lastDispatchedIncident,
     onMapPick,
     searchAddress,
     handleEmergencyTypeClick,

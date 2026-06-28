@@ -73,6 +73,7 @@ const ROLE_MODULES: Record<string, { label: string; path: string; icon: React.El
     { label: 'Alertas', path: '/alerts', icon: Siren, color: 'text-red-400', desc: 'Vencimientos críticos' },
   ],
   BOMBERO: [
+    { label: 'Mi emergencia', path: '/emergencia-respuesta', icon: Siren, color: 'text-red-400', desc: 'Confirmar asistencia y marcar ubicación GPS' },
     { label: 'Turnos', path: '/shifts', icon: CalendarCheck, color: 'text-indigo-400', desc: 'Ver mi guardia' },
     { label: 'Bitácora', path: '/guard-log', icon: BookOpen, color: 'text-emerald-400', desc: 'Registrar novedades de guardia' },
     { label: 'Emergencias', path: '/incidents', icon: FlameKindling, color: 'text-red-400', desc: 'Registro de incidentes' },

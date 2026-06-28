@@ -132,8 +132,10 @@ export class OperationalMapService {
       this.prisma.incident.findMany({
         where: {
           ...where,
-          latitude: { not: null },
-          longitude: { not: null },
+          OR: [
+            { AND: [{ latitude: { not: null } }, { longitude: { not: null } }] },
+            { AND: [{ confirmedLatitude: { not: null } }, { confirmedLongitude: { not: null } }] },
+          ],
           dispatchedAt: { gte: since },
         },
         select: {
@@ -144,6 +146,9 @@ export class OperationalMapService {
           address: true,
           latitude: true,
           longitude: true,
+          confirmedLatitude: true,
+          confirmedLongitude: true,
+          locationPinAt: true,
           dispatchedAt: true,
           closedAt: true,
           companyId: true,
@@ -177,6 +182,9 @@ export class OperationalMapService {
           address: true,
           latitude: true,
           longitude: true,
+          confirmedLatitude: true,
+          confirmedLongitude: true,
+          locationPinAt: true,
           dispatchedAt: true,
           dispatchSource: true,
           companyId: true,
@@ -272,20 +280,30 @@ export class OperationalMapService {
       })
       .filter(Boolean);
 
-    const incidentFeatures = incidents.map(i => ({
+    const incidentFeatures = incidents.map(i => {
+      const useConfirmed = i.confirmedLatitude != null && i.confirmedLongitude != null;
+      const lat = useConfirmed ? i.confirmedLatitude! : i.latitude!;
+      const lng = useConfirmed ? i.confirmedLongitude! : i.longitude!;
+      return {
       id: i.id,
       code: i.code,
       type: i.type,
       description: i.description,
       address: i.address,
-      lat: i.latitude!,
-      lng: i.longitude!,
+      lat,
+      lng,
+      dispatchLat: i.latitude,
+      dispatchLng: i.longitude,
+      fieldLat: i.confirmedLatitude,
+      fieldLng: i.confirmedLongitude,
+      hasFieldGps: useConfirmed,
       dispatchedAt: i.dispatchedAt,
       closedAt: i.closedAt,
       isOpen: !i.closedAt,
       companyName: i.company.name,
       companyNumber: i.company.number,
-    }));
+    };
+    });
 
     const companyFeatures = companies.map(c => {
       const [lat, lng] = companyCoords(c.city, c.number);
@@ -306,9 +324,10 @@ export class OperationalMapService {
 
     const activeAlarms = activeAlarmRows.map((i) => {
       const companyLoc = companyCoords(i.company.city, i.company.number);
-      const hasGps = i.latitude != null && i.longitude != null;
-      const lat = hasGps ? i.latitude! : companyLoc[0];
-      const lng = hasGps ? i.longitude! : companyLoc[1];
+      const hasFieldGps = i.confirmedLatitude != null && i.confirmedLongitude != null;
+      const hasDispatchGps = i.latitude != null && i.longitude != null;
+      const lat = hasFieldGps ? i.confirmedLatitude! : hasDispatchGps ? i.latitude! : companyLoc[0];
+      const lng = hasFieldGps ? i.confirmedLongitude! : hasDispatchGps ? i.longitude! : companyLoc[1];
       const desc = i.description?.trim() ?? '';
       const radioMessage = /SECTOR/i.test(desc) && /CONCURRE/i.test(desc) ? desc : undefined;
       return {
@@ -319,8 +338,14 @@ export class OperationalMapService {
         address: i.address,
         lat,
         lng,
-        hasGps,
-        approximate: !hasGps,
+        dispatchLat: hasDispatchGps ? i.latitude : null,
+        dispatchLng: hasDispatchGps ? i.longitude : null,
+        fieldLat: hasFieldGps ? i.confirmedLatitude : null,
+        fieldLng: hasFieldGps ? i.confirmedLongitude : null,
+        fieldConfirmedAt: i.locationPinAt,
+        hasGps: hasFieldGps || hasDispatchGps,
+        hasFieldGps,
+        approximate: !hasFieldGps && !hasDispatchGps,
         dispatchedAt: i.dispatchedAt,
         alarmBy: resolveAlarmBy(
           i.dispatchSource,

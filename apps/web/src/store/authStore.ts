@@ -2,7 +2,16 @@ import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
 import { api } from '../lib/api';
 
-interface AuthUser {
+export interface AuthCompany {
+  id: string;
+  name: string;
+  number: number;
+  city: string;
+  logoUrl: string | null;
+  dispatchSlug?: string | null;
+}
+
+export interface AuthUser {
   id: string;
   rut: string;
   firstName: string;
@@ -11,6 +20,7 @@ interface AuthUser {
   role: string;
   companyId: string | null;
   isActive: boolean;
+  company?: AuthCompany | null;
 }
 
 interface AuthState {
@@ -19,6 +29,7 @@ interface AuthState {
   isAuthenticated: boolean;
   login: (email: string, password: string) => Promise<void>;
   logout: () => void;
+  patchUser: (partial: Partial<AuthUser>) => void;
 }
 
 export const useAuthStore = create<AuthState>()(
@@ -37,6 +48,12 @@ export const useAuthStore = create<AuthState>()(
       logout: () => {
         localStorage.removeItem('nodo360_token');
         set({ user: null, token: null, isAuthenticated: false });
+      },
+
+      patchUser: (partial) => {
+        set((state) =>
+          state.user ? { user: { ...state.user, ...partial } } : state,
+        );
       },
     }),
     {

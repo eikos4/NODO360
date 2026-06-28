@@ -236,16 +236,22 @@ export default function CentralOperativaPage() {
             {(incidents as { id: string; code: string; type: string; address?: string; dispatchedAt: string; closedAt?: string | null }[]).length === 0 ? (
               <p className={`text-sm text-center py-8 ${th.subtitle}`}>Sin emergencias registradas</p>
             ) : (
-              (incidents as { id: string; code: string; type: string; address?: string; dispatchedAt: string; closedAt?: string | null }[])
+              mapEmergencies
                 .slice(0, 12)
                 .map((inc) => {
-                  const active = !inc.closedAt;
+                  const active = inc.status === 'ACTIVA';
+                  const mainVehicle = inc.vehicles?.[0]?.patent;
                   return (
                     <div
                       key={inc.id}
-                      className={`p-3 rounded-xl border ${active ? th.incidentRowActive : th.incidentRowIdle}`}
+                      className={`relative overflow-hidden p-3 rounded-xl border ${active ? th.incidentRowActive : th.incidentRowIdle}`}
                     >
-                      <div className="flex items-start justify-between gap-2">
+                      {mainVehicle && (
+                        <div className="absolute -right-2 -bottom-4 text-[60px] font-black italic opacity-[0.03] dark:opacity-5 pointer-events-none select-none tracking-tighter uppercase whitespace-nowrap">
+                          {mainVehicle}
+                        </div>
+                      )}
+                      <div className="relative z-10 flex items-start justify-between gap-2">
                         <div>
                           <p className={`text-xs font-mono ${th.subtitle}`}>{inc.code}</p>
                           <p className={`text-sm font-semibold mt-0.5 ${th.title}`}>{inc.type}</p>
@@ -253,7 +259,7 @@ export default function CentralOperativaPage() {
                         </div>
                         <span
                           className={`shrink-0 text-[10px] font-bold uppercase px-2 py-0.5 rounded-full ${
-                            active ? 'bg-red-600 text-white' : isDark ? 'bg-slate-700 text-slate-400' : 'bg-slate-200 text-slate-600'
+                            active ? 'bg-red-600 !text-white shadow-sm' : isDark ? 'bg-slate-700 text-slate-400' : 'bg-slate-200 text-slate-600'
                           }`}
                         >
                           {active ? 'Activa' : 'Cerrada'}

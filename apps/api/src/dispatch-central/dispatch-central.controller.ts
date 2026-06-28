@@ -74,6 +74,13 @@ export class DispatchCentralController {
     return this.service.getCuartelesOverview();
   }
 
+  @Get('central/global')
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles(...DISPATCH_ROLES)
+  getGlobal() {
+    return this.service.getGlobalDispatch();
+  }
+
   @Get('central/config')
   @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles(...DISPATCH_ROLES)

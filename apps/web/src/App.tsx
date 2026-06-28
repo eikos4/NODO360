@@ -21,6 +21,8 @@ import Nodo360Page from './pages/Nodo360Page';
 import MotoresPage from './pages/MotoresPage';
 import OrganigramaPage from './pages/OrganigramaPage';
 import DispatchPublicPage from './pages/DispatchPublicPage';
+import CentralGlobalPage from './pages/CentralGlobalPage';
+import IncidentLocationPinPage from './pages/IncidentLocationPinPage';
 import Despacho360Page from './pages/Despacho360Page';
 import BotoneraShell from './pages/BotoneraShell';
 import AnnouncementsPage from './pages/AnnouncementsPage';
@@ -37,6 +39,7 @@ import FleetLogPage from './pages/FleetLogPage';
 import CentralOperativaPage from './pages/CentralOperativaPage';
 import CentralDespachosParralPage from './pages/CentralDespachosParralPage';
 import CentralExpressPage from './pages/CentralExpressPage';
+import BomberoEmergencyPage from './pages/BomberoEmergencyPage';
 
 function PrivateRoute({ children }: { children: React.ReactNode }) {
   const hydrated = useAuthHydrated();
@@ -70,6 +73,7 @@ export default function App() {
       <Route path="/" element={<LandingPage />} />
       <Route path="/login" element={<LoginPage />} />
       <Route path="/central/:slug" element={<DispatchPublicPage />} />
+      <Route path="/localizar/:token" element={<IncidentLocationPinPage />} />
       <Route
         element={
           <PrivateRoute>
@@ -103,7 +107,9 @@ export default function App() {
         <Route path="fleet-logs" element={<FleetLogPage />} />
         <Route path="organigrama" element={<OrganigramaPage />} />
         <Route path="despacho360" element={<Despacho360Page />} />
+        <Route path="emergencia-respuesta" element={<BomberoEmergencyPage />} />
         <Route path="central-despachos-parral" element={<CentralDespachosParralPage />} />
+        <Route path="dispatch/global" element={<CentralGlobalPage />} />
         <Route path="central-express" element={<CentralExpressPage />} />
         <Route path="central-operativa" element={<CentralOperativaPage />} />
         <Route path="central-despachos" element={<Navigate to="/despacho360" replace />} />

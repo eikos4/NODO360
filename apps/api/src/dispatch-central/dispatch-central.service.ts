@@ -313,6 +313,9 @@ export class DispatchCentralService {
         address: true,
         latitude: true,
         longitude: true,
+        confirmedLatitude: true,
+        confirmedLongitude: true,
+        locationPinAt: true,
         dispatchedAt: true,
         closedAt: true,
         dispatchSource: true,
@@ -341,11 +344,15 @@ export class DispatchCentralService {
       },
     });
 
+    return this.mapIncidentsToPublic(incidents, companyId);
+  }
+
+  private mapIncidentsToPublic(incidents: any[], companyId: string | null) {
     return incidents.map((inc) => {
-      const isDispatchOwner = inc.companyId === companyId;
-      const companyVehicleRows = inc.vehicles.filter((v) =>
-        isDispatchOwner ? true : v.vehicle.companyId === companyId,
-      );
+      const isDispatchOwner = !companyId || inc.companyId === companyId;
+      const companyVehicleRows = isDispatchOwner
+        ? inc.vehicles
+        : inc.vehicles.filter((v: any) => v.vehicle.companyId === companyId);
 
       let alarmBy = 'Central de despacho';
       const guardAuthor = inc.guardLogEntries[0]?.author;
@@ -370,15 +377,26 @@ export class DispatchCentralService {
         brand: v.vehicle.brand,
       }));
 
+      const hasFieldGps = inc.confirmedLatitude != null && inc.confirmedLongitude != null;
+      const hasDispatchGps = inc.latitude != null && inc.longitude != null;
+      const mapLat = hasFieldGps ? inc.confirmedLatitude! : inc.latitude ?? 0;
+      const mapLng = hasFieldGps ? inc.confirmedLongitude! : inc.longitude ?? 0;
+
       return {
         id: inc.id,
         code: inc.code,
         type: inc.type,
         description: inc.description,
         address: inc.address,
-        latitude: inc.latitude ?? 0,
-        longitude: inc.longitude ?? 0,
-        hasCoordinates: inc.latitude != null && inc.longitude != null,
+        latitude: mapLat,
+        longitude: mapLng,
+        dispatchLatitude: hasDispatchGps ? inc.latitude : null,
+        dispatchLongitude: hasDispatchGps ? inc.longitude : null,
+        confirmedLatitude: hasFieldGps ? inc.confirmedLatitude : null,
+        confirmedLongitude: hasFieldGps ? inc.confirmedLongitude : null,
+        locationPinAt: inc.locationPinAt,
+        hasCoordinates: hasFieldGps || hasDispatchGps,
+        hasFieldGps,
         dispatchedAt: inc.dispatchedAt,
         closedAt: inc.closedAt,
         status: inc.closedAt ? 'CERRADA' : 'ACTIVA',
@@ -738,5 +756,86 @@ export class DispatchCentralService {
         };
       }),
     );
+  }
+
+  async getGlobalDispatch() {
+    const companies = await this.prisma.company.findMany({
+      where: { isActive: true },
+      orderBy: { number: 'asc' },
+      select: {
+        id: true,
+        number: true,
+        name: true,
+        city: true,
+        logoUrl: true,
+        dispatchSlug: true,
+      },
+    });
+
+    const mappedCompanies = await Promise.all(
+      companies.map(async (c) => {
+        const [roster, maquinistas, fleet] = await Promise.all([
+          this.getRosterForCompany(c.id),
+          this.getMaquinistasForCompany(c.id),
+          this.getFleetForCompany(c.id),
+        ]);
+        return {
+          ...c,
+          roster,
+          maquinistas,
+          fleet,
+        };
+      })
+    );
+
+    const activeIncidents = await this.prisma.incident.findMany({
+      where: { closedAt: null },
+      orderBy: { createdAt: 'desc' },
+      select: {
+        id: true,
+        companyId: true,
+        code: true,
+        type: true,
+        description: true,
+        address: true,
+        latitude: true,
+        longitude: true,
+        confirmedLatitude: true,
+        confirmedLongitude: true,
+        locationPinAt: true,
+        dispatchedAt: true,
+        closedAt: true,
+        dispatchSource: true,
+        company: { select: { number: true, name: true } },
+        guardLogEntries: {
+          take: 1,
+          orderBy: { createdAt: 'asc' },
+          select: {
+            author: { select: { firstName: true, lastName: true } },
+          },
+        },
+        participants: {
+          take: 5,
+          select: {
+            user: { select: { firstName: true, lastName: true, role: true } },
+          },
+        },
+        vehicles: {
+          select: {
+            vehicle: {
+              select: { id: true, patent: true, type: true, brand: true, companyId: true },
+            },
+          },
+        },
+        bitacoraEntry: { select: { id: true } },
+      },
+    });
+
+    const activeEmergencies = this.mapIncidentsToPublic(activeIncidents, null);
+
+    return {
+      companies: mappedCompanies,
+      activeEmergencies,
+    };
   }
 }

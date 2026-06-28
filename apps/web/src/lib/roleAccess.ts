@@ -10,6 +10,8 @@ export const CENTRAL_OPERATOR_ROUTES = [
   '/central-despachos/variantes',
   '/operational-map',
   '/incidents',
+  '/hydrants',
+  '/dispatch/global',
 ] as const;
 
 export function isCentralOperator(role?: string | null) {
@@ -18,6 +20,7 @@ export function isCentralOperator(role?: string | null) {
 
 export function getDefaultRouteForRole(role?: string | null) {
   if (isCentralOperator(role)) return '/despacho360';
+  if (role === 'BOMBERO') return '/emergencia-respuesta';
   return '/dashboard';
 }
 

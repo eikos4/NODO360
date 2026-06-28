@@ -302,6 +302,9 @@ export function RapidVariant(props: VariantProps) {
         <VariantHeader d={d} theme={theme} />
         <EmergencyKeys d={d} theme={theme} layout="grid" />
         <AddressBlock d={d} theme={theme} />
+        <div className="rounded-xl overflow-hidden border border-inherit min-h-[140px]">
+          <DispatchMapPicker center={d.mapCenter} latitude={d.latitude} longitude={d.longitude} pickActive onPick={d.onMapPick} height="160px" theme={theme.mapTheme} showGpsPanel={false} />
+        </div>
         <VehicleBlock d={d} theme={theme} />
         <DispatchButton d={d} theme={theme} size="large" />
       </main>
@@ -348,6 +351,9 @@ export function CommandVariant(props: VariantProps) {
       <main className="flex-1 overflow-y-auto p-3 space-y-3">
         <EmergencyKeys d={d} theme={theme} layout="compact" />
         <AddressBlock d={d} theme={theme} />
+        <div className="rounded-xl overflow-hidden border border-inherit min-h-[140px]">
+          <DispatchMapPicker center={d.mapCenter} latitude={d.latitude} longitude={d.longitude} pickActive onPick={d.onMapPick} height="160px" theme={theme.mapTheme} showGpsPanel={false} />
+        </div>
         <VehicleBlock d={d} theme={theme} />
         <DispatchButton d={d} theme={theme} size="large" />
       </main>
@@ -426,6 +432,9 @@ export function InstitutionalVariant(props: VariantProps) {
         </div>
         <div className={`rounded-xl border p-3 space-y-3 ${theme.panel} ${theme.panelBorder}`}>
           <AddressBlock d={d} theme={theme} />
+          <div className="rounded-xl overflow-hidden border border-inherit min-h-[140px]">
+            <DispatchMapPicker center={d.mapCenter} latitude={d.latitude} longitude={d.longitude} pickActive onPick={d.onMapPick} height="160px" theme={theme.mapTheme} showGpsPanel={false} />
+          </div>
           <VehicleBlock d={d} theme={theme} />
           <DispatchButton d={d} theme={theme} />
         </div>

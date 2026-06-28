@@ -104,6 +104,7 @@ model User {
   healthRecord      HealthRecord?
   vehiclesAsPrincipalMaquinista Vehicle[] @relation("VehiclePrincipalMaquinista")
   emergencyBitacoraEntries EmergencyBitacoraEntry[]
+  emergencyResponses IncidentEmergencyResponse[]
 }
 
 model Vehicle {
@@ -157,6 +158,14 @@ enum DispatchSource {
   MANUAL
 }
 
+enum EmergencyResponseStatus {
+  GOING
+  NOT_GOING
+  NOT_AVAILABLE
+  ON_SCENE
+  LOCATION_MARKED
+}
+
 model Incident {
   id             String          @id @default(cuid())
   code           String          @unique
@@ -165,6 +174,11 @@ model Incident {
   address        String
   latitude       Float?
   longitude      Float?
+  locationPinToken     String?   @unique
+  locationPinAt        DateTime?
+  confirmedLatitude    Float?
+  confirmedLongitude   Float?
+  locationPinNote      String?
   dispatchedAt   DateTime
   arrivedAt      DateTime?
   closedAt       DateTime?
@@ -185,6 +199,7 @@ model Incident {
   vehicles       IncidentVehicle[]
   guardLogEntries GuardLogEntry[]
   bitacoraEntry  EmergencyBitacoraEntry?
+  emergencyResponses IncidentEmergencyResponse[]
 }
 
 model IncidentVehicle {
@@ -209,6 +224,27 @@ model IncidentParticipant {
   user       User     @relation(fields: [userId], references: [id])
 
   @@unique([incidentId, userId])
+}
+
+model IncidentEmergencyResponse {
+  id               String                   @id @default(cuid())
+  incidentId       String
+  userId           String
+  status           EmergencyResponseStatus
+  latitude         Float?
+  longitude        Float?
+  markerLatitude   Float?
+  markerLongitude  Float?
+  note             String?
+  respondedAt      DateTime                 @default(now())
+  updatedAt        DateTime                 @updatedAt
+
+  incident Incident @relation(fields: [incidentId], references: [id], onDelete: Cascade)
+  user     User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([incidentId, userId])
+  @@index([incidentId])
+  @@index([userId])
 }
 
 model Maintenance {

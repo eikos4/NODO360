@@ -6,7 +6,7 @@ import {
   MapPin, Building2, Square, Settings,
   CheckCircle2, X, Crosshair, ExternalLink, BookOpen,
   Globe, Copy, UserX, Star, Search, ChevronDown, ChevronUp,
-  Clock, Keyboard, Loader2, Users, LogOut, Menu, LayoutGrid, Sun, Moon,
+  Clock, Keyboard, Loader2, Users, LogOut, Menu, LayoutGrid, Sun, Moon, MessageCircle, GraduationCap,
 } from 'lucide-react';
 import { api } from '../lib/api';
 import toast from 'react-hot-toast';
@@ -24,6 +24,7 @@ import {
   type EmergencyMainType,
   type EmergencySubdivision,
 } from '../lib/emergency-codes';
+import DispatchTutorialOverlay from '../components/dispatch/DispatchTutorialOverlay';
 import DispatchMapPicker from '../components/map/DispatchMapPicker';
 import DispatchVoiceConfigToggle from '../components/dispatch/DispatchVoiceConfigToggle';
 import CompanyMaquinistaAlert from '../components/dispatch/CompanyMaquinistaAlert';
@@ -61,6 +62,11 @@ import {
   getMaquinistaAvailableCount,
   hasMaquinistaAvailable,
 } from '../lib/company-dispatch-readiness';
+import {
+  buildLocationPinUrl,
+  buildLocationPinWhatsAppMessage,
+  buildWhatsAppShareUrl,
+} from '../lib/incident-location-pin';
 
 async function geocodeAddress(query: string): Promise<{ lat: number; lng: number; label: string } | null> {
   const res = await fetch(
@@ -201,9 +207,23 @@ export default function BotoneraPage() {
   const [pickOnMap, setPickOnMap]         = useState(true);
   const [notes, setNotes]                 = useState('');
   const [selectedCia, setSelectedCia]     = useState(user?.companyId ?? '');
+  const [tutorialActive, setTutorialActive] = useState(false);
+
+  useEffect(() => {
+    const completed = localStorage.getItem('nodo360_dispatch_tutorial_completed');
+    if (!completed) {
+      setTutorialActive(true);
+    }
+  }, []);
+
+  const handleCloseTutorial = () => {
+    setTutorialActive(false);
+    localStorage.setItem('nodo360_dispatch_tutorial_completed', 'true');
+  };
   const [muted, setMuted]                 = useState(false);
   const [dispatching, setDispatching]     = useState(false);
   const [lastDispatch, setLastDispatch]   = useState<any>(null);
+  const [locationPinPhone, setLocationPinPhone] = useState(() => localStorage.getItem('nodo360_location_pin_phone') ?? '');
   const [showConfig, setShowConfig]       = useState(false);
   const [repeatCount, setRepeatCount]     = useState(2);
   const [sirenDuration, setSirenDuration] = useState(3);
@@ -219,6 +239,59 @@ export default function BotoneraPage() {
   const [showPublicPanel, setShowPublicPanel] = useState(false);
   const [showPersonal, setShowPersonal]   = useState(false);
   const [now, setNow]                     = useState(() => new Date());
+  
+  // PRE-DISPATCH GPS LOGIC
+  const [preDispatchToken, setPreDispatchToken] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (!preDispatchToken) return;
+    const interval = setInterval(async () => {
+      try {
+        const res = await api.get(`/location-pin/pre-dispatch/${preDispatchToken}`);
+        if (res.data?.found && res.data?.data) {
+          const { lat, lng } = res.data.data;
+          setLatitude(lat.toFixed(6));
+          setLongitude(lng.toFixed(6));
+          setPickOnMap(true); // Cambiar vista a mapa
+          toast.success('¡Coordenadas recibidas del reportante!', { duration: 6000 });
+          setPreDispatchToken(null);
+          
+          // Opcional: auto geocodificar para rellenar dirección
+          try {
+            const label = await reverseGeocode(lat, lng);
+            if (label) setAddress((prev) => prev.trim() || label.split(',').slice(0, 3).join(', '));
+          } catch { /* ignorar */ }
+        }
+      } catch { /* polling fail */ }
+    }, 3000);
+    return () => clearInterval(interval);
+  }, [preDispatchToken]);
+
+  const handlePreDispatchWa = () => {
+    const phone = locationPinPhone.trim();
+    if (!phone || phone.length < 8) {
+      toast.error('Ingresa el número de WhatsApp (ej. 569...)');
+      return;
+    }
+    const token = 'pre_' + crypto.randomUUID().replace(/-/g, '');
+    setPreDispatchToken(token);
+    
+    const url = buildLocationPinUrl(token);
+    const message = buildLocationPinWhatsAppMessage({
+      code: selectedType ? findEmergencyEntry(selectedType)?.code || '10-0' : '10-0',
+      type: selectedType ? findEmergencyEntry(selectedType)?.label || 'Emergencia' : 'Emergencia en curso',
+      address: address.trim() || 'Por confirmar',
+      url,
+    });
+    
+    const wa = buildWhatsAppShareUrl(phone, message);
+    if (!wa) {
+      toast.error('Número inválido');
+      return;
+    }
+    window.open(wa, '_blank', 'noopener,noreferrer');
+    toast('Esperando coordenadas del reportante...', { icon: '⏳' });
+  };
   const pendingPersistRef = useRef(false);
   const addressInputRef = useRef<HTMLInputElement>(null);
   const keyboardRef = useRef({
@@ -269,6 +342,38 @@ export default function BotoneraPage() {
     toast.success('URL copiada al portapapeles');
   };
 
+  const copyLocationPinUrl = (token: string) => {
+    const url = buildLocationPinUrl(token);
+    navigator.clipboard.writeText(url);
+    toast.success('Link de localización GPS copiado');
+  };
+
+  const sendLocationPinWhatsApp = (incident: { locationPinToken?: string; code: string; type: string; address: string }) => {
+    if (!incident.locationPinToken) {
+      toast.error('Esta emergencia no tiene link de GPS');
+      return;
+    }
+    const phone = locationPinPhone.trim();
+    if (!phone) {
+      toast.error('Ingresa el número de WhatsApp (ej. 56912345678)');
+      return;
+    }
+    localStorage.setItem('nodo360_location_pin_phone', phone);
+    const url = buildLocationPinUrl(incident.locationPinToken);
+    const message = buildLocationPinWhatsAppMessage({
+      code: incident.code,
+      type: incident.type,
+      address: incident.address,
+      url,
+    });
+    const wa = buildWhatsAppShareUrl(phone, message);
+    if (!wa) {
+      toast.error('Número de WhatsApp inválido');
+      return;
+    }
+    window.open(wa, '_blank', 'noopener,noreferrer');
+  };
+
   const persistDispatch = useMutation({
     mutationFn: (payload: unknown) => api.post('/incidents/dispatch', payload),
     onSuccess: (res) => {
@@ -281,7 +386,11 @@ export default function BotoneraPage() {
       qc.invalidateQueries({ queryKey: ['incidents-stats'] });
       qc.invalidateQueries({ queryKey: ['operational-map'] });
       qc.invalidateQueries({ queryKey: ['guard-log-dashboard'] });
+      qc.invalidateQueries({ queryKey: ['emergency-response-active'] });
       setLastDispatch((prev: any) => ({ ...prev, incident: d }));
+      if (d.locationPinToken && locationPinPhone.trim().length >= 8) {
+        setTimeout(() => sendLocationPinWhatsApp(d), 500);
+      }
       if (d.guardLogLinked) {
         toast.success(
           (t) => (
@@ -444,6 +553,7 @@ export default function BotoneraPage() {
               longitude: longitude ? parseFloat(longitude) : undefined,
               dispatchNotes: notes.trim() || undefined,
               dispatchSource: 'BOTONERA',
+              locationPinToken: preDispatchToken || undefined,
             });
             qc.invalidateQueries({ queryKey: ['incidents'] });
             qc.invalidateQueries({ queryKey: ['guard-log-dashboard'] });
@@ -709,6 +819,15 @@ export default function BotoneraPage() {
           </button>
           <button
             type="button"
+            onClick={() => setTutorialActive(true)}
+            className={`flex items-center gap-1.5 px-3 py-2 rounded-lg border text-xs font-medium transition-colors ${tutorialActive ? bt.btnToolActive : bt.btnTool}`}
+            title="Guía de Despacho"
+          >
+            <GraduationCap className="w-4 h-4" />
+            <span className="hidden sm:inline">Guía</span>
+          </button>
+          <button
+            type="button"
             onClick={() => setMuted((m) => !m)}
             className={`flex items-center gap-1.5 px-3 py-2 rounded-lg border text-xs font-medium transition-colors ${muted ? bt.btnToolMuted : bt.btnTool}`}
           >
@@ -731,15 +850,7 @@ export default function BotoneraPage() {
             <LayoutGrid className="w-4 h-4" />
             Variantes
           </Link>
-          <button
-            type="button"
-            onClick={() => { logout(); navigate('/login'); }}
-            className={`flex items-center gap-1.5 px-3 py-2 rounded-lg border text-xs font-medium transition-colors ${bt.btnTool} hover:text-red-500 hover:border-red-300`}
-            title="Cerrar sesión"
-          >
-            <LogOut className="w-4 h-4" />
-            <span className="hidden sm:inline">Salir</span>
-          </button>
+          
         </div>
       </header>
 
@@ -937,9 +1048,9 @@ export default function BotoneraPage() {
       <div className="flex-1 flex flex-col lg:grid lg:grid-cols-12 lg:grid-rows-[auto_minmax(160px,1fr)_minmax(200px,1fr)] min-h-0 overflow-y-auto lg:overflow-hidden scrollbar-thin pb-24 lg:pb-0">
 
         {/* Compañía + dirección */}
-        <div className={`order-1 lg:order-none lg:col-span-8 lg:row-start-1 shrink-0 p-3 sm:p-4 pb-2 sm:pb-3 space-y-3 border-b ${bt.formBand}`}>
+        <div id="step-ubicacion" className={`order-1 lg:order-none lg:col-span-8 lg:row-start-1 shrink-0 p-3 sm:p-4 pb-2 sm:pb-3 space-y-3 border-b ${bt.formBand}`}>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-              <div>
+              <div id="step-companias">
                 <label className={`block text-[10px] font-semibold uppercase tracking-wider mb-1.5 ${bt.formLabel}`}>Compañía despachante</label>
                 <div className="relative">
                   <Building2 className={`absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 ${isDark ? 'text-slate-500' : 'text-red-400'}`} />
@@ -1058,7 +1169,7 @@ export default function BotoneraPage() {
             )}
 
             {/* Carros */}
-            <div>
+            <div id="step-carros">
               <h2 className={`text-xs font-bold uppercase tracking-wider mb-2 flex items-center gap-2 ${bt.panelSectionTitle}`}>
                 <Truck className="w-4 h-4 text-red-400" />
                 Carros operativos
@@ -1292,6 +1403,52 @@ export default function BotoneraPage() {
                 "{buildMessage(selectedType, getVehicleIdsForDispatch(), address)}"
               </p>
             )}
+
+            <div className="mt-4 pt-4 border-t border-slate-700/30">
+              <label className={`text-[10px] font-bold uppercase tracking-wider block mb-1.5 ${bt.label}`}>
+                Pedir ubicación GPS por WhatsApp
+              </label>
+              <div className="flex gap-2">
+                <input
+                  type="tel"
+                  value={locationPinPhone}
+                  onChange={(e) => setLocationPinPhone(e.target.value)}
+                  placeholder="WhatsApp ej. 569..."
+                  className={`flex-1 rounded-xl border px-3 py-2 text-sm focus:outline-none focus:border-emerald-500/50 transition-colors ${bt.input}`}
+                />
+                <button
+                  type="button"
+                  onClick={handlePreDispatchWa}
+                  className="bg-[#25D366] hover:bg-[#20bd5a] text-white px-3 py-2 rounded-xl flex items-center justify-center shrink-0 shadow-md font-bold text-xs gap-1.5 transition-colors"
+                  title="Enviar link AHORA para obtener coordenadas"
+                >
+                  <MessageCircle className="w-4 h-4" />
+                  Localizar 
+                </button>
+              </div>
+              
+              {preDispatchToken && (
+                <div className="mt-2 flex flex-col gap-1.5 text-xs text-emerald-400 bg-emerald-500/10 border border-emerald-500/20 px-3 py-2.5 rounded-xl">
+                  <div className="flex items-center gap-2">
+                    <Loader2 className="w-4 h-4 animate-spin shrink-0" />
+                    <span className="font-semibold">Esperando coordenadas del reportante...</span>
+                  </div>
+                  <a 
+                    href={buildLocationPinUrl(preDispatchToken)}
+                    target="_blank"
+                    rel="noreferrer"
+                    className="text-[10px] text-emerald-500 hover:text-emerald-300 underline underline-offset-2 truncate ml-6"
+                    title="Ver enlace que se le envió al reportante"
+                  >
+                    {buildLocationPinUrl(preDispatchToken)}
+                  </a>
+                </div>
+              )}
+
+              <p className={`text-[10px] mt-2 leading-tight ${bt.hint}`}>
+                El botón "Pedir GPS ahora" enviará un enlace temporal a la persona para que te mande su ubicación antes de despachar.
+              </p>
+            </div>
           </div>
 
           {/* Acciones despacho — escritorio / tablet horizontal */}
@@ -1306,6 +1463,7 @@ export default function BotoneraPage() {
             </button>
             {!dispatching ? (
               <button
+                id="step-despachar"
                 type="button"
                 onClick={handleDispatch}
                 disabled={!canDispatch}
@@ -1332,7 +1490,7 @@ export default function BotoneraPage() {
         </div>
 
         {/* Claves de emergencia — al final en móvil */}
-        <div className={`order-4 lg:order-none lg:col-span-8 lg:row-start-3 shrink-0 relative z-10 p-3 sm:p-4 border-t lg:border-r space-y-3 ${bt.emergencyBand}`}>
+        <div id="step-claves" className={`order-4 lg:order-none lg:col-span-8 lg:row-start-3 shrink-0 relative z-10 p-3 sm:p-4 border-t lg:border-r space-y-3 ${bt.emergencyBand}`}>
           <div className="flex flex-wrap items-center gap-2">
             <AlertTriangle className="w-4 h-4 text-red-500 shrink-0" />
             <h2 className={`text-xs font-bold uppercase tracking-wider ${bt.emergencyTitle}`}>Claves de emergencia</h2>
@@ -1515,6 +1673,60 @@ export default function BotoneraPage() {
           {lastDispatch.notes && (
             <p className="mt-3 text-xs text-slate-400 bg-slate-800/40 rounded-xl p-3">{lastDispatch.notes}</p>
           )}
+          {lastDispatch.incident?.locationPinToken && (
+            <div className="mt-3 pt-3 border-t border-slate-800 space-y-2">
+              <p className="text-[10px] font-bold uppercase tracking-wider text-amber-400 flex items-center gap-1">
+                <Crosshair className="w-3.5 h-3.5" />
+                Localizar incendio por GPS (WhatsApp)
+              </p>
+              <p className="text-[11px] text-slate-400 leading-relaxed">
+                Si la persona en terreno no sabe dónde está el fuego, envíale este enlace para que marque la ubicación exacta en el mapa.
+              </p>
+              <div className="flex flex-col sm:flex-row gap-2">
+                <input
+                  type="tel"
+                  inputMode="tel"
+                  value={locationPinPhone}
+                  onChange={(e) => setLocationPinPhone(e.target.value)}
+                  placeholder="WhatsApp ej. 56912345678"
+                  className="flex-1 rounded-xl border border-slate-700 bg-slate-950 px-3 py-2.5 text-sm focus:outline-none focus:border-emerald-500/50"
+                />
+                <button
+                  type="button"
+                  onClick={() => sendLocationPinWhatsApp(lastDispatch.incident)}
+                  className="inline-flex items-center justify-center gap-2 text-xs font-bold bg-[#25D366] hover:bg-[#20bd5a] text-white px-4 py-2.5 rounded-xl shrink-0"
+                >
+                  <MessageCircle className="w-4 h-4" />
+                  Enviar WhatsApp
+                </button>
+              </div>
+              <div className="flex flex-wrap gap-2">
+                <button
+                  type="button"
+                  onClick={() => copyLocationPinUrl(lastDispatch.incident.locationPinToken)}
+                  className="inline-flex items-center gap-2 text-xs font-semibold bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-600 px-3 py-2 rounded-xl"
+                >
+                  <Copy className="w-3.5 h-3.5" />
+                  Copiar link GPS
+                </button>
+                <a
+                  href={buildLocationPinUrl(lastDispatch.incident.locationPinToken)}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="inline-flex items-center gap-2 text-xs font-semibold bg-sky-600/20 hover:bg-sky-600/30 text-sky-300 border border-sky-500/40 px-3 py-2 rounded-xl"
+                >
+                  <ExternalLink className="w-3.5 h-3.5" />
+                  Abrir enlace
+                </a>
+              </div>
+              {lastDispatch.incident.locationPinAt && (
+                <p className="text-[10px] text-emerald-400 flex items-center gap-1">
+                  <CheckCircle2 className="w-3.5 h-3.5" />
+                  GPS confirmado en terreno
+                </p>
+              )}
+            </div>
+          )}
           <div className="mt-4 flex flex-wrap gap-2">
             {lastDispatch.incident && (
               <Link
@@ -1546,6 +1758,11 @@ export default function BotoneraPage() {
           </div>
         </div>
       )}
+      
+      <DispatchTutorialOverlay
+        isOpen={tutorialActive}
+        onClose={handleCloseTutorial}
+      />
     </div>
   );
 }

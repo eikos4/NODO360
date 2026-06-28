@@ -44,13 +44,13 @@ const TYPE_COLORS: Record<string, string> = {
   OTRO: 'bg-slate-600/20 text-slate-400 border-slate-600/30',
 };
 
-const TYPE_BANNER: Record<string, string> = {
-  INCENDIO: 'from-red-900/70 to-red-950/90',
-  TERREMOTO: 'from-amber-900/70 to-amber-950/90',
-  INUNDACION: 'from-sky-900/70 to-sky-950/90',
-  DERRUMBE: 'from-stone-800/70 to-stone-950/90',
-  ACCIDENTE: 'from-orange-900/70 to-orange-950/90',
-  OTRO: 'from-slate-800/70 to-slate-950/90',
+const TYPE_BG: Record<string, string> = {
+  INCENDIO: 'bg-red-50 dark:bg-red-950/40 border-red-200 dark:border-red-900/50',
+  TERREMOTO: 'bg-amber-50 dark:bg-amber-950/40 border-amber-200 dark:border-amber-900/50',
+  INUNDACION: 'bg-sky-50 dark:bg-sky-950/40 border-sky-200 dark:border-sky-900/50',
+  DERRUMBE: 'bg-stone-50 dark:bg-stone-950/40 border-stone-200 dark:border-stone-900/50',
+  ACCIDENTE: 'bg-orange-50 dark:bg-orange-950/40 border-orange-200 dark:border-orange-900/50',
+  OTRO: 'bg-slate-50 dark:bg-slate-800 border-slate-200 dark:border-slate-700',
 };
 
 const SEVERITY_STYLES: Record<string, { badge: string; dot: string }> = {
@@ -259,33 +259,33 @@ export default function EmergencyPlansPage() {
             label: 'Planes activos',
             value: stats.total,
             icon: ShieldAlert,
-            color: 'text-white',
-            bg: 'bg-slate-800',
-            iconColor: 'text-slate-400',
+            color: 'text-slate-900 dark:text-white',
+            bg: 'bg-white dark:bg-slate-800',
+            iconColor: 'text-slate-600 dark:text-slate-400',
           },
           {
             label: 'Alta / Crítica',
             value: stats.critical,
             icon: AlertTriangle,
-            color: 'text-red-400',
-            bg: 'bg-red-600/10',
-            iconColor: 'text-red-400',
+            color: 'text-red-600 dark:text-red-400',
+            bg: 'bg-white dark:bg-slate-800',
+            iconColor: 'text-red-600 dark:text-red-400',
           },
           {
             label: 'Creados este mes',
             value: stats.thisMonth,
             icon: Calendar,
-            color: 'text-blue-400',
-            bg: 'bg-blue-600/10',
-            iconColor: 'text-blue-400',
+            color: 'text-blue-600 dark:text-blue-400',
+            bg: 'bg-white dark:bg-slate-800',
+            iconColor: 'text-blue-600 dark:text-blue-400',
           },
           {
             label: 'Tipos cubiertos',
             value: stats.types,
             icon: SlidersHorizontal,
-            color: 'text-purple-400',
-            bg: 'bg-purple-600/10',
-            iconColor: 'text-purple-400',
+            color: 'text-purple-600 dark:text-purple-400',
+            bg: 'bg-white dark:bg-slate-800',
+            iconColor: 'text-purple-600 dark:text-purple-400',
           },
         ].map(s => {
           const Icon = s.icon;
@@ -512,7 +512,7 @@ export default function EmergencyPlansPage() {
         <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
           {filtered.map((p: any) => {
             const TypeIcon = TYPE_ICONS[p.emergencyType] ?? Shield;
-            const banner = TYPE_BANNER[p.emergencyType] ?? TYPE_BANNER.OTRO;
+            const banner = TYPE_BG[p.emergencyType] ?? TYPE_BG.OTRO;
             const sev = SEVERITY_STYLES[p.severity] ?? SEVERITY_STYLES.MEDIA;
             const steps = parseSteps(p.procedures);
 
@@ -520,10 +520,10 @@ export default function EmergencyPlansPage() {
               <div
                 key={p.id}
                 onClick={() => setSelected(p)}
-                className="group bg-slate-900 border border-slate-800 hover:border-slate-600 rounded-2xl overflow-hidden cursor-pointer transition-all hover:shadow-xl hover:shadow-black/30"
+                className="group bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 hover:border-slate-400 dark:hover:border-slate-600 rounded-2xl overflow-hidden cursor-pointer transition-all hover:shadow-xl hover:shadow-slate-300 dark:hover:shadow-black/30"
               >
                 <div
-                  className={`bg-gradient-to-r ${banner} border-b border-slate-800 px-4 py-3 flex items-center justify-between`}
+                  className={`${banner} border-b px-4 py-3 flex items-center justify-between`}
                 >
                   <div className="flex items-center gap-2.5">
                     <div
@@ -601,10 +601,10 @@ export default function EmergencyPlansPage() {
           >
             {(() => {
               const TypeIcon = TYPE_ICONS[detail.emergencyType] ?? Shield;
-              const banner = TYPE_BANNER[detail.emergencyType] ?? TYPE_BANNER.OTRO;
+              const banner = TYPE_BG[detail.emergencyType] ?? TYPE_BG.OTRO;
               const sev = SEVERITY_STYLES[detail.severity] ?? SEVERITY_STYLES.MEDIA;
               return (
-                <div className={`bg-gradient-to-r ${banner} p-5 rounded-t-2xl border-b border-slate-800`}>
+                <div className={`${banner} p-5 rounded-t-2xl border-b`}>
                   <div className="flex items-start justify-between">
                     <div className="flex items-center gap-3">
                       <div

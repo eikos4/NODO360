@@ -1,5 +1,6 @@
-import { Injectable, NotFoundException, ConflictException, BadRequestException } from '@nestjs/common';
+import { Injectable, NotFoundException, ConflictException, BadRequestException, GoneException } from '@nestjs/common';
 import { DispatchSource, Prisma } from '@prisma/client';
+import { randomUUID } from 'crypto';
 import { PrismaService } from '../prisma/prisma.service';
 import { GuardLogService } from '../guard-log/guard-log.service';
 import { CreateIncidentDto } from './dto/create-incident.dto';
@@ -124,6 +125,7 @@ export class IncidentsService {
         address: dto.address,
         latitude: dto.latitude,
         longitude: dto.longitude,
+        locationPinToken: randomUUID().replace(/-/g, ''),
         dispatchedAt: new Date().toISOString(),
         companyId: dto.companyId,
         participantIds: dto.participantIds,
@@ -201,6 +203,7 @@ export class IncidentsService {
         address: data.address,
         latitude: data.latitude,
         longitude: data.longitude,
+        locationPinToken: data.locationPinToken,
         dispatchedAt: data.dispatchedAt,
         arrivedAt: data.arrivedAt,
         closedAt: data.closedAt,

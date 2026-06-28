@@ -13,6 +13,12 @@ export type PublicEmergency = {
   latitude: number;
   longitude: number;
   hasCoordinates?: boolean;
+  hasFieldGps?: boolean;
+  confirmedLatitude?: number | null;
+  confirmedLongitude?: number | null;
+  locationPinAt?: string | null;
+  dispatchLatitude?: number | null;
+  dispatchLongitude?: number | null;
   dispatchedAt: string;
   closedAt?: string | null;
   status: 'ACTIVA' | 'CERRADA';

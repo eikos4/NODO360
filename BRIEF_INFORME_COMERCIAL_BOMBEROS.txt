@@ -1,0 +1,560 @@
+================================================================================
+        BRIEF PARA REDACCIÓN DE INFORME COMERCIAL — NODO360
+        Dirigido a Cuerpos de Bomberos, Compañías y Directivas
+================================================================================
+
+PROPÓSITO DE ESTE DOCUMENTO
+────────────────────────────
+Este archivo contiene toda la información necesaria para elaborar un informe
+o presentación comercial destinada a cuerpos de bomberos de Chile. El informe
+debe ofrecer NODO360 como solución de gestión integral, mostrar beneficios
+concretos, funcionalidades en lenguaje operativo y facilitar el acceso a una
+demostración en vivo.
+
+IMPORTANTE AL REDACTAR:
+  • Usar lenguaje claro, institucional y cercano al mundo bomberil.
+  • EVITAR tecnicismos informáticos (no mencionar: API, base de datos,
+    framework, JWT, cloud, SaaS, backend, frontend, PWA como término técnico).
+  • En su lugar decir: "sistema en línea", "acceso desde celular o computador",
+    "información respaldada", "cada usuario ve solo lo que le corresponde".
+  • Enfocarse en problemas reales del cuartel: despacho, guardia, material,
+    documentos, finanzas, trazabilidad de emergencias.
+  • Incluir credenciales demo y URLs para que el lector pueda probar el sistema.
+
+
+================================================================================
+1. QUÉ ES NODO360 (RESUMEN EJECUTIVO)
+================================================================================
+
+NODO360 es una plataforma de gestión operativa diseñada exclusivamente para
+Cuerpos de Bomberos de Chile. Reúne en un solo lugar todo lo que hoy muchas
+instituciones manejan con planillas Excel, cuadernos, WhatsApp y archivos
+sueltos: personal, inventario, emergencias, mantenimiento de flota, documentos,
+finanzas y central de despachos.
+
+El nombre significa visión completa — 360 grados — sobre la institución:
+desde la alarma en central hasta el regreso al cuartel, pasando por el estado
+de los carros, el material y la dotación disponible.
+
+Funciona desde cualquier navegador (computador, tablet o celular) sin instalar
+programas. Puede usarse como aplicación en el teléfono del voluntario.
+
+
+================================================================================
+2. A QUIÉN VA DIRIGIDO EL INFORME
+================================================================================
+
+Destinatarios principales:
+  → Comandantes y oficiales de mando
+  → Directivas de compañías (capitanes, secretarios, tesoreros)
+  → Encargados de material mayor
+  → Operadores de central de alarmas y despacho
+  → Directivas de cuerpos multi-compañía (varios cuarteles bajo un mismo cuerpo)
+  → Auditores e inspectores que requieren transparencia institucional
+
+Perfil del lector: personas con alta responsabilidad operativa y administrativa,
+NO especialistas en tecnología. El informe debe hablarles en su idioma:
+guardia, dotación, carros, claves 10-X, sala de máquinas, EPP, bitácora.
+
+
+================================================================================
+3. EL PROBLEMA QUE HOY ENFRENTAN LOS CUERPOS DE BOMBEROS
+================================================================================
+
+Incluir en el informe estos dolores reales (con ejemplos del día a día):
+
+  ✗ Información repartida en planillas, grupos de WhatsApp y cuadernos
+    que no se actualizan a tiempo cuando suena la alarma.
+
+  ✗ Despacho lento por no saber con certeza quién está en cuartel, qué carros
+    están operativos y quiénes son los maquinistas disponibles.
+
+  ✗ Vencimientos de EPP, revisiones de carros o documentos que se descubren
+    tarde — con riesgo para la institución y para la seguridad del personal.
+
+  ✗ Emergencias sin registro formal: no queda claro quién salió, qué ocurrió
+    en terreno ni cuándo regresó la dotación.
+
+  ✗ Documentos institucionales (actas, protocolos, certificados) guardados en
+    el computador de alguien que ya no está en la compañía.
+
+  ✗ Compras y gastos sin historial claro para rendir cuentas ante la directiva,
+    municipio o Junta Nacional de Bomberos.
+
+  ✗ Cuerpos con varias compañías sin una visión unificada del estado operativo
+    de todo el cuerpo.
+
+
+================================================================================
+4. QUÉ OFRECE NODO360 — BENEFICIOS PRINCIPALES
+================================================================================
+
+Redactar estos beneficios en lenguaje directo y orientado a resultados:
+
+  ✓ UN SOLO SISTEMA para toda la gestión del cuerpo o compañía
+  ✓ DESPACHO MÁS RÁPIDO con botonera de claves 10-X, alarma, sirena y voz
+  ✓ SALA DE MÁQUINAS PÚBLICA visible para el cuartel y la comunidad (sin login)
+  ✓ VISIÓN EN TIEMPO REAL de quién está disponible, qué carros operan y
+    qué alertas hay pendientes
+  ✓ ALERTAS AUTOMÁTICAS antes de que venzan EPP, documentos o mantenciones
+  ✓ TRAZABILIDAD COMPLETA de emergencias: despacho, participantes, cierre
+  ✓ MULTI-COMPAÑÍA: todo el cuerpo conectado desde una central unificada
+  ✓ CADA PERSONA VE SOLO LO QUE LE CORRESPONDE según su cargo
+  ✓ ACCESO DESDE CELULAR en cuartel o en terreno
+  ✓ INFORMACIÓN RESPALDADA — no se pierde si cambia el encargado de turno
+  ✓ REPORTES Y ESTADÍSTICAS para el mando y para rendiciones institucionales
+  ✓ AHORRO DE TIEMPO en tareas administrativas repetitivas
+
+
+================================================================================
+5. FUNCIONALIDADES POR ÁREA (DESCRIPCIÓN OPERATIVA)
+================================================================================
+
+Organizar el informe en estos bloques funcionales:
+
+──────────────────────────────────────────────────────────────────────────────
+A) CENTRAL DE DESPACHO Y EMERGENCIAS
+──────────────────────────────────────────────────────────────────────────────
+
+  Despacho360 — Botonera digital de claves 10-X
+    • Incendio estructural, rescate, HazMat, forestal, accidente, etc.
+    • Alarma con tono real, sirena y mensaje de voz en central
+    • Activa el despacho de voluntarios, maquinistas y carros desde un panel
+
+  Central Express
+    • Panel unificado para cuerpos con varias compañías
+    • El mando ve el estado de todos los cuarteles en una sola pantalla
+
+  Sala de máquinas pública
+    • Vista en vivo del estado del cuartel para voluntarios y comunidad
+    • Sin necesidad de usuario ni contraseña
+    • Cada compañía puede tener su propia sala pública
+
+  Central en vivo (perfil operador)
+    • Pantalla dedicada para quien opera la central de alarmas
+    • Gestión de disponibilidad de cuarteles y maquinistas
+
+  Emergencias e incidentes
+    • Registro de cada salida: tipo, dirección, estado, participantes
+    • Tipos: incendio, rescate, accidente, inundación, HazMat, forestal, etc.
+    • Estados: despachado, en proceso, cerrado
+
+  Bitácora de emergencias
+    • Registro de qué ocurrió, acciones tomadas y regreso al cuartel
+    • Historial para estadísticas y reportes institucionales
+
+  Mapa 360
+    • Ubicación de emergencias, hidrantes, cuarteles y flota en mapa
+    • Apoyo visual para coordinación en central
+
+──────────────────────────────────────────────────────────────────────────────
+B) INSTITUCIÓN, PERSONAL Y ORGANIZACIÓN
+──────────────────────────────────────────────────────────────────────────────
+
+  Compañías y cuarteles
+    • Ficha de cada compañía: dirección, contacto, región, logo, foto del cuartel
+    • Soporte para cuerpos con 1 o muchas compañías
+
+  Personal y voluntarios
+    • Directorio con nombre, contacto, cargo, compañía y estado activo/inactivo
+  • Número operativo por bombero
+    • Indicador de disponibilidad en cuartel
+    • Maquinistas: disponibilidad y designación principal por carro
+
+  Organigrama
+    • Estructura de mando, cargos y responsables por compañía
+
+  Guardia y turnos
+    • Programación de turnos con fecha y horario
+    • Registro de asistencia
+    • El voluntario consulta cuándo le toca guardia
+
+  Comunicados
+    • Avisos oficiales de la directiva hacia toda la dotación
+
+  Capacitación
+    • Registro de cursos y certificaciones del personal
+
+──────────────────────────────────────────────────────────────────────────────
+C) MATERIAL, FLOTA Y MANTENIMIENTO
+──────────────────────────────────────────────────────────────────────────────
+
+  Inventario operativo
+    • Vehículos: patente, tipo, kilómetros, estado, foto, mantenciones
+    • Equipamiento EPP: cascos, ERA, uniformes, botas, herramientas, HazMat, etc.
+    • Estados: operativo, en reparación, fuera de servicio
+    • Control de vencimientos y cantidades
+
+  Motores y libro de flota
+    • Seguimiento de kilometraje y uso de vehículos
+    • Registro de salidas con conductor y observaciones
+
+  Mantención
+    • Historial preventivo y correctivo por vehículo
+    • Costos, fechas y alertas de próxima mantención
+
+  Auditoría física de inventario
+    • Conteo y verificación del material en cuartel
+
+  Hidrantes
+    • Registro y ubicación de hidrantes del sector
+
+──────────────────────────────────────────────────────────────────────────────
+D) SEGURIDAD, PLANIFICACIÓN Y SALUD
+──────────────────────────────────────────────────────────────────────────────
+
+  Planes de emergencia
+    • Documentación de planes por instalación o sector
+
+  Simulacros de evacuación
+    • Rutas, puntos de encuentro y registro de simulacros
+
+  Salud operacional
+    • Fichas médicas y exámenes del personal bomberil
+
+  Alertas
+    • Panel centralizado de vencimientos y situaciones críticas
+    • Niveles de urgencia: crítico, alto, medio
+
+──────────────────────────────────────────────────────────────────────────────
+E) ADMINISTRACIÓN Y FINANZAS
+──────────────────────────────────────────────────────────────────────────────
+
+  Documentos
+    • Repositorio de protocolos, actas, informes, certificados, convenios
+    • Control de vencimiento de documentos institucionales
+
+  Compras
+    • Órdenes de compra, proveedores, estados y montos
+
+  Finanzas y presupuesto
+    • Presupuesto anual por categoría
+    • Ingresos, egresos y facturas
+
+  Tesorería social
+    • Cuotas de socios y aportes de la comunidad bomberil
+
+  Dashboard ejecutivo
+    • Panel de indicadores para el mando: flota, alertas, emergencias,
+      personal disponible — todo en una mirada
+
+
+================================================================================
+6. PERFILES DE USUARIO Y QUÉ PUEDE HACER CADA UNO
+================================================================================
+
+El sistema tiene 9 perfiles (cargos con acceso diferenciado). Cada persona
+entra con su usuario y ve únicamente las secciones de su responsabilidad.
+
+  ┌──────────────────────────────────────────────────────────────────────────┐
+  │ PERFIL              │ QUIÉN LO USA          │ QUÉ PUEDE HACER            │
+  ├──────────────────────────────────────────────────────────────────────────┤
+  │ Super Administrador │ Equipo NODO360 /      │ Acceso total: configurar   │
+  │                     │ administrador general │ cuerpos, compañías y       │
+  │                     │ del sistema           │ usuarios de todo el sistema│
+  ├──────────────────────────────────────────────────────────────────────────┤
+  │ Comandante          │ Comandante del cuerpo │ Visión completa del cuerpo:│
+  │                     │                       │ emergencias, personal,       │
+  │                     │                       │ inventario, finanzas,        │
+  │                     │                       │ documentos y estadísticas    │
+  ├──────────────────────────────────────────────────────────────────────────┤
+  │ Capitán / Oficial   │ Capitán de compañía   │ Gestión diaria: incidentes, │
+  │                     │                       │ personal, turnos, material,│
+  │                     │                       │ comunicados y reportes       │
+  ├──────────────────────────────────────────────────────────────────────────┤
+  │ Operador Central    │ Quien atiende la      │ Central en vivo, despacho, │
+  │                     │ central de alarmas    │ disponibilidad de cuarteles│
+  │                     │                       │ y maquinistas              │
+  ├──────────────────────────────────────────────────────────────────────────┤
+  │ Encargado Material  │ Encargado de material │ Inventario completo,       │
+  │ Mayor               │ mayor                 │ mantenciones, motores,     │
+  │                     │                       │ auditorías y estado de     │
+  │                     │                       │ carros                     │
+  ├──────────────────────────────────────────────────────────────────────────┤
+  │ Secretario/a        │ Secretario de         │ Documentos, actas,         │
+  │                     │ compañía o cuerpo     │ compras, capacitación,     │
+  │                     │                       │ simulacros y organigrama   │
+  ├──────────────────────────────────────────────────────────────────────────┤
+  │ Tesorero/a          │ Tesorero de la        │ Finanzas, presupuesto,     │
+  │                     │ compañía              │ compras, facturas y        │
+  │                     │                       │ tesorería social           │
+  ├──────────────────────────────────────────────────────────────────────────┤
+  │ Bombero operativo   │ Voluntario en activo  │ Consulta turnos, bitácora, │
+  │                     │                       │ documentos y libro de flota│
+  ├──────────────────────────────────────────────────────────────────────────┤
+  │ Auditor / Inspector │ Inspector o auditor   │ Solo lectura: reportes,    │
+  │                     │ externo               │ finanzas, historial y      │
+  │                     │                       │ documentación para controles│
+  └──────────────────────────────────────────────────────────────────────────┘
+
+Mensaje clave para el informe: "Cada cargo ve lo que necesita. El tesorero
+no modifica el inventario. El bombero no accede a finanzas. El comandante
+tiene la foto completa."
+
+
+================================================================================
+7. DEMOSTRACIÓN EN VIVO — CUERPO DE BOMBEROS DE PARRAL
+================================================================================
+
+NODO360 incluye una demostración completa configurada con datos reales del
+Cuerpo de Bomberos de Parral (Región del Maule, Chile):
+
+  • 6 compañías conectadas (1ª a 6ª)
+  • Administración central en Dieciocho 685, Parral
+  • Central de despachos activa
+  • Salas de máquinas públicas por compañía
+  • Datos de ejemplo en todos los módulos: personal, flota, emergencias,
+    inventario, documentos, finanzas, hidrantes, simulacros, etc.
+
+Esta demo permite a cualquier cuerpo de bomberos probar el sistema antes de
+contratar, recorriendo la operación como si fuera su propia institución.
+
+
+================================================================================
+8. ACCESO A LA DEMO — URLS Y CREDENCIALES
+================================================================================
+
+Incluir esta sección de forma visible en el informe final:
+
+─── ACCESO GENERAL ───────────────────────────────────────────────────────────
+
+  Sitio web de la plataforma:  [indicar URL de producción o demo]
+  Contacto comercial:          contacto@nodo360.cl
+  Sitio institucional:         nodo360.cl
+
+─── VISTAS PÚBLICAS (sin usuario ni contraseña) ─────────────────────────────
+
+  Sala de máquinas del cuerpo Parral:
+    /central/bomberos-parral
+
+  (Cada compañía puede tener su propia sala pública con enlace compartible
+   para el cuartel y la comunidad.)
+
+─── CREDENCIALES DE PRUEBA ──────────────────────────────────────────────────
+
+  Contraseña común para todos los perfiles demo (excepto super admin):
+    Demo1234!
+
+  ┌─────────────────────────────┬──────────────────────────┬─────────────────┐
+  │ PERFIL                      │ CORREO                   │ CONTRASEÑA      │
+  ├─────────────────────────────┼──────────────────────────┼─────────────────┤
+  │ Super Administrador         │ admin@nodo360.cl         │ Admin1234!      │
+  │ Comandante                  │ gonzalez@bomberosparral.cl│ Demo1234!      │
+  │ Capitán                     │ martinez@bomberosparral.cl│ Demo1234!      │
+  │ Operador Central            │ central@bomberosparral.cl │ Demo1234!      │
+  │ Encargado Material Mayor    │ lopez@bomberosparral.cl   │ Demo1234!      │
+  │ Tesorero                    │ torres@bomberosparral.cl  │ Demo1234!      │
+  │ Secretario/a                │ perez@bomberosparral.cl   │ Demo1234!      │
+  │ Bombero operativo           │ fuentes@bomberosparral.cl │ Demo1234!      │
+  │ Auditor                     │ soto@bomberosparral.cl    │ Demo1234!      │
+  └─────────────────────────────┴──────────────────────────┴─────────────────┘
+
+─── RUTAS RECOMENDADAS PARA LA DEMO ─────────────────────────────────────────
+
+  Tras iniciar sesión, sugerir recorrer en este orden:
+
+  1. Operador Central → /central-operativa
+     (pantalla de central en vivo, disponibilidad, despacho)
+
+  2. Capitán o Comandante → Despacho360 / Central Express
+     (botonera 10-X, coordinación multi-compañía)
+
+  3. Cualquier perfil → Dashboard
+     (indicadores generales del cuerpo)
+
+  4. Encargado Material → Inventario y Alertas
+     (EPP, vehículos, vencimientos)
+
+  5. Vista pública → /central/bomberos-parral
+     (mostrar sala de máquinas sin login — impacto visual fuerte)
+
+  6. Emergencias y Bitácora
+     (trazabilidad de una salida de principio a fin)
+
+
+================================================================================
+9. FLUJO OPERATIVO DE UNA EMERGENCIA (PARA DIAGRAMA O SECCIÓN DEL INFORME)
+================================================================================
+
+Describir el ciclo completo que NODO360 cubre:
+
+  PASO 1 — Clave 10-X
+    El operador de central selecciona el tipo de emergencia (incendio, rescate,
+    HazMat, forestal, etc.) en la botonera digital.
+
+  PASO 2 — Alarma y voz
+    El sistema reproduce tono de alarma, sirena y mensaje de voz en central.
+
+  PASO 3 — Despacho
+    Se activa el despacho de voluntarios disponibles, maquinistas y carros
+    operativos de la compañía o cuerpo.
+
+  PASO 4 — Mapa en vivo
+    La emergencia queda ubicada en el mapa junto a hidrantes y cuarteles
+    cercanos.
+
+  PASO 5 — Sala pública
+    El cuartel y la comunidad ven en tiempo real el estado de la dotación
+    (sin necesidad de entrar al sistema).
+
+  PASO 6 — Bitácora y cierre
+    Al regreso se registra qué ocurrió, quién participó y se cierra el
+    incidente para estadísticas e informes.
+
+
+================================================================================
+10. PLANES COMERCIALES SUGERIDOS
+================================================================================
+
+  PLAN COMPAÑÍA — Para 1 cuartel independiente
+    • Botonera 10-X y despacho operativo
+    • Sala de máquinas pública
+    • Emergencias y bitácora
+    • Inventario y alertas de vencimiento
+    • Hasta 80 voluntarios
+
+  PLAN CUERPO — Para cuerpos multi-compañía (RECOMENDADO / DESTACADO)
+    • Todo lo del plan Compañía, sin límite de compañías
+    • Central Express multi-cuartel
+    • Mapa 360 y red de hidrantes
+    • Panel ejecutivo y reportes en PDF
+    • Finanzas, compras y tesorería social
+    • Soporte prioritario
+
+  PLAN ENTERPRISE — Grandes cuerpos y coordinaciones regionales
+    • Implementación personalizada
+    • Integraciones a medida
+    • Capacitación extendida en terreno
+    • Soporte dedicado
+    • Multi-sede y auditoría avanzada
+
+  Nota: Los precios se cotizan según tamaño del cuerpo (número de compañías
+  y voluntarios). Incluir llamado a acción: "Solicitar demo del Cuerpo".
+
+
+================================================================================
+11. CASO DE REFERENCIA — CUERPO DE BOMBEROS DE PARRAL
+================================================================================
+
+  Organización:   Cuerpo de Bomberos de Parral
+  Ubicación:      Región del Maule, Chile
+  Estructura:     6 compañías bajo una administración central
+
+  Compañías en la demo:
+    1ª — Bomberos Parral (urbana, cuartel central)
+    2ª — Segunda Compañía
+    3ª — Tercera Compañía
+    4ª — Cuarta Compañía (periférica)
+    5ª — Quinta Catillo
+    6ª — Sexta Remulcao
+
+  Resultados destacables para el informe:
+    • 6 compañías conectadas en un solo sistema
+    • 1 central de despachos unificada
+    • Salas públicas activas 24/7 para cuartel y comunidad
+    • Trazabilidad completa de emergencias
+    • ~130 voluntarios activos (demo con 25 usuarios operativos de prueba)
+
+  Cita sugerida (adaptar al tono del informe):
+    "NODO360 nos permitió unificar despacho, salas de máquinas y trazabilidad
+     de emergencias en un solo nodo — visible para mando, cuartel y comunidad."
+
+
+================================================================================
+12. PREGUNTAS FRECUENTES (INCLUIR EN EL INFORME)
+================================================================================
+
+  ¿NODO360 reemplaza nuestra botonera actual?
+    Sí. Incluye botonera digital de claves 10-X con tonos reales, sirena y
+    mensaje de voz. Se usa desde el navegador del computador de central.
+
+  ¿Necesitamos comprar servidores o instalar programas?
+    No. El sistema funciona en línea. Solo se requiere conexión a internet
+    y un navegador web.
+
+  ¿Es difícil de usar?
+    No. Fue diseñado para personas del cuartel, no para informáticos. Incluye
+    capacitación en la implementación.
+
+  ¿Funciona en el celular?
+    Sí. Se puede usar desde el teléfono del voluntario como una aplicación
+    sin descargar nada desde una tienda.
+
+  ¿Qué pasa con nuestros datos si dejamos de usar el sistema?
+    Los datos son de la institución. Se puede exportar el historial completo.
+
+  ¿Se adapta a la realidad de nuestro cuerpo?
+    Sí. Se configura por compañía, cargos y necesidades operativas propias.
+
+  ¿Cuánto demora implementarlo?
+    Un cuerpo piloto como Parral (6 compañías) puede quedar operativo en
+    2 a 4 semanas, según volumen de datos y capacitación.
+
+  ¿Puedo probarlo antes de contratar?
+    Sí. La demo del Cuerpo de Bomberos de Parral está disponible con
+    credenciales de prueba (ver sección 8 de este brief).
+
+  ¿Mis datos quedan en Chile?
+    Consultar condiciones de residencia y respaldo de datos al solicitar demo.
+
+
+================================================================================
+13. PROPUESTA DE ESTRUCTURA PARA EL INFORME FINAL
+================================================================================
+
+Sugerir al redactor esta estructura (8-12 páginas o 15-20 diapositivas):
+
+  1. Portada — NODO360, Gestión Operativa para Bomberos de Chile
+  2. El desafío de administrar un cuerpo de bomberos hoy
+  3. Qué es NODO360 y por qué se llama así
+  4. Beneficios concretos para el mando, la compañía y el voluntario
+  5. Central de despacho: de la clave 10-X al regreso al cuartel
+  6. Gestión institucional: personal, guardia, organigrama
+  7. Material y flota: inventario, mantención, alertas
+  8. Administración: documentos, finanzas, tesorería social
+  9. Perfiles de acceso: quién ve qué en el sistema
+  10. Demo en vivo — Cuerpo de Bomberos de Parral (URLs y claves)
+  11. Planes y modalidad de contratación
+  12. Próximos pasos: solicitar demo, implementación y capacitación
+  13. Contacto
+
+TONO DEL INFORME:
+  • Profesional pero cercano
+  • Orientado a la operación real del cuartel
+  • Con ejemplos concretos (no abstractos)
+  • Con llamados a la acción claros: "Probar demo", "Solicitar cotización"
+
+
+================================================================================
+14. DATOS DE CONTACTO
+================================================================================
+
+  Producto:     NODO360 — Gestión Operativa para Bomberos de Chile
+  Web:          nodo360.cl
+  Correo:       contacto@nodo360.cl
+
+  Mensaje de cierre sugerido:
+    "Diseñado para quienes entienden que detrás de cada compañía hay personas
+     que se juegan la vida. La administración no debería ser el problema —
+     NODO360 la resuelve."
+
+
+================================================================================
+15. NOTAS PARA EL REDACTOR
+================================================================================
+
+  • NO usar jerga técnica de programación ni infraestructura.
+  • SÍ usar términos del mundo bomberil: 10-X, cuartel, dotación, carro,
+    maquinista, sala de máquinas, EPP, material mayor, guardia, bitácora.
+  • Incluir al menos un recuadro destacado con las credenciales demo.
+  • Incluir capturas de pantalla si el informe es visual (central, dashboard,
+    sala pública, inventario, mapa).
+  • El plan "Cuerpo" debe aparecer como opción recomendada para instituciones
+    con más de una compañía.
+  • Mencionar que la implementación incluye capacitación y soporte.
+  • Fecha sugerida en pie de página: 2026.
+
+
+================================================================================
+           NODO360 © 2026 — Brief para informe comercial a bomberos
+================================================================================

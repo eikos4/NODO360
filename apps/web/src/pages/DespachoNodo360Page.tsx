@@ -22,6 +22,7 @@ import {
   Volume2,
   VolumeX,
   Zap,
+  GraduationCap,
 } from 'lucide-react';
 import { useQuickDispatch } from '../hooks/useQuickDispatch';
 import { EMERGENCY_MAIN_TYPES } from '../lib/emergency-codes';
@@ -30,6 +31,8 @@ import DispatchVoiceConfigToggle from '../components/dispatch/DispatchVoiceConfi
 import CompanyMaquinistaAlert from '../components/dispatch/CompanyMaquinistaAlert';
 import { useAuthStore } from '../store/authStore';
 import { useDespacho360Theme } from '../hooks/useDespacho360Theme';
+import DispatchTutorialOverlay from '../components/dispatch/DispatchTutorialOverlay';
+
 
 function LiveClock({ className }: { className?: string }) {
   const [now, setNow] = useState(() => new Date());
@@ -51,6 +54,19 @@ export default function DespachoNodo360Page() {
   const logout = useAuthStore((s) => s.logout);
   const [sideTab, setSideTab] = useState<'activas' | 'dotacion' | 'carros'>('activas');
   const [showConfig, setShowConfig] = useState(false);
+  const [tutorialActive, setTutorialActive] = useState(false);
+
+  useEffect(() => {
+    const completed = localStorage.getItem('nodo360_dispatch_tutorial_completed');
+    if (!completed) {
+      setTutorialActive(true);
+    }
+  }, []);
+
+  const handleCloseTutorial = () => {
+    setTutorialActive(false);
+    localStorage.setItem('nodo360_dispatch_tutorial_completed', 'true');
+  };
 
   const crew = (d.live?.crew ?? []) as {
     id: string;
@@ -123,6 +139,14 @@ export default function DespachoNodo360Page() {
           </nav>
           <button
             type="button"
+            onClick={() => setTutorialActive(true)}
+            className={`p-2 rounded-lg border transition ${tutorialActive ? (isDark ? 'border-red-500/40 bg-red-500/10 text-red-400' : 'border-red-300 bg-red-50 text-red-700') : th.btnGhost}`}
+            title="Guía de Despacho"
+          >
+            <GraduationCap className="h-4 w-4" />
+          </button>
+          <button
+            type="button"
             onClick={() => d.setVoiceEnabled(!d.voiceEnabled)}
             className={`p-2 rounded-lg border transition ${d.voiceEnabled ? th.btnGhostActive : th.btnGhost}`}
             title={d.voiceEnabled ? 'Voz asistente activada' : 'Voz asistente desactivada — habla la centralista'}
@@ -191,7 +215,7 @@ export default function DespachoNodo360Page() {
           )}
 
           {/* Claves de emergencia */}
-          <section>
+          <section id="step-claves">
             <div className="flex items-center justify-between mb-3">
               <h2 className={`text-xs font-semibold uppercase tracking-widest ${th.sectionLabel}`}>
                 Claves de emergencia
@@ -249,7 +273,7 @@ export default function DespachoNodo360Page() {
           </section>
 
           {/* Dirección + mapa */}
-          <section className="grid grid-cols-1 xl:grid-cols-2 gap-3">
+          <section id="step-ubicacion" className="grid grid-cols-1 xl:grid-cols-2 gap-3">
             <div className="space-y-2">
               <label className={`text-xs font-semibold uppercase tracking-widest ${th.sectionLabel}`}>
                 Ubicación
@@ -307,7 +331,7 @@ export default function DespachoNodo360Page() {
 
           {/* Compañías + vehículos */}
           <section className="space-y-3">
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+            <div id="step-companias" className="grid grid-cols-1 sm:grid-cols-2 gap-2">
               <div>
                 <label className={`text-[10px] font-semibold uppercase tracking-widest block mb-1 ${th.sectionLabel}`}>
                   Compañía principal
@@ -340,52 +364,54 @@ export default function DespachoNodo360Page() {
                 </select>
               </div>
             </div>
-            <div className="flex items-center justify-between">
-              <h2 className={`text-xs font-semibold uppercase tracking-widest ${th.sectionLabel}`}>
-                Material mayor (máx. 2 carros)
-              </h2>
-              <button
-                type="button"
-                onClick={d.selectAllVehicles}
-                className={`text-xs px-2 py-1 rounded-md border transition ${
-                  d.autoAllVehicles
-                    ? isDark ? 'border-sky-500/50 bg-sky-500/10 text-sky-400' : 'border-sky-300 bg-sky-50 text-sky-700'
-                    : th.btnGhost
-                }`}
-              >
-                Máx. 2 carros
-              </button>
+            <div id="step-carros" className="space-y-3 pt-2">
+              <div className="flex items-center justify-between">
+                <h2 className={`text-xs font-semibold uppercase tracking-widest ${th.sectionLabel}`}>
+                  Material mayor (máx. 2 carros)
+                </h2>
+                <button
+                  type="button"
+                  onClick={d.selectAllVehicles}
+                  className={`text-xs px-2 py-1 rounded-md border transition ${
+                    d.autoAllVehicles
+                      ? isDark ? 'border-sky-500/50 bg-sky-500/10 text-sky-400' : 'border-sky-300 bg-sky-50 text-sky-700'
+                      : th.btnGhost
+                  }`}
+                >
+                  Máx. 2 carros
+                </button>
+              </div>
+              <div className="flex flex-wrap gap-2">
+                {d.dispatchableVehicles.length === 0 ? (
+                  <p className="text-sm text-amber-500/80">Sin carros operativos</p>
+                ) : (
+                  d.dispatchableVehicles.map((v) => {
+                    const on = d.selectedVehicles.includes(v.id);
+                    return (
+                      <button
+                        key={v.id}
+                        type="button"
+                        onClick={() => d.toggleVehicle(v.id)}
+                        className={`flex items-center gap-2 px-3 py-2 rounded-xl border text-sm font-medium transition ${
+                          on
+                            ? isDark
+                              ? 'border-sky-500 bg-sky-500/15 text-sky-300'
+                              : 'border-sky-500 bg-sky-50 text-sky-800 shadow-sm ring-1 ring-sky-200'
+                            : th.emergencyKeyIdle
+                        }`}
+                      >
+                        <Truck className="h-3.5 w-3.5" />
+                        {v.patent}
+                        {v.type && <span className="text-[10px] opacity-60">{v.type}</span>}
+                      </button>
+                    );
+                  })
+                )}
+              </div>
+              <p className={`text-[10px] ${th.hint}`}>
+                {d.selectedVehicles.length}/2 carros · {d.selectedCompanyIds.length} compañía(s)
+              </p>
             </div>
-            <div className="flex flex-wrap gap-2">
-              {d.dispatchableVehicles.length === 0 ? (
-                <p className="text-sm text-amber-500/80">Sin carros operativos</p>
-              ) : (
-                d.dispatchableVehicles.map((v) => {
-                  const on = d.selectedVehicles.includes(v.id);
-                  return (
-                    <button
-                      key={v.id}
-                      type="button"
-                      onClick={() => d.toggleVehicle(v.id)}
-                      className={`flex items-center gap-2 px-3 py-2 rounded-xl border text-sm font-medium transition ${
-                        on
-                          ? isDark
-                            ? 'border-sky-500 bg-sky-500/15 text-sky-300'
-                            : 'border-sky-500 bg-sky-50 text-sky-800 shadow-sm ring-1 ring-sky-200'
-                          : th.emergencyKeyIdle
-                      }`}
-                    >
-                      <Truck className="h-3.5 w-3.5" />
-                      {v.patent}
-                      {v.type && <span className="text-[10px] opacity-60">{v.type}</span>}
-                    </button>
-                  );
-                })
-              )}
-            </div>
-            <p className={`text-[10px] ${th.hint}`}>
-              {d.selectedVehicles.length}/2 carros · {d.selectedCompanyIds.length} compañía(s)
-            </p>
           </section>
 
           {/* Acción principal */}
@@ -400,6 +426,7 @@ export default function DespachoNodo360Page() {
             )}
             <div className="flex gap-2">
               <button
+                id="step-despachar"
                 type="button"
                 disabled={!d.canDispatch || d.dispatching}
                 onClick={d.handleDispatch}
@@ -565,6 +592,11 @@ export default function DespachoNodo360Page() {
           </div>
         </aside>
       </div>
+
+      <DispatchTutorialOverlay
+        isOpen={tutorialActive}
+        onClose={handleCloseTutorial}
+      />
     </div>
   );
 }

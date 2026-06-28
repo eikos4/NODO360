@@ -24,9 +24,13 @@ function CuartelChip({ c, isDark, compact, fill }: { c: CuartelItem; isDark: boo
       className={cn(
         'flex items-center gap-1.5 rounded-xl border px-2 py-1.5 transition-colors',
         fill ? 'flex-1 min-w-[68px] basis-0' : 'shrink-0',
-        isDark
-          ? 'bg-slate-900/80 border-slate-700 hover:border-slate-500 hover:bg-slate-800'
-          : 'bg-white border-slate-200 hover:border-slate-300 hover:shadow-sm shadow-sm',
+        c.activeEmergencies > 0
+          ? isDark 
+            ? 'bg-red-950/40 border-red-800/80 hover:bg-red-900/50 hover:border-red-700'
+            : 'bg-red-50 border-red-200 hover:bg-red-100 hover:border-red-300'
+          : isDark
+            ? 'bg-slate-900/80 border-slate-700 hover:border-slate-500 hover:bg-slate-800'
+            : 'bg-white border-slate-200 hover:border-slate-300 hover:shadow-sm shadow-sm',
         compact && 'px-1.5 py-1 gap-1',
       )}
       title={`${c.number}ª ${c.name} · ${c.roster.available} disp. · ${c.fleet.operativo} carros · ${c.activeEmergencies} activas`}
@@ -62,7 +66,9 @@ function CuartelChip({ c, isDark, compact, fill }: { c: CuartelItem; isDark: boo
           className={cn(
             'font-bold leading-none truncate',
             compact ? 'text-[10px]' : 'text-[11px]',
-            isDark ? 'text-slate-200' : 'text-slate-800',
+            c.activeEmergencies > 0
+              ? isDark ? 'text-red-400' : 'text-red-700'
+              : isDark ? 'text-slate-200' : 'text-slate-800',
           )}
         >
           {c.number}ª

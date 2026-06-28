@@ -5,18 +5,7 @@ import { useNavigate } from 'react-router-dom';
 import { cn } from '../../lib/utils';
 import CentralQuickOverview from './CentralQuickOverview';
 import { canViewCuartelesOverview } from '../../hooks/useCuartelesOverview';
-
-const ROLE_LABELS: Record<string, string> = {
-  SUPER_ADMIN: 'Super Administrador',
-  COMANDANTE: 'Comandante',
-  CAPITAN: 'Capitán / Oficial',
-  OPERADOR_CENTRAL: 'Operador Central',
-  ENCARGADO_MATERIAL: 'Encargado Material',
-  SECRETARIO: 'Secretario/a',
-  TESORERO: 'Tesorero/a',
-  BOMBERO: 'Bombero Operativo',
-  AUDITOR: 'Auditor',
-};
+import UserIdentityBlock from './UserIdentityBlock';
 
 interface HeaderProps {
   onStartTour?: () => void;
@@ -42,19 +31,12 @@ export default function Header({ onStartTour }: HeaderProps) {
   return (
     <header
       className={cn(
-        'shrink-0 border-b',
+        'hidden md:block shrink-0 border-b',
         isDark ? 'bg-slate-900 border-slate-800' : 'bg-white border-slate-200 shadow-sm',
       )}
     >
-      <div className="h-14 flex items-center justify-between gap-3 px-4 sm:px-6">
-        <div className="shrink-0 min-w-0 max-w-[140px] sm:max-w-[160px]">
-          <p className={cn('text-sm font-medium truncate', isDark ? 'text-slate-200' : 'text-slate-900')}>
-            {user?.firstName} {user?.lastName}
-          </p>
-          <p className={cn('text-xs truncate', isDark ? 'text-slate-500' : 'text-slate-600')}>
-            {ROLE_LABELS[user?.role ?? ''] ?? user?.role}
-          </p>
-        </div>
+      <div className="min-h-14 py-2 flex items-center justify-between gap-3 px-4 sm:px-6">
+        <UserIdentityBlock variant="header" />
 
         {showOverview && (
           <CentralQuickOverview className="flex-1 hidden sm:block min-w-0 mx-1 lg:mx-3" />

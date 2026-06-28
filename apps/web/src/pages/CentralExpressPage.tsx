@@ -3,8 +3,10 @@ import { Link } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import {
   Clock, Flame, HardHat, Loader2, Mic, MicOff, Moon, Search, Settings, Shield,
-  Siren, Sun, Truck, UserCog, Users, Volume2, VolumeX,
+  Siren, Sun, Truck, UserCog, Users, Volume2, VolumeX, MessageCircle, Crosshair
 } from 'lucide-react';
+import toast from 'react-hot-toast';
+import { buildLocationPinWhatsAppMessage, buildWhatsAppShareUrl } from '../lib/incident-location-pin';
 import { useAuthStore } from '../store/authStore';
 import { useSimpleDispatch } from '../hooks/useQuickDispatch';
 import { useCentralExpressTheme } from '../hooks/useCentralExpressTheme';
@@ -140,6 +142,23 @@ export default function CentralExpressPage() {
   const [reference, setReference] = useState('');
   const [priority, setPriority] = useState<'ALTA' | 'MEDIA' | 'BAJA'>('ALTA');
   const [showConfig, setShowConfig] = useState(false);
+  const [waPhones, setWaPhones] = useState<Record<string, string>>({});
+
+  const handleSendWa = (inc: any) => {
+    const phone = waPhones[inc.id]?.trim() || '';
+    if (!phone || phone.length < 8) {
+      toast.error('Ingresa un número de WhatsApp válido');
+      return;
+    }
+    const message = buildLocationPinWhatsAppMessage({
+      code: inc.code,
+      type: inc.type,
+      address: inc.address || 'Sin dirección',
+      token: inc.locationPinToken,
+    });
+    const url = buildWhatsAppShareUrl(phone, message);
+    window.open(url, '_blank');
+  };
 
   const cuarteles = (d.cuarteles ?? []) as CuartelItem[];
 
@@ -228,6 +247,7 @@ export default function CentralExpressPage() {
     const list = (d.incidents ?? []) as {
       id: string; code: string; type: string; address?: string;
       closedAt?: string | null; dispatchedAt?: string; vehicles?: { vehicle?: { patent?: string } }[];
+      locationPinToken?: string;
     }[];
     return list.filter((i) => !i.closedAt).slice(0, 8);
   }, [d.incidents]);
@@ -611,6 +631,31 @@ export default function CentralExpressPage() {
                     <span className="inline-block mt-2 text-[9px] font-bold uppercase px-2 py-0.5 rounded bg-red-500/20 text-red-400">
                       En ruta / activo
                     </span>
+                    
+                    {inc.locationPinToken && (
+                      <div className="mt-3 pt-3 border-t border-slate-700/50">
+                        <p className={`text-[9px] font-bold uppercase mb-1.5 flex items-center gap-1 ${th.textMuted}`}>
+                          <Crosshair className="w-3 h-3" /> Pedir ubicación por GPS
+                        </p>
+                        <div className="flex gap-1">
+                          <input
+                            type="tel"
+                            value={waPhones[inc.id] || ''}
+                            onChange={(e) => setWaPhones(prev => ({ ...prev, [inc.id]: e.target.value }))}
+                            placeholder="WhatsApp ej: 569..."
+                            className={`flex-1 rounded-md border px-2 py-1.5 text-xs focus:outline-none ${th.input}`}
+                          />
+                          <button
+                            type="button"
+                            onClick={() => handleSendWa(inc)}
+                            className="bg-[#25D366] hover:bg-[#20bd5a] text-white p-1.5 rounded-md flex items-center justify-center shrink-0"
+                            title="Enviar por WhatsApp"
+                          >
+                            <MessageCircle className="w-3.5 h-3.5" />
+                          </button>
+                        </div>
+                      </div>
+                    )}
                   </div>
                 );
               }) : (
