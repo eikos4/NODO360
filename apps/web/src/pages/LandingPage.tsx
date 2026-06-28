@@ -1,4 +1,4 @@
-import React, { useEffect } from 'react';
+import React, { useEffect, useState } from 'react';
 import { Link, Navigate } from 'react-router-dom';
 import {
   Flame, Play, ChevronRight, Siren, Radio, Map,
@@ -79,20 +79,38 @@ function NavBar() {
 }
 
 function HeroSection() {
+  const [activeSlide, setActiveSlide] = useState(0);
+
+  useEffect(() => {
+    const interval = setInterval(() => {
+      setActiveSlide(s => (s + 1) % 3);
+    }, 8000);
+    return () => clearInterval(interval);
+  }, []);
+
   return (
     <section id="inicio" className="relative min-h-[90vh] flex items-center pt-20 overflow-hidden">
       <div className="absolute inset-0 bg-[#06090e]">
-        <video
-          autoPlay
-          loop
-          muted
-          playsInline
-          className="w-full h-full object-cover opacity-90"
-        >
-          <source src="/video.mp4" type="video/mp4" />
-        </video>
-        <div className="absolute inset-0 bg-gradient-to-r from-[#06090e]/30 via-[#06090e]/10 to-transparent" />
-        <div className="absolute inset-0 bg-gradient-to-t from-[#06090e]/30 via-[#06090e]/10 to-transparent" />
+        <div className={`absolute inset-0 transition-opacity duration-1000 ${activeSlide === 0 ? 'opacity-100' : 'opacity-0'}`}>
+          <video
+            autoPlay
+            loop
+            muted
+            playsInline
+            className="w-full h-full object-cover opacity-90"
+          >
+            <source src="/video.mp4" type="video/mp4" />
+          </video>
+        </div>
+        <div className={`absolute inset-0 transition-opacity duration-1000 ${activeSlide === 1 ? 'opacity-100' : 'opacity-0'}`}>
+          <img src="/bg-central2.png" alt="Central de Alarmas" className="w-full h-full object-cover opacity-90" />
+        </div>
+
+        <div className={`absolute inset-0 transition-opacity duration-1000 ${activeSlide === 2 ? 'opacity-100' : 'opacity-0'}`}>
+          <img src="/bg-central.png" alt="Central de Alarmas" className="w-full h-full object-cover opacity-90" />
+        </div>
+        <div className="absolute inset-0 bg-gradient-to-r from-[#06090e]/30 via-[#06090e]/10 to-transparent pointer-events-none" />
+        <div className="absolute inset-0 bg-gradient-to-t from-[#06090e]/30 via-[#06090e]/10 to-transparent pointer-events-none" />
       </div>
 
       <div className="relative max-w-7xl mx-auto px-4 sm:px-6 w-full py-20 z-10">
@@ -143,6 +161,13 @@ function HeroSection() {
             </p>
           </div>
         </div>
+      </div>
+
+      {/* Carousel Indicators */}
+      <div className="absolute bottom-6 left-1/2 -translate-x-1/2 flex gap-3 z-20">
+        <button onClick={() => setActiveSlide(0)} className={`w-8 h-1 rounded-full transition-all duration-300 ${activeSlide === 0 ? 'bg-red-500 w-12' : 'bg-white/20 hover:bg-white/40'}`} aria-label="Ver video" />
+        <button onClick={() => setActiveSlide(1)} className={`w-8 h-1 rounded-full transition-all duration-300 ${activeSlide === 1 ? 'bg-red-500 w-12' : 'bg-white/20 hover:bg-white/40'}`} aria-label="Ver central 1" />
+        <button onClick={() => setActiveSlide(2)} className={`w-8 h-1 rounded-full transition-all duration-300 ${activeSlide === 2 ? 'bg-red-500 w-12' : 'bg-white/20 hover:bg-white/40'}`} aria-label="Ver central 2" />
       </div>
     </section>
   );
