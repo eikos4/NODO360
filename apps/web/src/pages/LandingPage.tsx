@@ -87,12 +87,12 @@ function HeroSection() {
           loop
           muted
           playsInline
-          className="w-full h-full object-cover opacity-40"
+          className="w-full h-full object-cover opacity-90"
         >
           <source src="/video.mp4" type="video/mp4" />
         </video>
-        <div className="absolute inset-0 bg-gradient-to-r from-[#06090e] via-[#06090e]/80 to-transparent" />
-        <div className="absolute inset-0 bg-gradient-to-t from-[#06090e] via-transparent to-transparent" />
+        <div className="absolute inset-0 bg-gradient-to-r from-[#06090e]/30 via-[#06090e]/10 to-transparent" />
+        <div className="absolute inset-0 bg-gradient-to-t from-[#06090e]/30 via-[#06090e]/10 to-transparent" />
       </div>
 
       <div className="relative max-w-7xl mx-auto px-4 sm:px-6 w-full py-20 z-10">
@@ -139,7 +139,7 @@ function HeroSection() {
               <div className="w-8 h-8 rounded-full bg-slate-800 flex items-center justify-center text-xs">4</div>
             </div>
             <p className="text-white font-bold text-lg border-l border-slate-700 pl-4 ml-2">
-              +120<br/><span className="text-xs font-normal text-slate-400">Cuerpos de Bomberos</span>
+              Tecnologia <br/><span className="text-xs font-normal text-slate-400">Cuerpos de Bomberos</span>
             </p>
           </div>
         </div>
@@ -156,7 +156,7 @@ function StatsSection() {
           <div className="flex items-center gap-4 px-4">
             <Users className="w-8 h-8 text-red-500 stroke-[1.5]" />
             <div>
-              <p className="text-2xl font-black text-slate-900">120+</p>
+              <p className="text-2xl font-black text-slate-900">Más</p>
               <p className="text-xs text-slate-500 font-medium">Compañías conectadas</p>
             </div>
           </div>
@@ -240,7 +240,7 @@ function FeaturesSection() {
               <li className="flex items-center gap-2"><CheckCircle2 className="w-4 h-4 text-red-500"/> Bitácora completa de eventos</li>
             </ul>
 
-            <div className="rounded-xl overflow-hidden shadow-2xl border border-slate-800 bg-[#0f172a] absolute -right-12 top-0 w-[120%] lg:w-[130%] scale-90 origin-top-left -rotate-1 hidden sm:block pointer-events-none">
+            <div className="rounded-xl overflow-hidden shadow-2xl border border-slate-800 bg-[#0f172a] w-full hidden sm:block pointer-events-none transform -rotate-1 hover:rotate-0 transition-all duration-300 mt-2">
               <div className="h-8 bg-slate-900 border-b border-slate-800 flex items-center px-4 gap-2">
                 <div className="w-2.5 h-2.5 rounded-full bg-red-500" />
                 <div className="w-2.5 h-2.5 rounded-full bg-amber-500" />
@@ -643,7 +643,7 @@ function FooterSection() {
             </div>
             <div>
               <h2 className="text-xl sm:text-2xl font-black text-white mb-2">Juntos, más preparados.<br/>Juntos, salvamos más vidas.</h2>
-              <p className="text-slate-400 text-sm">Únete a más de 120 cuerpos de bomberos que ya confían en Nodo360.</p>
+              <p className="text-slate-400 text-sm">Únete a cuerpos de bomberos que ya confían en Nodo360.</p>
             </div>
           </div>
           <div className="flex flex-col sm:flex-row gap-3 w-full md:w-auto shrink-0">
@@ -704,7 +704,7 @@ function FooterSection() {
         
         <div className="max-w-7xl mx-auto px-4 sm:px-6 flex flex-col md:flex-row items-center justify-between gap-4 border-t border-white/5 pt-8">
           <p className="text-[10px] text-slate-500">
-            © {new Date().getFullYear()} Nodo360. Todos los derechos reservados.
+            © {new Date().getFullYear()} Nodo360. Todos los derechos reservados kodesk.cl.
           </p>
           <div className="flex items-center gap-4 text-slate-500">
             <div className="w-8 h-8 rounded bg-white/5 flex items-center justify-center hover:bg-white/10 hover:text-white transition-colors cursor-pointer text-xs">IG</div>
