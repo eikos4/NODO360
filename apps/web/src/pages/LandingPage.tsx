@@ -97,17 +97,17 @@ function HeroSection() {
             loop
             muted
             playsInline
-            className="w-full h-full object-cover opacity-90"
+            className={`w-full h-full object-cover opacity-90 transition-transform duration-[10000ms] ease-linear ${activeSlide === 0 ? 'scale-110' : 'scale-100'}`}
           >
             <source src="/video.mp4" type="video/mp4" />
           </video>
         </div>
         <div className={`absolute inset-0 transition-opacity duration-1000 ${activeSlide === 1 ? 'opacity-100' : 'opacity-0'}`}>
-          <img src="/bg-central2.png" alt="Central de Alarmas" className="w-full h-full object-cover opacity-90" />
+          <img src="/bg-central2.png" alt="Central de Alarmas" className={`w-full h-full object-cover opacity-90 transition-transform duration-[10000ms] ease-linear ${activeSlide === 1 ? 'scale-110' : 'scale-100'}`} />
         </div>
 
         <div className={`absolute inset-0 transition-opacity duration-1000 ${activeSlide === 2 ? 'opacity-100' : 'opacity-0'}`}>
-          <img src="/bg-central.png" alt="Central de Alarmas" className="w-full h-full object-cover opacity-90" />
+          <img src="/bg-central.png" alt="Central de Alarmas" className={`w-full h-full object-cover opacity-90 transition-transform duration-[10000ms] ease-linear ${activeSlide === 2 ? 'scale-110' : 'scale-100'}`} />
         </div>
         <div className="absolute inset-0 bg-gradient-to-r from-[#06090e]/30 via-[#06090e]/10 to-transparent pointer-events-none" />
         <div className="absolute inset-0 bg-gradient-to-t from-[#06090e]/30 via-[#06090e]/10 to-transparent pointer-events-none" />
@@ -123,7 +123,7 @@ function HeroSection() {
           </div>
           
           <h1 className="text-5xl md:text-6xl lg:text-7xl font-extrabold text-white leading-[1.1] tracking-tight">
-            La plataforma integral para <span className="text-red-500">Cuerpos de Bomberos</span>
+            Tecnología al servicio <span className="text-red-500">de quienes responden cuando cada segundo cuenta</span>
           </h1>
           
           <p className="mt-6 text-xl text-slate-300 max-w-2xl font-light leading-relaxed">
@@ -605,7 +605,7 @@ function PricingAndAnalyticsSection() {
               <div className="border border-slate-200 rounded-2xl p-5 bg-white flex flex-col hover:border-red-200 transition-colors">
                 <h3 className="font-bold text-slate-900 text-sm mb-2">Compañía</h3>
                 <div className="mb-4">
-                  <span className="text-xl font-black text-slate-900">$29.990</span>
+                  <span className="text-xl font-black text-slate-900">10.45 UFs</span>
                   <span className="text-[10px] text-slate-500"> /mes</span>
                 </div>
                 <ul className="space-y-3 mb-6 flex-grow">
@@ -623,7 +623,7 @@ function PricingAndAnalyticsSection() {
                 </div>
                 <h3 className="font-bold text-slate-900 text-sm mb-2 mt-2">Cuerpo</h3>
                 <div className="mb-4">
-                  <span className="text-xl font-black text-slate-900">$79.990</span>
+                  <span className="text-xl font-black text-slate-900">$14 UF</span>
                   <span className="text-[10px] text-slate-500"> /mes</span>
                 </div>
                 <ul className="space-y-3 mb-6 flex-grow">
@@ -648,6 +648,7 @@ function PricingAndAnalyticsSection() {
                 </ul>
                 <button className="w-full py-2 border border-slate-300 rounded-lg text-xs font-bold text-slate-700 hover:bg-slate-50 transition-colors">Contactar ventas</button>
               </div>
+              <p className="text-slate-500 text-sm mb-8">*Valores referenciales a la fecha de publicacion.</p>
 
             </div>
           </div>
