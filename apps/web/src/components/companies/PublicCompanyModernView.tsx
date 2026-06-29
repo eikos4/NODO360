@@ -8,6 +8,10 @@ import { PublicEmergency } from '../dispatch/DispatchEmergenciesPanel';
 
 interface Props {
   data: PublicCentral;
+  onToggleMember: (m: RosterMember) => void;
+  onToggleMaquinista: (m: MaquinistaMember) => void;
+  togglingId?: string | null;
+  onEmergency?: boolean;
 }
 
 function LiveClock() {
@@ -48,8 +52,9 @@ function StatCard({ icon: Icon, value, label, subtext, colorClass, isAlert = fal
   );
 }
 
-export default function PublicCompanyModernView({ data }: Props) {
+export default function PublicCompanyModernView({ data, onToggleMember, onToggleMaquinista, togglingId, onEmergency }: Props) {
   const [search, setSearch] = useState('');
+  const [filterState, setFilterState] = useState<'all' | 'available' | 'unavailable'>('all');
   
   const bomberosDisp = data.roster.stats.available;
   const maqDisp = data.maquinistas.stats.available;
@@ -59,11 +64,22 @@ export default function PublicCompanyModernView({ data }: Props) {
   // Filtrado de bomberos
   const filteredBomberos = data.roster.members.filter(m => {
     const q = search.toLowerCase();
-    return m.fullName.toLowerCase().includes(q) || m.operativeNumber?.toString() === q;
+    const matchesSearch = m.fullName.toLowerCase().includes(q) || m.operativeNumber?.toString() === q;
+    if (!matchesSearch) return false;
+    
+    if (filterState === 'available') return m.stationAvailable;
+    if (filterState === 'unavailable') return !m.stationAvailable;
+    return true;
+  });
+
+  const filteredMaquinistas = data.maquinistas.members.filter(m => {
+    if (filterState === 'available') return m.maquinistaAvailable;
+    if (filterState === 'unavailable') return !m.maquinistaAvailable;
+    return true;
   });
 
   return (
-    <div className="min-h-screen bg-slate-50 text-slate-800 font-sans p-4 lg:p-6 flex flex-col gap-6">
+    <div className="h-screen overflow-hidden bg-slate-50 text-slate-800 font-sans p-4 flex flex-col gap-4">
       
       {/* HEADER */}
       <header className="flex flex-wrap items-center justify-between gap-4 bg-white p-4 lg:px-6 border-b border-slate-200/60 rounded-2xl shadow-sm -mt-2 relative z-10">
@@ -92,7 +108,7 @@ export default function PublicCompanyModernView({ data }: Props) {
       </header>
 
       {/* TOP ROW: STATS & QR */}
-      <div className="flex flex-col xl:flex-row gap-6 relative z-0">
+      <div className="flex flex-col xl:flex-row gap-4 relative z-0 shrink-0">
         <div className="flex-1 grid grid-cols-2 lg:grid-cols-4 gap-4">
           <StatCard icon={Users} value={bomberosDisp} label="Bomberos disponibles" subtext={`de ${data.roster.stats.total} en total`} colorClass="bg-emerald-100 text-emerald-600" />
           <StatCard icon={UserCog} value={maqDisp} label="Maquinistas disponibles" subtext={`de ${data.maquinistas.stats.total} en total`} colorClass="bg-red-100 text-red-600" />
@@ -111,10 +127,10 @@ export default function PublicCompanyModernView({ data }: Props) {
       </div>
 
       {/* MAIN CONTENT GRID */}
-      <div className="flex-1 flex flex-col xl:flex-row gap-6 min-h-0 relative z-0">
+      <div className="flex-1 flex flex-col xl:flex-row gap-4 min-h-0 relative z-0 overflow-hidden">
         
         {/* LEFT COLUMN */}
-        <div className="flex-1 flex flex-col gap-6 min-w-0">
+        <div className="flex-1 flex flex-col gap-4 min-w-0 overflow-y-auto scrollbar-thin scrollbar-thumb-slate-200 pr-2 pb-10">
           
           {/* SEARCH & FILTERS */}
           <div className="flex flex-col sm:flex-row gap-4 items-stretch sm:items-center">
@@ -127,16 +143,22 @@ export default function PublicCompanyModernView({ data }: Props) {
               />
               <div className="h-8 w-px bg-slate-200 mx-2 hidden sm:block" />
               <div className="hidden sm:flex gap-2 pr-1">
-                <button className="px-4 py-2 bg-emerald-50 text-emerald-600 text-xs font-bold border border-emerald-200 rounded-lg flex items-center gap-1.5 hover:bg-emerald-100 transition-colors">
+                <button 
+                  onClick={() => setFilterState(f => f === 'available' ? 'all' : 'available')}
+                  className={`px-4 py-2 text-xs font-bold border rounded-lg flex items-center gap-1.5 transition-colors ${filterState === 'available' ? 'bg-emerald-500 text-white border-emerald-600' : 'bg-emerald-50 text-emerald-600 border-emerald-200 hover:bg-emerald-100'}`}>
                   <CheckCircle2 className="w-3.5 h-3.5" /> Disponible
                 </button>
-                <button className="px-4 py-2 bg-red-50 text-red-600 text-xs font-bold border border-red-200 rounded-lg flex items-center gap-1.5 hover:bg-red-100 transition-colors">
+                <button 
+                  onClick={() => setFilterState(f => f === 'unavailable' ? 'all' : 'unavailable')}
+                  className={`px-4 py-2 text-xs font-bold border rounded-lg flex items-center gap-1.5 transition-colors ${filterState === 'unavailable' ? 'bg-red-500 text-white border-red-600' : 'bg-red-50 text-red-600 border-red-200 hover:bg-red-100'}`}>
                   <XCircle className="w-3.5 h-3.5" /> No disponible
                 </button>
               </div>
             </div>
-            <button className="bg-white border border-slate-200 rounded-xl px-5 py-3.5 text-sm font-bold text-slate-700 shadow-sm flex items-center justify-center gap-2 hover:bg-slate-50 transition-colors">
-              <Filter className="w-4 h-4" /> Filtrar
+            <button 
+              onClick={() => { setSearch(''); setFilterState('all'); }}
+              className="bg-white border border-slate-200 rounded-xl px-5 py-3.5 text-sm font-bold text-slate-700 shadow-sm flex items-center justify-center gap-2 hover:bg-slate-50 transition-colors">
+              <Filter className="w-4 h-4" /> Todos
             </button>
           </div>
 
@@ -148,24 +170,42 @@ export default function PublicCompanyModernView({ data }: Props) {
               <span className="text-[10px] font-bold bg-slate-100 text-slate-500 px-2 py-0.5 rounded-full">{bomberosDisp} disponibles</span>
             </div>
             <div className="flex gap-4 overflow-x-auto pb-4 scrollbar-thin scrollbar-thumb-slate-200">
-              {filteredBomberos.filter(m => m.stationAvailable).map(m => (
-                <div key={m.id} className="w-36 shrink-0 relative bg-white border border-slate-100 rounded-xl p-3 shadow-sm hover:border-emerald-200 hover:shadow-md transition-all flex flex-col items-center text-center">
-                  <span className="absolute top-2 left-2 bg-emerald-100 text-emerald-700 text-[8px] font-black uppercase px-2 py-0.5 rounded-md border border-emerald-200">Disponible</span>
-                  <div className="w-16 h-16 rounded-full overflow-hidden border-2 border-slate-100 mt-6 mb-3 shadow-inner">
-                    {m.photoUrl ? <img src={m.photoUrl} className="w-full h-full object-cover" alt={m.firstName} /> : <div className="w-full h-full bg-slate-200" />}
-                  </div>
-                  <p className="text-xs font-bold text-slate-800 leading-tight line-clamp-1">{m.firstName} {m.lastName}</p>
-                  <p className="text-[10px] text-slate-500 mt-0.5 capitalize">{m.roleLabel || 'Bombero'}</p>
-                  <div className="flex items-center gap-1 mt-2">
-                    <span className="w-1.5 h-1.5 rounded-full bg-emerald-500" />
-                    <span className="text-[9px] font-semibold text-slate-500">En cuartel</span>
-                  </div>
-                </div>
-              ))}
-              {filteredBomberos.filter(m => m.stationAvailable).length === 0 && (
+              {filteredBomberos.map(m => {
+                const isAvail = m.stationAvailable;
+                const isBusy = togglingId === m.id;
+                const enServicio = onEmergency && isAvail;
+                
+                return (
+                  <button 
+                    key={m.id} 
+                    onClick={() => onToggleMember(m)}
+                    disabled={isBusy}
+                    className={`w-36 shrink-0 relative bg-white border rounded-xl p-3 shadow-sm hover:shadow-md transition-all flex flex-col items-center text-center ${isBusy ? 'opacity-50' : ''} ${isAvail ? 'border-emerald-200 hover:border-emerald-400' : 'border-slate-100 hover:border-slate-300'}`}>
+                    
+                    {enServicio ? (
+                      <span className="absolute top-2 left-2 bg-red-600 text-white text-[8px] font-black uppercase px-2 py-0.5 rounded-md border border-red-700 animate-pulse">En emergencia</span>
+                    ) : isAvail ? (
+                      <span className="absolute top-2 left-2 bg-emerald-100 text-emerald-700 text-[8px] font-black uppercase px-2 py-0.5 rounded-md border border-emerald-200">Disponible</span>
+                    ) : (
+                      <span className="absolute top-2 left-2 bg-slate-100 text-slate-500 text-[8px] font-black uppercase px-2 py-0.5 rounded-md border border-slate-200">No Disp.</span>
+                    )}
+                    
+                    <div className={`w-16 h-16 rounded-full overflow-hidden border-2 mt-6 mb-3 shadow-inner ${isAvail ? 'border-emerald-100' : 'border-slate-100 grayscale'}`}>
+                      {m.photoUrl ? <img src={m.photoUrl} className="w-full h-full object-cover" alt={m.firstName} /> : <div className="w-full h-full bg-slate-200" />}
+                    </div>
+                    <p className="text-xs font-bold text-slate-800 leading-tight line-clamp-1">{m.firstName} {m.lastName}</p>
+                    <p className="text-[10px] text-slate-500 mt-0.5 capitalize">{m.roleLabel || 'Bombero'}</p>
+                    <div className="flex items-center gap-1 mt-2">
+                      <span className={`w-1.5 h-1.5 rounded-full ${isAvail ? 'bg-emerald-500' : 'bg-slate-400'}`} />
+                      <span className="text-[9px] font-semibold text-slate-500">{isAvail ? 'En cuartel' : 'Fuera'}</span>
+                    </div>
+                  </button>
+                );
+              })}
+              {filteredBomberos.length === 0 && (
                 <div className="w-full py-8 flex flex-col items-center justify-center text-slate-400">
                   <Users className="w-8 h-8 mb-2 opacity-50" />
-                  <p className="text-sm font-medium">No hay bomberos en el cuartel</p>
+                  <p className="text-sm font-medium">No hay bomberos que coincidan con la búsqueda</p>
                 </div>
               )}
             </div>
@@ -179,23 +219,36 @@ export default function PublicCompanyModernView({ data }: Props) {
               <span className="text-[10px] font-bold bg-slate-100 text-slate-500 px-2 py-0.5 rounded-full">{maqDisp} disponibles</span>
             </div>
             <div className="flex gap-4 overflow-x-auto pb-4 scrollbar-thin scrollbar-thumb-slate-200">
-              {data.maquinistas.members.filter(m => m.maquinistaAvailable).map(m => (
-                <div key={m.id} className="w-64 shrink-0 bg-red-50/30 border border-red-100 rounded-xl p-3 flex gap-3 items-center">
-                  <div className="w-14 h-14 rounded-xl overflow-hidden border-2 border-white shadow-sm shrink-0 bg-slate-200">
-                    {m.photoUrl && <img src={m.photoUrl} className="w-full h-full object-cover" alt={m.firstName} />}
-                  </div>
-                  <div className="flex-1 min-w-0">
-                    <p className="text-sm font-bold text-slate-800 truncate">{m.firstName} {m.lastName}</p>
-                    <p className="text-[10px] text-slate-500 capitalize">{m.roleLabel || 'Maquinista'}</p>
-                    <span className="inline-block mt-1 bg-emerald-100 text-emerald-700 text-[8px] font-black uppercase px-2 py-0.5 rounded-md border border-emerald-200">Disponible</span>
-                  </div>
-                  <div className="w-8 h-8 rounded-full bg-red-100 flex items-center justify-center shrink-0 border border-red-200">
-                    <span className="text-red-500"><Siren className="w-4 h-4" /></span>
-                  </div>
-                </div>
-              ))}
-              {data.maquinistas.members.filter(m => m.maquinistaAvailable).length === 0 && (
-                <p className="text-sm text-slate-400 py-4 font-medium italic">Ningún maquinista disponible en este momento.</p>
+              {filteredMaquinistas.map(m => {
+                const isAvail = m.maquinistaAvailable;
+                const isBusy = togglingId === m.id;
+                
+                return (
+                  <button 
+                    key={m.id} 
+                    onClick={() => onToggleMaquinista(m)}
+                    disabled={isBusy}
+                    className={`w-64 shrink-0 text-left border rounded-xl p-3 flex gap-3 items-center hover:shadow-md transition-all ${isBusy ? 'opacity-50' : ''} ${isAvail ? 'bg-red-50/30 border-red-100 hover:border-red-300' : 'bg-white border-slate-100 hover:border-slate-300'}`}>
+                    <div className={`w-14 h-14 rounded-xl overflow-hidden border-2 shadow-sm shrink-0 bg-slate-200 ${isAvail ? 'border-white' : 'border-slate-100 grayscale'}`}>
+                      {m.photoUrl && <img src={m.photoUrl} className="w-full h-full object-cover" alt={m.firstName} />}
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <p className="text-sm font-bold text-slate-800 truncate">{m.firstName} {m.lastName}</p>
+                      <p className="text-[10px] text-slate-500 capitalize">{m.roleLabel || 'Maquinista'}</p>
+                      {isAvail ? (
+                        <span className="inline-block mt-1 bg-emerald-100 text-emerald-700 text-[8px] font-black uppercase px-2 py-0.5 rounded-md border border-emerald-200">Disponible</span>
+                      ) : (
+                        <span className="inline-block mt-1 bg-slate-100 text-slate-500 text-[8px] font-black uppercase px-2 py-0.5 rounded-md border border-slate-200">No Disp.</span>
+                      )}
+                    </div>
+                    <div className={`w-8 h-8 rounded-full flex items-center justify-center shrink-0 border ${isAvail ? 'bg-red-100 border-red-200 text-red-500' : 'bg-slate-50 border-slate-200 text-slate-400'}`}>
+                      <Siren className="w-4 h-4" />
+                    </div>
+                  </button>
+                );
+              })}
+              {filteredMaquinistas.length === 0 && (
+                <p className="text-sm text-slate-400 py-4 font-medium italic">Ningún maquinista coincide con el filtro.</p>
               )}
             </div>
           </div>
@@ -242,10 +295,10 @@ export default function PublicCompanyModernView({ data }: Props) {
         </div>
 
         {/* RIGHT COLUMN */}
-        <div className="w-full xl:w-[380px] flex flex-col gap-6 shrink-0 min-h-0">
+        <div className="w-full xl:w-[380px] flex flex-col gap-4 shrink-0 overflow-y-auto scrollbar-thin scrollbar-thumb-slate-200 pr-2 pb-10">
           
           {/* ÚLTIMAS EMERGENCIAS */}
-          <div className="bg-white rounded-2xl border border-slate-100 shadow-sm p-5 flex flex-col h-[500px]">
+          <div className="bg-white rounded-2xl border border-slate-100 shadow-sm p-5 flex flex-col">
             <div className="flex items-center justify-between mb-4">
               <div className="flex items-center gap-2">
                 <Siren className="w-4 h-4 text-red-500" />
@@ -364,7 +417,7 @@ export default function PublicCompanyModernView({ data }: Props) {
       </div>
       
       {/* FOOTER */}
-      <footer className="text-center text-[10px] font-medium text-slate-400 mt-auto pt-4 border-t border-slate-200 flex items-center justify-between">
+      <footer className="shrink-0 text-center text-[10px] font-medium text-slate-400 pt-3 border-t border-slate-200 flex items-center justify-between">
         <div className="flex items-center gap-2">
           <Shield className="w-3.5 h-3.5" /> Comprometidos con tu seguridad, siempre preparados para servir.
         </div>

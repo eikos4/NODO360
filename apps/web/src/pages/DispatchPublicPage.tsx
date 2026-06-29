@@ -559,7 +559,7 @@ export default function DispatchPublicPage() {
   const qrUrl = `https://api.qrserver.com/v1/create-qr-code/?size=100x100&data=${encodeURIComponent(publicUrl)}&bgcolor=${th.qrBg}&color=${isDark ? 'ffffff' : '0f172a'}`;
 
   return (
-    <div className={`min-h-screen transition-colors ${onEmergency ? th.pageEmergency : th.page}`}>
+    <div className={`h-screen overflow-hidden flex flex-col transition-colors ${onEmergency ? th.pageEmergency : th.page}`}>
       {/* Audio + alarma activa */}
       {!audioEnabled && (
         <div className="bg-amber-950/90 border-b border-amber-600/40 px-4 py-3">
@@ -614,7 +614,13 @@ export default function DispatchPublicPage() {
 
       {/* RENDERIZADO CONDICIONAL DE VISTAS */}
       {layout === 'modern' ? (
-        <PublicCompanyModernView data={data} />
+        <PublicCompanyModernView 
+          data={data} 
+          onToggleMember={toggleMember}
+          onToggleMaquinista={toggleMaquinista}
+          togglingId={togglingId}
+          onEmergency={onEmergency}
+        />
       ) : (
         <>
       {/* Hero — logo, cuartel degradado, reloj */}
@@ -674,7 +680,7 @@ export default function DispatchPublicPage() {
         )}
       </header>
 
-      <main className="max-w-[1600px] mx-auto px-4 sm:px-6 py-5 space-y-5">
+      <main className="max-w-[1600px] w-full mx-auto px-4 sm:px-6 py-5 flex-1 min-h-0 overflow-y-auto scrollbar-thin scrollbar-thumb-slate-700 space-y-5">
         {/* Barra disponibilidad + estado */}
         <div className="grid lg:grid-cols-2 gap-4">
           <div className={`${th.card} rounded-2xl p-4 sm:p-5 flex gap-4 items-center`}>
@@ -1053,7 +1059,7 @@ export default function DispatchPublicPage() {
         </div>
       </main>
 
-      <footer className={`border-t mt-8 py-5 px-4 ${th.footerBorder}`}>
+      <footer className={`shrink-0 border-t py-5 px-4 ${th.footerBorder}`}>
         <div className={`max-w-[1600px] mx-auto flex flex-col sm:flex-row items-center justify-between gap-3 text-[11px] ${th.footer}`}>
           <p className="flex items-center gap-1.5">
             <Clock className="w-3.5 h-3.5" />
