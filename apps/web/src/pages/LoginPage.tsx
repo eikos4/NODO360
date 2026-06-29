@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { useNavigate, Link, Navigate } from 'react-router-dom';
 import { Flame, Loader2, Eye, EyeOff, Shield, Zap, BarChart3, Bell, Sun, Moon } from 'lucide-react';
+import PwaInstallPrompt from '../components/nodo360/PwaInstallPrompt';
 import { useAuthStore } from '../store/authStore';
 import { getDefaultRouteForRole } from '../lib/roleAccess';
 import { useAuthHydrated } from '../hooks/useAuthHydrated';
@@ -288,6 +289,9 @@ export default function LoginPage() {
           </p>
         </div>
       </div>
+      
+      {/* PWA Install Prompt */}
+      <PwaInstallPrompt />
     </div>
   );
 }

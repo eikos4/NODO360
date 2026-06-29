@@ -7,7 +7,7 @@ export default defineConfig({
     react(),
     VitePWA({
       registerType: 'autoUpdate',
-      devOptions: { enabled: false },
+      devOptions: { enabled: true, type: 'module', navigateFallback: 'index.html' },
       includeAssets: ['favicon.png', 'apple-touch-icon.png'],
       manifest: {
         name: 'NODO360 - Gestión Bomberos',
@@ -16,9 +16,10 @@ export default defineConfig({
         theme_color: '#dc2626',
         background_color: '#0f172a',
         display: 'standalone',
+        start_url: '/login',
         icons: [
-          { src: 'pwa-192x192.png', sizes: '192x192', type: 'image/png' },
-          { src: 'pwa-512x512.png', sizes: '512x512', type: 'image/png' },
+          { src: 'favicon.png', sizes: '192x192', type: 'image/png' },
+          { src: 'favicon.png', sizes: '512x512', type: 'image/png', purpose: 'any maskable' },
         ],
       },
     }),
