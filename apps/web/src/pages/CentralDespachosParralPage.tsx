@@ -22,7 +22,7 @@ import DispatchVoiceConfigToggle from '../components/dispatch/DispatchVoiceConfi
 import CompanyMaquinistaAlert from '../components/dispatch/CompanyMaquinistaAlert';
 import DispatchCompanyVehiclePicker from '../components/dispatch/DispatchCompanyVehiclePicker';
 import { api } from '../lib/api';
-import { buildLocationPinWhatsAppMessage, buildWhatsAppShareUrl } from '../lib/incident-location-pin';
+import { buildLocationPinWhatsAppMessage, buildWhatsAppShareUrl, buildLocationPinUrl } from '../lib/incident-location-pin';
 
 const PRIMARY_KEYS = EMERGENCY_MAIN_TYPES.filter((m) => /^10-[0-9]$/.test(m.id));
 
@@ -88,10 +88,10 @@ export default function CentralDespachosParralPage() {
       code: inc.code,
       type: inc.type,
       address: inc.address || 'Sin dirección',
-      token: inc.locationPinToken,
+      url: buildLocationPinUrl(inc.locationPinToken!),
     });
     const url = buildWhatsAppShareUrl(phone, message);
-    window.open(url, '_blank');
+    if (url) window.open(url, '_blank');
   };
 
   const { data: allVehicles = [] } = useQuery({

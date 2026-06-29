@@ -275,8 +275,8 @@ export default function HydrantsPage() {
 
   const mapCenter = useMemo<[number, number]>(() => {
     if (mapPoints.length) {
-      const lat = mapPoints.reduce((s, p) => s + p[0], 0) / mapPoints.length;
-      const lng = mapPoints.reduce((s, p) => s + p[1], 0) / mapPoints.length;
+      const lat = mapPoints.reduce((s: number, p: [number, number]) => s + p[0], 0) / mapPoints.length;
+      const lng = mapPoints.reduce((s: number, p: [number, number]) => s + p[1], 0) / mapPoints.length;
       return [lat, lng];
     }
     return DEFAULT_CENTER;

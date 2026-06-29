@@ -327,7 +327,7 @@ export default function BomberoEmergencyPage() {
       .map((e: Parameters<typeof mapPublicEmergency>[0]) => mapPublicEmergency(e, company));
     if (incidents.length === 0) return fromPublic;
     const ids = new Set(incidents.map((i) => i.id));
-    const extras = fromPublic.filter((p) => !ids.has(p.id));
+    const extras = fromPublic.filter((p: any) => !ids.has(p.id));
     return extras.length > 0 ? [...incidents, ...extras] : incidents;
   }, [incidents, publicLive, company]);
 

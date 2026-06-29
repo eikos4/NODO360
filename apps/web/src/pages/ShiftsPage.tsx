@@ -146,7 +146,7 @@ export default function ShiftsPage() {
               const presentCount = (dayShifts as any[]).filter((s: any) => s.present).length;
               const totalCount = (dayShifts as any[]).length;
               const isToday = new Date(date).toDateString() === new Date().toDateString();
-              const isPast = new Date(date) < new Date().setHours(0,0,0,0);
+              const isPast = new Date(date).getTime() < new Date().setHours(0,0,0,0);
 
               return (
                 <div key={date} className={`bg-slate-900 border ${isToday ? 'border-red-500/50 ring-1 ring-red-500/20' : 'border-slate-800'} rounded-2xl overflow-hidden hover:shadow-xl hover:shadow-black/30 transition-all duration-300`}>

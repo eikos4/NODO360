@@ -420,7 +420,7 @@ export default function Nodo360Reports({ companyId, companies, onCompanyChange }
                     <YAxis tick={{ fill: '#64748b', fontSize: 11 }} allowDecimals={false} />
                     <Tooltip {...tooltipStyle} />
                     <Legend wrapperStyle={{ fontSize: 10 }} />
-                    {companyKeys.map((key, i) => (
+                    {companyKeys.map((key: string, i: number) => (
                       <Bar key={key} dataKey={key} stackId="a" fill={CHART_COLORS[i % CHART_COLORS.length]} />
                     ))}
                   </BarChart>

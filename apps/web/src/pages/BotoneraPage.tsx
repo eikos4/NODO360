@@ -1405,7 +1405,7 @@ export default function BotoneraPage() {
             )}
 
             <div className="mt-4 pt-4 border-t border-slate-700/30">
-              <label className={`text-[10px] font-bold uppercase tracking-wider block mb-1.5 ${bt.label}`}>
+              <label className={`text-[10px] font-bold uppercase tracking-wider block mb-1.5 ${bt.formLabel}`}>
                 Pedir ubicación GPS por WhatsApp
               </label>
               <div className="flex gap-2">

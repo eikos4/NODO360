@@ -67,12 +67,13 @@ function NavBar() {
           <a href="#planes" className="hover:text-white transition-colors">Planes</a>
           <a href="#contacto" className="hover:text-white transition-colors">Contacto</a>
         </nav>
-        <Link
-          to="/login"
+        <a
+          href="https://wa.me/56920576206?text=Hola,%20me%20gustar%C3%ADa%20solicitar%20una%20demo%20de%20Nodo360"
+          target="_blank" rel="noopener noreferrer"
           className="bg-red-600 hover:bg-red-500 text-white text-sm font-bold px-5 py-2 rounded-lg transition-all"
         >
           Solicitar Demo
-        </Link>
+        </a>
       </div>
     </header>
   );
@@ -132,13 +133,14 @@ function HeroSection() {
           </p>
 
           <div className="mt-10 flex flex-col sm:flex-row gap-4">
-            <Link
-              to="/login"
+            <a
+              href="https://wa.me/56920576206?text=Hola,%20me%20gustar%C3%ADa%20solicitar%20una%20demo%20de%20Nodo360"
+              target="_blank" rel="noopener noreferrer"
               className="inline-flex items-center justify-center gap-2 bg-red-600 hover:bg-red-500 text-white font-bold px-8 py-3.5 rounded-lg transition-all"
             >
               Solicitar Demo
               <ChevronRight className="w-4 h-4" />
-            </Link>
+            </a>
             <Link
               to="/central/bomberos-parral"
               className="inline-flex items-center justify-center gap-2 border border-slate-600 hover:border-slate-400 text-white font-bold px-8 py-3.5 rounded-lg transition-all"
@@ -532,28 +534,38 @@ function MobileAndGridSection() {
 
 function TimelineSection() {
   return (
-    <section className="bg-slate-50 py-16 border-t border-slate-200 overflow-hidden">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6">
-        <h2 className="text-xs font-bold text-red-500 tracking-widest uppercase mb-12">De la alarma al cierre</h2>
+    <section 
+      className="relative py-24 border-y border-slate-800 overflow-hidden bg-fixed bg-center bg-cover"
+      style={{ backgroundImage: 'url("/bg-central2.png")' }}
+    >
+      {/* Overlay oscuro y desenfoque */}
+      <div className="absolute inset-0 bg-slate-900/40"></div>
+
+      <div className="relative max-w-7xl mx-auto px-4 sm:px-6 z-10">
+        <div className="text-center mb-16">
+          <h2 className="text-sm font-bold text-red-500 tracking-widest uppercase mb-3">Flujo Operativo</h2>
+          <p className="text-2xl md:text-3xl font-extrabold text-white">De la alarma al cierre</p>
+        </div>
         
-        <div className="relative flex flex-col md:flex-row justify-between items-center md:items-start gap-8 md:gap-4">
-           <div className="hidden md:block absolute top-6 left-10 right-10 h-0.5 border-t-2 border-dashed border-red-200 -z-10" />
+        <div className="relative flex flex-col md:flex-row justify-between items-center md:items-start gap-12 md:gap-4">
+           {/* Línea conectora */}
+           <div className="hidden md:block absolute top-8 left-16 right-16 h-0.5 border-t-2 border-dashed border-red-500/30 -z-10" />
            
            {[
-             { step: '1', icon: BellRing, title: 'Alarma recibida', desc: 'La emergencia ingresa a la central.' },
-             { step: '2', icon: Siren, title: 'Despacho', desc: 'Se asignan recursos adecuados.' },
-             { step: '3', icon: MapPin, title: 'En camino', desc: 'Unidades confirman ruta y ETA.' },
-             { step: '4', icon: CheckCircle2, title: 'En el lugar', desc: 'Operaciones y reporte en tiempo real.' },
+             { step: '1', icon: BellRing, title: 'Alarma recibida', desc: 'La emergencia ingresa a la central y se tipifica rápidamente.' },
+             { step: '2', icon: Siren, title: 'Despacho', desc: 'Se asignan recursos adecuados mediante voz sintética.' },
+             { step: '3', icon: MapPin, title: 'En camino', desc: 'Unidades confirman su salida, ruta y tiempo estimado.' },
+             { step: '4', icon: CheckCircle2, title: 'En el lugar', desc: 'Coordinación, operaciones y reportes en tiempo real.' },
            ].map((item, i) => (
-             <div key={i} className="flex flex-col items-center text-center max-w-[200px] bg-slate-50">
-                <div className="w-12 h-12 rounded-full bg-white border-2 border-red-500 flex items-center justify-center shadow-md relative">
-                   <item.icon className="w-5 h-5 text-red-500" />
-                   <div className="absolute -top-2 -right-2 w-5 h-5 bg-red-500 text-white rounded-full text-[10px] font-bold flex items-center justify-center">
+             <div key={i} className="flex flex-col items-center text-center max-w-[220px] group">
+                <div className="w-16 h-16 rounded-2xl bg-slate-900/60 backdrop-blur-md border border-red-500/30 flex items-center justify-center shadow-lg relative transition-all duration-300 group-hover:-translate-y-2 group-hover:border-red-400 group-hover:shadow-[0_0_25px_rgba(239,68,68,0.3)]">
+                   <item.icon className="w-7 h-7 text-red-400 transition-transform duration-300 group-hover:scale-110" />
+                   <div className="absolute -top-2 -right-2 w-6 h-6 bg-red-600 text-white rounded-full text-xs font-bold flex items-center justify-center shadow-md">
                      {item.step}
                    </div>
                 </div>
-                <h4 className="mt-4 font-bold text-slate-900 text-sm">{item.title}</h4>
-                <p className="mt-1 text-xs text-slate-500">{item.desc}</p>
+                <h4 className="mt-6 font-bold text-white text-base tracking-wide">{item.title}</h4>
+                <p className="mt-2 text-sm text-slate-400 leading-relaxed">{item.desc}</p>
              </div>
            ))}
         </div>
@@ -646,7 +658,7 @@ function PricingAndAnalyticsSection() {
                   <li className="flex items-start gap-2 text-[10px] text-slate-600"><CheckCircle2 className="w-3 h-3 text-emerald-500 shrink-0"/> SLA garantizado</li>
                   <li className="flex items-start gap-2 text-[10px] text-slate-600"><CheckCircle2 className="w-3 h-3 text-emerald-500 shrink-0"/> Soporte dedicado</li>
                 </ul>
-                <button className="w-full py-2 border border-slate-300 rounded-lg text-xs font-bold text-slate-700 hover:bg-slate-50 transition-colors">Contactar ventas</button>
+                <a href="https://wa.me/56920576206?text=Hola,%20me%20gustar%C3%ADa%20contactar%20a%20ventas%20por%20los%20planes%20de%20Nodo360" target="_blank" rel="noopener noreferrer" className="block text-center w-full py-2 border border-slate-300 rounded-lg text-xs font-bold text-slate-700 hover:bg-slate-50 transition-colors">Contactar ventas</a>
               </div>
               <p className="text-slate-500 text-sm mb-8">*Valores referenciales a la fecha de publicacion.</p>
 
@@ -673,12 +685,12 @@ function FooterSection() {
             </div>
           </div>
           <div className="flex flex-col sm:flex-row gap-3 w-full md:w-auto shrink-0">
-            <Link to="/login" className="px-6 py-3 bg-red-600 hover:bg-red-500 text-white font-bold rounded-lg text-sm transition-colors text-center shadow-lg shadow-red-900/30">
+            <a href="https://wa.me/56920576206?text=Hola,%20me%20gustar%C3%ADa%20solicitar%20una%20demo%20de%20Nodo360" target="_blank" rel="noopener noreferrer" className="px-6 py-3 bg-red-600 hover:bg-red-500 text-white font-bold rounded-lg text-sm transition-colors text-center shadow-lg shadow-red-900/30">
               Solicitar Demo <ChevronRight className="inline w-4 h-4" />
-            </Link>
-            <button className="px-6 py-3 bg-white/5 hover:bg-white/10 border border-white/10 text-white font-bold rounded-lg text-sm transition-colors text-center">
+            </a>
+            <a href="https://wa.me/56920576206?text=Hola,%20me%20gustar%C3%ADa%20hablar%20con%20un%20experto%20sobre%20Nodo360" target="_blank" rel="noopener noreferrer" className="block px-6 py-3 bg-white/5 hover:bg-white/10 border border-white/10 text-white font-bold rounded-lg text-sm transition-colors text-center">
               Hablar con un experto
-            </button>
+            </a>
           </div>
         </div>
       </div>
@@ -730,7 +742,7 @@ function FooterSection() {
         
         <div className="max-w-7xl mx-auto px-4 sm:px-6 flex flex-col md:flex-row items-center justify-between gap-4 border-t border-white/5 pt-8">
           <p className="text-[10px] text-slate-500">
-            © {new Date().getFullYear()} Nodo360. Todos los derechos reservados kodesk.cl.
+            © {new Date().getFullYear()} Nodo360. Todos los derechos reservados <a href="https://kodesk.cl/" target="_blank" rel="noopener noreferrer" className="hover:text-white transition-colors">kodesk.cl</a>.
           </p>
           <div className="flex items-center gap-4 text-slate-500">
             <div className="w-8 h-8 rounded bg-white/5 flex items-center justify-center hover:bg-white/10 hover:text-white transition-colors cursor-pointer text-xs">IG</div>

@@ -6,7 +6,8 @@ import {
   Siren, Sun, Truck, UserCog, Users, Volume2, VolumeX, MessageCircle, Crosshair
 } from 'lucide-react';
 import toast from 'react-hot-toast';
-import { buildLocationPinWhatsAppMessage, buildWhatsAppShareUrl } from '../lib/incident-location-pin';
+import { buildLocationPinWhatsAppMessage, buildWhatsAppShareUrl, buildLocationPinUrl } from '../lib/incident-location-pin';
+import { api } from '../lib/api';
 import { useAuthStore } from '../store/authStore';
 import { useSimpleDispatch } from '../hooks/useQuickDispatch';
 import { useCentralExpressTheme } from '../hooks/useCentralExpressTheme';
@@ -154,23 +155,23 @@ export default function CentralExpressPage() {
       code: inc.code,
       type: inc.type,
       address: inc.address || 'Sin dirección',
-      token: inc.locationPinToken,
+      url: buildLocationPinUrl(inc.locationPinToken!),
     });
     const url = buildWhatsAppShareUrl(phone, message);
-    window.open(url, '_blank');
+    if (url) window.open(url, '_blank');
   };
 
   const cuarteles = (d.cuarteles ?? []) as CuartelItem[];
 
   const { data: mapData } = useQuery({
     queryKey: ['operational-map-express'],
-    queryFn: () => api.get('/operational-map', { params: { incidentDays: 30 } }).then((r) => r.data),
+    queryFn: () => api.get('/operational-map', { params: { incidentDays: 30 } }).then((r: any) => r.data),
     refetchInterval: 15000,
   });
 
   const { data: allVehicles = [] } = useQuery({
     queryKey: ['vehicles'],
-    queryFn: () => api.get('/vehicles').then((r) => r.data),
+    queryFn: () => api.get('/vehicles').then((r: any) => r.data),
   });
 
   const vehicles = allVehicles as {
