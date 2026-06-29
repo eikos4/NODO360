@@ -68,15 +68,15 @@ function CompanyCard({
     >
       <button type="button" onClick={onSetPrimary} className="w-full text-left">
       <div className="flex items-start justify-between gap-2 mb-2">
-        <div className="flex items-center gap-2 min-w-0">
-          <div className={`w-9 h-9 rounded-lg flex items-center justify-center font-black text-sm shrink-0 ${
-            isPrimary ? 'bg-red-600 text-white' : isSupport ? 'bg-sky-600 text-white' : 'bg-slate-700 text-white'
+        <div className="flex items-center gap-3 min-w-0">
+          <div className={`w-12 h-12 rounded-xl flex items-center justify-center font-black text-xl shrink-0 ${
+            isPrimary ? 'bg-red-600 text-white shadow-md shadow-red-600/30' : isSupport ? 'bg-sky-600 text-white shadow-md shadow-sky-600/30' : 'bg-slate-700 text-white shadow-inner'
           }`}>
             {c.number}
           </div>
           <div className="min-w-0">
-            <p className={`text-xs font-bold truncate ${th.text}`}>{c.number}ª Compañía</p>
-            <p className={`text-[10px] truncate ${th.textMuted}`}>{c.city}</p>
+            <p className={`text-sm font-bold truncate ${th.text}`}>{c.number}ª Compañía</p>
+            <p className={`text-xs truncate ${th.textMuted}`}>{c.city}</p>
           </div>
         </div>
         <Shield className={`w-4 h-4 shrink-0 ${isPrimary ? 'text-red-400' : isSupport ? 'text-sky-400' : 'text-slate-500'}`} />
@@ -337,9 +337,9 @@ export default function CentralExpressPage() {
       )}
 
       {/* Main grid */}
-      <div className="flex-1 grid grid-cols-1 xl:grid-cols-12 gap-3 p-3 sm:p-4 min-h-0 overflow-y-auto xl:overflow-hidden">
+      <div className="flex-1 grid grid-cols-1 lg:grid-cols-12 gap-3 p-3 sm:p-4 min-h-0 overflow-y-auto lg:overflow-hidden">
         {/* Left — form + vehicles */}
-        <aside className="xl:col-span-3 flex flex-col gap-3 min-h-0 xl:overflow-y-auto scrollbar-thin">
+        <aside className="lg:col-span-4 xl:col-span-3 flex flex-col gap-3 min-h-0 lg:overflow-y-auto scrollbar-thin">
           <div className={`rounded-xl border p-4 space-y-3 ${th.card} ${th.cardBorder}`}>
             <h2 className={`text-[11px] font-bold uppercase tracking-widest ${th.cardTitle}`}>Nueva emergencia</h2>
 
@@ -470,17 +470,17 @@ export default function CentralExpressPage() {
                     const on = d.selectedVehicles.includes(v.id);
                     const vehicle = vehicles.find((x) => x.id === v.id);
                     return (
-                      <div key={v.id} className={`flex items-center gap-2 p-2 rounded-lg border mb-1.5 ${th.incidentRow}`}>
-                        <div className="w-12 h-10 rounded-lg bg-slate-700 overflow-hidden shrink-0 flex items-center justify-center">
+                      <div key={v.id} className={`flex items-center gap-3 p-2.5 rounded-xl border mb-2 ${th.incidentRow}`}>
+                        <div className="w-16 h-12 sm:w-20 sm:h-14 rounded-lg bg-slate-700 overflow-hidden shrink-0 flex items-center justify-center shadow-md">
                           {vehicle?.imageUrl ? (
                             <img src={vehicle.imageUrl} alt="" className="w-full h-full object-cover" />
                           ) : (
-                            <Truck className="w-5 h-5 text-slate-400" />
+                            <Truck className="w-6 h-6 sm:w-8 sm:h-8 text-slate-400" />
                           )}
                         </div>
                         <div className="flex-1 min-w-0">
-                          <p className={`text-xs font-bold font-mono ${th.text}`}>{v.patent}</p>
-                          <p className={`text-[10px] truncate ${th.textMuted}`}>{v.type ?? 'Carro bomba'}</p>
+                          <p className={`text-sm font-bold font-mono ${th.text}`}>{v.patent}</p>
+                          <p className={`text-xs truncate ${th.textMuted}`}>{v.type ?? 'Carro bomba'}</p>
                         </div>
                         <button
                           type="button"
@@ -501,7 +501,7 @@ export default function CentralExpressPage() {
         </aside>
 
         {/* Center — companies + map */}
-        <section className="xl:col-span-6 flex flex-col gap-3 min-h-0">
+        <section className="lg:col-span-8 xl:col-span-6 flex flex-col gap-3 min-h-0">
           <div>
             <h2 className={`text-[11px] font-bold uppercase tracking-widest mb-2 ${th.cardTitle}`}>
               Disponibilidad por compañía
@@ -540,7 +540,7 @@ export default function CentralExpressPage() {
         </section>
 
         {/* Right — recommendation + incidents */}
-        <aside className="xl:col-span-3 flex flex-col gap-3 min-h-0 xl:overflow-y-auto scrollbar-thin">
+        <aside className="lg:col-span-12 xl:col-span-3 flex flex-col gap-3 min-h-0 lg:overflow-y-auto scrollbar-thin xl:grid-cols-1 lg:grid lg:grid-cols-2 xl:flex">
           <div className={`rounded-xl border p-4 space-y-3 ${th.card} ${th.cardBorder}`}>
             <h2 className={`text-[11px] font-bold uppercase tracking-widest ${th.cardTitle}`}>Recomendación de despacho</h2>
             {d.emergType ? (

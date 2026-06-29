@@ -1,0 +1,7 @@
+<?xml version='1.0' encoding='utf-8'?>
+<resources>
+    <string name="app_name">Nodo360</string>
+    <string name="title_activity_main">Nodo360</string>
+    <string name="package_name">cl.kodesk.nodo360</string>
+    <string name="custom_url_scheme">cl.kodesk.nodo360</string>
+</resources>

@@ -11,6 +11,7 @@ import DispatchEmergenciesPanel, { type PublicEmergency } from '../components/di
 import PublicEmergencyBanner from '../components/dispatch/PublicEmergencyBanner';
 import EmergencyReturnCelebration from '../components/dispatch/EmergencyReturnCelebration';
 import EmergencyBitacoraFinalizeModal from '../components/dispatch/EmergencyBitacoraFinalizeModal';
+import PublicCompanyModernView from '../components/companies/PublicCompanyModernView';
 import { usePublicDispatchAlarm } from '../hooks/usePublicDispatchAlarm';
 import {
   PUBLIC_POLL_MS_IDLE,
@@ -74,7 +75,7 @@ async function closePublicEmergency(apiBase: string, slug: string, incidentId: s
   }
 }
 
-type RosterMember = {
+export type RosterMember = {
   id: string;
   firstName: string;
   lastName: string;
@@ -86,7 +87,7 @@ type RosterMember = {
   operativeNumber?: number | null;
 };
 
-type MaquinistaMember = {
+export type MaquinistaMember = {
   id: string;
   firstName: string;
   lastName: string;
@@ -98,7 +99,7 @@ type MaquinistaMember = {
   maquinistaPrincipal: boolean;
 };
 
-type FleetVehicle = {
+export type FleetVehicle = {
   id: string;
   patent: string;
   brand: string;
@@ -111,7 +112,7 @@ type FleetVehicle = {
   principalMaquinista?: MaquinistaMember | null;
 };
 
-type PublicCentral = {
+export type PublicCentral = {
   id: string;
   slug: string;
   name: string;
@@ -220,6 +221,17 @@ export default function DispatchPublicPage() {
   const [data, setData] = useState<PublicCentral | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
+  
+  const [layout, setLayout] = useState<'classic'|'modern'>(() => {
+    return (localStorage.getItem('public_view_layout') as 'classic'|'modern') || 'classic';
+  });
+
+  const toggleLayout = () => {
+    const next = layout === 'classic' ? 'modern' : 'classic';
+    setLayout(next);
+    localStorage.setItem('public_view_layout', next);
+  };
+
   const [togglingId, setTogglingId] = useState<string | null>(null);
   const [maquinistaBusyId, setMaquinistaBusyId] = useState<string | null>(null);
   const [search, setSearch] = useState('');
@@ -591,6 +603,20 @@ export default function DispatchPublicPage() {
         onSaved={handleBitacoraSaved}
       />
 
+      <button
+        onClick={toggleLayout}
+        className="fixed bottom-6 right-6 z-[100] bg-white border border-slate-200 text-slate-800 shadow-xl px-4 py-2.5 rounded-full flex items-center gap-2 hover:bg-slate-50 hover:scale-105 transition-all text-sm font-bold"
+        title="Cambiar Diseño"
+      >
+        <SlidersHorizontal className="w-4 h-4 text-blue-600" />
+        Diseño {layout === 'classic' ? 'Moderno' : 'Clásico'}
+      </button>
+
+      {/* RENDERIZADO CONDICIONAL DE VISTAS */}
+      {layout === 'modern' ? (
+        <PublicCompanyModernView data={data} />
+      ) : (
+        <>
       {/* Hero — logo, cuartel degradado, reloj */}
       <header className={`relative overflow-hidden border-b ${th.headerBorder}`}>
         <div
@@ -1042,6 +1068,8 @@ export default function DispatchPublicPage() {
           </p>
         </div>
       </footer>
+      </>
+      )}
     </div>
   );
 }

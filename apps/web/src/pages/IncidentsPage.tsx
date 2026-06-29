@@ -197,6 +197,25 @@ export default function IncidentsPage() {
     return matchQ && matchT && matchS;
   });
 
+  const isToday = (dateStr?: string) => {
+    if (!dateStr) return false;
+    const d = new Date(dateStr);
+    const today = new Date();
+    return d.getDate() === today.getDate() && d.getMonth() === today.getMonth() && d.getFullYear() === today.getFullYear();
+  };
+
+  const isYesterday = (dateStr?: string) => {
+    if (!dateStr) return false;
+    const d = new Date(dateStr);
+    const y = new Date();
+    y.setDate(y.getDate() - 1);
+    return d.getDate() === y.getDate() && d.getMonth() === y.getMonth() && d.getFullYear() === y.getFullYear();
+  };
+
+  const todayIncidents = filtered.filter((inc: any) => isToday(inc.dispatchedAt));
+  const yesterdayIncidents = filtered.filter((inc: any) => isYesterday(inc.dispatchedAt));
+  const olderIncidents = filtered.filter((inc: any) => !isToday(inc.dispatchedAt) && !isYesterday(inc.dispatchedAt));
+
   const inputCls = 'w-full bg-slate-800 border border-slate-700 rounded-xl px-3 py-2.5 text-sm text-slate-100 placeholder-slate-600 focus:outline-none focus:border-red-500 focus:ring-1 focus:ring-red-500/50 transition-all';
 
   return (
@@ -394,65 +413,53 @@ export default function IncidentsPage() {
           <p className="text-slate-600 text-sm mt-1">Ajusta los filtros o registra la primera intervención</p>
         </div>
       ) : (
-        <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
-          {filtered.map((inc: any) => {
-            const status = statusOf(inc);
-            const TypeIcon = TYPE_ICONS[inc.type] ?? ShieldAlert;
-            const banner = TYPE_BANNER[inc.type] ?? TYPE_BANNER.default;
-            const dur = duration(inc.dispatchedAt, inc.closedAt ?? inc.arrivedAt);
-            return (
-              <div key={inc.id} onClick={() => setSelected(inc)}
-                className="group bg-slate-900 border border-slate-800 hover:border-slate-600 rounded-2xl overflow-hidden cursor-pointer transition-all hover:shadow-xl hover:shadow-black/30">
-
-                {/* Banner */}
-                <div className={`bg-gradient-to-r ${banner} border-b border-slate-800 px-4 py-3 flex items-center justify-between`}>
-                  <div className="flex items-center gap-2.5">
-                    <div className={`w-8 h-8 rounded-xl flex items-center justify-center border ${TYPE_COLORS[inc.type] ?? TYPE_COLORS['Otro']}`}>
-                      <TypeIcon className="w-4 h-4" />
-                    </div>
-                    <div>
-                      <p className="font-mono font-bold text-white text-xs">{inc.code}</p>
-                      <p className="text-[10px] text-slate-400">
-                        {inc.type}
-                        {inc.dispatchSource === 'BOTONERA' && <span className="ml-1 text-red-400">· Central</span>}
-                        {inc.emergencyPlanId && <span className="ml-1 text-amber-400">· Plan</span>}
-                      </p>
-                    </div>
-                  </div>
-                  <div className="flex items-center gap-1.5">
-                    <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-semibold border ${status.color}`}>
-                      <span className={`w-1.5 h-1.5 rounded-full ${status.dot}`} />{status.label}
-                    </span>
-                  </div>
+        <div className="space-y-10">
+          
+          {/* HOY */}
+          {todayIncidents.length > 0 && (
+            <section>
+              <div className="flex items-center gap-2 mb-4">
+                <div className="w-8 h-8 rounded-full bg-red-600/20 flex items-center justify-center">
+                  <Flame className="w-4 h-4 text-red-500" />
                 </div>
-
-                {/* Cuerpo */}
-                <div className="p-4">
-                  <div className="flex items-start gap-2 mb-3">
-                    <MapPin className="w-3.5 h-3.5 text-slate-500 shrink-0 mt-0.5" />
-                    <p className="text-sm text-slate-300 leading-tight line-clamp-1">{inc.address}</p>
-                  </div>
-                  <p className="text-xs text-slate-500 line-clamp-2 mb-3">{inc.description}</p>
-
-                  {/* Timeline compacto */}
-                  <div className="flex items-center gap-1 text-[10px] text-slate-600 mb-3">
-                    <span className="bg-slate-800 px-2 py-0.5 rounded-md text-slate-400">🚨 {fmt(inc.dispatchedAt)}</span>
-                    {inc.arrivedAt && <><span>→</span><span className="bg-slate-800 px-2 py-0.5 rounded-md text-slate-400">📍 {fmt(inc.arrivedAt)}</span></>}
-                    {inc.closedAt && <><span>→</span><span className="bg-slate-800 px-2 py-0.5 rounded-md text-slate-400">✅ {fmt(inc.closedAt)}</span></>}
-                  </div>
-
-                  <div className="flex items-center justify-between pt-3 border-t border-slate-800">
-                    <div className="flex items-center gap-3 text-xs text-slate-500">
-                      <span className="flex items-center gap-1"><Users className="w-3 h-3" />{inc.participants?.length ?? 0} bomberos</span>
-                      {dur && <span className="flex items-center gap-1"><Timer className="w-3 h-3" />{dur}</span>}
-                      {inc.company && <span className="flex items-center gap-1"><Building2 className="w-3 h-3" />Cía. {inc.company.number}</span>}
-                    </div>
-                    <ChevronRight className="w-3.5 h-3.5 text-slate-600 group-hover:text-slate-400 transition-colors" />
-                  </div>
-                </div>
+                <h2 className="text-lg font-bold text-white">Hoy <span className="ml-2 text-sm font-normal text-slate-500 px-2 py-0.5 bg-slate-800 rounded-full">{todayIncidents.length}</span></h2>
               </div>
-            );
-          })}
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+                {todayIncidents.map((inc: any) => <IncidentCard key={inc.id} inc={inc} onClick={() => setSelected(inc)} featured={true} />)}
+              </div>
+            </section>
+          )}
+
+          {/* AYER */}
+          {yesterdayIncidents.length > 0 && (
+            <section>
+              <div className="flex items-center gap-2 mb-4">
+                <div className="w-8 h-8 rounded-full bg-slate-800 flex items-center justify-center border border-slate-700">
+                  <Clock className="w-4 h-4 text-slate-400" />
+                </div>
+                <h2 className="text-lg font-bold text-white">Ayer <span className="ml-2 text-sm font-normal text-slate-500 px-2 py-0.5 bg-slate-800 rounded-full">{yesterdayIncidents.length}</span></h2>
+              </div>
+              <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
+                {yesterdayIncidents.map((inc: any) => <IncidentCard key={inc.id} inc={inc} onClick={() => setSelected(inc)} />)}
+              </div>
+            </section>
+          )}
+
+          {/* ANTERIORES */}
+          {olderIncidents.length > 0 && (
+            <section>
+              <div className="flex items-center gap-2 mb-4">
+                <div className="w-8 h-8 rounded-full bg-slate-800 flex items-center justify-center border border-slate-700">
+                  <FileText className="w-4 h-4 text-slate-500" />
+                </div>
+                <h2 className="text-lg font-bold text-slate-300">Anteriores <span className="ml-2 text-sm font-normal text-slate-500 px-2 py-0.5 bg-slate-800 rounded-full">{olderIncidents.length}</span></h2>
+              </div>
+              <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
+                {olderIncidents.map((inc: any) => <IncidentCard key={inc.id} inc={inc} onClick={() => setSelected(inc)} />)}
+              </div>
+            </section>
+          )}
+
         </div>
       )}
 
@@ -641,4 +648,71 @@ export default function IncidentsPage() {
       )}
     </div>
   );
+}
+
+function IncidentCard({ inc, onClick, featured = false }: { inc: any; onClick: () => void; featured?: boolean }) {
+  const status = statusOf(inc);
+  const TypeIcon = TYPE_ICONS[inc.type] ?? ShieldAlert;
+  const banner = TYPE_BANNER[inc.type] ?? TYPE_BANNER.default;
+  const dur = duration(inc.dispatchedAt, inc.closedAt ?? inc.arrivedAt);
+  const isOpen = !inc.closedAt;
+  
+  return (
+    <div onClick={onClick}
+      className={`group relative bg-red-600 border ${isOpen ? 'border-red-400 shadow-lg shadow-red-900/30' : 'border-red-700 hover:border-red-500'} rounded-2xl overflow-hidden cursor-pointer transition-all hover:-translate-y-1 ${featured ? 'md:flex' : ''}`}>
+
+      {/* Banner lateral / Superior */}
+      <div className={`bg-gradient-to-br ${banner} ${featured ? 'md:w-1/3 md:border-r border-b md:border-b-0 px-5 py-6' : 'border-b px-4 py-3'} border-slate-800 flex flex-col justify-center`}>
+        <div className="flex items-center gap-3 mb-2">
+          <div className={`w-10 h-10 rounded-xl flex items-center justify-center border-2 border-white/20 bg-black/20`}>
+            <TypeIcon className="w-5 h-5 text-white" />
+          </div>
+          <div className="flex-1 min-w-0">
+            <p className="font-mono font-bold text-white text-sm sm:text-base truncate">{inc.code}</p>
+            <p className="text-[11px] text-white/80 font-medium truncate">{inc.type}</p>
+          </div>
+        </div>
+        
+        <div className="flex flex-wrap items-center gap-1.5 mt-2">
+          <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[10px] font-bold border ${status.color}`}>
+            <span className={`w-1.5 h-1.5 rounded-full ${status.dot}`} />{status.label}
+          </span>
+          {inc.dispatchSource === 'BOTONERA' && <span className="bg-red-950/50 text-red-400 border border-red-900/50 px-2 py-0.5 rounded-full text-[9px] font-bold">CENTRAL</span>}
+          {inc.emergencyPlanId && <span className="bg-amber-950/50 text-amber-400 border border-amber-900/50 px-2 py-0.5 rounded-full text-[9px] font-bold">PLAN</span>}
+        </div>
+      </div>
+
+      {/* Cuerpo principal */}
+      <div className={`flex-1 p-4 sm:p-5 flex flex-col justify-between ${isOpen ? 'bg-red-700/20' : ''}`}>
+        <div>
+          <div className="flex items-start gap-2 mb-2">
+            <MapPin className="w-4 h-4 text-white/80 shrink-0 mt-0.5" />
+            <p className="text-sm font-semibold text-white leading-tight line-clamp-2">{inc.address}</p>
+          </div>
+          <p className="text-xs text-white/70 line-clamp-2 mb-4">{inc.description}</p>
+        </div>
+
+        <div>
+          <div className="flex items-center gap-2 text-[11px] font-mono text-white/90 mb-4 bg-black/10 p-2 rounded-lg border border-black/10 w-fit">
+            <span className="flex items-center gap-1" title="Despacho"><SirenIcon className="w-3.5 h-3.5 text-white/80" /> {fmt(inc.dispatchedAt)}</span>
+            {inc.arrivedAt && <><span className="text-white/40">→</span><span className="flex items-center gap-1" title="Llegada"><MapPin className="w-3.5 h-3.5 text-white/80" /> {fmt(inc.arrivedAt)}</span></>}
+            {inc.closedAt && <><span className="text-white/40">→</span><span className="flex items-center gap-1" title="Cierre"><CheckCircle2 className="w-3.5 h-3.5 text-white/80" /> {fmt(inc.closedAt)}</span></>}
+          </div>
+
+          <div className="flex items-center justify-between pt-3 border-t border-red-500/50">
+            <div className="flex flex-wrap items-center gap-3 text-xs font-medium text-white/90">
+              {inc.company && <span className="flex items-center gap-1.5 bg-black/20 px-2 py-1 rounded-md"><Building2 className="w-3.5 h-3.5 text-white/80" />Cía. {inc.company.number}</span>}
+              <span className="flex items-center gap-1.5"><Users className="w-3.5 h-3.5 text-white/80" />{inc.participants?.length ?? 0} vols</span>
+              {dur && <span className="flex items-center gap-1.5 text-white font-bold"><Timer className="w-3.5 h-3.5" />{dur}</span>}
+            </div>
+            <ChevronRight className="w-4 h-4 text-white/60 group-hover:text-white group-hover:translate-x-1 transition-all" />
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function SirenIcon(props: any) {
+  return <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" {...props}><path d="M7 12h10"/><path d="M7 2h10"/><path d="M12 2v20"/><path d="M17 12c0 2.76 2.24 5 5 5v5H2v-5c2.76 0 5-2.24 5-5"/><path d="M12 2a5 5 0 0 0-5 5v5h10V7a5 5 0 0 0-5-5z"/></svg>;
 }
