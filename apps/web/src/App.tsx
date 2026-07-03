@@ -5,6 +5,7 @@ import { useAuthHydrated } from './hooks/useAuthHydrated';
 import ErrorBoundary from './components/ErrorBoundary';
 import LoginPage from './pages/LoginPage';
 import LandingPage from './pages/LandingPage';
+import NosotrosPage from './pages/NosotrosPage';
 import AppLayout from './components/layout/AppLayout';
 import DashboardPage from './pages/DashboardPage';
 import CompaniesPage from './pages/CompaniesPage';
@@ -71,6 +72,7 @@ export default function App() {
     <ErrorBoundary>
       <Routes>
       <Route path="/" element={<LandingPage />} />
+      <Route path="/nosotros" element={<NosotrosPage />} />
       <Route path="/login" element={<LoginPage />} />
       <Route path="/central/:slug" element={<DispatchPublicPage />} />
       <Route path="/localizar/:token" element={<IncidentLocationPinPage />} />

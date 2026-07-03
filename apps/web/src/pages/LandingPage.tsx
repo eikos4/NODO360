@@ -67,13 +67,12 @@ function NavBar() {
           <a href="#planes" className="hover:text-white transition-colors">Planes</a>
           <a href="#contacto" className="hover:text-white transition-colors">Contacto</a>
         </nav>
-        <a
-          href="https://wa.me/56920576206?text=Hola,%20me%20gustar%C3%ADa%20solicitar%20una%20demo%20de%20Nodo360"
-          target="_blank" rel="noopener noreferrer"
+        <Link
+          to="/login"
           className="bg-red-600 hover:bg-red-500 text-white text-sm font-bold px-5 py-2 rounded-lg transition-all"
         >
-          Solicitar Demo
-        </a>
+          Ingreso COMPAÑIAS
+        </Link>
       </div>
     </header>
   );
@@ -707,6 +706,9 @@ function FooterSection() {
             <p className="text-xs text-slate-500 max-w-xs mb-4">
               Tecnología al servicio de quienes salvan vidas.
             </p>
+            <p className="text-xs text-slate-500 max-w-xs mb-4">
+              Una plataformas más de <a href="https://kodesk.cl" target="_blank" rel="noopener noreferrer">kodesk.cl</a>
+            </p>
             <p className="text-xs text-slate-400 flex items-center gap-2">
               <span className="w-4 h-4 bg-slate-800 rounded flex items-center justify-center">@</span> contacto@nodo360.cl
             </p>
@@ -733,7 +735,7 @@ function FooterSection() {
           <div>
             <h4 className="text-white text-xs font-bold uppercase tracking-wider mb-4">Empresa</h4>
             <ul className="space-y-2 text-sm text-slate-400">
-              <li><a href="#" className="hover:text-red-400 transition-colors">Nosotros</a></li>
+              <li><Link to="/nosotros" className="hover:text-red-400 transition-colors">Nosotros</Link></li>
               <li><a href="#" className="hover:text-red-400 transition-colors">Trabaja con nosotros</a></li>
               <li><a href="#" className="hover:text-red-400 transition-colors">Políticas</a></li>
             </ul>
