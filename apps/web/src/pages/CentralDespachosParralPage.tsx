@@ -21,6 +21,7 @@ import DispatchMapPicker from '../components/map/DispatchMapPicker';
 import DispatchVoiceConfigToggle from '../components/dispatch/DispatchVoiceConfigToggle';
 import CompanyMaquinistaAlert from '../components/dispatch/CompanyMaquinistaAlert';
 import DispatchCompanyVehiclePicker from '../components/dispatch/DispatchCompanyVehiclePicker';
+import DoubleDispatchConfirmModal from '../components/dispatch/DoubleDispatchConfirmModal';
 import { api } from '../lib/api';
 import { buildLocationPinWhatsAppMessage, buildWhatsAppShareUrl, buildLocationPinUrl } from '../lib/incident-location-pin';
 
@@ -527,21 +528,48 @@ export default function CentralDespachosParralPage() {
               const active = d.selectedType === main.id || childSel;
               const Icon = main.icon;
               const digit = EMERGENCY_MAIN_DIGIT_KEY[main.id];
+              /* Color tint hex por tipo para el estado idle */
+              const colorHex: Record<string, string> = {
+                'bg-red-600': '#ef4444', 'bg-orange-600': '#f97316', 'bg-amber-600': '#f59e0b',
+                'bg-cyan-600': '#06b6d4', 'bg-blue-600': '#3b82f6', 'bg-yellow-500': '#eab308',
+                'bg-indigo-600': '#6366f1', 'bg-violet-600': '#8b5cf6', 'bg-slate-600': '#64748b',
+                'bg-slate-700': '#475569', 'bg-purple-600': '#9333ea', 'bg-stone-600': '#78716c',
+                'bg-teal-700': '#0f766e',
+              };
+              const hex = colorHex[main.color] ?? '#64748b';
               return (
                 <button
                   key={main.id}
                   type="button"
                   disabled={d.dispatching}
                   onClick={() => d.handleEmergencyTypeClick(main)}
-                  className={`flex flex-col items-center justify-center gap-1 p-2.5 rounded-xl border-2 min-h-[80px] transition-all active:scale-95 ${
+                  className={`relative flex flex-col items-center justify-center gap-1 p-2.5 rounded-xl border-2 min-h-[80px] transition-all active:scale-95 ${
                     active
-                      ? `${main.color} ${main.text} border-transparent shadow-lg`
-                      : th.keyIdle
+                      ? `${main.color} ${main.text} border-transparent shadow-lg ring-2 ${main.ring}/60`
+                      : 'hover:scale-[1.04]'
                   }`}
+                  style={
+                    !active
+                      ? {
+                          backgroundColor: isDark ? `${hex}15` : `${hex}12`,
+                          borderColor: isDark ? `${hex}40` : `${hex}35`,
+                          color: isDark ? `${hex}` : hex,
+                        }
+                      : undefined
+                  }
                 >
-                  <span className="text-[9px] font-mono font-bold opacity-70">{digit ?? main.code}</span>
-                  <Icon className="w-5 h-5" />
-                  <span className="text-[9px] text-center leading-tight font-semibold">{main.shortLabel}</span>
+                  <span
+                    className={`text-[9px] font-mono font-bold ${active ? 'opacity-70' : ''}`}
+                    style={!active ? { color: isDark ? `${hex}cc` : `${hex}` } : undefined}
+                  >
+                    {digit ?? main.code}
+                  </span>
+                  <Icon className="w-5 h-5" style={!active ? { color: hex } : undefined} />
+                  <span
+                    className={`text-[9px] text-center leading-tight font-semibold ${active ? '' : isDark ? 'text-slate-300' : 'text-slate-700'}`}
+                  >
+                    {main.shortLabel}
+                  </span>
                 </button>
               );
             })}
@@ -580,6 +608,15 @@ export default function CentralDespachosParralPage() {
         <span className="flex items-center gap-1.5"><span className="w-2 h-2 rounded-full bg-red-400" /> No disponible</span>
       </footer>
       </div>
+
+      {d.pendingDoubleDispatch && (
+        <DoubleDispatchConfirmModal
+          companyName={d.pendingDoubleDispatch.companyName}
+          onConfirm={d.pendingDoubleDispatch.onConfirm}
+          onCancel={d.cancelDoubleDispatch}
+          isDark={isDark}
+        />
+      )}
     </div>
   );
 }

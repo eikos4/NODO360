@@ -7,6 +7,17 @@ export type DispatchLiveEvent = {
   at: number;
 };
 
+export type LocationUpdateEvent = {
+  type: 'location_update';
+  incidentId: string;
+  newAddress: string;
+  latitude: number;
+  longitude: number;
+  at: number;
+};
+
+export type LiveSyncMessage = DispatchLiveEvent | LocationUpdateEvent;
+
 const CHANNEL = 'nodo360-dispatch-live';
 const STORAGE_KEY = 'nodo360_last_dispatch';
 
@@ -33,6 +44,27 @@ export function notifyDispatchLive(payload: Omit<DispatchLiveEvent, 'type' | 'at
   }
 }
 
+export function notifyLocationUpdate(payload: Omit<LocationUpdateEvent, 'type' | 'at'>) {
+  const event: LocationUpdateEvent = {
+    type: 'location_update',
+    incidentId: payload.incidentId,
+    newAddress: payload.newAddress,
+    latitude: payload.latitude,
+    longitude: payload.longitude,
+    at: Date.now(),
+  };
+
+  try {
+    const bc = new BroadcastChannel(CHANNEL);
+    bc.postMessage(event);
+    bc.close();
+  } catch {}
+
+  try {
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(event));
+  } catch {}
+}
+
 export function companyIdsFromDispatchResponse(data: {
   companyId?: string;
   vehicles?: { vehicle?: { companyId?: string } }[];
@@ -49,12 +81,22 @@ export function subscribeDispatchLive(
   companyId: string | undefined,
   onRefresh: () => void,
   onDispatch?: (event: DispatchLiveEvent) => void,
+  onLocationUpdate?: (event: LocationUpdateEvent) => void,
 ): () => void {
   if (!companyId) return () => {};
 
-  const handle = (event: DispatchLiveEvent) => {
+  const handleDispatch = (event: DispatchLiveEvent) => {
     if (event.companyIds.includes(companyId)) {
       onDispatch?.(event);
+      onRefresh();
+    }
+  };
+
+  const handleMessage = (data: LiveSyncMessage) => {
+    if (data.type === 'dispatch') {
+      handleDispatch(data);
+    } else if (data.type === 'location_update') {
+      onLocationUpdate?.(data);
       onRefresh();
     }
   };
@@ -62,8 +104,8 @@ export function subscribeDispatchLive(
   let channel: BroadcastChannel | null = null;
   try {
     channel = new BroadcastChannel(CHANNEL);
-    channel.onmessage = (ev: MessageEvent<DispatchLiveEvent>) => {
-      if (ev.data?.type === 'dispatch') handle(ev.data);
+    channel.onmessage = (ev: MessageEvent<LiveSyncMessage>) => {
+      if (ev.data) handleMessage(ev.data);
     };
   } catch {
     /* noop */
@@ -72,8 +114,8 @@ export function subscribeDispatchLive(
   const onStorage = (ev: StorageEvent) => {
     if (ev.key !== STORAGE_KEY || !ev.newValue) return;
     try {
-      const parsed = JSON.parse(ev.newValue) as DispatchLiveEvent;
-      if (parsed.type === 'dispatch') handle(parsed);
+      const parsed = JSON.parse(ev.newValue) as LiveSyncMessage;
+      handleMessage(parsed);
     } catch {
       /* noop */
     }

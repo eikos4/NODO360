@@ -1,8 +1,7 @@
-import { useEffect } from 'react';
-import { MapContainer, TileLayer, Marker, Popup, useMap } from 'react-leaflet';
-import L from 'leaflet';
-import 'leaflet/dist/leaflet.css';
-import { Siren, MapPin, Clock, Radio, BookOpen, CheckCircle2, AlertTriangle } from 'lucide-react';
+import { useEffect, useState } from 'react';
+import { Map, AdvancedMarker, InfoWindow, useMap, Pin, useAdvancedMarkerRef } from '@vis.gl/react-google-maps';
+import { Siren, MapPin, Clock, Radio, BookOpen, CheckCircle2, AlertTriangle, Navigation } from 'lucide-react';
+import EmergencyLocationUpdater from './EmergencyLocationUpdater';
 
 export type PublicEmergency = {
   id: string;
@@ -30,28 +29,70 @@ export type PublicEmergency = {
   involvedAsSupport?: boolean;
   dispatchCompanyName?: string | null;
   dispatchCompanyNumber?: number | null;
+  participants?: any[];
 };
 
 function FitEmergencies({ points }: { points: [number, number][] }) {
   const map = useMap();
   useEffect(() => {
-    if (points.length === 0) return;
+    if (!map || points.length === 0) return;
     if (points.length === 1) {
-      map.setView(points[0], 14);
+      map.setCenter({ lat: points[0][0], lng: points[0][1] });
+      map.setZoom(14);
       return;
     }
-    map.fitBounds(L.latLngBounds(points), { padding: [24, 24], maxZoom: 14 });
+    const bounds = new google.maps.LatLngBounds();
+    points.forEach(p => bounds.extend({ lat: p[0], lng: p[1] }));
+    map.fitBounds(bounds, { bottom: 24, left: 24, right: 24, top: 24 });
   }, [map, points]);
   return null;
 }
 
-const incidentIcon = (active: boolean) =>
-  L.divIcon({
-    className: '',
-    html: `<div style="background:${active ? '#ef4444' : '#64748b'};width:14px;height:14px;border-radius:50%;border:3px solid white;box-shadow:0 2px 8px rgba(0,0,0,.4)"></div>`,
-    iconSize: [14, 14],
-    iconAnchor: [7, 7],
-  });
+function EmergencyMarker({
+  emergency,
+  isSelected,
+  onSelect,
+  onClose,
+  needsBitacora,
+}: {
+  emergency: PublicEmergency;
+  isSelected: boolean;
+  onSelect: () => void;
+  onClose: () => void;
+  needsBitacora: boolean;
+}) {
+  const [markerRef, marker] = useAdvancedMarkerRef();
+
+  return (
+    <>
+      <AdvancedMarker
+        ref={markerRef}
+        position={{ lat: emergency.latitude!, lng: emergency.longitude! }}
+        onClick={onSelect}
+      >
+        <Pin background={emergency.status === 'ACTIVA' ? '#ef4444' : '#64748b'} borderColor="white" glyphColor="transparent" scale={0.8} />
+      </AdvancedMarker>
+      {isSelected && (
+        <InfoWindow
+          anchor={marker}
+          onCloseClick={onClose}
+          pixelOffset={[0, -10]}
+        >
+          <div className="text-slate-900 text-xs space-y-1 min-w-[160px]">
+            <p className="font-bold">{emergency.type}</p>
+            <p>{emergency.address}</p>
+            <p className="text-slate-600">Alarma: {emergency.alarmBy}</p>
+            {needsBitacora && <p className="text-amber-600 font-semibold">Bitácora pendiente</p>}
+          </div>
+        </InfoWindow>
+      )}
+    </>
+  );
+}
+
+const IncidentIcon = ({ active }: { active: boolean }) => (
+  <div style={{ background: active ? '#ef4444' : '#64748b', width: 14, height: 14, borderRadius: '50%', border: '3px solid white', boxShadow: '0 2px 8px rgba(0,0,0,.4)' }}></div>
+);
 
 function formatWhen(iso: string) {
   return new Date(iso).toLocaleString('es-CL', {
@@ -125,6 +166,10 @@ export default function DispatchEmergenciesPanel({
   const needsBitacora = (e: PublicEmergency) =>
     !e.hasBitacora && (e.status === 'CERRADA' || pendingBitacoraIds.includes(e.id));
 
+  const [selectedEmergencyId, setSelectedEmergencyId] = useState<string | null>(null);
+  const selectedEmergency = selectedEmergencyId ? emergencies.find(e => e.id === selectedEmergencyId) : null;
+  const [editingLocationId, setEditingLocationId] = useState<string | null>(null);
+
   return (
     <div className={`border rounded-2xl overflow-hidden h-full flex flex-col ${s.wrap}`}>
       <div className={`px-4 py-3 border-b ${s.header}`}>
@@ -147,34 +192,28 @@ export default function DispatchEmergenciesPanel({
             Sin emergencias georreferenciadas recientes
           </div>
         ) : (
-          <MapContainer
-            center={center}
-            zoom={13}
+          <Map
+            defaultCenter={{ lat: center[0], lng: center[1] }}
+            defaultZoom={13}
             className="h-full w-full"
-            scrollWheelZoom={false}
-            attributionControl={false}
+            style={{ height: '100%', width: '100%', background: theme === 'dark' ? '#0f172a' : '#e2e8f0' }}
+            disableDefaultUI
+            mapId="dispatch-emergencies-panel-map"
           >
-            <TileLayer url={s.tile} />
             <FitEmergencies points={points} />
             {emergencies.map((e) => (
               e.hasCoordinates === false || !e.latitude || !e.longitude ? null : (
-              <Marker
-                key={e.id}
-                position={[e.latitude, e.longitude]}
-                icon={incidentIcon(e.status === 'ACTIVA')}
-              >
-                <Popup>
-                  <div className="text-xs space-y-1 min-w-[160px]">
-                    <p className="font-bold">{e.type}</p>
-                    <p>{e.address}</p>
-                    <p className="text-slate-600">Alarma: {e.alarmBy}</p>
-                    {needsBitacora(e) && <p className="text-amber-600 font-semibold">Bitácora pendiente</p>}
-                  </div>
-                </Popup>
-              </Marker>
+                <EmergencyMarker
+                  key={e.id}
+                  emergency={e}
+                  isSelected={selectedEmergencyId === e.id}
+                  onSelect={() => setSelectedEmergencyId(e.id)}
+                  onClose={() => setSelectedEmergencyId(null)}
+                  needsBitacora={needsBitacora(e)}
+                />
               )
             ))}
-          </MapContainer>
+          </Map>
         )}
       </div>
 
@@ -247,6 +286,27 @@ export default function DispatchEmergenciesPanel({
                   <CheckCircle2 className="w-3 h-3" />
                   Registro guardado en perfil de compañía
                 </p>
+              )}
+
+              {e.status === 'ACTIVA' && (
+                <div className="mt-3">
+                  <button
+                    type="button"
+                    onClick={() => setEditingLocationId(editingLocationId === e.id ? null : e.id)}
+                    className="w-full flex items-center justify-center gap-1.5 px-3 py-1.5 rounded-lg border border-slate-300 dark:border-slate-700 hover:bg-slate-100 dark:hover:bg-slate-800 text-[10px] font-bold transition-colors text-slate-700 dark:text-slate-300"
+                  >
+                    <Navigation className="w-3 h-3 text-blue-500" />
+                    {editingLocationId === e.id ? 'Ocultar Opciones de Ubicación' : 'Gestionar Ubicación / Enviar WhatsApp'}
+                  </button>
+
+                  {editingLocationId === e.id && (
+                    <EmergencyLocationUpdater 
+                      emergencyId={e.id}
+                      currentAddress={e.address}
+                      onClose={() => setEditingLocationId(null)}
+                    />
+                  )}
+                </div>
               )}
             </div>
           );

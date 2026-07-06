@@ -82,6 +82,7 @@ export function useQuickDispatch() {
   const [muted, setMuted] = useState(false);
   const [dispatching, setDispatching] = useState(false);
   const [geocoding, setGeocoding] = useState(false);
+  const [pendingDoubleDispatch, setPendingDoubleDispatch] = useState<{ companyName: string; onConfirm: () => void } | null>(null);
   const [voiceEnabled, setVoiceEnabledState] = useState(() => loadDispatchVoiceEnabled());
   const setVoiceEnabled = useCallback((value: boolean | ((prev: boolean) => boolean)) => {
     setVoiceEnabledState((prev) => {
@@ -276,7 +277,7 @@ export function useQuickDispatch() {
   }, [address]);
 
   const runDispatch = useCallback(
-    async (opts?: { typeId?: string; vehicleIds?: string[]; keyToneAlreadyPlayed?: boolean }) => {
+    async (opts?: { typeId?: string; vehicleIds?: string[]; keyToneAlreadyPlayed?: boolean; confirmDouble?: boolean }) => {
       const typeId = opts?.typeId ?? selectedType;
       const emerg = findEmergencyEntry(typeId);
       const vehicleIds = getVehicleIdsForDispatch(opts?.vehicleIds);
@@ -308,6 +309,19 @@ export function useQuickDispatch() {
         !hasMaquinistaAvailable(secondaryDispatchConfig?.maquinistas)
       ) {
         if (!confirmDispatchWithoutMaquinista(formatCompanyLabel(secondaryCompany))) return;
+      }
+
+      // Evitar despachos dobles si ya hay una emergencia activa
+      const hasActive = (incidents as any[]).some((i) => !i.closedAt);
+      if (hasActive && !opts?.confirmDouble) {
+        setPendingDoubleDispatch({
+          companyName: formatCompanyLabel(company),
+          onConfirm: () => {
+            setPendingDoubleDispatch(null);
+            void runDispatch({ ...opts, confirmDouble: true });
+          },
+        });
+        return;
       }
 
       const involvedCompanies = companyIdsFromVehicleSelection(allVehicles, vehicleIds);
@@ -379,6 +393,7 @@ export function useQuickDispatch() {
       secondaryCompany,
       allVehicles,
       companies,
+      incidents,
     ],
   );
 
@@ -594,6 +609,8 @@ export function useQuickDispatch() {
     refetchCuarteles,
     updateDispatchConfig,
     ensureSlug,
+    pendingDoubleDispatch,
+    cancelDoubleDispatch: () => setPendingDoubleDispatch(null),
   };
 }
 

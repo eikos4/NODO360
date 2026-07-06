@@ -69,20 +69,21 @@ export default function LoginPage() {
       </button>
 
       {/* ── LEFT PANEL: Futuristic Branding HUD ── */}
-      <div className="hidden lg:flex lg:w-1/2 relative overflow-hidden flex-col justify-between p-12 border-r border-slate-200 dark:border-slate-800/60">
-        {/* Gradient backdrop */}
-        <div className="absolute inset-0 bg-gradient-to-br from-slate-100 via-slate-50 to-white dark:from-slate-950 dark:via-[#090505] dark:to-black transition-all duration-300" />
+      <div className="hidden lg:flex lg:w-1/2 relative overflow-hidden flex-col justify-between p-12 border-r border-slate-800/60 shadow-[inset_-20px_0_40px_rgba(0,0,0,0.02)] dark">
         
-        {/* Background MP4 Video */}
+        {/* Background MP4 Video at base layer */}
         <video
           autoPlay
           loop
           muted
           playsInline
-          className="absolute inset-0 w-full h-full object-cover opacity-[0.12] dark:opacity-[0.25] pointer-events-none transition-opacity duration-300"
+          className="absolute inset-0 w-full h-full object-cover pointer-events-none"
         >
           <source src="/video.mp4" type="video/mp4" />
         </video>
+
+        {/* Overlay backdrop to make text readable but keep video visible */}
+        <div className="absolute inset-0 bg-gradient-to-br from-black/60 via-black/20 to-black/60 transition-all duration-300 pointer-events-none" />
         
         {/* HUD grid line pattern */}
         <div
@@ -111,9 +112,9 @@ export default function LoginPage() {
         {/* HUD Console Center Info */}
         <div className="relative z-10 max-w-md my-auto space-y-6">
           {/* Active indicator beacon */}
-          <div className="inline-flex items-center gap-2 bg-slate-200/50 dark:bg-red-950/20 border border-slate-300 dark:border-red-500/20 rounded-full px-3.5 py-1.5 shadow-sm">
+          <div className="inline-flex items-center gap-2 bg-red-950/20 border border-red-500/20 rounded-full px-3.5 py-1.5 shadow-sm">
             <span className="w-2 h-2 rounded-full bg-red-500 animate-ping" />
-            <span className="text-[10px] font-black text-red-500 dark:text-red-400 uppercase tracking-widest">
+            <span className="text-[10px] font-black text-red-400 uppercase tracking-widest">
               SISTEMA OPERATIVO ACTIVO
             </span>
           </div>
@@ -134,13 +135,13 @@ export default function LoginPage() {
             {FEATURES.map(({ icon: Icon, title, desc }) => (
               <div
                 key={title}
-                className="bg-white/80 dark:bg-slate-900/35 border border-slate-200 dark:border-slate-800/40 rounded-2xl p-4 hover:border-red-500/30 dark:hover:border-red-500/30 transition-all shadow-sm hover:shadow-md"
+                className="bg-white/70 dark:bg-slate-900/40 backdrop-blur-md border border-slate-200/50 dark:border-slate-800/40 rounded-2xl p-4 hover:bg-white/90 hover:border-red-500/30 dark:hover:border-red-500/30 transition-all shadow-sm hover:shadow-md"
               >
                 <div className="w-8 h-8 bg-red-500/10 dark:bg-red-500/20 rounded-lg flex items-center justify-center mb-3">
                   <Icon className="w-4 h-4 text-red-500 dark:text-red-400" />
                 </div>
                 <p className="font-bold text-xs text-slate-900 dark:text-white mb-1">{title}</p>
-                <p className="text-slate-500 dark:text-slate-500 text-[10px] leading-relaxed">{desc}</p>
+                <p className="text-slate-600 dark:text-slate-400 text-[10px] leading-relaxed">{desc}</p>
               </div>
             ))}
           </div>
@@ -149,7 +150,7 @@ export default function LoginPage() {
         {/* Footer Left Panel */}
         <div className="relative z-10 flex items-center justify-between border-t border-slate-200 dark:border-slate-800/40 pt-4 text-[10px] text-slate-450 dark:text-slate-600 font-mono">
           <span>[CONEXIÓN SECURA N360]</span>
-          <span>[BUILD: TACTICAL_2026]</span>
+          <span>[BY KODESK.CL]</span>
         </div>
       </div>
 

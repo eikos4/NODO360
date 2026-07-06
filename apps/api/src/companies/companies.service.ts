@@ -39,14 +39,11 @@ export class CompaniesService {
 
   async update(id: string, dto: UpdateCompanyDto) {
     await this.findById(id);
-    console.log('CompaniesService.update received dto:', dto);
     if (dto.number) {
       const exists = await this.prisma.company.findFirst({ where: { number: dto.number, id: { not: id } } });
       if (exists) throw new ConflictException(`Ya existe una compañía con el número ${dto.number}`);
     }
-    const result = this.prisma.company.update({ where: { id }, data: dto });
-    console.log('CompaniesService.update result:', result);
-    return result;
+    return this.prisma.company.update({ where: { id }, data: dto });
   }
 
   async deactivate(id: string) {

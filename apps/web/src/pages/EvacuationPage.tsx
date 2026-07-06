@@ -1,12 +1,11 @@
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import {
   Plus, Pencil, Trash2, X, Search, Building2, MapPin, Route, Users,
-  Calendar, CheckCircle2, Clock, XCircle, Map, List, Signpost,
+  Calendar, CheckCircle2, Clock, XCircle, Map as MapIcon, List, Signpost,
   ClipboardList, Filter, ChevronRight, PlayCircle,
 } from 'lucide-react';
-import { MapContainer, TileLayer, Marker, Popup, Polyline, CircleMarker } from 'react-leaflet';
-import L from 'leaflet';
+import { Map, AdvancedMarker, InfoWindow, useMap } from '@vis.gl/react-google-maps';
 import { api } from '../lib/api';
 import toast from 'react-hot-toast';
 import { useAuthStore } from '../store/authStore';
@@ -32,26 +31,41 @@ function asLatLng(obj: unknown): { lat: number; lng: number } | null {
   return null;
 }
 
-const meetingIcon = L.divIcon({
-  className: '',
-  html: '<div style="background:#10b981;width:22px;height:22px;border-radius:50%;border:3px solid white;box-shadow:0 2px 8px rgba(0,0,0,.35)"></div>',
-  iconSize: [22, 22],
-  iconAnchor: [11, 11],
-});
+const MeetingIcon = () => (
+  <div style={{ background: '#10b981', width: 22, height: 22, borderRadius: '50%', border: '3px solid white', boxShadow: '0 2px 8px rgba(0,0,0,.35)' }} />
+);
 
-const routeStartIcon = L.divIcon({
-  className: '',
-  html: '<div style="background:#3b82f6;width:18px;height:18px;border-radius:4px;border:2px solid white"></div>',
-  iconSize: [18, 18],
-  iconAnchor: [9, 9],
-});
+const RouteStartIcon = () => (
+  <div style={{ background: '#3b82f6', width: 18, height: 18, borderRadius: '4px', border: '2px solid white' }} />
+);
 
-const routeEndIcon = L.divIcon({
-  className: '',
-  html: '<div style="background:#ef4444;width:18px;height:18px;border-radius:4px;border:2px solid white"></div>',
-  iconSize: [18, 18],
-  iconAnchor: [9, 9],
-});
+const RouteEndIcon = () => (
+  <div style={{ background: '#ef4444', width: 18, height: 18, borderRadius: '4px', border: '2px solid white' }} />
+);
+
+function MapPolyline({ positions, options }: { positions: [number, number][], options?: google.maps.PolylineOptions }) {
+  const map = useMap();
+  const [polyline, setPolyline] = useState<google.maps.Polyline | null>(null);
+
+  useEffect(() => {
+    if (!map) return;
+    const path = positions.map(p => ({ lat: p[0], lng: p[1] }));
+    if (!polyline) {
+      setPolyline(new google.maps.Polyline({ map, path, ...options }));
+    } else {
+      polyline.setPath(path);
+      if (options) polyline.setOptions(options);
+    }
+  }, [map, positions, options]);
+
+  useEffect(() => {
+    return () => {
+      if (polyline) polyline.setMap(null);
+    };
+  }, [polyline]);
+
+  return null;
+}
 
 type Tab = 'resumen' | 'simulacros' | 'puntos' | 'rutas' | 'mapa';
 
@@ -109,6 +123,8 @@ export default function EvacuationPage() {
   const [showRouteForm, setShowRouteForm] = useState(false);
   const [routeForm, setRouteForm] = useState(EMPTY_ROUTE);
   const [editingRoute, setEditingRoute] = useState<any>(null);
+
+  const [selectedMarkerInfo, setSelectedMarkerInfo] = useState<{ id: string, lat: number, lng: number, title: string, subtitle?: string } | null>(null);
 
   const { data: companies } = useQuery({
     queryKey: ['companies'],
@@ -314,7 +330,7 @@ export default function EvacuationPage() {
     { id: 'simulacros', label: 'Simulacros', icon: PlayCircle },
     { id: 'puntos', label: 'Puntos de encuentro', icon: Users },
     { id: 'rutas', label: 'Rutas', icon: Route },
-    { id: 'mapa', label: 'Mapa', icon: Map },
+    { id: 'mapa', label: 'Mapa', icon: MapIcon },
   ];
 
   return (
@@ -540,18 +556,14 @@ export default function EvacuationPage() {
 
       {tab === 'mapa' && (
         <div className="bg-slate-900 border border-slate-800 rounded-2xl overflow-hidden h-[min(520px,70vh)]">
-          <MapContainer center={MAP_CENTER} zoom={14} style={{ height: '100%', width: '100%' }} className="z-0">
-            <TileLayer attribution='&copy; OpenStreetMap' url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png" />
+          <Map defaultCenter={{ lat: MAP_CENTER[0], lng: MAP_CENTER[1] }} defaultZoom={14} style={{ height: '100%', width: '100%' }} className="z-0" mapId="evac-map">
             {meetingPoints.map((p: any) => {
               const loc = asLatLng(p.location);
               if (!loc) return null;
               return (
-                <Marker key={p.id} position={[loc.lat, loc.lng]} icon={meetingIcon}>
-                  <Popup>
-                    <strong>{p.name}</strong>
-                    {p.address && <p className="text-xs mt-1">{p.address}</p>}
-                  </Popup>
-                </Marker>
+                <AdvancedMarker key={p.id} position={loc} onClick={() => setSelectedMarkerInfo({ id: p.id, lat: loc.lat, lng: loc.lng, title: p.name, subtitle: p.address })}>
+                  <MeetingIcon />
+                </AdvancedMarker>
               );
             })}
             {routes.map((r: any) => {
@@ -566,17 +578,25 @@ export default function EvacuationPage() {
               });
               return (
                 <span key={r.id}>
-                  <Polyline positions={positions} pathOptions={{ color: '#3b82f6', weight: 4, opacity: 0.7 }} />
-                  <Marker position={[start.lat, start.lng]} icon={routeStartIcon}>
-                    <Popup>Inicio: {r.name}</Popup>
-                  </Marker>
-                  <Marker position={[end.lat, end.lng]} icon={routeEndIcon}>
-                    <Popup>Fin: {r.name}</Popup>
-                  </Marker>
+                  <MapPolyline positions={positions} options={{ strokeColor: '#3b82f6', strokeWeight: 4, strokeOpacity: 0.7 }} />
+                  <AdvancedMarker position={start} onClick={() => setSelectedMarkerInfo({ id: `rs-${r.id}`, lat: start.lat, lng: start.lng, title: `Inicio: ${r.name}` })}>
+                    <RouteStartIcon />
+                  </AdvancedMarker>
+                  <AdvancedMarker position={end} onClick={() => setSelectedMarkerInfo({ id: `re-${r.id}`, lat: end.lat, lng: end.lng, title: `Fin: ${r.name}` })}>
+                    <RouteEndIcon />
+                  </AdvancedMarker>
                 </span>
               );
             })}
-          </MapContainer>
+            {selectedMarkerInfo && (
+              <InfoWindow position={{ lat: selectedMarkerInfo.lat, lng: selectedMarkerInfo.lng }} onCloseClick={() => setSelectedMarkerInfo(null)} pixelOffset={[0, -10]}>
+                <div className="text-slate-900 min-w-[150px]">
+                  <strong>{selectedMarkerInfo.title}</strong>
+                  {selectedMarkerInfo.subtitle && <p className="text-xs mt-1">{selectedMarkerInfo.subtitle}</p>}
+                </div>
+              </InfoWindow>
+            )}
+          </Map>
         </div>
       )}
 

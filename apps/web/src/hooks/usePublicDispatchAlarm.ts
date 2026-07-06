@@ -2,6 +2,7 @@ import { useCallback, useEffect, useRef } from 'react';
 import { loadDispatchSoundMode } from '../lib/emergency-sounds';
 import { useDispatchAudio } from './useDispatchAudio';
 import { normalizeSpeechText } from '../lib/dispatch-tts-voices';
+import { useDispatchTTS } from './useDispatchTTS';
 
 export type AlarmEmergency = {
   id: string;
@@ -10,28 +11,6 @@ export type AlarmEmergency = {
   radioMessage?: string;
   dispatchedAt: string;
 };
-
-function speakBrowser(text: string): Promise<void> {
-  const normalized = normalizeSpeechText(text);
-  if (!normalized || !window.speechSynthesis) return Promise.resolve();
-
-  return new Promise((resolve) => {
-    window.speechSynthesis.cancel();
-    const utt = new SpeechSynthesisUtterance(normalized);
-    const voices = window.speechSynthesis.getVoices();
-    const match =
-      voices.find((v) => v.lang.startsWith('es-CL'))
-      ?? voices.find((v) => v.lang.startsWith('es'))
-      ?? voices[0];
-    if (match) utt.voice = match;
-    utt.lang = match?.lang ?? 'es-CL';
-    utt.rate = 1;
-    utt.volume = 1;
-    utt.onend = () => resolve();
-    utt.onerror = () => resolve();
-    window.speechSynthesis.speak(utt);
-  });
-}
 
 function delay(ms: number) {
   return new Promise<void>((r) => setTimeout(r, ms));
@@ -42,6 +21,9 @@ export function usePublicDispatchAlarm(
   options: { enabled: boolean; muted?: boolean },
 ) {
   const { playSiren, playEmergencySound } = useDispatchAudio(loadDispatchSoundMode());
+  // Use Elvira voice
+  const { speak } = useDispatchTTS({ voiceId: 'elvira', ratePercent: 5 });
+  
   const announcedRef = useRef<Set<string>>(new Set());
   const playingRef = useRef(false);
   const initializedRef = useRef(false);
@@ -56,12 +38,14 @@ export function usePublicDispatchAlarm(
       await playSiren(3000);
       await delay(250);
       if (emergency.radioMessage?.trim()) {
-        await speakBrowser(emergency.radioMessage);
+        await new Promise<void>((resolve) => {
+          speak(emergency.radioMessage!, resolve);
+        });
       }
     } finally {
       playingRef.current = false;
     }
-  }, [options.enabled, options.muted, playEmergencySound, playSiren]);
+  }, [options.enabled, options.muted, playEmergencySound, playSiren, speak]);
 
   useEffect(() => {
     if (!options.enabled || options.muted) return;
@@ -85,5 +69,5 @@ export function usePublicDispatchAlarm(
     void playAlarmSequence(emergency);
   }, [playAlarmSequence]);
 
-  return { replay };
+  return { replay, speak };
 }

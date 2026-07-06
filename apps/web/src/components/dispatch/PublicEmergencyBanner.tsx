@@ -11,7 +11,7 @@ export default function PublicEmergencyBanner({ emergency, onFinalize, onReplayA
   const vehicles = emergency.vehicles ?? [];
 
   return (
-    <div className="relative overflow-hidden border-b-4 border-red-500 bg-gradient-to-r from-red-950 via-red-900/95 to-red-950 shadow-[0_0_60px_rgba(239,68,68,0.35)] animate-pulse-slow">
+    <div className="shrink-0 relative overflow-hidden border-b-4 border-red-500 bg-gradient-to-r from-red-950 via-red-900/95 to-red-950 shadow-[0_0_60px_rgba(239,68,68,0.35)] animate-pulse-slow">
       <div className="absolute inset-0 bg-[repeating-linear-gradient(-45deg,transparent,transparent_12px,rgba(239,68,68,0.08)_12px,rgba(239,68,68,0.08)_24px)]" />
       <div className="relative max-w-[1600px] mx-auto px-4 sm:px-6 py-4 sm:py-5">
         <div className="flex flex-col lg:flex-row lg:items-center gap-4">

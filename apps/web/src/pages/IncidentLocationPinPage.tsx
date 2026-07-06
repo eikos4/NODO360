@@ -1,8 +1,6 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useParams } from 'react-router-dom';
-import { MapContainer, TileLayer, Marker, Circle, useMap } from 'react-leaflet';
-import L from 'leaflet';
-import 'leaflet/dist/leaflet.css';
+import { Map, AdvancedMarker, useMap } from '@vis.gl/react-google-maps';
 import {
   MapPin, Navigation, CheckCircle2, Loader2, AlertTriangle, Siren, ExternalLink,
 } from 'lucide-react';
@@ -35,36 +33,30 @@ type PinData = {
 function FitPoints({ points }: { points: [number, number][] }) {
   const map = useMap();
   useEffect(() => {
-    if (points.length === 0) return;
+    if (!map || points.length === 0) return;
     if (points.length === 1) {
-      map.setView(points[0], 16);
+      map.setCenter({ lat: points[0][0], lng: points[0][1] });
+      map.setZoom(16);
       return;
     }
-    map.fitBounds(L.latLngBounds(points), { padding: [40, 40], maxZoom: 17 });
+    const bounds = new google.maps.LatLngBounds();
+    points.forEach(p => bounds.extend({ lat: p[0], lng: p[1] }));
+    map.fitBounds(bounds, 40);
   }, [map, points]);
   return null;
 }
 
-const dispatchIcon = L.divIcon({
-  className: '',
-  html: '<div style="background:#f97316;width:14px;height:14px;border-radius:50%;border:3px solid white;box-shadow:0 2px 8px rgba(0,0,0,.35)"></div>',
-  iconSize: [14, 14],
-  iconAnchor: [7, 7],
-});
+const DispatchIcon = () => (
+  <div style={{ background: '#f97316', width: 14, height: 14, borderRadius: '50%', border: '3px solid white', boxShadow: '0 2px 8px rgba(0,0,0,.35)' }} />
+);
 
-const fieldIcon = L.divIcon({
-  className: '',
-  html: '<div style="background:#22c55e;width:18px;height:18px;border-radius:50%;border:3px solid white;box-shadow:0 0 12px #22c55e"></div>',
-  iconSize: [18, 18],
-  iconAnchor: [9, 9],
-});
+const FieldIcon = () => (
+  <div style={{ background: '#22c55e', width: 18, height: 18, borderRadius: '50%', border: '3px solid white', boxShadow: '0 0 12px #22c55e' }} />
+);
 
-const youIcon = L.divIcon({
-  className: '',
-  html: '<div style="background:#3b82f6;width:16px;height:16px;border-radius:50%;border:3px solid white;box-shadow:0 0 10px #3b82f6"></div>',
-  iconSize: [16, 16],
-  iconAnchor: [8, 8],
-});
+const YouIcon = () => (
+  <div style={{ background: '#3b82f6', width: 16, height: 16, borderRadius: '50%', border: '3px solid white', boxShadow: '0 0 10px #3b82f6' }} />
+);
 
 export default function IncidentLocationPinPage() {
   const { token } = useParams<{ token: string }>();
@@ -228,24 +220,31 @@ export default function IncidentLocationPinPage() {
         )}
 
         <div className="rounded-2xl border border-slate-700 overflow-hidden h-[280px]">
-          <MapContainer center={mapCenter} zoom={15} className="h-full w-full" scrollWheelZoom>
-            <TileLayer url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png" />
+          <Map
+            defaultCenter={{ lat: mapCenter[0], lng: mapCenter[1] }}
+            defaultZoom={15}
+            mapId="incident-pin-map"
+            className="w-full h-full"
+            disableDefaultUI={true}
+            gestureHandling="greedy"
+          >
             <FitPoints points={mapPoints.length ? mapPoints : [mapCenter]} />
             {data?.dispatchGps && (
-              <Marker position={[data!.dispatchGps.latitude, data!.dispatchGps.longitude]} icon={dispatchIcon} />
+              <AdvancedMarker position={{ lat: data.dispatchGps.latitude, lng: data.dispatchGps.longitude }}>
+                <DispatchIcon />
+              </AdvancedMarker>
             )}
             {data?.fieldGps && (
-              <Marker position={[data!.fieldGps.latitude, data!.fieldGps.longitude]} icon={fieldIcon} />
+              <AdvancedMarker position={{ lat: data.fieldGps.latitude, lng: data.fieldGps.longitude }}>
+                <FieldIcon />
+              </AdvancedMarker>
             )}
             {pos && (
-              <>
-                <Marker position={[pos.lat, pos.lng]} icon={youIcon} />
-                {pos.accuracy != null && pos.accuracy < 200 && (
-                  <Circle center={[pos.lat, pos.lng]} radius={pos.accuracy} pathOptions={{ color: '#3b82f6', fillOpacity: 0.08 }} />
-                )}
-              </>
+              <AdvancedMarker position={{ lat: pos.lat, lng: pos.lng }}>
+                <YouIcon />
+              </AdvancedMarker>
             )}
-          </MapContainer>
+          </Map>
         </div>
 
         <div className="flex flex-wrap gap-3 text-[10px] text-slate-400">

@@ -29,6 +29,14 @@ export class DispatchCentralController {
     return this.service.getPublicBySlug(slug);
   }
 
+  @Get('public/:slug/search-operative/:number')
+  searchOperative(
+    @Param('slug') slug: string,
+    @Param('number') operativeNumber: string,
+  ) {
+    return this.service.searchOperativeGlobally(slug, parseInt(operativeNumber, 10));
+  }
+
   @Patch('public/:slug/availability')
   toggleAvailability(
     @Param('slug') slug: string,

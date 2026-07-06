@@ -73,10 +73,10 @@ export default function PwaInstallPrompt() {
   if (!showPrompt || isStandalone) return null;
 
   return (
-    <div className="fixed bottom-4 left-4 right-4 md:left-auto md:right-4 md:w-96 bg-[#06090e]/95 backdrop-blur-xl border border-red-500/30 p-5 rounded-2xl shadow-2xl z-50 animate-in slide-in-from-bottom-10 fade-in duration-500">
+    <div className="fixed bottom-4 left-4 right-4 md:left-auto md:right-4 md:w-96 bg-white/95 dark:bg-[#06090e]/95 backdrop-blur-xl border border-slate-200 dark:border-red-500/30 p-5 rounded-2xl shadow-2xl z-50 animate-in slide-in-from-bottom-10 fade-in duration-500">
       <button 
         onClick={() => setShowPrompt(false)}
-        className="absolute top-3 right-3 text-slate-500 hover:text-white transition-colors"
+        className="absolute top-3 right-3 text-slate-400 hover:text-slate-600 dark:text-slate-500 dark:hover:text-white transition-colors"
       >
         <X className="w-5 h-5" />
       </button>
@@ -87,14 +87,14 @@ export default function PwaInstallPrompt() {
         </div>
         
         <div className="flex-1 pr-4">
-          <h3 className="text-sm font-bold text-white mb-1">Instalar Nodo360 App</h3>
+          <h3 className="text-sm font-bold text-slate-900 dark:text-white mb-1">Instalar Nodo360 App</h3>
           {isIOS ? (
-            <p className="text-xs text-slate-400 leading-relaxed">
-              Para instalar la app en tu dispositivo Apple y usarla sin distracciones, presiona <Share className="inline w-3 h-3 mx-0.5 text-white" /> y luego <strong>"Agregar a inicio"</strong>.
+            <p className="text-xs text-slate-600 dark:text-slate-400 leading-relaxed">
+              Para instalar la app en tu dispositivo Apple y usarla sin distracciones, presiona <Share className="inline w-3 h-3 mx-0.5 text-slate-900 dark:text-white" /> y luego <strong>"Agregar a inicio"</strong>.
             </p>
           ) : (
             <div className="flex flex-col gap-3">
-              <p className="text-xs text-slate-400 leading-relaxed">
+              <p className="text-xs text-slate-600 dark:text-slate-400 leading-relaxed">
                 Instala la plataforma en tu dispositivo para una experiencia a pantalla completa y notificaciones directas.
               </p>
               

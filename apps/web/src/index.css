@@ -36,6 +36,10 @@
     font-family: 'Inter', system-ui, sans-serif;
     transition: background-color 0.2s ease, color 0.2s ease;
     min-height: 100%;
+    /* PWA Native App feel */
+    overscroll-behavior-y: none;
+    touch-action: manipulation;
+    -webkit-tap-highlight-color: transparent;
   }
 
   html, body, #root {

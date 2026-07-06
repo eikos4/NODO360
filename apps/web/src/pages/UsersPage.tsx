@@ -4,6 +4,7 @@ import {
   Plus, Users, Shield, Building2, Pencil, UserX,
   Mail, CreditCard, Lock, X, CheckCircle2,
   ChevronRight, Search, SlidersHorizontal, FileDown, Camera, Hash,
+  Siren, Moon, Zap, Medal, Trophy
 } from 'lucide-react';
 import { api } from '../lib/api';
 import toast from 'react-hot-toast';
@@ -25,6 +26,10 @@ const ROLES = [
 ];
 
 const roleInfo = (val: string) => ROLES.find(r => r.value === val) ?? ROLES[6];
+
+const ICON_MAP: Record<string, any> = {
+  Siren, Moon, Shield, Zap, Medal, Trophy
+};
 
 const AVATAR_COLORS = [
   'from-red-500 to-red-700', 'from-orange-500 to-orange-700', 'from-amber-500 to-amber-700',
@@ -431,6 +436,31 @@ export default function UsersPage() {
                 </button>
               </div>
             </div>
+
+            {/* Medallas (Gamificación) */}
+            {selected.achievements?.length > 0 && (
+              <div className="px-5 pt-5 pb-2">
+                <p className="text-[10px] text-slate-500 font-bold uppercase tracking-widest mb-3 flex items-center gap-1">
+                  <Trophy className="w-3.5 h-3.5" /> Logros y Reconocimientos
+                </p>
+                <div className="flex flex-wrap gap-2">
+                  {selected.achievements.map((ua: any) => {
+                    const ach = ua.achievement;
+                    const Icon = ICON_MAP[ach.icon] || Medal;
+                    return (
+                      <div
+                        key={ua.id}
+                        title={`${ach.name}: ${ach.description}`}
+                        className={`flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg border ${ach.color} cursor-help transition-transform hover:scale-105`}
+                      >
+                        <Icon className="w-3.5 h-3.5" />
+                        <span className="text-[10px] font-bold tracking-wide">{ach.name}</span>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+            )}
 
             {/* Datos */}
             <div className="p-5 space-y-3">

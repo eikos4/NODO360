@@ -85,6 +85,9 @@ export type RosterMember = {
   photoUrl: string | null;
   stationAvailable: boolean;
   operativeNumber?: number | null;
+  companyId?: string | null;
+  supportCompanyId?: string | null;
+  supportCompanyName?: string | null;
 };
 
 export type MaquinistaMember = {
@@ -247,23 +250,32 @@ export default function DispatchPublicPage() {
   const [showBitacoraModal, setShowBitacoraModal] = useState(false);
   const [pendingBitacoraIds, setPendingBitacoraIds] = useState<string[]>(() => loadPendingBitacora());
   const [highlightEmergencyId, setHighlightEmergencyId] = useState<string | null>(null);
+  const [locationOverrides, setLocationOverrides] = useState<Record<string, { address: string; lat: number; lng: number }>>({});
   const emergenciesPanelRef = useRef<HTMLDivElement>(null);
 
   const publicUrl = typeof window !== 'undefined' ? window.location.href : '';
 
-  const activeEmergencies = useMemo(
-    () => (data?.recentEmergencies ?? []).filter((e) => e.status === 'ACTIVA'),
-    [data?.recentEmergencies],
-  );
+  const recentEmergencies = useMemo(() => {
+    return (data?.recentEmergencies ?? []).map(e => {
+      const over = locationOverrides[e.id];
+      if (over) {
+        return { ...e, address: over.address, latitude: over.lat, longitude: over.lng };
+      }
+      return e;
+    });
+  }, [data?.recentEmergencies, locationOverrides]);
 
-  const visibleActiveEmergency = useMemo(
-    () => activeEmergencies.find((e) => !dismissedIds.includes(e.id)) ?? null,
-    [activeEmergencies, dismissedIds],
-  );
+  const activeEmergencies = useMemo(() => {
+    return recentEmergencies.filter((e) => e.status === 'ACTIVA');
+  }, [recentEmergencies]);
+
+  const visibleActiveEmergency = useMemo(() => {
+    return activeEmergencies.find((e) => !dismissedIds.includes(e.id)) ?? null;
+  }, [activeEmergencies, dismissedIds]);
 
   const onEmergency = !!visibleActiveEmergency;
 
-  const { replay } = usePublicDispatchAlarm(activeEmergencies, {
+  const { replay, speak } = usePublicDispatchAlarm(activeEmergencies, {
     enabled: audioEnabled,
     muted: audioMuted,
   });
@@ -273,6 +285,9 @@ export default function DispatchPublicPage() {
     try {
       const res = await fetch(`${apiBase}/dispatch/public/${slug}`);
       if (!res.ok) {
+        if (res.status === 502 || res.status === 504) {
+          throw new Error('NetworkError: Vite proxy no pudo conectar con la API');
+        }
         const body = await res.json().catch(() => ({}));
         throw new Error(body.message ?? 'Central no disponible');
       }
@@ -381,8 +396,25 @@ export default function DispatchPublicPage() {
   }, [load]);
 
   useEffect(() => {
-    return subscribeDispatchLive(data?.id, () => { void load(); });
-  }, [data?.id, load]);
+    return subscribeDispatchLive(
+      data?.id, 
+      () => { void load(); },
+      undefined,
+      (event) => {
+        if (audioEnabled && !audioMuted) {
+          speak(`Atención, actualización de ubicación. Nueva dirección: ${event.newAddress}`);
+        }
+        setLocationOverrides(prev => ({
+          ...prev,
+          [event.incidentId]: { address: event.newAddress, lat: event.latitude, lng: event.longitude }
+        }));
+        toast.success(`Ubicación actualizada: ${event.newAddress}`, { 
+          icon: '📍', 
+          duration: 6000 
+        });
+      }
+    );
+  }, [data?.id, load, audioEnabled, audioMuted, speak]);
 
   const handleBitacoraOmit = (emergency: PublicEmergency) => {
     const next = addPendingBitacora(emergency.id);
@@ -427,10 +459,12 @@ export default function DispatchPublicPage() {
     }
   };
 
-  const toggleByOperativeNumber = async (markAvailable?: boolean) => {
-    const num = parseInt(operativeQuick.trim(), 10);
-    if (!slug || togglingId || !num || num < 1 || num > 999) {
-      toast.error('Ingresa un N° operativo válido (1–999)');
+  const toggleByOperativeNumber = async (markAvailableOrNum?: boolean | number, explicitNum?: number) => {
+    const isAvailableFlag = typeof markAvailableOrNum === 'boolean' ? markAvailableOrNum : undefined;
+    const num = explicitNum ?? (typeof markAvailableOrNum === 'number' ? markAvailableOrNum : parseInt(operativeQuick.trim(), 10));
+    
+    if (!slug || togglingId || !num || isNaN(num) || num < 1 || num > 9999) {
+      toast.error('Ingresa un N° operativo válido');
       return;
     }
     setTogglingId(`op-${num}`);
@@ -440,7 +474,7 @@ export default function DispatchPublicPage() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           operativeNumber: num,
-          ...(markAvailable !== undefined ? { available: markAvailable } : {}),
+          ...(isAvailableFlag !== undefined ? { available: isAvailableFlag } : {}),
         }),
       });
       if (!res.ok) {
@@ -554,7 +588,7 @@ export default function DispatchPublicPage() {
     );
   }
 
-  const { roster, maquinistas, fleet, recentEmergencies, emergencyStats } = data;
+  const { roster, maquinistas, fleet, emergencyStats } = data;
   const hqImage = data.headquartersImageUrl || DEFAULT_HQ;
   const qrUrl = `https://api.qrserver.com/v1/create-qr-code/?size=100x100&data=${encodeURIComponent(publicUrl)}&bgcolor=${th.qrBg}&color=${isDark ? 'ffffff' : '0f172a'}`;
 
@@ -618,6 +652,7 @@ export default function DispatchPublicPage() {
           data={data} 
           onToggleMember={toggleMember}
           onToggleMaquinista={toggleMaquinista}
+          onToggleByNumber={toggleByOperativeNumber}
           togglingId={togglingId}
           onEmergency={onEmergency}
         />

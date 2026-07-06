@@ -314,14 +314,35 @@ export class IncidentsService {
     const now = new Date();
     const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
 
-    const [total, thisMonth, open, byType, fromBotonera, withPlan] = await Promise.all([
+    const [total, thisMonth, open, byType, fromBotonera, withPlan, arrivedIncidents, topAvailable] = await Promise.all([
       this.prisma.incident.count({ where }),
       this.prisma.incident.count({ where: { ...where, dispatchedAt: { gte: startOfMonth } } }),
       this.prisma.incident.count({ where: { ...where, closedAt: null } }),
       this.prisma.incident.groupBy({ by: ['type'], where, _count: { id: true }, orderBy: { _count: { id: 'desc' } } }),
       this.prisma.incident.count({ where: { ...where, dispatchSource: DispatchSource.BOTONERA } }),
       this.prisma.incident.count({ where: { ...where, emergencyPlanId: { not: null } } }),
+      this.prisma.incident.findMany({
+        where: { ...where, arrivedAt: { not: null }, dispatchedAt: { not: null } },
+        select: { arrivedAt: true, dispatchedAt: true },
+        orderBy: { dispatchedAt: 'desc' },
+        take: 100, // calc average of last 100
+      }),
+      this.prisma.user.findMany({
+        where: { stationAvailable: true, ...(companyId ? { companyId } : {}) },
+        select: { id: true, firstName: true, lastName: true, stationAvailableAt: true, role: true },
+        orderBy: { stationAvailableAt: 'asc' },
+        take: 5,
+      })
     ]);
+
+    let avgArrivalSecs = 0;
+    if (arrivedIncidents.length > 0) {
+      const totalSecs = arrivedIncidents.reduce((acc, inc) => {
+        const diff = inc.arrivedAt!.getTime() - inc.dispatchedAt!.getTime();
+        return acc + Math.max(0, diff / 1000);
+      }, 0);
+      avgArrivalSecs = Math.round(totalSecs / arrivedIncidents.length);
+    }
 
     return {
       total,
@@ -329,6 +350,8 @@ export class IncidentsService {
       open,
       fromBotonera,
       withPlan,
+      avgArrivalSecs,
+      topAvailable,
       byType: byType.map((b) => ({ type: b.type, count: b._count.id })),
     };
   }

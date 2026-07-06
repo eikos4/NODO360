@@ -17,6 +17,7 @@ import type { CuartelItem } from '../components/botonera/CuartelOverviewPanel';
 import CentralExpressMap from '../components/central-express/CentralExpressMap';
 import CompanyMaquinistaAlert from '../components/dispatch/CompanyMaquinistaAlert';
 import DispatchVoiceConfigToggle from '../components/dispatch/DispatchVoiceConfigToggle';
+import DoubleDispatchConfirmModal from '../components/dispatch/DoubleDispatchConfirmModal';
 import { MAX_DISPATCH_VEHICLES } from '../lib/dispatch-selection';
 
 function LiveClock({ th }: { th: CentralExpressThemeTokens }) {
@@ -274,7 +275,7 @@ export default function CentralExpressPage() {
   };
 
   return (
-    <div className={`flex flex-col min-h-[calc(100vh-3rem)] -m-4 sm:-m-6 transition-colors duration-300 ${th.page}`}>
+    <div className={`flex flex-col h-full w-full transition-colors duration-300 ${th.page}`}>
       {/* Header */}
       <header className={`shrink-0 flex flex-wrap items-center justify-between gap-3 px-4 sm:px-6 py-3 border-b ${th.header} ${th.headerBorder}`}>
         <div className="flex items-center gap-3 min-w-0">
@@ -320,10 +321,7 @@ export default function CentralExpressPage() {
           >
             <Settings className="w-4 h-4" />
           </button>
-          <div className={`hidden lg:block text-right pl-2 border-l ${th.headerBorder}`}>
-            <p className={`text-xs font-semibold ${th.text}`}>{user?.firstName} {user?.lastName}</p>
-            <p className={`text-[10px] ${th.subtitle}`}>Operador de Central</p>
-          </div>
+          
         </div>
       </header>
 
@@ -362,7 +360,7 @@ export default function CentralExpressPage() {
               <input
                 value={d.address}
                 onChange={(e) => d.setAddress(e.target.value)}
-                placeholder="Av. Libertad 123"
+                placeholder="Parral,"
                 className={`w-full rounded-lg border px-3 py-2 text-sm ${th.input}`}
               />
             </div>
@@ -686,6 +684,15 @@ export default function CentralExpressPage() {
           Historial de despachos →
         </Link>
       </footer>
+
+      {d.pendingDoubleDispatch && (
+        <DoubleDispatchConfirmModal
+          companyName={d.pendingDoubleDispatch.companyName}
+          onConfirm={d.pendingDoubleDispatch.onConfirm}
+          onCancel={d.cancelDoubleDispatch}
+          isDark={isDark}
+        />
+      )}
     </div>
   );
 }

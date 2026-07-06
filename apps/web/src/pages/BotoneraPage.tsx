@@ -28,6 +28,7 @@ import DispatchTutorialOverlay from '../components/dispatch/DispatchTutorialOver
 import DispatchMapPicker from '../components/map/DispatchMapPicker';
 import DispatchVoiceConfigToggle from '../components/dispatch/DispatchVoiceConfigToggle';
 import CompanyMaquinistaAlert from '../components/dispatch/CompanyMaquinistaAlert';
+import DoubleDispatchConfirmModal from '../components/dispatch/DoubleDispatchConfirmModal';
 import {
   DISPATCH_TTS_VOICES,
   loadDispatchVoiceEnabled,
@@ -97,23 +98,34 @@ async function reverseGeocode(lat: number, lng: number): Promise<string | null> 
 const PRIMARY_EMERGENCY_KEYS = EMERGENCY_MAIN_TYPES.filter((m) => /^10-[0-9]$/.test(m.id));
 const EXTENDED_EMERGENCY_KEYS = EMERGENCY_MAIN_TYPES.filter((m) => /^10-1[0-2]$/.test(m.id));
 
+const COLOR_HEX: Record<string, string> = {
+  'bg-red-600': '#ef4444', 'bg-orange-600': '#f97316', 'bg-amber-600': '#f59e0b',
+  'bg-cyan-600': '#06b6d4', 'bg-blue-600': '#3b82f6', 'bg-yellow-500': '#eab308',
+  'bg-indigo-600': '#6366f1', 'bg-violet-600': '#8b5cf6', 'bg-slate-600': '#64748b',
+  'bg-slate-700': '#475569', 'bg-purple-600': '#9333ea', 'bg-stone-600': '#78716c',
+  'bg-teal-700': '#0f766e',
+};
+
 function EmergencyKeyButton({
   main,
   selectedType,
   dispatching,
   onClick,
   bt,
+  isDark,
 }: {
   main: EmergencyMainType;
   selectedType: string;
   dispatching: boolean;
   onClick: () => void;
   bt: BotoneraThemeTokens;
+  isDark: boolean;
 }) {
   const Icon = main.icon;
   const childSelected = main.subdivisions?.some((s) => s.id === selectedType);
   const isSelected = selectedType === main.id || childSelected;
   const hasAudio = hasEmergencyAudioFile(main.id);
+  const hex = COLOR_HEX[main.color] ?? '#64748b';
 
   return (
     <button
@@ -121,29 +133,45 @@ function EmergencyKeyButton({
       onClick={onClick}
       disabled={dispatching}
       title={`${main.code} — ${main.label}${hasAudio ? ' · tono MP3' : ''}`}
-      className={`relative flex flex-col items-center justify-center gap-1 p-2 rounded-xl border-2 font-semibold text-[10px] sm:text-xs transition-all active:scale-95 min-h-[64px] sm:min-h-[72px] touch-manipulation ${
-        isSelected
+      className={`relative flex flex-col items-center justify-center gap-1 p-2 rounded-xl border-2 font-semibold text-[10px] sm:text-xs transition-all active:scale-95 min-h-[64px] sm:min-h-[72px] touch-manipulation ${isSelected
           ? `${main.color} ${main.text} border-transparent ring-2 ${main.ring}/60 shadow-lg`
-          : bt.emergencyKeyIdle
-      }`}
+          : 'hover:scale-[1.03]'
+        }`}
+      style={
+        !isSelected
+          ? {
+            backgroundColor: isDark ? `${hex}15` : `${hex}10`,
+            borderColor: isDark ? `${hex}40` : `${hex}30`,
+          }
+          : undefined
+      }
     >
-      <span className={`absolute top-1 left-1 text-[9px] font-mono font-bold px-1 py-0.5 rounded leading-none ${isSelected ? 'bg-black/30 text-white' : bt.emergencyKeyCode}`}>
+      <span
+        className={`absolute top-1 left-1 text-[9px] font-mono font-bold px-1 py-0.5 rounded leading-none ${isSelected ? 'bg-black/30 text-white' : ''}`}
+        style={!isSelected ? { color: isDark ? `${hex}dd` : hex, backgroundColor: isDark ? `${hex}18` : `${hex}12` } : undefined}
+      >
         {main.code}
       </span>
       {EMERGENCY_MAIN_DIGIT_KEY[main.id] && (
-        <span className={`absolute top-1 right-1 text-[8px] font-mono opacity-60 ${isSelected ? 'text-white' : 'text-slate-500'}`}>
+        <span
+          className={`absolute top-1 right-1 text-[8px] font-mono ${isSelected ? 'text-white opacity-60' : ''}`}
+          style={!isSelected ? { color: isDark ? `${hex}88` : `${hex}99` } : undefined}
+        >
           {EMERGENCY_MAIN_DIGIT_KEY[main.id]}
         </span>
       )}
       {hasAudio && (
-        <span className={`absolute bottom-1 right-1 ${isSelected ? 'text-white/70' : 'text-amber-500/70'}`}>
+        <span className={`absolute bottom-1 right-1 ${isSelected ? 'text-white/70' : ''}`} style={!isSelected ? { color: `${hex}88` } : undefined}>
           <Volume2 className="w-3 h-3" />
         </span>
       )}
-      <Icon className={`w-5 h-5 mt-2 ${isSelected ? main.text : bt.emergencyKeyIcon}`} />
-      <span className="text-center leading-tight line-clamp-2 px-0.5">{main.shortLabel}</span>
+      <Icon className="w-5 h-5 mt-2" style={!isSelected ? { color: hex } : undefined} />
+      <span className={`text-center leading-tight line-clamp-2 px-0.5 ${isSelected ? '' : isDark ? 'text-slate-300' : 'text-slate-700'}`}>{main.shortLabel}</span>
       {main.subdivisions?.length ? (
-        <span className={`text-[8px] font-bold uppercase tracking-wide ${isSelected ? 'text-white/80' : 'text-amber-500/80'}`}>
+        <span
+          className={`text-[8px] font-bold uppercase tracking-wide ${isSelected ? 'text-white/80' : ''}`}
+          style={!isSelected ? { color: `${hex}aa` } : undefined}
+        >
           + detalle
         </span>
       ) : null}
@@ -166,9 +194,8 @@ function AudioPreviewButton({
     <button
       type="button"
       onClick={() => { if (!muted) void onPlay(); }}
-      className={`flex items-center gap-2 p-2.5 rounded-lg border text-left transition-colors ${
-        entry.isSubdivision ? bt.audioPreviewBtnSub : bt.audioPreviewBtn
-      }`}
+      className={`flex items-center gap-2 p-2.5 rounded-lg border text-left transition-colors ${entry.isSubdivision ? bt.audioPreviewBtnSub : bt.audioPreviewBtn
+        }`}
     >
       <span className="shrink-0 w-7 h-7 rounded-md bg-amber-600/20 border border-amber-500/30 flex items-center justify-center">
         <Volume2 className="w-3.5 h-3.5 text-amber-400" />
@@ -198,16 +225,23 @@ export default function BotoneraPage() {
   const { speak, stop } = useDispatchTTS({ voiceId: ttsVoiceId, ratePercent: ttsRate });
 
   /* Estado del despacho */
-  const [selectedType, setSelectedType]   = useState<string>('');
+  const [selectedType, setSelectedType] = useState<string>('');
   const [selectedVehicles, setSelectedVehicles] = useState<string[]>([]);
   const [selectedParticipants, setSelectedParticipants] = useState<string[]>([]);
-  const [address, setAddress]             = useState('');
-  const [latitude, setLatitude]           = useState('');
-  const [longitude, setLongitude]         = useState('');
-  const [pickOnMap, setPickOnMap]         = useState(true);
-  const [notes, setNotes]                 = useState('');
-  const [selectedCia, setSelectedCia]     = useState(user?.companyId ?? '');
+  const [address, setAddress] = useState('');
+  const [latitude, setLatitude] = useState('');
+  const [longitude, setLongitude] = useState('');
+  const [pickOnMap, setPickOnMap] = useState(true);
+  const [notes, setNotes] = useState('');
+  const [selectedCia, setSelectedCia] = useState(user?.companyId ?? '');
   const [tutorialActive, setTutorialActive] = useState(false);
+
+  const { data: incidents = [] } = useQuery({
+    queryKey: ['incidents', selectedCia],
+    queryFn: () => api.get('/incidents', { params: { companyId: selectedCia } }).then((r) => r.data),
+    enabled: !!selectedCia,
+    refetchInterval: 8000,
+  });
 
   useEffect(() => {
     const completed = localStorage.getItem('nodo360_dispatch_tutorial_completed');
@@ -220,12 +254,13 @@ export default function BotoneraPage() {
     setTutorialActive(false);
     localStorage.setItem('nodo360_dispatch_tutorial_completed', 'true');
   };
-  const [muted, setMuted]                 = useState(false);
-  const [dispatching, setDispatching]     = useState(false);
-  const [lastDispatch, setLastDispatch]   = useState<any>(null);
+  const [pendingDoubleDispatch, setPendingDoubleDispatch] = useState<{ companyName: string; onConfirm: () => void } | null>(null);
+  const [muted, setMuted] = useState(false);
+  const [dispatching, setDispatching] = useState(false);
+  const [lastDispatch, setLastDispatch] = useState<any>(null);
   const [locationPinPhone, setLocationPinPhone] = useState(() => localStorage.getItem('nodo360_location_pin_phone') ?? '');
-  const [showConfig, setShowConfig]       = useState(false);
-  const [repeatCount, setRepeatCount]     = useState(2);
+  const [showConfig, setShowConfig] = useState(false);
+  const [repeatCount, setRepeatCount] = useState(2);
   const [sirenDuration, setSirenDuration] = useState(3);
   const [voiceEnabled, setVoiceEnabledState] = useState(() => loadDispatchVoiceEnabled());
   const setVoiceEnabled = useCallback((value: boolean | ((prev: boolean) => boolean)) => {
@@ -235,11 +270,11 @@ export default function BotoneraPage() {
       return next;
     });
   }, []);
-  const [geocoding, setGeocoding]         = useState(false);
+  const [geocoding, setGeocoding] = useState(false);
   const [showPublicPanel, setShowPublicPanel] = useState(false);
-  const [showPersonal, setShowPersonal]   = useState(false);
-  const [now, setNow]                     = useState(() => new Date());
-  
+  const [showPersonal, setShowPersonal] = useState(false);
+  const [now, setNow] = useState(() => new Date());
+
   // PRE-DISPATCH GPS LOGIC
   const [preDispatchToken, setPreDispatchToken] = useState<string | null>(null);
 
@@ -255,7 +290,7 @@ export default function BotoneraPage() {
           setPickOnMap(true); // Cambiar vista a mapa
           toast.success('¡Coordenadas recibidas del reportante!', { duration: 6000 });
           setPreDispatchToken(null);
-          
+
           // Opcional: auto geocodificar para rellenar dirección
           try {
             const label = await reverseGeocode(lat, lng);
@@ -275,7 +310,7 @@ export default function BotoneraPage() {
     }
     const token = 'pre_' + crypto.randomUUID().replace(/-/g, '');
     setPreDispatchToken(token);
-    
+
     const url = buildLocationPinUrl(token);
     const message = buildLocationPinWhatsAppMessage({
       code: selectedType ? findEmergencyEntry(selectedType)?.code || '10-0' : '10-0',
@@ -283,7 +318,7 @@ export default function BotoneraPage() {
       address: address.trim() || 'Por confirmar',
       url,
     });
-    
+
     const wa = buildWhatsAppShareUrl(phone, message);
     if (!wa) {
       toast.error('Número inválido');
@@ -298,16 +333,16 @@ export default function BotoneraPage() {
     dispatching: false,
     canDispatch: false,
     ciaVehicles: [] as any[],
-    handleEmergencyTypeClick: (_main: EmergencyMainType) => {},
-    handleSubdivisionClick: (_sub: EmergencySubdivision, _main: EmergencyMainType) => {},
-    handleDispatch: () => {},
-    handleStop: () => {},
-    toggleVehicle: (_id: string) => {},
+    handleEmergencyTypeClick: (_main: EmergencyMainType) => { },
+    handleSubdivisionClick: (_sub: EmergencySubdivision, _main: EmergencyMainType) => { },
+    handleDispatch: () => { },
+    handleStop: () => { },
+    toggleVehicle: (_id: string) => { },
   });
 
   /* Datos */
   const { data: companies } = useQuery({ queryKey: ['companies'], queryFn: () => api.get('/companies').then(r => r.data) });
-  const { data: vehicles }  = useQuery({ queryKey: ['vehicles'],  queryFn: () => api.get('/vehicles').then(r => r.data) });
+  const { data: vehicles } = useQuery({ queryKey: ['vehicles'], queryFn: () => api.get('/vehicles').then(r => r.data) });
   const { data: users } = useQuery({ queryKey: ['users'], queryFn: () => api.get('/users').then(r => r.data) });
 
   const { data: dispatchConfig, refetch: refetchDispatch } = useQuery({
@@ -494,7 +529,7 @@ export default function BotoneraPage() {
     return buildDispatchRadioMessage(tid, a, aids, (vehicles ?? []) as { id: string; patent: string; type?: string }[]);
   }, [selectedType, selectedVehicles, address, vehicles]);
 
-  const runDispatch = useCallback(async (opts?: { typeId?: string; vehicleIds?: string[]; keyToneAlreadyPlayed?: boolean }) => {
+  const runDispatch = useCallback(async (opts?: { typeId?: string; vehicleIds?: string[]; keyToneAlreadyPlayed?: boolean; confirmDouble?: boolean }) => {
     const typeId = opts?.typeId ?? selectedType;
     const emerg = findEmergencyEntry(typeId);
     const vehicleIds = getVehicleIdsForDispatch(opts?.vehicleIds);
@@ -510,6 +545,18 @@ export default function BotoneraPage() {
 
     if (!hasMaquinistaAvailable(dispatchConfig?.maquinistas)) {
       if (!confirmDispatchWithoutMaquinista(formatCompanyLabel(company))) return;
+    }
+
+    const hasActive = (incidents as any[]).some((i) => !i.closedAt);
+    if (hasActive && !opts?.confirmDouble) {
+      setPendingDoubleDispatch({
+        companyName: formatCompanyLabel(company),
+        onConfirm: () => {
+          setPendingDoubleDispatch(null);
+          void runDispatch({ ...opts, confirmDouble: true });
+        },
+      });
+      return;
     }
 
     if (opts?.vehicleIds && opts.vehicleIds.length > 0) {
@@ -792,9 +839,6 @@ export default function BotoneraPage() {
               {dispatching && <span className="text-[10px] font-bold bg-red-600 text-white px-2 py-0.5 rounded-full animate-pulse shrink-0">● EN VIVO</span>}
             </h1>
             <p className={`text-[10px] sm:text-xs truncate max-w-[52vw] sm:max-w-none ${bt.headerSub}`}>
-              <span className="sm:hidden">{user?.firstName}</span>
-              <span className="hidden sm:inline">{user?.firstName} {user?.lastName}</span>
-              <span className={`hidden md:inline mx-1 ${bt.hint}`}>·</span>
               <span className="hidden md:inline">Claves 10-X · 0–9 · F1–F8 · Enter</span>
             </p>
           </div>
@@ -809,14 +853,7 @@ export default function BotoneraPage() {
             <Clock className={`w-3.5 h-3.5 ${bt.hint}`} />
             {now.toLocaleTimeString('es-CL', { hour: '2-digit', minute: '2-digit', second: '2-digit' })}
           </div>
-          <button
-            type="button"
-            onClick={toggleTheme}
-            className={`p-2 rounded-lg border transition-colors ${bt.btnTool}`}
-            title={isDark ? 'Modo claro' : 'Modo oscuro'}
-          >
-            {isDark ? <Sun className="w-4 h-4" /> : <Moon className="w-4 h-4" />}
-          </button>
+           
           <button
             type="button"
             onClick={() => setTutorialActive(true)}
@@ -850,7 +887,7 @@ export default function BotoneraPage() {
             <LayoutGrid className="w-4 h-4" />
             Variantes
           </Link>
-          
+
         </div>
       </header>
 
@@ -920,11 +957,10 @@ export default function BotoneraPage() {
                     key={v.id}
                     type="button"
                     onClick={() => selectTtsVoice(v.id)}
-                    className={`text-left p-3 rounded-xl border-2 transition-all ${
-                      selected
+                    className={`text-left p-3 rounded-xl border-2 transition-all ${selected
                         ? 'border-sky-500 bg-sky-600/15 shadow-lg shadow-sky-600/10'
                         : 'border-slate-700 bg-slate-800/60 hover:border-slate-600'
-                    }`}
+                      }`}
                   >
                     <div className="flex items-start justify-between gap-2">
                       <div className="min-w-0">
@@ -953,11 +989,10 @@ export default function BotoneraPage() {
                     key={opt.value}
                     type="button"
                     onClick={() => changeTtsRate(opt.value)}
-                    className={`px-3 py-1.5 rounded-lg text-xs font-semibold border ${
-                      ttsRate === opt.value
+                    className={`px-3 py-1.5 rounded-lg text-xs font-semibold border ${ttsRate === opt.value
                         ? 'bg-sky-600 text-white border-sky-500'
                         : 'bg-slate-800 text-slate-400 border-slate-700'
-                    }`}
+                      }`}
                   >
                     {opt.label}
                   </button>
@@ -989,11 +1024,10 @@ export default function BotoneraPage() {
                     setSoundMode(opt.id);
                     saveDispatchSoundMode(opt.id);
                   }}
-                  className={`px-3 py-1.5 rounded-lg text-[11px] font-semibold border ${
-                    soundMode === opt.id
+                  className={`px-3 py-1.5 rounded-lg text-[11px] font-semibold border ${soundMode === opt.id
                       ? 'bg-amber-600/20 border-amber-500 text-amber-300'
                       : 'bg-slate-800 border-slate-700 text-slate-400'
-                  }`}
+                    }`}
                 >
                   {opt.label}
                 </button>
@@ -1049,97 +1083,96 @@ export default function BotoneraPage() {
 
         {/* Compañía + dirección */}
         <div id="step-ubicacion" className={`order-1 lg:order-none lg:col-span-8 lg:row-start-1 shrink-0 p-3 sm:p-4 pb-2 sm:pb-3 space-y-3 border-b ${bt.formBand}`}>
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-              <div id="step-companias">
-                <label className={`block text-[10px] font-semibold uppercase tracking-wider mb-1.5 ${bt.formLabel}`}>Compañía despachante</label>
-                <div className="relative">
-                  <Building2 className={`absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 ${isDark ? 'text-slate-500' : 'text-red-400'}`} />
-                  <select
-                    value={selectedCia}
-                    onChange={(e) => {
-                      setSelectedCia(e.target.value);
-                      setSelectedVehicles([]);
-                      setSelectedParticipants([]);
-                    }}
-                    className={`w-full border rounded-xl pl-10 pr-4 py-2.5 text-sm font-semibold focus:outline-none appearance-none ${bt.input}`}
-                  >
-                    <option value="">Seleccionar compañía…</option>
-                    {(companies ?? []).map((c: any) => (
-                      <option key={c.id} value={c.id}>{c.number}ª Cía. — {c.name}</option>
-                    ))}
-                  </select>
-                </div>
-              </div>
-              <div>
-                <label className={`block text-[10px] font-semibold uppercase tracking-wider mb-1.5 ${bt.formLabel}`}>Dirección / ubicación</label>
-                <div className="flex gap-2">
-                  <div className="relative flex-1">
-                    <MapPin className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-red-400" />
-                    <input
-                      ref={addressInputRef}
-                      value={address}
-                      onChange={(e) => setAddress(e.target.value)}
-                      onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); searchAddressOnMap(); } }}
-                      placeholder="Calle, número, comuna…"
-                      className={`w-full border rounded-xl pl-10 pr-4 py-2.5 text-sm focus:outline-none ${bt.input}`}
-                    />
-                  </div>
-                  <button
-                    type="button"
-                    onClick={searchAddressOnMap}
-                    disabled={geocoding}
-                    className="shrink-0 flex items-center gap-1.5 px-4 py-2.5 rounded-xl bg-sky-600 hover:bg-sky-500 disabled:opacity-60 text-white text-sm font-semibold transition-colors"
-                  >
-                    {geocoding ? <Loader2 className="w-4 h-4 animate-spin" /> : <Search className="w-4 h-4" />}
-                    <span className="hidden sm:inline">Buscar</span>
-                  </button>
-                </div>
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            <div id="step-companias">
+              <label className={`block text-[10px] font-semibold uppercase tracking-wider mb-1.5 ${bt.formLabel}`}>Compañía despachante</label>
+              <div className="relative">
+                <Building2 className={`absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 ${isDark ? 'text-slate-500' : 'text-red-400'}`} />
+                <select
+                  value={selectedCia}
+                  onChange={(e) => {
+                    setSelectedCia(e.target.value);
+                    setSelectedVehicles([]);
+                    setSelectedParticipants([]);
+                  }}
+                  className={`w-full border rounded-xl pl-10 pr-4 py-2.5 text-sm font-semibold focus:outline-none appearance-none ${bt.input}`}
+                >
+                  <option value="">Seleccionar compañía…</option>
+                  {(companies ?? []).map((c: any) => (
+                    <option key={c.id} value={c.id}>{c.number}ª Cía. — {c.name}</option>
+                  ))}
+                </select>
               </div>
             </div>
-
-            {selectedCia && dispatchConfig && (
-              <CompanyMaquinistaAlert
-                company={company}
-                availableCount={maquinistasAvailable}
-                isDark={isDark}
-              />
-            )}
-
-            <textarea
-              value={notes}
-              onChange={(e) => setNotes(e.target.value)}
-              rows={1}
-              placeholder="Observaciones (opcional): acceso, piso, víctimas…"
-              className={`w-full border rounded-xl px-4 py-2 text-sm focus:outline-none resize-none ${bt.textarea}`}
-            />
+            <div>
+              <label className={`block text-[10px] font-semibold uppercase tracking-wider mb-1.5 ${bt.formLabel}`}>Dirección / ubicación</label>
+              <div className="flex gap-2">
+                <div className="relative flex-1">
+                  <MapPin className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-red-400" />
+                  <input
+                    ref={addressInputRef}
+                    value={address}
+                    onChange={(e) => setAddress(e.target.value)}
+                    onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); searchAddressOnMap(); } }}
+                    placeholder="Calle, número, comuna…"
+                    className={`w-full border rounded-xl pl-10 pr-4 py-2.5 text-sm focus:outline-none ${bt.input}`}
+                  />
+                </div>
+                <button
+                  type="button"
+                  onClick={searchAddressOnMap}
+                  disabled={geocoding}
+                  className="shrink-0 flex items-center gap-1.5 px-4 py-2.5 rounded-xl bg-sky-600 hover:bg-sky-500 disabled:opacity-60 text-white text-sm font-semibold transition-colors"
+                >
+                  {geocoding ? <Loader2 className="w-4 h-4 animate-spin" /> : <Search className="w-4 h-4" />}
+                  <span className="hidden sm:inline">Buscar</span>
+                </button>
+              </div>
+            </div>
           </div>
+
+          {selectedCia && dispatchConfig && (
+            <CompanyMaquinistaAlert
+              company={company}
+              availableCount={maquinistasAvailable}
+              isDark={isDark}
+            />
+          )}
+
+          <textarea
+            value={notes}
+            onChange={(e) => setNotes(e.target.value)}
+            rows={1}
+            placeholder="Observaciones (opcional): acceso, piso, víctimas…"
+            className={`w-full border rounded-xl px-4 py-2 text-sm focus:outline-none resize-none ${bt.textarea}`}
+          />
+        </div>
 
         {/* Mapa */}
         <div className={`order-2 lg:order-none lg:col-span-8 lg:row-start-2 relative w-full shrink-0 h-[min(38vh,340px)] min-h-[200px] sm:min-h-[240px] md:h-[36vh] lg:h-full lg:min-h-0 overflow-hidden lg:border-r ${bt.mapBorder}`}>
-            <DispatchMapPicker
-              latitude={latitude}
-              longitude={longitude}
-              pickActive={pickOnMap}
-              onPick={onMapPick}
-              height="100%"
-              theme={bt.mapTheme}
-              showGpsPanel
-            />
-            <div className="absolute top-2 left-2 sm:top-3 sm:left-3 z-[500] pointer-events-none">
-              <button
-                type="button"
-                onClick={() => setPickOnMap((p) => !p)}
-                className={`pointer-events-auto flex items-center gap-1.5 px-2.5 sm:px-3 py-1.5 rounded-lg text-[11px] sm:text-xs font-bold shadow-md border transition-colors ${
-                  pickOnMap
-                    ? 'bg-sky-600 text-white border-sky-500'
-                    : 'bg-white text-slate-700 border-slate-300 hover:bg-slate-50'
+          <DispatchMapPicker
+            latitude={latitude}
+            longitude={longitude}
+            pickActive={pickOnMap}
+            onPick={onMapPick}
+            height="100%"
+            theme={bt.mapTheme}
+            showGpsPanel
+          />
+          <div className="absolute top-2 left-2 sm:top-3 sm:left-3 z-[500] pointer-events-none">
+            <button
+              type="button"
+              onClick={() => setPickOnMap((p) => !p)}
+              className={`pointer-events-auto flex items-center gap-1.5 px-2.5 sm:px-3 py-1.5 rounded-lg text-[11px] sm:text-xs font-bold shadow-md border transition-colors ${pickOnMap
+                  ? 'bg-sky-600 text-white border-sky-500'
+                  : 'bg-white text-slate-700 border-slate-300 hover:bg-slate-50'
                 }`}
-              >
-                <Crosshair className="w-3.5 h-3.5" />
-                {pickOnMap ? 'Marcando' : 'Marcar'}
-              </button>
-            </div>
+            >
+              <Crosshair className="w-3.5 h-3.5" />
+              {pickOnMap ? 'Marcando' : 'Marcar'}
+            </button>
           </div>
+        </div>
 
         {/* Panel despacho — antes de claves en móvil */}
         <div className={`order-3 lg:order-none lg:col-span-4 lg:col-start-9 lg:row-start-1 lg:row-span-3 flex flex-col min-h-0 lg:h-full lg:overflow-hidden border-y lg:border-y-0 lg:border-l ${bt.rightPanel}`}>
@@ -1189,9 +1222,8 @@ export default function BotoneraPage() {
                         type="button"
                         onClick={() => toggleVehicle(v.id)}
                         disabled={dispatching}
-                        className={`w-full flex items-center gap-3 p-3 rounded-xl border-2 transition-all text-left ${
-                          sel ? bt.vehicleCardSel : bt.vehicleCard
-                        }`}
+                        className={`w-full flex items-center gap-3 p-3 rounded-xl border-2 transition-all text-left ${sel ? bt.vehicleCardSel : bt.vehicleCard
+                          }`}
                       >
                         {idx < 8 && (
                           <kbd className={`shrink-0 text-[9px] font-mono font-bold px-1.5 py-0.5 rounded border ${bt.vehicleKbd}`}>
@@ -1240,9 +1272,8 @@ export default function BotoneraPage() {
                         key={u.id}
                         type="button"
                         onClick={() => toggleParticipant(u.id)}
-                        className={`w-full flex items-center justify-between px-3 py-1.5 rounded-lg text-xs border transition-colors ${
-                          sel ? bt.listRowActive : bt.listRow
-                        }`}
+                        className={`w-full flex items-center justify-between px-3 py-1.5 rounded-lg text-xs border transition-colors ${sel ? bt.listRowActive : bt.listRow
+                          }`}
                       >
                         <span>{u.firstName} {u.lastName}</span>
                         <span className="text-[10px] opacity-60">{u.role}</span>
@@ -1266,11 +1297,10 @@ export default function BotoneraPage() {
                     <span className="text-emerald-400 font-bold tabular-nums">{dispatchConfig.roster.stats.available} disp.</span>
                   )}
                   {dispatchConfig.status && (
-                    <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full border ${
-                      dispatchConfig.status === 'DISPONIBLE'
+                    <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full border ${dispatchConfig.status === 'DISPONIBLE'
                         ? 'bg-emerald-500/15 text-emerald-400 border-emerald-500/30'
                         : 'bg-slate-800 text-slate-500 border-slate-700'
-                    }`}>
+                      }`}>
                       {dispatchConfig.status === 'DISPONIBLE' ? '● Online' : '○ Offline'}
                     </span>
                   )}
@@ -1353,9 +1383,8 @@ export default function BotoneraPage() {
                           {dispatchConfig.roster.members.map((m: {
                             id: string; firstName: string; lastName: string; roleLabel: string; stationAvailable: boolean;
                           }) => (
-                            <span key={m.id} className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-medium border ${
-                              m.stationAvailable ? 'bg-emerald-500/10 border-emerald-500/30 text-emerald-300' : 'bg-slate-800/60 border-slate-700 text-slate-400'
-                            }`}>
+                            <span key={m.id} className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-medium border ${m.stationAvailable ? 'bg-emerald-500/10 border-emerald-500/30 text-emerald-300' : 'bg-slate-800/60 border-slate-700 text-slate-400'
+                              }`}>
                               {m.stationAvailable ? <CheckCircle2 className="w-3 h-3" /> : <UserX className="w-3 h-3" />}
                               {m.firstName} {m.lastName}
                             </span>
@@ -1369,11 +1398,10 @@ export default function BotoneraPage() {
                         <h4 className="text-sm font-bold text-white flex items-center gap-2">
                           <Truck className="w-4 h-4 text-sky-400" />
                           Maquinistas
-                          <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full border ${
-                            dispatchConfig.maquinistas.stats.available > 0
+                          <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full border ${dispatchConfig.maquinistas.stats.available > 0
                               ? 'bg-sky-500/15 text-sky-300 border-sky-500/30'
                               : 'bg-amber-500/15 text-amber-300 border-amber-500/40'
-                          }`}>
+                            }`}>
                             {dispatchConfig.maquinistas.stats.available} habilitado{dispatchConfig.maquinistas.stats.available === 1 ? '' : 's'}
                           </span>
                         </h4>
@@ -1381,10 +1409,9 @@ export default function BotoneraPage() {
                           {dispatchConfig.maquinistas.members.map((m: {
                             id: string; firstName: string; lastName: string; maquinistaAvailable: boolean; maquinistaPrincipal: boolean;
                           }) => (
-                            <span key={m.id} className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-medium border ${
-                              m.maquinistaPrincipal ? 'bg-amber-500/10 border-amber-500/30 text-amber-300'
+                            <span key={m.id} className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-medium border ${m.maquinistaPrincipal ? 'bg-amber-500/10 border-amber-500/30 text-amber-300'
                                 : m.maquinistaAvailable ? 'bg-sky-500/10 border-sky-500/30 text-sky-300' : 'bg-slate-800/60 border-slate-700 text-slate-400'
-                            }`}>
+                              }`}>
                               {m.maquinistaPrincipal && <Star className="w-3 h-3 fill-amber-400 text-amber-400" />}
                               {m.firstName} {m.lastName}
                             </span>
@@ -1423,17 +1450,17 @@ export default function BotoneraPage() {
                   title="Enviar link AHORA para obtener coordenadas"
                 >
                   <MessageCircle className="w-4 h-4" />
-                  Localizar 
+                  Localizar
                 </button>
               </div>
-              
+
               {preDispatchToken && (
                 <div className="mt-2 flex flex-col gap-1.5 text-xs text-emerald-400 bg-emerald-500/10 border border-emerald-500/20 px-3 py-2.5 rounded-xl">
                   <div className="flex items-center gap-2">
                     <Loader2 className="w-4 h-4 animate-spin shrink-0" />
                     <span className="font-semibold">Esperando coordenadas del reportante...</span>
                   </div>
-                  <a 
+                  <a
                     href={buildLocationPinUrl(preDispatchToken)}
                     target="_blank"
                     rel="noreferrer"
@@ -1467,11 +1494,10 @@ export default function BotoneraPage() {
                 type="button"
                 onClick={handleDispatch}
                 disabled={!canDispatch}
-                className={`w-full flex items-center justify-center gap-3 font-black py-4 sm:py-5 rounded-2xl text-lg sm:text-xl tracking-wide transition-all active:scale-[0.98] min-h-[52px] ${
-                  canDispatch
+                className={`w-full flex items-center justify-center gap-3 font-black py-4 sm:py-5 rounded-2xl text-lg sm:text-xl tracking-wide transition-all active:scale-[0.98] min-h-[52px] ${canDispatch
                     ? 'bg-red-600 hover:bg-red-500 text-white shadow-xl shadow-red-600/30 ring-4 ring-red-500/20'
                     : bt.dispatchBtnDisabled
-                }`}
+                  }`}
               >
                 <Siren className={`w-6 h-6 sm:w-7 sm:h-7 ${canDispatch ? 'animate-pulse' : ''}`} />
                 DESPACHAR
@@ -1510,6 +1536,7 @@ export default function BotoneraPage() {
                     dispatching={dispatching}
                     onClick={() => handleEmergencyTypeClick(main)}
                     bt={bt}
+                    isDark={isDark}
                   />
                 ))}
               </div>
@@ -1525,6 +1552,7 @@ export default function BotoneraPage() {
                     dispatching={dispatching}
                     onClick={() => handleEmergencyTypeClick(main)}
                     bt={bt}
+                    isDark={isDark}
                   />
                 ))}
               </div>
@@ -1547,11 +1575,10 @@ export default function BotoneraPage() {
                       onClick={() => handleSubdivisionClick(sub, activeMainWithSubs)}
                       disabled={dispatching}
                       title={`${sub.code} — ${sub.label}`}
-                      className={`relative flex flex-col items-center justify-center gap-1 p-2 rounded-lg border-2 text-[10px] font-semibold transition-all active:scale-95 min-h-[60px] sm:min-h-0 ${
-                        isSubSelected
+                      className={`relative flex flex-col items-center justify-center gap-1 p-2 rounded-lg border-2 text-[10px] font-semibold transition-all active:scale-95 min-h-[60px] sm:min-h-0 ${isSubSelected
                           ? `${activeMainWithSubs.color} ${activeMainWithSubs.text} border-transparent ring-2 ${activeMainWithSubs.ring}/50`
                           : bt.subKeyIdle
-                      }`}
+                        }`}
                     >
                       <span className={`font-mono font-bold text-[9px] ${isSubSelected ? 'text-white' : 'text-amber-400'}`}>
                         {sub.code}
@@ -1573,9 +1600,8 @@ export default function BotoneraPage() {
           {readiness.map((r) => (
             <span
               key={r.label}
-              className={`flex-1 text-center text-[9px] font-bold uppercase py-1 rounded-md border ${
-                r.ok ? bt.mobileReadyOk : bt.mobileReadyIdle
-              }`}
+              className={`flex-1 text-center text-[9px] font-bold uppercase py-1 rounded-md border ${r.ok ? bt.mobileReadyOk : bt.mobileReadyIdle
+                }`}
             >
               {r.ok ? '✓' : '○'} {r.label}
             </span>
@@ -1596,11 +1622,10 @@ export default function BotoneraPage() {
               type="button"
               onClick={handleDispatch}
               disabled={!canDispatch}
-              className={`flex-1 flex items-center justify-center gap-2 font-black py-3 rounded-xl text-base min-h-[44px] ${
-                canDispatch
+              className={`flex-1 flex items-center justify-center gap-2 font-black py-3 rounded-xl text-base min-h-[44px] ${canDispatch
                   ? 'bg-red-600 text-white shadow-lg shadow-red-600/30'
                   : bt.dispatchBtnDisabled
-              }`}
+                }`}
             >
               <Siren className={`w-5 h-5 ${canDispatch ? 'animate-pulse' : ''}`} />
               DESPACHAR
@@ -1758,12 +1783,16 @@ export default function BotoneraPage() {
           </div>
         </div>
       )}
-      
-      <DispatchTutorialOverlay
-        isOpen={tutorialActive}
-        onClose={handleCloseTutorial}
-      />
+
+      <DispatchTutorialOverlay isOpen={tutorialActive} onClose={handleCloseTutorial} />
+      {pendingDoubleDispatch && (
+        <DoubleDispatchConfirmModal
+          companyName={pendingDoubleDispatch.companyName}
+          onConfirm={pendingDoubleDispatch.onConfirm}
+          onCancel={() => setPendingDoubleDispatch(null)}
+          isDark={isDark}
+        />
+      )}
     </div>
   );
 }
-

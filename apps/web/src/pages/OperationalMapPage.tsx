@@ -2,13 +2,11 @@ import { useState, useEffect, useMemo } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { Link } from 'react-router-dom';
 import {
-  Map, Layers, Building2, Droplets, Users, Route, ShieldAlert,
+  Map as MapIcon, Layers, Building2, Droplets, Users, Route, ShieldAlert,
   Maximize2, RefreshCw, ChevronRight, Radio, Siren, UserCheck,
   Sun, Moon, Truck, Navigation, Satellite, Mountain
 } from 'lucide-react';
-import { MapContainer, TileLayer, Marker, Popup, Polyline, useMap } from 'react-leaflet';
-import L from 'leaflet';
-import 'leaflet/dist/leaflet.css';
+import { Map, AdvancedMarker, InfoWindow, useMap } from '@vis.gl/react-google-maps';
 import { api } from '../lib/api';
 import { useAuthStore } from '../store/authStore';
 import { useOperationalMapTheme } from '../hooks/useOperationalMapTheme';
@@ -22,27 +20,23 @@ const LIVE_POLL_URGENT = 2_000;
 const BASE_LAYERS = {
   streets: {
     label: 'Calles',
-    icon: Map,
-    url: 'https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',
-    attribution: '&copy; OpenStreetMap',
+    icon: MapIcon,
+    mapTypeId: 'roadmap',
   },
   satellite: {
     label: 'Satélite',
     icon: Satellite,
-    url: 'https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}',
-    attribution: '&copy; Esri',
+    mapTypeId: 'satellite',
   },
   dark: {
     label: 'Oscuro',
     icon: Moon,
-    url: 'https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png',
-    attribution: '&copy; CARTO',
+    mapTypeId: 'roadmap', // Or styling via mapId
   },
   topo: {
     label: 'Topográfico',
     icon: Mountain,
-    url: 'https://{s}.tile.opentopomap.org/{z}/{x}/{y}.png',
-    attribution: '&copy; OpenTopoMap',
+    mapTypeId: 'terrain',
   },
 } as const;
 
@@ -54,65 +48,40 @@ const HYDRANT_STATUS: Record<string, { label: string; color: string }> = {
   EN_MANTENCION: { label: 'En mantención', color: '#f59e0b' },
 };
 
-function divIcon(color: string, shape: 'circle' | 'square' | 'diamond' = 'circle') {
+const DivIcon = ({ color, shape = 'circle' }: { color: string, shape?: 'circle' | 'square' | 'diamond' }) => {
   const radius = shape === 'circle' ? '50%' : '4px';
   const transform = shape === 'diamond' ? 'rotate(45deg)' : 'none';
-  return L.divIcon({
-    className: '',
-    html: `<div style="background:${color};width:22px;height:22px;border-radius:${radius};transform:${transform};border:3px solid white;box-shadow:0 2px 8px rgba(0,0,0,.35)"></div>`,
-    iconSize: [22, 22],
-    iconAnchor: [11, 11],
-    popupAnchor: [0, -12],
-  });
-}
+  return (
+    <div style={{ background: color, width: 22, height: 22, borderRadius: radius, transform, border: '3px solid white', boxShadow: '0 2px 8px rgba(0,0,0,.35)' }}></div>
+  );
+};
 
-function alarmIcon(approximate?: boolean, fieldConfirmed?: boolean) {
-  return L.divIcon({
-    className: '',
-    html: `<div style="position:relative;width:34px;height:34px">
-      <div class="om-alarm-ring" style="position:absolute;inset:0;background:${fieldConfirmed ? '#22c55e' : '#ef4444'};border-radius:50%"></div>
-      <div style="position:absolute;inset:7px;background:${fieldConfirmed ? '#16a34a' : '#dc2626'};border-radius:50%;border:3px solid white;box-shadow:0 2px 10px rgba(${fieldConfirmed ? '34,197,94' : '220,38,38'},.55)"></div>
-      ${approximate ? '<div style="position:absolute;inset:-4px;border:2px dashed #fbbf24;border-radius:50%"></div>' : ''}
-    </div>`,
-    iconSize: [34, 34],
-    iconAnchor: [17, 17],
-    popupAnchor: [0, -16],
-  });
-}
+const AlarmIcon = ({ approximate, fieldConfirmed }: { approximate?: boolean, fieldConfirmed?: boolean }) => (
+  <div style={{ position: 'relative', width: 34, height: 34 }}>
+    <div className="om-alarm-ring" style={{ position: 'absolute', inset: 0, background: fieldConfirmed ? '#22c55e' : '#ef4444', borderRadius: '50%' }}></div>
+    <div style={{ position: 'absolute', inset: 7, background: fieldConfirmed ? '#16a34a' : '#dc2626', borderRadius: '50%', border: '3px solid white', boxShadow: `0 2px 10px rgba(${fieldConfirmed ? '34,197,94' : '220,38,38'},.55)` }}></div>
+    {approximate && <div style={{ position: 'absolute', inset: -4, border: '2px dashed #fbbf24', borderRadius: '50%' }}></div>}
+  </div>
+);
 
-function dispatchPinIcon() {
-  return L.divIcon({
-    className: '',
-    html: '<div style="background:#f97316;width:16px;height:16px;border-radius:50%;border:3px solid white;box-shadow:0 2px 8px rgba(0,0,0,.35)"></div>',
-    iconSize: [16, 16],
-    iconAnchor: [8, 8],
-    popupAnchor: [0, -10],
-  });
-}
+const DispatchPinIcon = () => (
+  <div style={{ background: '#f97316', width: 16, height: 16, borderRadius: '50%', border: '3px solid white', boxShadow: '0 2px 8px rgba(0,0,0,.35)' }}></div>
+);
 
-function truckIcon(patent: string) {
+const TruckIcon = ({ patent }: { patent: string }) => {
   const label = patent.slice(-4);
-  return L.divIcon({
-    className: '',
-    html: `<div style="background:#7c3aed;color:white;font-size:9px;font-weight:800;padding:2px 5px;border-radius:6px;border:2px solid white;box-shadow:0 2px 8px rgba(0,0,0,.35);white-space:nowrap">${label}</div>`,
-    iconSize: [40, 20],
-    iconAnchor: [20, 10],
-    popupAnchor: [0, -10],
-  });
-}
+  return (
+    <div style={{ background: '#7c3aed', color: 'white', fontSize: 9, fontWeight: 800, padding: '2px 5px', borderRadius: 6, border: '2px solid white', boxShadow: '0 2px 8px rgba(0,0,0,.35)', whiteSpace: 'nowrap' }}>
+      {label}
+    </div>
+  );
+};
 
-function volunteerIcon(photoUrl: string | null) {
-  const inner = photoUrl
-    ? `<img src="${photoUrl}" alt="" style="width:30px;height:30px;border-radius:50%;object-fit:cover;border:3px solid #22c55e;box-shadow:0 2px 8px rgba(0,0,0,.3)" />`
-    : `<div style="background:#22c55e;width:30px;height:30px;border-radius:50%;border:3px solid white;box-shadow:0 2px 8px rgba(0,0,0,.3)"></div>`;
-  return L.divIcon({
-    className: '',
-    html: inner,
-    iconSize: [30, 30],
-    iconAnchor: [15, 15],
-    popupAnchor: [0, -14],
-  });
-}
+const VolunteerIcon = ({ photoUrl, firstName, lastName }: { photoUrl: string | null, firstName: string, lastName: string }) => (
+  photoUrl
+    ? <img src={photoUrl} alt="" style={{ width: 30, height: 30, borderRadius: '50%', objectFit: 'cover', border: '3px solid #22c55e', boxShadow: '0 2px 8px rgba(0,0,0,.3)' }} />
+    : <div style={{ background: '#22c55e', width: 30, height: 30, borderRadius: '50%', border: '3px solid white', boxShadow: '0 2px 8px rgba(0,0,0,.3)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'white', fontSize: 10, fontWeight: 'bold' }}>{firstName[0]}{lastName[0]}</div>
+);
 
 function vehicleOffset(lat: number, lng: number, index: number, total: number): [number, number] {
   const angle = (index / Math.max(total, 1)) * 2 * Math.PI - Math.PI / 2;
@@ -123,8 +92,11 @@ function vehicleOffset(lat: number, lng: number, index: number, total: number): 
 function MapFitBounds({ bounds }: { bounds: [[number, number], [number, number]] | null }) {
   const map = useMap();
   useEffect(() => {
-    if (bounds) {
-      map.fitBounds(bounds as L.LatLngBoundsExpression, { padding: [48, 48], maxZoom: 16 });
+    if (bounds && map) {
+      const b = new google.maps.LatLngBounds();
+      b.extend({ lat: bounds[0][0], lng: bounds[0][1] });
+      b.extend({ lat: bounds[1][0], lng: bounds[1][1] });
+      map.fitBounds(b, { bottom: 48, left: 48, right: 48, top: 48 });
     }
   }, [bounds, map]);
   return null;
@@ -133,10 +105,31 @@ function MapFitBounds({ bounds }: { bounds: [[number, number], [number, number]]
 function MapFlyTo({ target }: { target: [number, number] | null }) {
   const map = useMap();
   useEffect(() => {
-    if (target) {
-      map.flyTo(target, Math.max(map.getZoom(), 15), { duration: 0.7 });
+    if (target && map) {
+      map.panTo({ lat: target[0], lng: target[1] });
+      map.setZoom(Math.max(map.getZoom() || 0, 15));
     }
   }, [target, map]);
+  return null;
+}
+
+function MapPolyline({ positions, color }: { positions: { lat: number; lng: number }[], color: string }) {
+  const map = useMap();
+  const [polyline, setPolyline] = useState<google.maps.Polyline | null>(null);
+
+  useEffect(() => {
+    if (!map) return;
+    const pl = new google.maps.Polyline({
+      path: positions,
+      strokeColor: color,
+      strokeWeight: 4,
+      strokeOpacity: 0.75,
+      map,
+    });
+    setPolyline(pl);
+    return () => { pl.setMap(null); };
+  }, [map, positions, color]);
+
   return null;
 }
 
@@ -298,7 +291,7 @@ export default function OperationalMapPage() {
         <div>
           <p className="text-xs font-semibold text-red-500 uppercase tracking-widest mb-0.5">Operaciones</p>
           <h1 className={`text-xl font-bold flex items-center gap-2 flex-wrap ${th.headerTitle}`}>
-            <Map className="w-6 h-6 text-red-500" />
+            <MapIcon className="w-6 h-6 text-red-500" />
             Mapa operativo 360
             <span className={`inline-flex items-center gap-1 text-[10px] font-bold uppercase tracking-wide px-2 py-0.5 rounded-full border ${th.badgeLive}`}>
               <Radio className="w-3 h-3 animate-pulse" />
@@ -406,39 +399,36 @@ export default function OperationalMapPage() {
               <RefreshCw className="w-8 h-8 animate-spin mr-2" /> Cargando mapa...
             </div>
           ) : (
-            <MapContainer
+            <Map
               key={`${center[0]}-${center[1]}-${companyId}-${isDark ? 'd' : 'l'}`}
-              center={center}
-              zoom={13}
+              defaultCenter={{ lat: center[0], lng: center[1] }}
+              defaultZoom={13}
               style={{ height: '100%', width: '100%' }}
               className="z-0"
+              mapId="operational-map"
+              mapTypeId={BASE_LAYERS[baseLayer].mapTypeId as any}
+              disableDefaultUI
             >
-              <TileLayer attribution={BASE_LAYERS[baseLayer].attribution} url={BASE_LAYERS[baseLayer].url} />
               <MapFitBounds bounds={data?.bounds ?? null} />
               <MapFlyTo target={flyTarget} />
 
               {layers.companies &&
                 data?.layers?.companies?.map((c: any) => (
-                  <Marker
+                  <AdvancedMarker
                     key={`c-${c.id}`}
-                    position={[c.lat, c.lng]}
-                    icon={divIcon('#ef4444', 'square')}
-                    eventHandlers={{ click: () => setSelected({ type: 'company', data: c }) }}
+                    position={{ lat: c.lat, lng: c.lng }}
+                    onClick={() => setSelected({ type: 'company', data: c })}
                   >
-                    <Popup>
-                      <strong>{c.number}ª {c.name}</strong>
-                      <p className="text-xs mt-1">{c.address}</p>
-                    </Popup>
-                  </Marker>
+                    <DivIcon color="#ef4444" shape="square" />
+                  </AdvancedMarker>
                 ))}
 
               {layers.routes &&
                 data?.layers?.routes?.map((r: any) => (
-                  <Polyline
+                  <MapPolyline
                     key={`r-${r.id}`}
-                    positions={r.path.map((p: { lat: number; lng: number }) => [p.lat, p.lng])}
-                    pathOptions={{ color: '#3b82f6', weight: 4, opacity: 0.75, dashArray: '8 6' }}
-                    eventHandlers={{ click: () => setSelected({ type: 'route', data: r }) }}
+                    positions={r.path.map((p: { lat: number; lng: number }) => ({ lat: p.lat, lng: p.lng }))}
+                    color="#3b82f6"
                   />
                 ))}
 
@@ -446,78 +436,48 @@ export default function OperationalMapPage() {
                 data?.layers?.hydrants?.map((h: any) => {
                   const col = HYDRANT_STATUS[h.status]?.color ?? '#0ea5e9';
                   return (
-                    <Marker
+                    <AdvancedMarker
                       key={`h-${h.id}`}
-                      position={[h.lat, h.lng]}
-                      icon={divIcon(col)}
-                      eventHandlers={{ click: () => setSelected({ type: 'hydrant', data: h }) }}
+                      position={{ lat: h.lat, lng: h.lng }}
+                      onClick={() => setSelected({ type: 'hydrant', data: h })}
                     >
-                      <Popup>
-                        <strong>{h.code}</strong>
-                        <p className="text-xs">{h.address}</p>
-                      </Popup>
-                    </Marker>
+                      <DivIcon color={col} />
+                    </AdvancedMarker>
                   );
                 })}
 
               {layers.meetingPoints &&
                 data?.layers?.meetingPoints?.map((p: any) => (
-                  <Marker
+                  <AdvancedMarker
                     key={`m-${p.id}`}
-                    position={[p.lat, p.lng]}
-                    icon={divIcon('#10b981', 'diamond')}
-                    eventHandlers={{ click: () => setSelected({ type: 'meeting', data: p }) }}
+                    position={{ lat: p.lat, lng: p.lng }}
+                    onClick={() => setSelected({ type: 'meeting', data: p })}
                   >
-                    <Popup>
-                      <strong>{p.name}</strong>
-                      {p.capacity && <p className="text-xs">Capacidad: {p.capacity}</p>}
-                    </Popup>
-                  </Marker>
+                    <DivIcon color="#10b981" shape="diamond" />
+                  </AdvancedMarker>
                 ))}
 
               {layers.incidents &&
                 data?.layers?.incidents?.map((i: any) => (
-                  <Marker
+                  <AdvancedMarker
                     key={`i-${i.id}`}
-                    position={[i.lat, i.lng]}
-                    icon={divIcon(i.isOpen ? '#f97316' : '#94a3b8', 'square')}
-                    eventHandlers={{ click: () => setSelected({ type: 'incident', data: i }) }}
+                    position={{ lat: i.lat, lng: i.lng }}
+                    onClick={() => setSelected({ type: 'incident', data: i })}
                   >
-                    <Popup>
-                      <strong>{i.code}</strong>
-                      <p className="text-xs">{i.type}</p>
-                      <p className="text-xs">{i.isOpen ? 'Abierta' : 'Cerrada'}</p>
-                    </Popup>
-                  </Marker>
+                    <DivIcon color={i.isOpen ? '#f97316' : '#94a3b8'} shape="square" />
+                  </AdvancedMarker>
                 ))}
 
               {layers.activeAlarms &&
                 liveAlarms.map((a: any) => (
-                  <Marker
+                  <AdvancedMarker
                     key={`live-${a.id}`}
-                    position={[a.lat, a.lng]}
-                    icon={alarmIcon(a.approximate, a.hasFieldGps)}
-                    zIndexOffset={1000}
-                    eventHandlers={{ click: () => setSelected({ type: 'alarm', data: a }) }}
+                    position={{ lat: a.lat, lng: a.lng }}
+                    zIndex={1000}
+                    onClick={() => setSelected({ type: 'alarm', data: a })}
                   >
-                    <Popup>
-                      <strong className={a.hasFieldGps ? 'text-green-600' : 'text-red-600'}>{a.code} — ACTIVA</strong>
-                      <p className="text-xs font-medium">{a.type}</p>
-                      <p className="text-xs">{a.address}</p>
-                      {a.hasFieldGps && (
-                        <p className="text-xs text-green-600 font-semibold">GPS confirmado en terreno</p>
-                      )}
-                      {a.approximate && (
-                        <p className="text-xs text-amber-600">Ubicación aproximada (sin GPS)</p>
-                      )}
-                      {a.vehicles?.length > 0 && (
-                        <p className="text-xs mt-1">
-                          Carros: {a.vehicles.map((v: any) => v.patent).join(', ')}
-                        </p>
-                      )}
-                      <p className="text-xs text-gray-500">Por: {a.alarmBy}</p>
-                    </Popup>
-                  </Marker>
+                    <AlarmIcon approximate={a.approximate} fieldConfirmed={a.hasFieldGps} />
+                  </AdvancedMarker>
                 ))}
 
               {layers.activeAlarms &&
@@ -528,18 +488,13 @@ export default function OperationalMapPage() {
                     Math.abs(a.dispatchLng - a.lng) < 0.00005;
                   if (same) return null;
                   return (
-                    <Marker
+                    <AdvancedMarker
                       key={`dispatch-pin-${a.id}`}
-                      position={[a.dispatchLat, a.dispatchLng]}
-                      icon={dispatchPinIcon()}
-                      zIndexOffset={950}
+                      position={{ lat: a.dispatchLat, lng: a.dispatchLng }}
+                      zIndex={950}
                     >
-                      <Popup>
-                        <strong className="text-orange-600">Punto de despacho</strong>
-                        <p className="text-xs">{a.code}</p>
-                        <p className="text-[10px] text-gray-500">Ubicación inicial en central</p>
-                      </Popup>
-                    </Marker>
+                      <DispatchPinIcon />
+                    </AdvancedMarker>
                   );
                 })}
 
@@ -548,40 +503,29 @@ export default function OperationalMapPage() {
                   (a.vehicles ?? []).map((v: any, idx: number) => {
                     const [vLat, vLng] = vehicleOffset(a.lat, a.lng, idx, a.vehicles.length);
                     return (
-                      <Marker
+                      <AdvancedMarker
                         key={`veh-${a.id}-${v.patent}`}
-                        position={[vLat, vLng]}
-                        icon={truckIcon(v.patent)}
-                        zIndexOffset={900}
-                        eventHandlers={{ click: () => setSelected({ type: 'vehicle', data: { ...v, alarm: a } }) }}
+                        position={{ lat: vLat, lng: vLng }}
+                        zIndex={900}
+                        onClick={() => setSelected({ type: 'vehicle', data: { ...v, alarm: a } })}
                       >
-                        <Popup>
-                          <strong>{v.patent}</strong>
-                          <p className="text-xs">{v.type}</p>
-                          <p className="text-xs text-gray-500">Emergencia {a.code}</p>
-                          <p className="text-[10px] text-violet-600 mt-1">Posición junto al despacho · GPS en vivo próximamente</p>
-                        </Popup>
-                      </Marker>
+                        <TruckIcon patent={v.patent} />
+                      </AdvancedMarker>
                     );
                   }),
                 )}
 
               {layers.volunteers &&
                 liveVolunteers.map((v: any) => (
-                  <Marker
+                  <AdvancedMarker
                     key={`v-${v.id}`}
-                    position={[v.lat, v.lng]}
-                    icon={volunteerIcon(v.photoUrl)}
-                    eventHandlers={{ click: () => setSelected({ type: 'volunteer', data: v }) }}
+                    position={{ lat: v.lat, lng: v.lng }}
+                    onClick={() => setSelected({ type: 'volunteer', data: v })}
                   >
-                    <Popup>
-                      <strong>{v.firstName} {v.lastName}</strong>
-                      <p className="text-xs">{v.roleLabel}</p>
-                      <p className="text-xs text-gray-500">{v.nearCompany}</p>
-                    </Popup>
-                  </Marker>
+                    <VolunteerIcon photoUrl={v.photoUrl} firstName={v.firstName} lastName={v.lastName} />
+                  </AdvancedMarker>
                 ))}
-            </MapContainer>
+            </Map>
           )}
 
           <div className="absolute top-4 right-4 z-[1000] flex flex-col gap-2 items-end pointer-events-none">

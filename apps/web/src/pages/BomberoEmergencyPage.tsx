@@ -1,8 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { MapContainer, TileLayer, Marker, Circle, useMap } from 'react-leaflet';
-import L from 'leaflet';
-import 'leaflet/dist/leaflet.css';
+import { Map, AdvancedMarker, useMap } from '@vis.gl/react-google-maps';
 import {
   Siren, MapPin, Navigation, CheckCircle2, XCircle, UserX, Loader2,
   RefreshCw, Users, Truck, AlertTriangle, Crosshair, Radio, Building2, Volume2, VolumeX,
@@ -137,36 +135,30 @@ function mapPublicEmergency(e: {
 function FitPoints({ points }: { points: [number, number][] }) {
   const map = useMap();
   useEffect(() => {
-    if (points.length === 0) return;
+    if (!map || points.length === 0) return;
     if (points.length === 1) {
-      map.setView(points[0], 16);
+      map.setCenter({ lat: points[0][0], lng: points[0][1] });
+      map.setZoom(16);
       return;
     }
-    map.fitBounds(L.latLngBounds(points), { padding: [36, 36], maxZoom: 17 });
+    const bounds = new google.maps.LatLngBounds();
+    points.forEach(p => bounds.extend({ lat: p[0], lng: p[1] }));
+    map.fitBounds(bounds, { bottom: 36, left: 36, right: 36, top: 36 });
   }, [map, points]);
   return null;
 }
 
-const dispatchIcon = L.divIcon({
-  className: '',
-  html: '<div style="background:#f97316;width:14px;height:14px;border-radius:50%;border:3px solid white;box-shadow:0 2px 8px rgba(0,0,0,.35)"></div>',
-  iconSize: [14, 14],
-  iconAnchor: [7, 7],
-});
+const DispatchIcon = () => (
+  <div style={{ background: '#f97316', width: 14, height: 14, borderRadius: '50%', border: '3px solid white', boxShadow: '0 2px 8px rgba(0,0,0,.35)' }}></div>
+);
 
-const fieldIcon = L.divIcon({
-  className: '',
-  html: '<div style="background:#22c55e;width:18px;height:18px;border-radius:50%;border:3px solid white;box-shadow:0 0 12px #22c55e"></div>',
-  iconSize: [18, 18],
-  iconAnchor: [9, 9],
-});
+const FieldIcon = () => (
+  <div style={{ background: '#22c55e', width: 18, height: 18, borderRadius: '50%', border: '3px solid white', boxShadow: '0 0 12px #22c55e' }}></div>
+);
 
-const youIcon = L.divIcon({
-  className: '',
-  html: '<div style="background:#3b82f6;width:16px;height:16px;border-radius:50%;border:3px solid white"></div>',
-  iconSize: [16, 16],
-  iconAnchor: [8, 8],
-});
+const YouIcon = () => (
+  <div style={{ background: '#3b82f6', width: 16, height: 16, borderRadius: '50%', border: '3px solid white' }}></div>
+);
 
 function useGps() {
   const [pos, setPos] = useState<{ lat: number; lng: number; accuracy?: number } | null>(null);
@@ -277,9 +269,6 @@ export default function BomberoEmergencyPage() {
   const [mobileTab, setMobileTab] = useState<'map' | 'team'>('map');
   const theme = useThemeStore((s) => s.theme);
   const isDark = theme === 'dark';
-  const tileUrl = isDark
-    ? 'https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png'
-    : 'https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png';
   const [urgentPoll, setUrgentPoll] = useState(false);
   const [audioEnabled, setAudioEnabled] = useState(() => sessionStorage.getItem(AUDIO_KEY) === '1');
   const [audioMuted, setAudioMuted] = useState(false);
@@ -784,24 +773,24 @@ export default function BomberoEmergencyPage() {
                       {mobileTab === 'map' && (
                         <div className="space-y-3">
                           <div className="h-[220px] rounded-xl overflow-hidden border border-slate-200 dark:border-slate-800 relative">
-                            <MapContainer center={mapCenter} zoom={15} className="h-full w-full" scrollWheelZoom>
-                              <TileLayer url={tileUrl} />
+                            <Map defaultCenter={{ lat: mapCenter[0], lng: mapCenter[1] }} defaultZoom={15} style={{ height: '100%', width: '100%' }} className="z-0" mapId="mobile-map" disableDefaultUI>
                               <FitPoints points={mapPoints.length ? mapPoints : [mapCenter]} />
                               {selected.dispatchGps && (
-                                <Marker position={[selected.dispatchGps.latitude, selected.dispatchGps.longitude]} icon={dispatchIcon} />
+                                <AdvancedMarker position={{ lat: selected.dispatchGps.latitude, lng: selected.dispatchGps.longitude }}>
+                                  <DispatchIcon />
+                                </AdvancedMarker>
                               )}
                               {selected.fieldGps && (
-                                <Marker position={[selected.fieldGps.latitude, selected.fieldGps.longitude]} icon={fieldIcon} />
+                                <AdvancedMarker position={{ lat: selected.fieldGps.latitude, lng: selected.fieldGps.longitude }}>
+                                  <FieldIcon />
+                                </AdvancedMarker>
                               )}
                               {pos && (
-                                <>
-                                  <Marker position={[pos.lat, pos.lng]} icon={youIcon} />
-                                  {pos.accuracy != null && pos.accuracy < 150 && (
-                                    <Circle center={[pos.lat, pos.lng]} radius={pos.accuracy} pathOptions={{ color: '#3b82f6', fillOpacity: 0.06 }} />
-                                  )}
-                                </>
+                                <AdvancedMarker position={{ lat: pos.lat, lng: pos.lng }}>
+                                  <YouIcon />
+                                </AdvancedMarker>
                               )}
-                            </MapContainer>
+                            </Map>
                           </div>
                           
                           {/* Map Legend */}
@@ -955,24 +944,24 @@ export default function BomberoEmergencyPage() {
                   <div className="grid grid-cols-12 border-b border-slate-200 dark:border-slate-800">
                     {/* Map (7 Columns) */}
                     <div className="col-span-7 h-[360px] relative border-r border-slate-200 dark:border-slate-800">
-                      <MapContainer center={mapCenter} zoom={15} className="h-full w-full" scrollWheelZoom>
-                        <TileLayer url={tileUrl} />
+                      <Map defaultCenter={{ lat: mapCenter[0], lng: mapCenter[1] }} defaultZoom={15} style={{ height: '100%', width: '100%' }} className="z-0" mapId="desktop-map" disableDefaultUI>
                         <FitPoints points={mapPoints.length ? mapPoints : [mapCenter]} />
                         {selected.dispatchGps && (
-                          <Marker position={[selected.dispatchGps.latitude, selected.dispatchGps.longitude]} icon={dispatchIcon} />
+                          <AdvancedMarker position={{ lat: selected.dispatchGps.latitude, lng: selected.dispatchGps.longitude }}>
+                            <DispatchIcon />
+                          </AdvancedMarker>
                         )}
                         {selected.fieldGps && (
-                          <Marker position={[selected.fieldGps.latitude, selected.fieldGps.longitude]} icon={fieldIcon} />
+                          <AdvancedMarker position={{ lat: selected.fieldGps.latitude, lng: selected.fieldGps.longitude }}>
+                            <FieldIcon />
+                          </AdvancedMarker>
                         )}
                         {pos && (
-                          <>
-                            <Marker position={[pos.lat, pos.lng]} icon={youIcon} />
-                            {pos.accuracy != null && pos.accuracy < 150 && (
-                              <Circle center={[pos.lat, pos.lng]} radius={pos.accuracy} pathOptions={{ color: '#3b82f6', fillOpacity: 0.06 }} />
-                            )}
-                          </>
+                          <AdvancedMarker position={{ lat: pos.lat, lng: pos.lng }}>
+                            <YouIcon />
+                          </AdvancedMarker>
                         )}
-                      </MapContainer>
+                      </Map>
                       <div className="absolute bottom-3 left-3 z-[1000] flex gap-2">
                         <button
                           type="button"

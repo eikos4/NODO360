@@ -2,16 +2,14 @@ import { useState, useMemo, useEffect, useCallback } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import {
   Plus, Trash2, Edit2, Droplets, MapPin, Filter, X,
-  Map, List, Layers, Maximize2, Satellite, Moon, Mountain, Crosshair, Sun,
+  Map as MapIcon, List, Layers, Maximize2, Satellite, Moon, Mountain, Crosshair, Sun,
 } from 'lucide-react';
 import { api } from '../lib/api';
 import toast from 'react-hot-toast';
 import { useAuthStore } from '../store/authStore';
 import { useHydrantsTheme } from '../hooks/useHydrantsTheme';
 import type { HydrantsThemeTokens, StatusKey, StatusStyle } from '../lib/hydrants-theme';
-import { MapContainer, TileLayer, Marker, Popup, useMap, useMapEvents } from 'react-leaflet';
-import L from 'leaflet';
-import 'leaflet/dist/leaflet.css';
+import { Map, AdvancedMarker, InfoWindow, useMap } from '@vis.gl/react-google-maps';
 
 const TYPE_LABELS: Record<string, string> = {
   PIBA: 'Piba',
@@ -34,30 +32,10 @@ const TYPE_MARKER_SHAPE: Record<string, string> = {
 };
 
 const BASE_LAYERS = {
-  streets: {
-    label: 'Calles',
-    icon: Map,
-    url: 'https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',
-    attribution: '&copy; OpenStreetMap',
-  },
-  satellite: {
-    label: 'Satélite',
-    icon: Satellite,
-    url: 'https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}',
-    attribution: '&copy; Esri',
-  },
-  dark: {
-    label: 'Oscuro',
-    icon: Moon,
-    url: 'https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png',
-    attribution: '&copy; CARTO',
-  },
-  topo: {
-    label: 'Topográfico',
-    icon: Mountain,
-    url: 'https://{s}.tile.opentopomap.org/{z}/{x}/{y}.png',
-    attribution: '&copy; OpenTopoMap',
-  },
+  streets: { label: 'Calles', icon: Map, mapTypeId: 'roadmap' },
+  satellite: { label: 'Satélite', icon: Satellite, mapTypeId: 'satellite' },
+  dark: { label: 'Oscuro', icon: Moon, mapTypeId: 'roadmap' }, // Requires Map Style
+  topo: { label: 'Topográfico', icon: Mountain, mapTypeId: 'terrain' },
 } as const;
 
 type BaseLayerKey = keyof typeof BASE_LAYERS;
@@ -67,34 +45,30 @@ const DEFAULT_CENTER: [number, number] = [-35.6632, -71.4392];
 const DROPLET_SVG = (color: string, size: number) =>
   `<svg xmlns="http://www.w3.org/2000/svg" width="${size}" height="${size}" viewBox="0 0 24 24" fill="${color}" stroke="white" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22a7 7 0 0 0 7-7c0-2-1-3.9-3-5.5s-3.5-4-4-6.5c-.5 2.5-2 4.9-4 6.5C6 11.1 5 13 5 15a7 7 0 0 0 7 7z"/></svg>`;
 
-function createHydrantIcon(type: string, status: string, statusColors: Record<StatusKey, StatusStyle>) {
+function HydrantMarkerIcon({ type, status, statusColors, opacity = 1 }: { type: string, status: string, statusColors: Record<StatusKey, StatusStyle>, opacity?: number }) {
   const color = statusColors[status as StatusKey]?.markerColor ?? '#0ea5e9';
   const borderRadius = TYPE_MARKER_SHAPE[type] ?? '50%';
   const size = type === 'PIBA' ? 26 : 28;
-  return L.divIcon({
-    className: 'hydrant-map-icon',
-    html: `
-      <div style="
-        display:flex;align-items:center;justify-content:center;
-        width:${size}px;height:${size}px;
-        background:linear-gradient(145deg, ${color} 0%, ${color}dd 100%);
-        border-radius:${borderRadius};
-        border:3px solid white;
-        box-shadow:0 3px 12px rgba(0,0,0,0.45);
-        transform:translate(-50%,-50%);
-      ">${DROPLET_SVG('#ffffff', type === 'PIBA' ? 14 : 16)}</div>
-    `,
-    iconSize: [size, size],
-    iconAnchor: [size / 2, size / 2],
-    popupAnchor: [0, -size / 2],
-  });
+  return (
+    <div style={{
+      display: 'flex', alignItems: 'center', justifyContent: 'center',
+      width: size, height: size,
+      background: `linear-gradient(145deg, ${color} 0%, ${color}dd 100%)`,
+      borderRadius,
+      border: '3px solid white',
+      boxShadow: '0 3px 12px rgba(0,0,0,0.45)',
+      opacity
+    }} dangerouslySetInnerHTML={{ __html: DROPLET_SVG('#ffffff', type === 'PIBA' ? 14 : 16) }} />
+  );
 }
 
 function MapFitBounds({ points }: { points: [number, number][] }) {
   const map = useMap();
   useEffect(() => {
-    if (points.length > 0) {
-      map.fitBounds(points as L.LatLngBoundsExpression, { padding: [56, 56], maxZoom: 17 });
+    if (map && points.length > 0) {
+      const bounds = new google.maps.LatLngBounds();
+      points.forEach(p => bounds.extend({ lat: p[0], lng: p[1] }));
+      map.fitBounds(bounds, { bottom: 56, left: 56, right: 56, top: 56 });
     }
   }, [points, map]);
   return null;
@@ -103,18 +77,10 @@ function MapFitBounds({ points }: { points: [number, number][] }) {
 function MapRecenter({ center, zoom = 15 }: { center: [number, number]; zoom?: number }) {
   const map = useMap();
   useEffect(() => {
-    map.setView(center, zoom, { animate: true });
+    if (!map) return;
+    map.setCenter({ lat: center[0], lng: center[1] });
+    map.setZoom(zoom);
   }, [center, map, zoom]);
-  return null;
-}
-
-function MapClickPicker({ active, onPick }: { active: boolean; onPick: (lat: number, lng: number) => void }) {
-  useMapEvents({
-    click(e) {
-      if (!active) return;
-      onPick(e.latlng.lat, e.latlng.lng);
-    },
-  });
   return null;
 }
 
@@ -135,11 +101,12 @@ function DraftLocationMarker({
   const lng = parseFloat(longitude);
   if (Number.isNaN(lat) || Number.isNaN(lng)) return null;
   return (
-    <Marker
-      position={[lat, lng]}
-      icon={createHydrantIcon(type, status, statusColors)}
-      zIndexOffset={1000}
-    />
+    <AdvancedMarker
+      position={{ lat, lng }}
+      zIndex={1000}
+    >
+      <HydrantMarkerIcon type={type} status={status} statusColors={statusColors} />
+    </AdvancedMarker>
   );
 }
 
@@ -156,18 +123,16 @@ type LocationPickerMapProps = {
 function LocationPickerMap({ center, pickOnMap, onPick, form, hydrantsOnMap, th, statusColors }: LocationPickerMapProps) {
   return (
     <div className={`relative rounded-xl overflow-hidden border h-[min(380px,55vh)] ${th.mapPickerWrap}`}>
-      <MapContainer
-        center={center}
-        zoom={15}
+      <Map
+        defaultCenter={{ lat: center[0], lng: center[1] }}
+        defaultZoom={15}
+        mapId="hydrant-picker-map"
         style={{ height: '100%', width: '100%' }}
         className={`z-0 ${pickOnMap ? 'cursor-crosshair' : ''}`}
+        disableDefaultUI
+        onClick={pickOnMap ? (e) => { if (e.detail.latLng) { onPick(e.detail.latLng.lat, e.detail.latLng.lng) } } : undefined}
       >
-        <TileLayer
-          attribution={BASE_LAYERS.streets.attribution}
-          url={th.pickerMapTile}
-        />
         <MapRecenter center={center} />
-        <MapClickPicker active={pickOnMap} onPick={onPick} />
         <DraftLocationMarker
           latitude={form.latitude}
           longitude={form.longitude}
@@ -176,14 +141,14 @@ function LocationPickerMap({ center, pickOnMap, onPick, form, hydrantsOnMap, th,
           statusColors={statusColors}
         />
         {hydrantsOnMap.map(h => (
-          <Marker
+          <AdvancedMarker
             key={h.id}
-            position={[h.latitude, h.longitude]}
-            icon={createHydrantIcon(h.type, h.status, statusColors)}
-            opacity={0.45}
-          />
+            position={{ lat: h.latitude, lng: h.longitude }}
+          >
+            <HydrantMarkerIcon type={h.type} status={h.status} statusColors={statusColors} opacity={0.45} />
+          </AdvancedMarker>
         ))}
-      </MapContainer>
+      </Map>
       {pickOnMap && (
         <div className="absolute top-3 left-1/2 -translate-x-1/2 z-[1000] pointer-events-none">
           <span className="bg-sky-600 !text-white text-xs font-bold px-4 py-2 rounded-full shadow-lg animate-pulse">
@@ -399,7 +364,7 @@ export default function HydrantsPage() {
               onClick={() => setViewMode('map')}
               className={`flex items-center gap-1.5 px-3 py-2 rounded-lg text-xs font-semibold transition-all ${viewMode === 'map' ? th.viewToggleActive : th.viewToggleIdle}`}
             >
-              <Map className="w-4 h-4" /> Mapa
+              <MapIcon className="w-4 h-4" /> Mapa
             </button>
           </div>
           <button
@@ -657,29 +622,39 @@ export default function HydrantsPage() {
           </aside>
 
           <div className="flex-1 relative min-h-[400px]">
-            <MapContainer
+            <Map
               key={baseLayer}
-              center={mapCenter}
-              zoom={14}
+              defaultCenter={{ lat: mapCenter[0], lng: mapCenter[1] }}
+              defaultZoom={14}
+              mapId="hydrants-main-map"
+              mapTypeId={base.mapTypeId}
               style={{ height: '100%', minHeight: 'min(680px,75vh)', width: '100%' }}
               className={`z-0 ${pickOnMap ? 'cursor-crosshair' : ''}`}
+              disableDefaultUI
+              onClick={pickOnMap ? (e) => onMapPick(e.detail.latLng!.lat, e.detail.latLng!.lng) : undefined}
             >
-              <TileLayer attribution={base.attribution} url={base.url} />
               <MapFitBounds points={mapPoints} />
-              <MapClickPicker active={pickOnMap} onPick={onMapPick} />
 
               {filteredForMap.map((h: { id: string; code: string; type: string; status: string; address: string; location?: string; diameter?: number; pressure?: number; flowRate?: number; latitude: number; longitude: number; company?: { number: number; name: string } }) => (
-                <Marker
+                <AdvancedMarker
                   key={h.id}
-                  position={[h.latitude, h.longitude]}
-                  icon={createHydrantIcon(h.type, h.status, statusColors)}
-                  eventHandlers={{
-                    click: () => setSelectedId(h.id),
-                  }}
-                  opacity={selectedId && selectedId !== h.id ? 0.65 : 1}
+                  position={{ lat: h.latitude, lng: h.longitude }}
+                  onClick={() => setSelectedId(h.id)}
                 >
-                  <Popup className="hydrant-popup">
-                    <div className="min-w-[200px]">
+                  <HydrantMarkerIcon type={h.type} status={h.status} statusColors={statusColors} opacity={selectedId && selectedId !== h.id ? 0.65 : 1} />
+                </AdvancedMarker>
+              ))}
+
+              {selectedId && (() => {
+                const h = filteredForMap.find((x: any) => x.id === selectedId);
+                if (!h) return null;
+                return (
+                  <InfoWindow
+                    position={{ lat: h.latitude, lng: h.longitude }}
+                    onCloseClick={() => setSelectedId(null)}
+                    pixelOffset={[0, -20]}
+                  >
+                    <div className="min-w-[200px] text-slate-900">
                       <div className="flex items-center gap-2 mb-2">
                         <span
                           className="w-8 h-8 flex items-center justify-center border-2 border-white shadow"
@@ -712,10 +687,10 @@ export default function HydrantsPage() {
                         </button>
                       </div>
                     </div>
-                  </Popup>
-                </Marker>
-              ))}
-            </MapContainer>
+                  </InfoWindow>
+                );
+              })()}
+            </Map>
 
             {pickOnMap && (
               <div className="absolute top-3 left-1/2 -translate-x-1/2 z-[1000] bg-sky-600 !text-white text-xs font-bold px-4 py-2 rounded-full shadow-lg animate-pulse">

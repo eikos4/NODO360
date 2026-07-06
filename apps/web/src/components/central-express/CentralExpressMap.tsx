@@ -1,7 +1,6 @@
 import { useEffect, useMemo } from 'react';
-import { MapContainer, TileLayer, Marker, Popup, useMap } from 'react-leaflet';
-import L from 'leaflet';
-import 'leaflet/dist/leaflet.css';
+import { Map, AdvancedMarker, InfoWindow, useMap } from '@vis.gl/react-google-maps';
+import { useState } from 'react';
 import { Building2, Droplets, Flame, Truck } from 'lucide-react';
 
 const PARRAL_CENTER: [number, number] = [-36.1428, -71.8258];
@@ -61,54 +60,37 @@ type Props = {
   height?: string;
 };
 
-function companyIcon(number: number, role: 'primary' | 'support' | 'none') {
+function CompanyIcon({ number, role }: { number: number; role: 'primary' | 'support' | 'none' }) {
   const bg = role === 'primary' ? '#dc2626' : role === 'support' ? '#2563eb' : '#059669';
-  return L.divIcon({
-    className: '',
-    html: `<div style="background:${bg};color:white;width:28px;height:28px;border-radius:8px;border:2px solid white;box-shadow:0 2px 8px rgba(0,0,0,.35);display:flex;align-items:center;justify-content:center;font-weight:800;font-size:12px">${number}</div>`,
-    iconSize: [28, 28],
-    iconAnchor: [14, 14],
-    popupAnchor: [0, -14],
-  });
+  return (
+    <div style={{ background: bg, color: 'white', width: 28, height: 28, borderRadius: 8, border: '2px solid white', boxShadow: '0 2px 8px rgba(0,0,0,.35)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 800, fontSize: 12 }}>
+      {number}
+    </div>
+  );
 }
 
-function emergencyIcon() {
-  return L.divIcon({
-    className: '',
-    html: `<div style="position:relative;width:36px;height:36px">
-      <div style="position:absolute;inset:0;background:#ef4444;border-radius:50%;opacity:.35;animation:pulse 1.5s infinite"></div>
-      <div style="position:absolute;inset:6px;background:#dc2626;border-radius:50%;border:3px solid white;box-shadow:0 2px 10px rgba(220,38,38,.6);display:flex;align-items:center;justify-content:center;font-size:16px">🔥</div>
-    </div>`,
-    iconSize: [36, 36],
-    iconAnchor: [18, 18],
-    popupAnchor: [0, -18],
-  });
+function EmergencyIcon() {
+  return (
+    <div style={{ position: 'relative', width: 36, height: 36 }}>
+      <div style={{ position: 'absolute', inset: 0, background: '#ef4444', borderRadius: '50%', opacity: .35, animation: 'pulse 1.5s infinite' }}></div>
+      <div style={{ position: 'absolute', inset: 6, background: '#dc2626', borderRadius: '50%', border: '3px solid white', boxShadow: '0 2px 10px rgba(220,38,38,.6)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 16 }}>🔥</div>
+    </div>
+  );
 }
 
-function hydrantIcon() {
-  return L.divIcon({
-    className: '',
-    html: `<div style="background:#0ea5e9;width:14px;height:14px;border-radius:50%;border:2px solid white;box-shadow:0 1px 4px rgba(0,0,0,.3)"></div>`,
-    iconSize: [14, 14],
-    iconAnchor: [7, 7],
-  });
-}
-
-function MapClickHandler({ active, onPick }: { active: boolean; onPick?: (lat: number, lng: number) => void }) {
-  const map = useMap();
-  useEffect(() => {
-    if (!active || !onPick) return;
-    const handler = (e: L.LeafletMouseEvent) => onPick(e.latlng.lat, e.latlng.lng);
-    map.on('click', handler);
-    return () => { map.off('click', handler); };
-  }, [active, map, onPick]);
-  return null;
+function HydrantIcon() {
+  return (
+    <div style={{ background: '#0ea5e9', width: 14, height: 14, borderRadius: '50%', border: '2px solid white', boxShadow: '0 1px 4px rgba(0,0,0,.3)' }}></div>
+  );
 }
 
 function MapRecenter({ center, zoom }: { center: [number, number]; zoom: number }) {
   const map = useMap();
   useEffect(() => {
-    map.setView(center, zoom, { animate: true });
+    if (map) {
+      map.setCenter({ lat: center[0], lng: center[1] });
+      map.setZoom(zoom);
+    }
   }, [center, zoom, map]);
   return null;
 }
@@ -142,68 +124,81 @@ export default function CentralExpressMap({
 
   const hasEmergency = emergencyLat != null && emergencyLng != null && !Number.isNaN(emergencyLat);
 
+  const [selectedPopup, setSelectedPopup] = useState<{ type: 'company' | 'hydrant' | 'incident' | 'emergency', id: string, lat: number, lng: number, data: any } | null>(null);
+
   return (
     <div className="relative w-full h-full min-h-[220px]" style={{ height }}>
-      <MapContainer
-        center={center}
-        zoom={hasEmergency ? 15 : 13}
+      <Map
+        defaultCenter={{ lat: center[0], lng: center[1] }}
+        defaultZoom={hasEmergency ? 15 : 13}
         style={{ height: '100%', width: '100%', background: theme === 'dark' ? '#0f172a' : '#e2e8f0' }}
-        className="z-0 rounded-xl overflow-hidden"
+        className={`z-0 rounded-xl overflow-hidden ${pickActive ? 'cursor-crosshair' : ''}`}
+        disableDefaultUI
+        mapId="central-express-map"
+        onClick={pickActive ? (e) => onPick?.(e.detail.latLng!.lat, e.detail.latLng!.lng) : undefined}
       >
-        <TileLayer attribution={tiles.attribution} url={tiles.url} />
         <MapRecenter center={center} zoom={hasEmergency ? 15 : 13} />
-        <MapClickHandler active={pickActive} onPick={onPick} />
 
         {companies.map((c) => (
-          <Marker
+          <AdvancedMarker
             key={c.id}
-            position={[c.lat, c.lng]}
-            icon={companyIcon(
-              c.number,
-              c.id === selectedCompanyId ? 'primary' : c.id === supportCompanyId ? 'support' : 'none',
-            )}
-            eventHandlers={{
-              click: () => onSelectCompany?.(c.id),
+            position={{ lat: c.lat, lng: c.lng }}
+            onClick={() => {
+              onSelectCompany?.(c.id);
+              setSelectedPopup({ type: 'company', id: c.id, lat: c.lat, lng: c.lng, data: c });
             }}
           >
-            <Popup>
-              <div className="text-xs space-y-1 min-w-[140px]">
-                <p className="font-bold">{c.number}ª Compañía</p>
-                <p className="text-slate-600">{c.name}</p>
-                <p>Voluntarios: {c.rosterAvailable}</p>
-                <p>Maquinistas: {c.maquinistasAvailable}</p>
-                <p>Carros op.: {c.fleetOperativo}</p>
-              </div>
-            </Popup>
-          </Marker>
+            <CompanyIcon number={c.number} role={c.id === selectedCompanyId ? 'primary' : c.id === supportCompanyId ? 'support' : 'none'} />
+          </AdvancedMarker>
         ))}
 
         {hydrants.map((h) => (
-          <Marker key={h.id} position={[h.lat, h.lng]} icon={hydrantIcon()}>
-            <Popup>
-              <span className="text-xs font-mono">Hidrante {h.code}</span>
-            </Popup>
-          </Marker>
+          <AdvancedMarker key={h.id} position={{ lat: h.lat, lng: h.lng }} onClick={() => setSelectedPopup({ type: 'hydrant', id: h.id, lat: h.lat, lng: h.lng, data: h })}>
+            <HydrantIcon />
+          </AdvancedMarker>
         ))}
 
         {incidents.filter((i) => i.isOpen !== false).map((i) => (
-          <Marker key={i.id} position={[i.lat, i.lng]} icon={emergencyIcon()}>
-            <Popup>
-              <div className="text-xs">
-                <p className="font-bold">{i.code}</p>
-                <p>{i.type}</p>
-                {i.address ? <p className="text-slate-600">{i.address}</p> : null}
-              </div>
-            </Popup>
-          </Marker>
+          <AdvancedMarker key={i.id} position={{ lat: i.lat, lng: i.lng }} onClick={() => setSelectedPopup({ type: 'incident', id: i.id, lat: i.lat, lng: i.lng, data: i })}>
+            <EmergencyIcon />
+          </AdvancedMarker>
         ))}
 
         {hasEmergency && (
-          <Marker position={[emergencyLat!, emergencyLng!]} icon={emergencyIcon()}>
-            <Popup><span className="text-xs font-semibold">Emergencia en curso</span></Popup>
-          </Marker>
+          <AdvancedMarker position={{ lat: emergencyLat!, lng: emergencyLng! }} onClick={() => setSelectedPopup({ type: 'emergency', id: 'curr', lat: emergencyLat!, lng: emergencyLng!, data: null })}>
+            <EmergencyIcon />
+          </AdvancedMarker>
         )}
-      </MapContainer>
+
+        {selectedPopup && (
+          <InfoWindow position={{ lat: selectedPopup.lat, lng: selectedPopup.lng }} onCloseClick={() => setSelectedPopup(null)} pixelOffset={[0, -20]}>
+            <div className="text-slate-900 min-w-[140px]">
+              {selectedPopup.type === 'company' && (
+                <div className="text-xs space-y-1">
+                  <p className="font-bold">{selectedPopup.data.number}ª Compañía</p>
+                  <p className="text-slate-600">{selectedPopup.data.name}</p>
+                  <p>Voluntarios: {selectedPopup.data.rosterAvailable}</p>
+                  <p>Maquinistas: {selectedPopup.data.maquinistasAvailable}</p>
+                  <p>Carros op.: {selectedPopup.data.fleetOperativo}</p>
+                </div>
+              )}
+              {selectedPopup.type === 'hydrant' && (
+                <span className="text-xs font-mono">Hidrante {selectedPopup.data.code}</span>
+              )}
+              {selectedPopup.type === 'incident' && (
+                <div className="text-xs">
+                  <p className="font-bold">{selectedPopup.data.code}</p>
+                  <p>{selectedPopup.data.type}</p>
+                  {selectedPopup.data.address && <p className="text-slate-600">{selectedPopup.data.address}</p>}
+                </div>
+              )}
+              {selectedPopup.type === 'emergency' && (
+                <span className="text-xs font-semibold">Emergencia en curso</span>
+              )}
+            </div>
+          </InfoWindow>
+        )}
+      </Map>
 
       <div className={`absolute bottom-2 left-2 right-2 z-[400] flex flex-wrap gap-2 justify-center text-[9px] font-semibold px-2 py-1.5 rounded-lg border backdrop-blur-sm ${
         theme === 'dark' ? 'bg-slate-900/85 border-slate-700 text-slate-400' : 'bg-white/90 border-slate-200 text-slate-600'

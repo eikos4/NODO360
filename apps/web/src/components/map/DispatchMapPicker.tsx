@@ -1,9 +1,7 @@
 import { useCallback, useEffect, useState } from 'react';
-import { MapContainer, TileLayer, Marker, useMapEvents, useMap } from 'react-leaflet';
+import { Map, AdvancedMarker, useMap } from '@vis.gl/react-google-maps';
 import { Copy, Crosshair, LocateFixed, MapPin } from 'lucide-react';
-import L from 'leaflet';
 import toast from 'react-hot-toast';
-import 'leaflet/dist/leaflet.css';
 
 /** Centro por defecto — Parral, Región del Maule (demo Cuerpo de Bomberos) */
 const DEFAULT_CENTER: [number, number] = [-36.1428, -71.8258];
@@ -19,30 +17,22 @@ const TILE_LAYERS = {
   },
 } as const;
 
-function ClickHandler({ active, onPick }: { active: boolean; onPick: (lat: number, lng: number) => void }) {
-  useMapEvents({
-    click(e) {
-      if (!active) return;
-      onPick(e.latlng.lat, e.latlng.lng);
-    },
-  });
-  return null;
-}
-
 function Recenter({ center, zoom }: { center: [number, number]; zoom?: number }) {
   const map = useMap();
   useEffect(() => {
-    map.setView(center, zoom ?? map.getZoom(), { animate: true });
+    if (map) {
+      map.setCenter({ lat: center[0], lng: center[1] });
+      if (zoom) map.setZoom(zoom);
+    }
   }, [center, zoom, map]);
   return null;
 }
 
-const pinIcon = L.divIcon({
-  className: '',
-  html: `<div style="width:32px;height:32px;background:#dc2626;border:3px solid white;border-radius:50% 50% 50% 0;transform:rotate(-45deg);box-shadow:0 4px 14px rgba(0,0,0,.35)"><div style="width:10px;height:10px;background:white;border-radius:50%;position:absolute;top:50%;left:50%;transform:translate(-50%,-50%) rotate(45deg)"></div></div>`,
-  iconSize: [32, 32],
-  iconAnchor: [16, 32],
-});
+const PinIcon = () => (
+  <div style={{ width: 32, height: 32, background: '#dc2626', border: '3px solid white', borderRadius: '50% 50% 50% 0', transform: 'rotate(-45deg)', boxShadow: '0 4px 14px rgba(0,0,0,.35)' }}>
+    <div style={{ width: 10, height: 10, background: 'white', borderRadius: '50%', position: 'absolute', top: '50%', left: '50%', transform: 'translate(-50%,-50%) rotate(45deg)' }}></div>
+  </div>
+);
 
 type Props = {
   center?: [number, number];
@@ -111,17 +101,24 @@ export default function DispatchMapPicker({
           theme === 'light' ? 'border-slate-300' : 'border-slate-700'
         } ${pickActive ? 'cursor-crosshair' : ''}`}
       >
-        <MapContainer
-          center={mapCenter}
-          zoom={hasPoint ? 17 : 13}
+        <Map
+          defaultCenter={{ lat: mapCenter[0], lng: mapCenter[1] }}
+          defaultZoom={hasPoint ? 17 : 13}
           style={{ height: '100%', width: '100%', background: theme === 'light' ? '#f1f5f9' : '#0f172a' }}
           className="z-0 dispatch-map"
+          disableDefaultUI
+          mapId="dispatch-map-picker"
+          onClick={pickActive ? (e) => {
+            if (e.detail.latLng) onPick(e.detail.latLng.lat, e.detail.latLng.lng);
+          } : undefined}
         >
-          <TileLayer attribution={tiles.attribution} url={tiles.url} />
           <Recenter center={mapCenter} zoom={hasPoint ? 17 : undefined} />
-          <ClickHandler active={pickActive} onPick={onPick} />
-          {hasPoint && <Marker position={[lat!, lng!]} icon={pinIcon} />}
-        </MapContainer>
+          {hasPoint && (
+            <AdvancedMarker position={{ lat: lat!, lng: lng! }}>
+              <PinIcon />
+            </AdvancedMarker>
+          )}
+        </Map>
 
         {pickActive && (
           <div className="absolute top-2 left-1/2 -translate-x-1/2 z-[500] pointer-events-none">

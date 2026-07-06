@@ -75,6 +75,8 @@ export class DispatchCentralService {
     stationAvailable: boolean;
     stationAvailableAt: Date | null;
     operativeNumber: number | null;
+    companyId?: string | null;
+    supportCompanyId?: string | null;
   }) {
     return {
       id: user.id,
@@ -87,6 +89,8 @@ export class DispatchCentralService {
       stationAvailable: user.stationAvailable,
       stationAvailableAt: user.stationAvailableAt,
       operativeNumber: user.operativeNumber,
+      companyId: user.companyId,
+      supportCompanyId: user.supportCompanyId,
     };
   }
 
@@ -246,7 +250,13 @@ export class DispatchCentralService {
 
   async getRosterForCompany(companyId: string) {
     const members = await this.prisma.user.findMany({
-      where: { companyId, isActive: true },
+      where: {
+        OR: [
+          { companyId },
+          { supportCompanyId: companyId },
+        ],
+        isActive: true,
+      },
       select: {
         id: true,
         firstName: true,
@@ -256,6 +266,11 @@ export class DispatchCentralService {
         stationAvailable: true,
         stationAvailableAt: true,
         operativeNumber: true,
+        companyId: true,
+        supportCompanyId: true,
+        supportCompany: {
+          select: { name: true }
+        }
       },
       orderBy: [
         { stationAvailable: 'desc' },
@@ -265,7 +280,18 @@ export class DispatchCentralService {
       ],
     });
 
-    const mapped = members.map((m) => this.mapMember(m));
+    const mapped = members.map((m) => {
+      const isSupportingOther = m.companyId === companyId && m.supportCompanyId && m.supportCompanyId !== companyId;
+      const baseMapped = this.mapMember(m);
+      
+      return {
+        ...baseMapped,
+        // If they are supporting another company, they are NOT available here
+        stationAvailable: isSupportingOther ? false : baseMapped.stationAvailable,
+        // Send the support company name if they are supporting another company
+        supportCompanyName: isSupportingOther ? m.supportCompany?.name : null,
+      };
+    });
     const available = mapped.filter((m) => m.stationAvailable).length;
 
     return {
@@ -321,8 +347,6 @@ export class DispatchCentralService {
         dispatchSource: true,
         company: { select: { number: true, name: true } },
         guardLogEntries: {
-          take: 1,
-          orderBy: { createdAt: 'asc' },
           select: {
             author: { select: { firstName: true, lastName: true } },
           },
@@ -355,7 +379,7 @@ export class DispatchCentralService {
         : inc.vehicles.filter((v: any) => v.vehicle.companyId === companyId);
 
       let alarmBy = 'Central de despacho';
-      const guardAuthor = inc.guardLogEntries[0]?.author;
+      const guardAuthor = inc.guardLogEntries?.author;
       if (guardAuthor) {
         alarmBy = `${guardAuthor.firstName} ${guardAuthor.lastName}`;
       } else if (inc.dispatchSource === DispatchSource.BOTONERA) {
@@ -565,21 +589,56 @@ export class DispatchCentralService {
     const company = await this.getCompanyBySlug(slug);
 
     const user = await this.prisma.user.findFirst({
-      where: { id: userId, companyId: company.id, isActive: true },
+      where: { 
+        id: userId, 
+        isActive: true,
+        OR: [
+          { companyId: company.id },
+          { supportCompanyId: company.id }
+        ]
+      },
     });
     if (!user) {
       throw new NotFoundException('Bombero no pertenece a esta compañía');
+    }
+
+    let nextSupportCompanyId = user.supportCompanyId;
+    if (user.companyId === company.id) {
+       nextSupportCompanyId = null;
+    } else if (user.supportCompanyId === company.id && !available) {
+       nextSupportCompanyId = null;
     }
 
     await this.prisma.user.update({
       where: { id: userId },
       data: {
         stationAvailable: available,
-        stationAvailableAt: new Date(),
+        stationAvailableAt: available ? new Date() : null,
+        supportCompanyId: nextSupportCompanyId,
       },
     });
 
     return this.getPublicBySlug(slug);
+  }
+
+  async searchOperativeGlobally(slug: string, operativeNumber: number) {
+    if (!operativeNumber || isNaN(operativeNumber)) return null;
+    const user = await this.prisma.user.findFirst({
+      where: { operativeNumber, isActive: true },
+      include: { company: true }
+    });
+    if (!user) return null;
+    return {
+      id: user.id,
+      firstName: user.firstName,
+      lastName: user.lastName,
+      fullName: `${user.firstName} ${user.lastName}`,
+      roleLabel: user.company?.name ? `Compañía: ${user.company.name}` : 'Bombero',
+      photoUrl: user.photoUrl,
+      operativeNumber: user.operativeNumber,
+      stationAvailable: user.stationAvailable,
+      companyId: user.companyId,
+    };
   }
 
   async toggleStationAvailabilityByOperativeNumber(
@@ -591,22 +650,33 @@ export class DispatchCentralService {
 
     const user = await this.prisma.user.findFirst({
       where: {
-        companyId: company.id,
         isActive: true,
         operativeNumber,
       },
     });
     if (!user) {
-      throw new NotFoundException(`No hay bombero con N° operativo ${operativeNumber} en esta compañía`);
+      throw new NotFoundException(`No hay bombero con N° operativo ${operativeNumber}`);
     }
 
     const nextAvailable = available ?? !user.stationAvailable;
+    
+    let supportCompanyId = user.supportCompanyId;
+    if (user.companyId !== company.id) {
+      if (nextAvailable) {
+        supportCompanyId = company.id;
+      } else {
+        supportCompanyId = null;
+      }
+    } else {
+      supportCompanyId = null;
+    }
 
     await this.prisma.user.update({
       where: { id: user.id },
       data: {
         stationAvailable: nextAvailable,
         stationAvailableAt: new Date(),
+        supportCompanyId,
       },
     });
 
@@ -808,8 +878,6 @@ export class DispatchCentralService {
         dispatchSource: true,
         company: { select: { number: true, name: true } },
         guardLogEntries: {
-          take: 1,
-          orderBy: { createdAt: 'asc' },
           select: {
             author: { select: { firstName: true, lastName: true } },
           },

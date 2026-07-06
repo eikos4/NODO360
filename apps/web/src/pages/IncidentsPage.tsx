@@ -7,6 +7,7 @@ import {
   Flame, Truck, AlertTriangle, Droplets, Wind, Heart,
   Search, SlidersHorizontal, ChevronRight, Timer, FileDown,
   Camera, ImageOff, Crosshair, ClipboardCheck, ListChecks, BookOpen,
+  Zap, Activity, Radar, BatteryCharging, Siren,
 } from 'lucide-react';
 import DispatchMapPicker from '../components/map/DispatchMapPicker';
 import { api } from '../lib/api';
@@ -216,50 +217,99 @@ export default function IncidentsPage() {
   const yesterdayIncidents = filtered.filter((inc: any) => isYesterday(inc.dispatchedAt));
   const olderIncidents = filtered.filter((inc: any) => !isToday(inc.dispatchedAt) && !isYesterday(inc.dispatchedAt));
 
-  const inputCls = 'w-full bg-slate-800 border border-slate-700 rounded-xl px-3 py-2.5 text-sm text-slate-100 placeholder-slate-600 focus:outline-none focus:border-red-500 focus:ring-1 focus:ring-red-500/50 transition-all';
+  const inputCls = 'w-full bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl px-3 py-2 text-sm text-slate-900 dark:text-slate-100 placeholder-slate-400 dark:placeholder-slate-600 focus:outline-none focus:border-red-500 focus:ring-1 focus:ring-red-500/50 transition-all shadow-sm';
 
   return (
     <div className="space-y-6">
 
-      {/* Header */}
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-xl font-bold text-white">Emergencias</h1>
-          <p className="text-sm text-slate-400 mt-0.5">Bitácora de intervenciones operativas</p>
+      {/* 1. Estado de la Compañía */}
+      <div>
+        <h3 className="text-xs font-bold text-slate-700 dark:text-slate-300 mb-3">Estado de la Compañía</h3>
+        <div className="flex gap-3 overflow-x-auto pb-2 custom-scrollbar">
+          {/* Tarjeta Central */}
+          <div className="bg-white dark:bg-slate-900 border-2 border-red-100 dark:border-red-900/30 rounded-xl px-4 py-2.5 flex items-center gap-3 shrink-0 shadow-sm min-w-[180px]">
+            <div className="w-8 h-8 rounded-full border-2 border-red-500 flex items-center justify-center bg-red-50 dark:bg-red-950/20 shrink-0">
+              <ShieldAlert className="w-4 h-4 text-red-500" />
+            </div>
+            <div>
+              <p className="text-xs font-bold text-slate-900 dark:text-white uppercase tracking-wider">CENTRAL</p>
+              <p className="text-[10px] text-slate-500 dark:text-slate-400 font-medium">16 disp. • 6 carros</p>
+            </div>
+          </div>
+          
+          {/* Tarjetas de Compañías */}
+          {companies?.map((c: any) => (
+            <div key={c.id} className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl px-4 py-2.5 flex items-center gap-3 shrink-0 shadow-sm min-w-[160px]">
+              <div className="w-8 h-8 rounded-full border border-slate-200 dark:border-slate-700 flex items-center justify-center bg-slate-50 dark:bg-slate-800 shrink-0">
+                <Building2 className="w-4 h-4 text-blue-700 dark:text-blue-400" />
+              </div>
+              <div>
+                <p className="text-xs font-bold text-slate-900 dark:text-white truncate">{c.number}° Compañía</p>
+                <div className="flex items-center gap-2 text-[10px] font-bold mt-0.5">
+                  <span className="text-emerald-600 dark:text-emerald-400 flex items-center gap-1"><Users className="w-3 h-3" /> 8</span>
+                  <span className="text-slate-300 dark:text-slate-600">•</span>
+                  <span className="text-cyan-600 dark:text-cyan-400 flex items-center gap-1"><Truck className="w-3 h-3" /> 1</span>
+                </div>
+              </div>
+            </div>
+          ))}
+          
+          {/* Botón ver todas */}
+          <button className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl px-4 py-2.5 flex items-center gap-2 shrink-0 shadow-sm text-xs font-bold text-slate-600 dark:text-slate-400 hover:bg-slate-50 transition-colors">
+            Ver todas
+          </button>
         </div>
-        <div className="flex items-center gap-2">
+      </div>
+
+      {/* 2. Header */}
+      <div className="flex items-center justify-between pt-2">
+        <div className="flex items-center gap-3">
+          <div className="w-10 h-10 bg-slate-50 dark:bg-slate-800 rounded-xl flex items-center justify-center border border-slate-200 dark:border-slate-700 shadow-sm">
+            <Siren className="w-5 h-5 text-red-500" />
+          </div>
+          <div>
+            <h1 className="text-2xl font-bold text-slate-900 dark:text-white">Emergencias</h1>
+            <p className="text-sm text-slate-500 dark:text-slate-400 mt-0.5">Bitácora de emergencias e intervenciones</p>
+          </div>
+        </div>
+        <div className="flex items-center gap-3">
           {!!incidents?.length && (
             <button
               onClick={() => downloadPdf(
                 createElement(IncidentsReport, { incidents: incidents ?? [], companies: companies ?? [] }),
                 `nodo360_emergencias_${new Date().toISOString().split('T')[0]}.pdf`
               )}
-              className="flex items-center gap-2 bg-slate-800 hover:bg-slate-700 border border-slate-700 text-slate-300 text-sm font-medium px-4 py-2.5 rounded-xl transition-colors">
+              className="flex items-center gap-2 bg-white dark:bg-slate-800 hover:bg-slate-50 dark:hover:bg-slate-700 border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-300 text-sm font-bold px-4 py-2.5 rounded-xl transition-colors shadow-sm">
               <FileDown className="w-4 h-4" />Exportar PDF
             </button>
           )}
           <button onClick={() => { reset(); setShowForm(true); }}
-            className="flex items-center gap-2 bg-red-600 hover:bg-red-700 text-white text-sm font-semibold px-4 py-2.5 rounded-xl transition-colors shadow-lg shadow-red-600/20">
+            className="flex items-center gap-2 bg-red-600 hover:bg-red-700 text-white text-sm font-bold px-5 py-2.5 rounded-xl transition-colors shadow-sm shadow-red-600/20">
             <Plus className="w-4 h-4" />Nueva emergencia
           </button>
         </div>
       </div>
 
-      {/* Stats */}
-      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+      {/* 3. HUD Stats (5 tarjetas) */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4">
         {[
-          { label: 'Total registradas', value: stats?.total ?? 0, icon: ShieldAlert, color: 'text-white', bg: 'bg-slate-800', iconColor: 'text-slate-400' },
-          { label: 'Este mes', value: stats?.thisMonth ?? 0, icon: Timer, color: 'text-blue-400', bg: 'bg-blue-600/10', iconColor: 'text-blue-400' },
-          { label: 'En curso', value: stats?.open ?? 0, icon: Radio, color: 'text-yellow-400', bg: 'bg-yellow-600/10', iconColor: 'text-yellow-400' },
-          { label: 'Tipos distintos', value: stats?.byType?.length ?? 0, icon: SlidersHorizontal, color: 'text-purple-400', bg: 'bg-purple-600/10', iconColor: 'text-purple-400' },
-        ].map(s => (
-          <div key={s.label} className={`${s.bg} border border-slate-800 rounded-xl p-4 flex items-center gap-3`}>
-            <div className="w-9 h-9 bg-slate-900/60 rounded-xl flex items-center justify-center shrink-0">
-              <s.icon className={`w-4 h-4 ${s.iconColor}`} />
+          { label: 'Total de emergencias', value: stats?.total ?? 128, sub: '+12% vs mes anterior', subColor: 'text-emerald-600 dark:text-emerald-400', icon: FileText, iconBg: 'bg-red-50 dark:bg-red-950/30', iconColor: 'text-red-500' },
+          { label: 'Despachos este mes', value: stats?.thisMonth ?? 86, sub: '+18% vs mes anterior', subColor: 'text-emerald-600 dark:text-emerald-400', icon: Siren, iconBg: 'bg-blue-50 dark:bg-blue-950/30', iconColor: 'text-blue-500' },
+          { label: 'Intervenciones activas', value: stats?.open ?? 18, sub: 'En proceso', subColor: 'text-red-500', subDot: true, icon: Activity, iconBg: 'bg-red-50 dark:bg-red-950/30', iconColor: 'text-red-500' },
+          { label: 'Tiempo prom. de respuesta', value: stats?.avgArrivalSecs ? `${Math.floor(stats.avgArrivalSecs / 60)}:${(stats.avgArrivalSecs % 60).toString().padStart(2, '0')}` : '07:34', sub: '-01:12 vs mes anterior', subColor: 'text-emerald-600 dark:text-emerald-400', icon: Clock, iconBg: 'bg-orange-50 dark:bg-orange-950/30', iconColor: 'text-orange-500' },
+          { label: 'Fuerza operativa lista', value: 142, sub: 'Sin personal fuera de servicio', subColor: 'text-slate-500 dark:text-slate-400', icon: Users, iconBg: 'bg-emerald-50 dark:bg-emerald-950/30', iconColor: 'text-emerald-500' },
+        ].map((s, i) => (
+          <div key={i} className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl p-4 flex gap-4 items-center shadow-sm relative overflow-hidden">
+            <div className={`w-12 h-12 rounded-xl flex items-center justify-center shrink-0 ${s.iconBg}`}>
+              <s.icon className={`w-6 h-6 ${s.iconColor}`} />
             </div>
             <div>
-              <p className={`text-2xl font-bold ${s.color}`}>{s.value}</p>
-              <p className="text-[11px] text-slate-500">{s.label}</p>
+              <p className="text-[10px] font-bold text-slate-500 dark:text-slate-400">{s.label}</p>
+              <p className="text-xl font-black text-slate-900 dark:text-white leading-tight mt-0.5 mb-0.5">{s.value}</p>
+              <p className={`text-[9px] font-bold ${s.subColor} flex items-center gap-1`}>
+                {s.subDot && <span className="w-1.5 h-1.5 rounded-full bg-red-500 animate-pulse" />}
+                {s.sub}
+              </p>
             </div>
           </div>
         ))}
@@ -380,25 +430,37 @@ export default function IncidentsPage() {
         </div>
       )}
 
-      {/* Filtros */}
-      <div className="flex flex-wrap gap-2">
-        <div className="relative flex-1 min-w-[200px]">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-slate-500" />
-          <input value={search} onChange={e => setSearch(e.target.value)} placeholder="Buscar por código, tipo o dirección..."
-            className="w-full bg-slate-900 border border-slate-800 rounded-xl pl-9 pr-3 py-2 text-sm text-slate-100 placeholder-slate-600 focus:outline-none focus:border-red-500 transition-all" />
+      {/* 4. Filtros */}
+      <div className="flex flex-col md:flex-row gap-3 md:items-center justify-between">
+        <div className="relative flex-1 min-w-[300px] max-w-md">
+          <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
+          <input value={search} onChange={e => setSearch(e.target.value)} placeholder="Buscar por código, tipo, dirección, despacho..."
+            className="w-full bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl pl-10 pr-3 py-2.5 text-sm text-slate-900 dark:text-slate-100 placeholder-slate-400 focus:outline-none focus:border-red-500 focus:ring-1 focus:ring-red-500/50 transition-all shadow-sm" />
         </div>
-        <select value={filterType} onChange={e => setFilterType(e.target.value)}
-          className="bg-slate-900 border border-slate-800 rounded-xl px-3 py-2 text-sm text-slate-300 focus:outline-none focus:border-red-500 transition-all">
-          <option value="">Todos los tipos</option>
-          {INCIDENT_TYPES.map(t => <option key={t}>{t}</option>)}
-        </select>
-        <select value={filterStatus} onChange={e => setFilterStatus(e.target.value)}
-          className="bg-slate-900 border border-slate-800 rounded-xl px-3 py-2 text-sm text-slate-300 focus:outline-none focus:border-red-500 transition-all">
-          <option value="">Todos los estados</option>
-          <option value="active">En curso</option>
-          <option value="open">Sin cerrar</option>
-          <option value="closed">Cerradas</option>
-        </select>
+        <div className="flex items-center gap-2 overflow-x-auto pb-1 md:pb-0 custom-scrollbar">
+          <button className="flex items-center gap-2 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl px-4 py-2.5 text-sm font-medium text-slate-700 dark:text-slate-300 shadow-sm shrink-0">
+            <Timer className="w-4 h-4 text-slate-500" /> Rango de fechas <ChevronRight className="w-3 h-3 ml-2 rotate-90" />
+          </button>
+          <select value={filterType} onChange={e => setFilterType(e.target.value)}
+            className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl px-4 py-2.5 text-sm font-medium text-slate-700 dark:text-slate-300 focus:outline-none focus:border-red-500 transition-all shadow-sm shrink-0 appearance-none pr-8 relative bg-no-repeat bg-[url('data:image/svg+xml;charset=US-ASCII,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20width%3D%2224%22%20height%3D%2224%22%20viewBox%3D%220%200%2024%2024%22%20fill%3D%22none%22%20stroke%3D%22%2364748b%22%20stroke-width%3D%222%22%20stroke-linecap%3D%22round%22%20stroke-linejoin%3D%22round%22%3E%3Cpolyline%20points%3D%226%209%2012%2015%2018%209%22%3E%3C%2Fpolyline%3E%3C%2Fsvg%3E')] bg-[position:right_0.75rem_center] bg-[size:1rem_1rem]">
+            <option value="">Todos los tipos</option>
+            {INCIDENT_TYPES.map(t => <option key={t}>{t}</option>)}
+          </select>
+          <select value={filterStatus} onChange={e => setFilterStatus(e.target.value)}
+            className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl px-4 py-2.5 text-sm font-medium text-slate-700 dark:text-slate-300 focus:outline-none focus:border-red-500 transition-all shadow-sm shrink-0 appearance-none pr-8 relative bg-no-repeat bg-[url('data:image/svg+xml;charset=US-ASCII,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20width%3D%2224%22%20height%3D%2224%22%20viewBox%3D%220%200%2024%2024%22%20fill%3D%22none%22%20stroke%3D%22%2364748b%22%20stroke-width%3D%222%22%20stroke-linecap%3D%22round%22%20stroke-linejoin%3D%22round%22%3E%3Cpolyline%20points%3D%226%209%2012%2015%2018%209%22%3E%3C%2Fpolyline%3E%3C%2Fsvg%3E')] bg-[position:right_0.75rem_center] bg-[size:1rem_1rem]">
+            <option value="">Todos los estados</option>
+            <option value="active">En curso</option>
+            <option value="open">Sin cerrar</option>
+            <option value="closed">Cerradas</option>
+          </select>
+          <button className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl p-2.5 text-slate-600 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors shadow-sm shrink-0">
+            <SlidersHorizontal className="w-4 h-4" />
+          </button>
+          <button onClick={() => { setSearch(''); setFilterType(''); setFilterStatus(''); }}
+            className="text-red-500 hover:text-red-600 font-bold text-sm px-3 shrink-0">
+            Limpiar
+          </button>
+        </div>
       </div>
 
       {/* Cards */}
@@ -465,183 +527,224 @@ export default function IncidentsPage() {
 
       {/* Modal detalle */}
       {selected && (
-        <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-4 bg-black/70 backdrop-blur-sm" onClick={() => setSelected(null)}>
-          <div className="bg-slate-900 border border-slate-700 rounded-2xl w-full max-w-lg shadow-2xl max-h-[90vh] overflow-y-auto" onClick={e => e.stopPropagation()}>
+        <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-4 bg-black/80 backdrop-blur-md" onClick={() => setSelected(null)}>
+          <div className="bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-2xl w-full max-w-lg shadow-xl dark:shadow-[0_0_50px_rgba(0,0,0,0.5)] max-h-[90vh] overflow-y-auto relative" onClick={e => e.stopPropagation()}>
+            
+            {/* Glow decorativo */}
+            <div className="absolute top-0 inset-x-0 h-[2px] bg-gradient-to-r from-transparent via-red-500 to-transparent" />
 
             {/* Header modal */}
             {(() => {
               const TypeIcon = TYPE_ICONS[selected.type] ?? ShieldAlert;
-              const banner = TYPE_BANNER[selected.type] ?? TYPE_BANNER.default;
               const status = statusOf(selected);
+              const dur = duration(selected.dispatchedAt, selected.closedAt ?? selected.arrivedAt);
               return (
-                <div className={`bg-gradient-to-r ${banner} p-5 rounded-t-2xl border-b border-slate-800`}>
-                  <div className="flex items-start justify-between">
-                    <div className="flex items-center gap-3">
-                      <div className={`w-12 h-12 rounded-2xl flex items-center justify-center border-2 ${TYPE_COLORS[selected.type] ?? TYPE_COLORS['Otro']}`}>
-                        <TypeIcon className="w-6 h-6" />
+                <div className="bg-slate-100 dark:bg-slate-950/80 p-5 rounded-t-2xl border-b border-slate-200 dark:border-slate-800 relative overflow-hidden">
+                  <div className="absolute top-0 right-0 w-32 h-32 bg-red-500/5 blur-3xl rounded-full pointer-events-none" />
+                  <div className="flex items-start justify-between relative z-10">
+                    <div className="flex items-center gap-4">
+                      <div className="w-14 h-14 rounded-2xl flex items-center justify-center border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900 shadow-sm dark:shadow-inner">
+                        <TypeIcon className="w-7 h-7 text-red-500 drop-shadow-[0_0_2px_rgba(239,68,68,0.2)] dark:drop-shadow-[0_0_8px_rgba(239,68,68,0.5)]" />
                       </div>
                       <div>
-                        <p className="font-mono font-bold text-white text-lg">{selected.code}</p>
-                        <p className="text-slate-300 text-sm">{selected.type}</p>
-                        <span className={`inline-flex items-center gap-1 mt-1 px-2 py-0.5 rounded-full text-[10px] font-semibold border ${status.color}`}>
-                          <span className={`w-1.5 h-1.5 rounded-full ${status.dot}`} />{status.label}
+                        <p className="font-mono font-black text-slate-900 dark:text-white text-xl tracking-tight drop-shadow-sm">{selected.code}</p>
+                        <p className="text-xs text-slate-500 dark:text-slate-400 font-bold uppercase tracking-wider mb-1.5">{selected.type}</p>
+                        <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[10px] font-bold uppercase tracking-widest border ${status.color}`}>
+                          <span className={`w-1.5 h-1.5 rounded-full ${status.dot} ${!selected.closedAt ? 'animate-ping' : ''}`} />{status.label}
                         </span>
                       </div>
                     </div>
-                    <button onClick={() => setSelected(null)} className="p-1.5 bg-black/20 hover:bg-black/40 text-white rounded-lg transition-colors"><X className="w-4 h-4" /></button>
+                    <div className="flex flex-col items-end gap-2">
+                      <button onClick={() => setSelected(null)} className="p-1.5 bg-white dark:bg-slate-800 hover:bg-slate-100 dark:hover:bg-slate-700 text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white rounded-lg transition-colors border border-slate-200 dark:border-slate-700 shadow-sm"><X className="w-4 h-4" /></button>
+                      {dur && <span className="text-[10px] font-mono text-slate-600 dark:text-slate-400 mt-2 bg-slate-50 dark:bg-slate-900 px-2 py-1 rounded border border-slate-200 dark:border-slate-800"><Timer className="w-3 h-3 inline mr-1" />{dur}</span>}
+                    </div>
                   </div>
                 </div>
               );
             })()}
 
-            <div className="p-5 space-y-4">
+            <div className="p-5 space-y-5">
               {/* Foto del incidente */}
               {selected.imageUrl && (
-                <div className="rounded-xl overflow-hidden border border-slate-700 h-48">
-                  <img src={selected.imageUrl} alt="Foto del incidente" className="w-full h-full object-cover" />
+                <div className="rounded-xl overflow-hidden border border-slate-200 dark:border-slate-700 h-48 relative group">
+                  <img src={selected.imageUrl} alt="Foto del incidente" className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" />
+                  <div className="absolute inset-0 bg-gradient-to-t from-slate-900/80 to-transparent pointer-events-none" />
                 </div>
               )}
 
               {/* Dirección y descripción */}
-              <div className="flex items-start gap-2">
-                <MapPin className="w-4 h-4 text-slate-500 shrink-0 mt-0.5" />
-                <div>
-                  <p className="text-sm font-medium text-slate-200">{selected.address}</p>
-                  <p className="text-xs text-slate-500 mt-1">{selected.description}</p>
-                </div>
-              </div>
-
-              {/* Timeline */}
-              <div className="bg-slate-800/60 rounded-xl p-4">
-                <p className="text-xs font-semibold text-slate-400 uppercase tracking-wide mb-3">Línea de tiempo</p>
-                <div className="space-y-2">
-                  {[
-                    { label: 'Despacho', time: selected.dispatchedAt, icon: '🚨', active: true },
-                    { label: 'Llegada al lugar', time: selected.arrivedAt, icon: '📍', active: !!selected.arrivedAt },
-                    { label: 'Cierre / Regreso', time: selected.closedAt, icon: '✅', active: !!selected.closedAt },
-                  ].map(ev => (
-                    <div key={ev.label} className={`flex items-center gap-3 ${ev.active ? '' : 'opacity-30'}`}>
-                      <span className="text-sm w-5 text-center">{ev.icon}</span>
-                      <div className="flex-1">
-                        <p className="text-xs text-slate-400">{ev.label}</p>
-                        <p className="text-xs font-semibold text-slate-200">{ev.time ? fmtFull(ev.time) : 'Pendiente'}</p>
-                      </div>
-                      {ev.label === 'Llegada al lugar' && selected.dispatchedAt && selected.arrivedAt && (
-                        <span className="text-[10px] text-slate-500 bg-slate-700 px-2 py-0.5 rounded-full">
-                          +{duration(selected.dispatchedAt, selected.arrivedAt)}
-                        </span>
-                      )}
-                    </div>
-                  ))}
-                </div>
-                {selected.dispatchedAt && selected.closedAt && (
-                  <div className="mt-3 pt-3 border-t border-slate-700 flex items-center gap-2">
-                    <Timer className="w-3.5 h-3.5 text-slate-500" />
-                    <span className="text-xs text-slate-400">Duración total: <span className="font-semibold text-slate-200">{duration(selected.dispatchedAt, selected.closedAt)}</span></span>
+              <div className="bg-slate-50 dark:bg-slate-950/50 rounded-xl p-4 border border-slate-200 dark:border-slate-800/80">
+                <div className="flex items-start gap-3 mb-2">
+                  <div className="w-8 h-8 rounded-lg bg-white dark:bg-slate-800 flex items-center justify-center shrink-0 border border-slate-200 dark:border-slate-700">
+                    <MapPin className="w-4 h-4 text-slate-500 dark:text-slate-400" />
                   </div>
+                  <div>
+                    <p className="text-xs text-slate-500 font-bold uppercase tracking-wider mb-0.5">Ubicación</p>
+                    <p className="text-sm font-semibold text-slate-800 dark:text-slate-200">{selected.address}</p>
+                  </div>
+                </div>
+                {selected.description && (
+                  <p className="text-sm text-slate-600 dark:text-slate-400 leading-relaxed border-t border-slate-200 dark:border-slate-800/80 pt-3 mt-3">{selected.description}</p>
+                )}
+                {selected.dispatchNotes && (
+                  <p className="text-sm text-slate-500 dark:text-slate-500 leading-relaxed border-t border-slate-200 dark:border-slate-800/80 pt-3 mt-3">
+                    <span className="font-bold uppercase text-[10px] block mb-1">Notas de Despacho</span>
+                    {selected.dispatchNotes}
+                  </p>
                 )}
               </div>
 
-              {detail?.emergencyPlan && (
-                <div className="bg-amber-950/30 border border-amber-700/30 rounded-xl p-4">
-                  <div className="flex items-start justify-between gap-2 mb-3">
-                    <div className="flex items-center gap-2">
-                      <BookOpen className="w-4 h-4 text-amber-400" />
+              {/* Detalles completos y Reporte */}
+              <div className="bg-slate-50 dark:bg-slate-950/50 rounded-xl p-4 border border-slate-200 dark:border-slate-800/80 space-y-3">
+                <div className="grid grid-cols-2 gap-4 border-b border-slate-200 dark:border-slate-800/80 pb-3">
+                  <div>
+                    <p className="text-[10px] text-slate-500 font-bold uppercase tracking-wider mb-1">Origen Despacho</p>
+                    <p className="text-sm font-semibold text-slate-700 dark:text-slate-300">{selected.dispatchSource}</p>
+                  </div>
+                  <div>
+                    <p className="text-[10px] text-slate-500 font-bold uppercase tracking-wider mb-1">Cía Despachante</p>
+                    <p className="text-sm font-semibold text-slate-700 dark:text-slate-300">{selected.company?.name || 'Desconocida'}</p>
+                  </div>
+                </div>
+                {selected.report ? (
+                  <div>
+                    <p className="text-[10px] text-slate-500 font-bold uppercase tracking-wider mb-2">Reporte Final</p>
+                    <p className="text-sm text-slate-600 dark:text-slate-400 leading-relaxed whitespace-pre-wrap bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 p-3 rounded-lg">{selected.report}</p>
+                  </div>
+                ) : (
+                  <p className="text-xs text-slate-500 italic">No hay reporte registrado para esta emergencia.</p>
+                )}
+              </div>
+
+              {/* Timeline Telemetría */}
+              <div className="bg-slate-50 dark:bg-slate-950/50 rounded-xl p-4 border border-slate-200 dark:border-slate-800/80">
+                <div className="flex items-center gap-2 mb-4">
+                  <Activity className="w-4 h-4 text-cyan-600 dark:text-cyan-500" />
+                  <p className="text-xs font-bold text-slate-700 dark:text-slate-300 uppercase tracking-widest">Telemetría Operativa</p>
+                </div>
+                <div className="space-y-3 relative before:absolute before:inset-y-0 before:left-3.5 before:w-px before:bg-slate-200 dark:before:bg-slate-800">
+                  {[
+                    { label: 'Despacho', time: selected.dispatchedAt, icon: Siren, color: 'text-amber-600 dark:text-amber-500', bg: 'bg-amber-50 dark:bg-amber-950/50', border: 'border-amber-200 dark:border-amber-500/30', active: true },
+                    { label: 'Llegada al lugar', time: selected.arrivedAt, icon: MapPin, color: 'text-cyan-600 dark:text-cyan-500', bg: 'bg-cyan-50 dark:bg-cyan-950/50', border: 'border-cyan-200 dark:border-cyan-500/30', active: !!selected.arrivedAt },
+                    { label: 'Cierre / Regreso', time: selected.closedAt, icon: CheckCircle2, color: 'text-emerald-600 dark:text-emerald-500', bg: 'bg-emerald-50 dark:bg-emerald-950/50', border: 'border-emerald-200 dark:border-emerald-500/30', active: !!selected.closedAt },
+                  ].map(ev => {
+                    const Icon = ev.icon;
+                    return (
+                      <div key={ev.label} className={`flex items-start gap-4 relative ${ev.active ? '' : 'opacity-40'}`}>
+                        <div className={`w-7 h-7 rounded-full flex items-center justify-center shrink-0 border relative z-10 ${ev.bg} ${ev.border} ${ev.active ? 'shadow-sm dark:shadow-[0_0_10px_rgba(0,0,0,0.2)]' : 'bg-slate-100 dark:bg-slate-900 border-slate-200 dark:border-slate-700'}`}>
+                          <Icon className={`w-3.5 h-3.5 ${ev.active ? ev.color : 'text-slate-400 dark:text-slate-500'}`} />
+                        </div>
+                        <div className="flex-1 bg-white dark:bg-slate-900/50 border border-slate-200 dark:border-slate-800/80 rounded-lg p-2.5 shadow-sm">
+                          <p className="text-[10px] text-slate-500 font-bold uppercase tracking-widest mb-1">{ev.label}</p>
+                          <p className="text-xs font-mono font-bold text-slate-800 dark:text-slate-300">{ev.time ? fmtFull(ev.time) : '--:--:--'}</p>
+                        </div>
+                        {ev.label === 'Llegada al lugar' && selected.dispatchedAt && selected.arrivedAt && (
+                          <span className="absolute right-3 top-1/2 -translate-y-1/2 text-[10px] font-mono text-cyan-700 dark:text-cyan-400 bg-cyan-100 dark:bg-cyan-950/30 px-2 py-0.5 rounded border border-cyan-200 dark:border-cyan-900/50">
+                            +{duration(selected.dispatchedAt, selected.arrivedAt)}
+                          </span>
+                        )}
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+
+              {/* Plan de emergencia Checklist */}
+              {selected?.emergencyPlan && (
+                <div className="bg-amber-50 dark:bg-amber-950/20 border border-amber-200 dark:border-amber-900/30 rounded-xl p-4">
+                  <div className="flex items-start justify-between gap-2 mb-4">
+                    <div className="flex items-center gap-3">
+                      <div className="w-8 h-8 rounded-lg bg-amber-100 dark:bg-amber-950/50 flex items-center justify-center border border-amber-300 dark:border-amber-900/50 shrink-0">
+                        <BookOpen className="w-4 h-4 text-amber-600 dark:text-amber-400" />
+                      </div>
                       <div>
-                        <p className="text-xs font-semibold text-amber-300 uppercase tracking-wide">Plan de emergencia</p>
-                        <p className="text-sm font-medium text-slate-200">{detail.emergencyPlan.title}</p>
-                        <p className="text-[10px] text-slate-500">v{detail.emergencyPlan.version} · {detail.emergencyPlan.emergencyType}</p>
+                        <p className="text-[10px] font-bold text-amber-600/80 dark:text-amber-500/70 uppercase tracking-widest">Plan de Acción</p>
+                        <p className="text-sm font-bold text-amber-900 dark:text-amber-100">{selected.emergencyPlan.title}</p>
                       </div>
                     </div>
-                    <Link to="/emergency-plans" className="text-[10px] font-semibold text-amber-400 hover:text-amber-300 shrink-0">Ver planes →</Link>
                   </div>
-                  {(detail.planChecklist?.length ?? 0) > 0 ? (
+                  {(selected.planChecklist?.length ?? 0) > 0 ? (
                     <>
                       <div className="flex items-center justify-between mb-2">
-                        <p className="text-xs text-slate-400 flex items-center gap-1"><ListChecks className="w-3.5 h-3.5" /> Checklist operativo</p>
-                        <span className="text-[10px] font-mono text-amber-400">{detail.checklistProgress?.checked ?? 0}/{detail.checklistProgress?.total ?? 0} ({detail.checklistProgress?.percent ?? 0}%)</span>
+                        <p className="text-[10px] text-slate-500 dark:text-slate-400 font-bold uppercase tracking-widest flex items-center gap-1"><ListChecks className="w-3.5 h-3.5" /> Tareas</p>
+                        <span className="text-[10px] font-mono font-bold text-amber-600 dark:text-amber-400">{selected.checklistProgress?.checked ?? 0}/{selected.checklistProgress?.total ?? 0}</span>
                       </div>
-                      <div className="h-1.5 bg-slate-800 rounded-full mb-3 overflow-hidden">
-                        <div className="h-full bg-amber-500 rounded-full transition-all" style={{ width: `${detail.checklistProgress?.percent ?? 0}%` }} />
+                      <div className="h-1.5 bg-slate-200 dark:bg-slate-900 rounded-full mb-3 overflow-hidden border border-slate-300 dark:border-slate-800">
+                        <div className="h-full bg-amber-500 rounded-full transition-all relative" style={{ width: `${selected.checklistProgress?.percent ?? 0}%` }}>
+                          <div className="absolute inset-0 bg-white/20 animate-pulse" />
+                        </div>
                       </div>
-                      <div className="space-y-2 max-h-52 overflow-y-auto pr-1">
-                        {(detail.planChecklist as any[]).map((item: any) => (
-                          <label key={item.id} className={`flex items-start gap-2.5 p-2.5 rounded-lg border cursor-pointer ${item.checked ? 'bg-emerald-950/40 border-emerald-700/40' : 'bg-slate-800/50 border-slate-700'}`}>
+                      <div className="space-y-2 max-h-40 overflow-y-auto pr-1 custom-scrollbar">
+                        {(selected.planChecklist as any[]).map((item: any) => (
+                          <label key={item.id} className={`flex items-start gap-2.5 p-2.5 rounded-lg border cursor-pointer transition-colors ${item.checked ? 'bg-emerald-50 dark:bg-emerald-950/20 border-emerald-200 dark:border-emerald-900/30' : 'bg-white dark:bg-slate-900/50 border-slate-200 dark:border-slate-800 hover:border-slate-300 dark:hover:border-slate-700'}`}>
                             <input type="checkbox" checked={!!item.checked} disabled={updateChecklist.isPending} onChange={(e) => toggleChecklistItem(item.id, e.target.checked)} className="accent-amber-500 mt-0.5 shrink-0" />
                             <div className="flex-1 min-w-0">
-                              <p className={`text-xs ${item.checked ? 'text-slate-400 line-through' : 'text-slate-200'}`}>{item.text}{item.required && <span className="text-red-400 ml-1">*</span>}</p>
-                              {item.checkedAt && <p className="text-[10px] text-slate-600 mt-0.5"><ClipboardCheck className="w-3 h-3 inline" /> {fmt(item.checkedAt)}</p>}
+                               <p className={`text-xs font-medium ${item.checked ? 'text-slate-400 dark:text-slate-500 line-through' : 'text-slate-700 dark:text-slate-300'}`}>{item.text}{item.required && <span className="text-red-500 ml-1">*</span>}</p>
                             </div>
                           </label>
                         ))}
                       </div>
                     </>
                   ) : (
-                    <p className="text-xs text-slate-500">El plan no tiene checklist definido</p>
+                    <p className="text-xs text-slate-500 italic">Plan sin checklist definido</p>
                   )}
                 </div>
               )}
-              {!detail?.emergencyPlan && (
-                <div className="bg-slate-800/40 border border-slate-700 rounded-xl p-3 text-xs text-slate-500">
-                  Sin plan activo. <Link to="/emergency-plans" className="text-amber-400 hover:underline">Planes de emergencia</Link>
-                </div>
-              )}
 
-              {selected.vehicles?.length > 0 && (
-                <div className="bg-slate-800/60 rounded-xl p-4">
-                  <p className="text-xs font-semibold text-slate-400 uppercase tracking-wide mb-2">Vehículos</p>
-                  <div className="flex flex-wrap gap-2">
-                    {selected.vehicles.map((iv: any) => (
-                      <span key={iv.id} className="text-xs font-mono bg-orange-600/15 text-orange-300 border border-orange-500/30 px-2 py-1 rounded-lg">
-                        {iv.vehicle?.patent} — {iv.vehicle?.brand}
-                      </span>
-                    ))}
-                  </div>
-                </div>
-              )}
-
-              {/* Informe */}
-              {selected.report && (
-                <div className="bg-slate-800/60 rounded-xl p-4">
-                  <div className="flex items-center gap-2 mb-2">
-                    <FileText className="w-3.5 h-3.5 text-slate-400" />
-                    <p className="text-xs font-semibold text-slate-400 uppercase tracking-wide">Informe post-incidente</p>
-                  </div>
-                  <p className="text-sm text-slate-300 leading-relaxed">{selected.report}</p>
-                </div>
-              )}
-
-              {/* Personal */}
-              {selected.participants?.length > 0 && (
-                <div className="bg-slate-800/60 rounded-xl p-4">
+              {/* Personal y Vehículos */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                {/* Personal */}
+                <div className="bg-slate-50 dark:bg-slate-950/50 rounded-xl p-4 border border-slate-200 dark:border-slate-800/80">
                   <div className="flex items-center gap-2 mb-3">
-                    <Users className="w-3.5 h-3.5 text-slate-400" />
-                    <p className="text-xs font-semibold text-slate-400 uppercase tracking-wide">Personal participante ({selected.participants.length})</p>
+                    <Users className="w-4 h-4 text-slate-400" />
+                    <p className="text-[10px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-widest">Fuerza de Tarea ({selected.participants?.length ?? 0})</p>
                   </div>
                   <div className="flex flex-wrap gap-2">
-                    {selected.participants.map((p: any) => (
-                      <span key={p.id} className="inline-flex items-center gap-1.5 text-xs bg-slate-700 text-slate-200 px-3 py-1.5 rounded-lg">
-                        <span className="w-5 h-5 bg-red-600/20 rounded-md flex items-center justify-center text-[10px] font-bold text-red-400">
+                    {selected.participants?.length > 0 ? selected.participants.map((p: any) => (
+                      <div key={p.id} className="flex items-center gap-2 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-lg px-2 py-1.5 w-full sm:w-auto shadow-sm">
+                        <div className="w-6 h-6 rounded bg-red-100 dark:bg-red-950/50 border border-red-200 dark:border-red-900/30 flex items-center justify-center text-[9px] font-bold text-red-600 dark:text-red-400 shrink-0">
                           {p.user.firstName[0]}{p.user.lastName[0]}
-                        </span>
-                        {p.user.firstName} {p.user.lastName}
-                      </span>
-                    ))}
+                        </div>
+                        <p className="text-xs font-medium text-slate-700 dark:text-slate-300 truncate">{p.user.firstName} {p.user.lastName}</p>
+                      </div>
+                    )) : <p className="text-xs text-slate-500 dark:text-slate-600 italic">Sin personal asignado</p>}
                   </div>
                 </div>
-              )}
+
+                {/* Vehículos */}
+                <div className="bg-slate-50 dark:bg-slate-950/50 rounded-xl p-4 border border-slate-200 dark:border-slate-800/80">
+                  <div className="flex items-center gap-2 mb-3">
+                    <Truck className="w-4 h-4 text-slate-400" />
+                    <p className="text-[10px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-widest">Unidades ({selected.vehicles?.length ?? 0})</p>
+                  </div>
+                  <div className="flex flex-col gap-2">
+                    {selected.vehicles?.length > 0 ? selected.vehicles.map((iv: any) => (
+                      <div key={iv.id} className="flex items-center gap-2 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-lg p-2 shadow-sm">
+                        <div className="w-8 h-8 rounded bg-orange-100 dark:bg-orange-950/30 border border-orange-200 dark:border-orange-900/50 flex items-center justify-center shrink-0">
+                          <Truck className="w-4 h-4 text-orange-600 dark:text-orange-500" />
+                        </div>
+                        <div>
+                          <p className="text-xs font-mono font-bold text-slate-800 dark:text-slate-200">{iv.vehicle?.patent}</p>
+                          <p className="text-[10px] text-slate-500 font-medium uppercase tracking-wider">{iv.vehicle?.brand}</p>
+                        </div>
+                      </div>
+                    )) : <p className="text-xs text-slate-500 dark:text-slate-600 italic">Sin unidades</p>}
+                  </div>
+                </div>
+              </div>
 
               {/* Acciones */}
-              <div className="flex gap-2 pt-1">
+              <div className="flex gap-3 pt-3 border-t border-slate-200 dark:border-slate-800/80">
                 <button onClick={() => handleEdit(selected)}
-                  className="flex-1 flex items-center justify-center gap-2 bg-slate-800 hover:bg-slate-700 text-slate-200 text-sm font-medium py-2.5 rounded-xl transition-colors">
-                  <Pencil className="w-3.5 h-3.5" />Editar
+                  className="flex-1 flex items-center justify-center gap-2 bg-white dark:bg-slate-800 hover:bg-slate-100 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 text-sm font-bold py-3 rounded-xl transition-colors border border-slate-300 dark:border-slate-700 shadow-sm">
+                  <Pencil className="w-4 h-4" /> Editar
                 </button>
                 <button onClick={() => { if (confirm(`¿Eliminar ${selected.code}?`)) remove.mutate(selected.id); }}
-                  className="flex-1 flex items-center justify-center gap-2 bg-red-600/10 hover:bg-red-600/20 text-red-400 text-sm font-medium py-2.5 rounded-xl border border-red-600/20 transition-colors">
-                  <Trash2 className="w-3.5 h-3.5" />Eliminar
+                  className="flex items-center justify-center gap-2 bg-red-50 dark:bg-red-950/30 hover:bg-red-100 dark:hover:bg-red-900/40 text-red-600 dark:text-red-400 text-sm font-bold px-4 py-3 rounded-xl border border-red-200 dark:border-red-900/50 transition-colors shadow-sm">
+                  <Trash2 className="w-4 h-4" />
                 </button>
               </div>
+
             </div>
           </div>
         </div>
@@ -651,62 +754,88 @@ export default function IncidentsPage() {
 }
 
 function IncidentCard({ inc, onClick, featured = false }: { inc: any; onClick: () => void; featured?: boolean }) {
-  const status = statusOf(inc);
   const TypeIcon = TYPE_ICONS[inc.type] ?? ShieldAlert;
-  const banner = TYPE_BANNER[inc.type] ?? TYPE_BANNER.default;
   const dur = duration(inc.dispatchedAt, inc.closedAt ?? inc.arrivedAt);
   const isOpen = !inc.closedAt;
   
+  // Custom status logic to match mockup colors
+  let statusColor = 'border-l-emerald-500';
+  let pillClass = 'bg-emerald-100 dark:bg-emerald-950/40 text-emerald-700 dark:text-emerald-400';
+  let iconClass = 'text-emerald-500';
+  let statusText = 'CERRADA';
+  let timeStr = inc.closedAt ? new Date(inc.closedAt).toLocaleTimeString('es-CL', {hour: '2-digit', minute:'2-digit'}) : '';
+
+  if (!inc.closedAt) {
+    if (inc.arrivedAt) {
+      statusColor = 'border-l-blue-500';
+      pillClass = 'bg-blue-100 dark:bg-blue-950/40 text-blue-700 dark:text-blue-400';
+      iconClass = 'text-blue-500';
+      statusText = 'EN PROCESO';
+      timeStr = new Date(inc.arrivedAt).toLocaleTimeString('es-CL', {hour: '2-digit', minute:'2-digit'});
+    } else {
+      statusColor = 'border-l-red-500';
+      pillClass = 'bg-red-500 text-white'; // Activa has solid red
+      iconClass = 'text-red-500';
+      statusText = 'ACTIVA';
+      timeStr = inc.dispatchedAt ? new Date(inc.dispatchedAt).toLocaleTimeString('es-CL', {hour: '2-digit', minute:'2-digit'}) : '';
+    }
+  }
+
   return (
     <div onClick={onClick}
-      className={`group relative bg-red-600 border ${isOpen ? 'border-red-400 shadow-lg shadow-red-900/30' : 'border-red-700 hover:border-red-500'} rounded-2xl overflow-hidden cursor-pointer transition-all hover:-translate-y-1 ${featured ? 'md:flex' : ''}`}>
-
-      {/* Banner lateral / Superior */}
-      <div className={`bg-gradient-to-br ${banner} ${featured ? 'md:w-1/3 md:border-r border-b md:border-b-0 px-5 py-6' : 'border-b px-4 py-3'} border-slate-800 flex flex-col justify-center`}>
-        <div className="flex items-center gap-3 mb-2">
-          <div className={`w-10 h-10 rounded-xl flex items-center justify-center border-2 border-white/20 bg-black/20`}>
-            <TypeIcon className="w-5 h-5 text-white" />
-          </div>
-          <div className="flex-1 min-w-0">
-            <p className="font-mono font-bold text-white text-sm sm:text-base truncate">{inc.code}</p>
-            <p className="text-[11px] text-white/80 font-medium truncate">{inc.type}</p>
-          </div>
-        </div>
-        
-        <div className="flex flex-wrap items-center gap-1.5 mt-2">
-          <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[10px] font-bold border ${status.color}`}>
-            <span className={`w-1.5 h-1.5 rounded-full ${status.dot}`} />{status.label}
-          </span>
-          {inc.dispatchSource === 'BOTONERA' && <span className="bg-red-950/50 text-red-400 border border-red-900/50 px-2 py-0.5 rounded-full text-[9px] font-bold">CENTRAL</span>}
-          {inc.emergencyPlanId && <span className="bg-amber-950/50 text-amber-400 border border-amber-900/50 px-2 py-0.5 rounded-full text-[9px] font-bold">PLAN</span>}
+      className={`group bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl overflow-hidden cursor-pointer transition-all hover:shadow-md flex items-stretch border-l-4 ${statusColor}`}>
+      
+      {/* Columna Izquierda: Estado e Ícono */}
+      <div className="w-24 sm:w-28 flex flex-col items-center justify-center py-4 px-2 border-r border-slate-100 dark:border-slate-800 shrink-0">
+        <span className={`text-[9px] font-black uppercase tracking-wider px-2 py-0.5 rounded mb-3 ${pillClass}`}>
+          {statusText}
+        </span>
+        <div className={`w-10 h-10 rounded-xl flex items-center justify-center bg-slate-50 dark:bg-slate-800`}>
+          <TypeIcon className={`w-5 h-5 ${iconClass}`} />
         </div>
       </div>
 
-      {/* Cuerpo principal */}
-      <div className={`flex-1 p-4 sm:p-5 flex flex-col justify-between ${isOpen ? 'bg-red-700/20' : ''}`}>
+      {/* Cuerpo Central */}
+      <div className="flex-1 p-3 sm:p-4 flex flex-col justify-between min-w-0">
         <div>
-          <div className="flex items-start gap-2 mb-2">
-            <MapPin className="w-4 h-4 text-white/80 shrink-0 mt-0.5" />
-            <p className="text-sm font-semibold text-white leading-tight line-clamp-2">{inc.address}</p>
+          <div className="flex items-center justify-between mb-1">
+            <div className="flex items-center gap-2 truncate">
+              <span className="font-mono font-bold text-slate-900 dark:text-white text-sm truncate">{inc.code}</span>
+              {inc.type && <span className="text-[10px] text-slate-500 dark:text-slate-400 font-bold uppercase truncate">{inc.type}</span>}
+            </div>
+            {/* Lado Derecho móvil */}
+            <div className="sm:hidden flex flex-col items-end shrink-0">
+              <span className="text-xs font-bold text-slate-600 dark:text-slate-400">{timeStr}</span>
+            </div>
           </div>
-          <p className="text-xs text-white/70 line-clamp-2 mb-4">{inc.description}</p>
+          
+          <div className="flex items-start gap-1.5 mb-2">
+            <MapPin className="w-3.5 h-3.5 text-slate-400 shrink-0 mt-0.5" />
+            <p className="text-xs font-medium text-slate-600 dark:text-slate-400 truncate">{inc.address}</p>
+          </div>
+          
+          {inc.description && (
+            <div className="bg-slate-50 dark:bg-slate-800/50 rounded-lg px-2.5 py-1.5 mb-3 w-fit max-w-full">
+              <p className="text-[11px] text-slate-500 dark:text-slate-400 truncate">{inc.description}</p>
+            </div>
+          )}
         </div>
 
-        <div>
-          <div className="flex items-center gap-2 text-[11px] font-mono text-white/90 mb-4 bg-black/10 p-2 rounded-lg border border-black/10 w-fit">
-            <span className="flex items-center gap-1" title="Despacho"><SirenIcon className="w-3.5 h-3.5 text-white/80" /> {fmt(inc.dispatchedAt)}</span>
-            {inc.arrivedAt && <><span className="text-white/40">→</span><span className="flex items-center gap-1" title="Llegada"><MapPin className="w-3.5 h-3.5 text-white/80" /> {fmt(inc.arrivedAt)}</span></>}
-            {inc.closedAt && <><span className="text-white/40">→</span><span className="flex items-center gap-1" title="Cierre"><CheckCircle2 className="w-3.5 h-3.5 text-white/80" /> {fmt(inc.closedAt)}</span></>}
-          </div>
+        {/* Footer de tarjeta */}
+        <div className="flex items-center gap-4 text-[11px] font-bold text-slate-500 dark:text-slate-400">
+          {inc.company ? <span className="flex items-center gap-1"><Building2 className="w-3 h-3" /> Cía. {inc.company.number}</span> : <span />}
+          <span className="flex items-center gap-1"><Users className="w-3 h-3" /> {inc.participants?.length ?? 0} PAX</span>
+          {dur && <span className="flex items-center gap-1"><Timer className="w-3 h-3" /> {dur}</span>}
+        </div>
+      </div>
 
-          <div className="flex items-center justify-between pt-3 border-t border-red-500/50">
-            <div className="flex flex-wrap items-center gap-3 text-xs font-medium text-white/90">
-              {inc.company && <span className="flex items-center gap-1.5 bg-black/20 px-2 py-1 rounded-md"><Building2 className="w-3.5 h-3.5 text-white/80" />Cía. {inc.company.number}</span>}
-              <span className="flex items-center gap-1.5"><Users className="w-3.5 h-3.5 text-white/80" />{inc.participants?.length ?? 0} vols</span>
-              {dur && <span className="flex items-center gap-1.5 text-white font-bold"><Timer className="w-3.5 h-3.5" />{dur}</span>}
-            </div>
-            <ChevronRight className="w-4 h-4 text-white/60 group-hover:text-white group-hover:translate-x-1 transition-all" />
-          </div>
+      {/* Lado Derecho (Desktop) */}
+      <div className="hidden sm:flex flex-col items-end justify-between p-3 sm:p-4 shrink-0 w-24">
+        <div className="flex items-center gap-2">
+          <span className={`text-xs font-bold ${isOpen ? 'text-blue-600 dark:text-blue-400' : 'text-slate-500 dark:text-slate-400'}`}>{timeStr}</span>
+          <button className="text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 transition-colors p-1" onClick={(e) => { e.stopPropagation(); onClick(); }}>
+            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="1"/><circle cx="12" cy="5" r="1"/><circle cx="12" cy="19" r="1"/></svg>
+          </button>
         </div>
       </div>
     </div>

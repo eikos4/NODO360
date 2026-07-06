@@ -10,16 +10,12 @@ import { useThemeStore } from '../store/themeStore';
 import { useAuthStore } from '../store/authStore';
 import { isCentralOperator } from '../lib/roleAccess';
 import toast from 'react-hot-toast';
-import { MapContainer, TileLayer, Marker, Popup } from 'react-leaflet';
-import L from 'leaflet';
+import { Map, AdvancedMarker } from '@vis.gl/react-google-maps';
 import { COMPANIAS360 } from '../lib/companias360';
 
-const incidentIcon = L.divIcon({
-  className: '',
-  html: `<div style="background:#ef4444;width:14px;height:14px;border-radius:50%;border:3px solid white;box-shadow:0 2px 8px rgba(0,0,0,.4)"></div>`,
-  iconSize: [14, 14],
-  iconAnchor: [7, 7],
-});
+const IncidentIcon = () => (
+  <div style={{ background: '#ef4444', width: 14, height: 14, borderRadius: '50%', border: '3px solid white', boxShadow: '0 2px 8px rgba(0,0,0,.4)' }}></div>
+);
 
 export default function CentralGlobalPage() {
   const { user } = useAuthStore();
@@ -27,7 +23,6 @@ export default function CentralGlobalPage() {
   const theme = useThemeStore((s) => s.theme);
   const toggleTheme = useThemeStore((s) => s.toggleTheme);
   const isDark = theme === 'dark';
-  const tileUrl = isDark ? 'https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png' : 'https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png';
   const [data, setData] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const [audioEnabled, setAudioEnabled] = useState(false);
@@ -70,7 +65,7 @@ export default function CentralGlobalPage() {
     
     // Optimistic update
     setData((prev: any) => {
-      if (!prev) return prev;
+      if (!prev || !prev.companies) return prev;
       const n = { ...prev, companies: [...prev.companies] };
       const cIdx = n.companies.findIndex((c:any) => c.id === member.companyId);
       if (cIdx > -1) {
@@ -96,24 +91,48 @@ export default function CentralGlobalPage() {
 
   // Consolidar personal
   const allMembers = useMemo(() => {
-    if (!data) return [];
-    return data.companies.flatMap((c: any) => 
-      c.roster.members.map((m: any) => ({ ...m, companyId: c.id, companyName: c.name, companyNumber: c.number, dispatchSlug: c.dispatchSlug }))
-    );
+    if (!data || !data.companies) return [];
+    const membersMap = new globalThis.Map();
+    data.companies.forEach((c: any) => {
+      c.roster?.members?.forEach((m: any) => {
+        const trueCompany = data.companies.find((tc: any) => tc.id === m.companyId);
+        if (!membersMap.has(m.id)) {
+          membersMap.set(m.id, {
+            ...m,
+            companyName: trueCompany ? trueCompany.name : c.name,
+            companyNumber: trueCompany ? trueCompany.number : c.number,
+            dispatchSlug: trueCompany ? trueCompany.dispatchSlug : c.dispatchSlug
+          });
+        } else {
+          if (m.stationAvailable) {
+            membersMap.set(m.id, {
+              ...m,
+              companyName: trueCompany ? trueCompany.name : c.name,
+              companyNumber: trueCompany ? trueCompany.number : c.number,
+              dispatchSlug: trueCompany ? trueCompany.dispatchSlug : c.dispatchSlug
+            });
+          }
+        }
+      });
+    });
+    return Array.from(membersMap.values());
   }, [data]);
 
   const filteredMembers = useMemo(() => {
+    if (!data || !data.companies) return [];
     let m = allMembers;
     if (selectedCompanyId !== 'ALL') {
       const targetCompany = data.companies.find((c:any) => c.id === selectedCompanyId);
       if (targetCompany) {
-        m = targetCompany.roster.members.map((x:any)=>({
-          ...x, 
-          companyId: targetCompany.id, 
-          companyName: targetCompany.name, 
-          companyNumber: targetCompany.number, 
-          dispatchSlug: targetCompany.dispatchSlug
-        }));
+        m = targetCompany.roster.members.map((x:any)=> {
+          const tc = data.companies.find((c: any) => c.id === x.companyId) || targetCompany;
+          return {
+            ...x, 
+            companyName: tc.name, 
+            companyNumber: tc.number, 
+            dispatchSlug: tc.dispatchSlug
+          };
+        });
       } else m = [];
     }
     if (memberSearch.trim()) {
@@ -133,16 +152,16 @@ export default function CentralGlobalPage() {
 
   // Consolidar carros
   const allVehicles = useMemo(() => {
-    if (!data) return [];
+    if (!data || !data.companies) return [];
     return data.companies.flatMap((c: any) => 
-      c.fleet.vehicles.map((v: any) => ({ ...v, companyName: c.name }))
+      c.fleet?.vehicles?.map((v: any) => ({ ...v, companyName: c.name })) || []
     );
   }, [data]);
 
   const filteredVehicles = useMemo(() => {
     let v = allVehicles;
     if (selectedCompanyId !== 'ALL') {
-      v = data.companies.find((c:any) => c.id === selectedCompanyId)?.fleet.vehicles.map((x:any)=>({...x, companyName: data.companies.find((c:any)=>c.id===selectedCompanyId).name})) || [];
+      v = data?.companies?.find((c:any) => c.id === selectedCompanyId)?.fleet?.vehicles?.map((x:any)=>({...x, companyName: data.companies.find((c:any)=>c.id===selectedCompanyId).name})) || [];
     }
     if (vehicleFilter === 'DISP') v = v.filter((x:any) => x.status === 'OPERATIVO');
     // Si tuvieramos estado EN CAMINO se filtraría acá
@@ -260,7 +279,7 @@ export default function CentralGlobalPage() {
             </p>
           </div>
           <div className="flex-1 overflow-y-auto custom-scrollbar p-3 flex flex-col gap-2">
-            {data?.companies.map((c: any) => (
+            {data?.companies?.map((c: any) => (
               <button 
                 key={c.id}
                 onClick={() => setSelectedCompanyId(c.id === selectedCompanyId ? 'ALL' : c.id)}
@@ -352,10 +371,17 @@ export default function CentralGlobalPage() {
             
             <div className="flex-1 overflow-y-auto custom-scrollbar p-4">
               <div className="grid grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 2xl:grid-cols-8 gap-3">
-                {filteredMembers.map((m: any) => (
-                  <div key={m.id} className={`rounded-xl border p-2 flex flex-col items-center text-center transition-colors hover:bg-white/5 ${m.stationAvailable ? 'border-emerald-500/30 bg-emerald-950/10' : 'border-slate-200 dark:border-slate-800 bg-white dark:bg-[#111827]'}`}>
-                    <div className="w-16 h-16 rounded-lg overflow-hidden border border-slate-300 dark:border-slate-700 mb-2 relative bg-slate-200 dark:bg-slate-800">
-                      {m.photoUrl ? <img src={m.photoUrl} className={`w-full h-full object-cover ${!m.stationAvailable ? 'grayscale opacity-60' : ''}`} /> : <Users className="w-6 h-6 text-slate-600 absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2"/>}
+                {filteredMembers.map((m: any) => {
+                  const isSupport = !!m.supportCompanyName;
+                  return (
+                  <div key={m.id} className={`relative rounded-xl border p-2 flex flex-col items-center text-center transition-colors hover:bg-white/5 ${m.stationAvailable ? 'border-emerald-500/30 bg-emerald-950/10' : 'border-slate-200 dark:border-slate-800 bg-white dark:bg-[#111827]'}`}>
+                    {isSupport && (
+                      <div className="absolute top-1 right-1 z-10 px-1 py-0.5 rounded bg-purple-500/20 text-purple-400 text-[8px] font-black uppercase shadow-sm">
+                        Apoyo {m.supportCompanyName.replace('Compañía de Bomberos de Parral', 'Cía')}
+                      </div>
+                    )}
+                    <div className="w-16 h-16 rounded-lg overflow-hidden border border-slate-300 dark:border-slate-700 mb-2 relative bg-slate-200 dark:bg-slate-800 mt-2">
+                      {m.photoUrl ? <img src={m.photoUrl} className={`w-full h-full object-cover ${(!m.stationAvailable && !isSupport) ? 'grayscale opacity-60' : ''}`} /> : <Users className="w-6 h-6 text-slate-600 absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2"/>}
                     </div>
                     <p className="text-[11px] font-bold text-slate-900 dark:text-white leading-tight mb-0.5 w-full truncate">
                       {m.operativeNumber ? <span className="text-amber-400 mr-1">{m.operativeNumber}</span> : null}
@@ -364,13 +390,13 @@ export default function CentralGlobalPage() {
                     <p className="text-[9px] text-slate-500 w-full truncate">{m.companyName}</p>
                     <button 
                       onClick={() => handleToggleAvailability(m)}
-                      className={`mt-1.5 px-2 py-1 rounded w-full flex items-center justify-center gap-1 text-[9px] font-bold transition-colors border ${m.stationAvailable ? 'bg-emerald-500/20 text-emerald-400 border-emerald-500/30 hover:bg-emerald-500/30' : 'bg-slate-200 dark:bg-slate-800 text-slate-600 dark:text-slate-400 border-slate-300 dark:border-slate-700 hover:bg-slate-700'}`}
+                      className={`mt-1.5 px-2 py-1 rounded w-full flex items-center justify-center gap-1 text-[9px] font-bold transition-colors border ${m.stationAvailable ? 'bg-emerald-500/20 text-emerald-400 border-emerald-500/30 hover:bg-emerald-500/30' : isSupport ? 'bg-purple-500/10 text-purple-400 border-purple-500/20 hover:bg-purple-500/20' : 'bg-slate-200 dark:bg-slate-800 text-slate-600 dark:text-slate-400 border-slate-300 dark:border-slate-700 hover:bg-slate-700'}`}
                     >
-                      <span className={`w-1.5 h-1.5 rounded-full ${m.stationAvailable ? 'bg-emerald-400' : 'bg-slate-500'}`}></span>
-                      {m.stationAvailable ? 'Disponible' : 'Marcar Disp.'}
+                      <span className={`w-1.5 h-1.5 rounded-full ${m.stationAvailable ? 'bg-emerald-400' : isSupport ? 'bg-purple-400' : 'bg-slate-500'}`}></span>
+                      {m.stationAvailable ? 'Disponible' : isSupport ? 'Apoyo' : 'Marcar Disp.'}
                     </button>
                   </div>
-                ))}
+                )})}
               </div>
             </div>
           </div>
@@ -495,19 +521,21 @@ export default function CentralGlobalPage() {
                 <MapPin className="w-4 h-4 text-blue-400" /> MAPA DE EMERGENCIAS
               </p>
             </div>
-            <div className="flex-1 bg-slate-100 dark:bg-slate-900 w-full relative z-0">
-              <MapContainer
-                center={[-36.1431, -71.8261]}
-                zoom={13}
-                className="h-full w-full"
-                scrollWheelZoom={false}
-                attributionControl={false}
+            <div className="flex-1 bg-slate-100 dark:bg-slate-900 w-full relative z-0 border-t border-slate-200 dark:border-slate-800">
+              <Map
+                mapId="central-mini-map"
+                defaultZoom={11}
+                defaultCenter={{ lat: -36.14, lng: -71.82 }} // Parral aprox
+                gestureHandling="greedy"
+                disableDefaultUI
+                mapColorScheme={isDark ? "DARK" : "LIGHT"}
               >
-                <TileLayer url={tileUrl} />
-                {data?.activeEmergencies.map((e:any) => e.latitude && e.longitude ? (
-                  <Marker key={e.id} position={[e.latitude, e.longitude]} icon={incidentIcon} />
-                ) : null)}
-              </MapContainer>
+                {data?.activeEmergencies?.map((e: any) => e.latitude && e.longitude && (
+                  <AdvancedMarker key={e.id} position={{ lat: e.latitude, lng: e.longitude }}>
+                    <IncidentIcon />
+                  </AdvancedMarker>
+                ))}
+              </Map>
             </div>
           </div>
         </div>

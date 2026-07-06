@@ -30,10 +30,19 @@ import { TtsModule } from './tts/tts.module';
 import { EmergencyBitacoraModule } from './emergency-bitacora/emergency-bitacora.module';
 import { IncidentLocationPinModule } from './incident-location-pin/incident-location-pin.module';
 import { EmergencyResponseModule } from './emergency-response/emergency-response.module';
+import * as Joi from 'joi';
 
 @Module({
   imports: [
-    ConfigModule.forRoot({ isGlobal: true }),
+    ConfigModule.forRoot({ 
+      isGlobal: true,
+      validationSchema: Joi.object({
+        DATABASE_URL: Joi.string().required(),
+        JWT_SECRET: Joi.string().required(),
+        JWT_EXPIRES_IN: Joi.string().default('7d'),
+        PORT: Joi.number().default(3001),
+      })
+    }),
     ThrottlerModule.forRoot([{
       ttl: 60000,
       limit: 100,

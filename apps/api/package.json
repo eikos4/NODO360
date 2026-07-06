@@ -25,7 +25,9 @@
     "bcryptjs": "^2.4.3",
     "class-transformer": "^0.5.1",
     "class-validator": "^0.14.1",
+    "compression": "^1.8.1",
     "helmet": "^8.2.0",
+    "joi": "^18.2.3",
     "msedge-tts": "^2.0.6",
     "passport": "^0.7.0",
     "passport-jwt": "^4.0.1",
@@ -36,6 +38,7 @@
   "devDependencies": {
     "@nestjs/cli": "^10.3.0",
     "@types/bcryptjs": "^2.4.6",
+    "@types/compression": "^1.8.1",
     "@types/node": "^20.11.0",
     "@types/passport-jwt": "^4.0.1",
     "@types/passport-local": "^1.0.38",

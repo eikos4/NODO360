@@ -190,8 +190,6 @@ export class OperationalMapService {
           companyId: true,
           company: { select: { name: true, number: true, city: true } },
           guardLogEntries: {
-            take: 1,
-            orderBy: { createdAt: 'asc' },
             select: { author: { select: { firstName: true, lastName: true } } },
           },
           participants: {
@@ -349,7 +347,7 @@ export class OperationalMapService {
         dispatchedAt: i.dispatchedAt,
         alarmBy: resolveAlarmBy(
           i.dispatchSource,
-          i.guardLogEntries[0]?.author,
+          i.guardLogEntries?.author,
           i.participants,
         ),
         dispatchSource: i.dispatchSource,

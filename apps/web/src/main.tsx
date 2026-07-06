@@ -7,6 +7,8 @@ import App from './App';
 import './index.css';
 import { useThemeStore, applyTheme } from './store/themeStore';
 
+import { APIProvider } from '@vis.gl/react-google-maps';
+
 const queryClient = new QueryClient({
   defaultOptions: { queries: { retry: 1, staleTime: 30000 } },
 });
@@ -18,14 +20,14 @@ function ThemeProvider({ children }: { children: React.ReactNode }) {
 }
 
 ReactDOM.createRoot(document.getElementById('root')!).render(
-  <React.StrictMode>
-    <QueryClientProvider client={queryClient}>
-      <BrowserRouter>
-        <ThemeProvider>
+  <QueryClientProvider client={queryClient}>
+    <BrowserRouter>
+      <ThemeProvider>
+        <APIProvider apiKey={import.meta.env.VITE_GOOGLE_MAPS_API_KEY || ''}>
           <App />
-          <Toaster position="top-right" />
-        </ThemeProvider>
-      </BrowserRouter>
-    </QueryClientProvider>
-  </React.StrictMode>
+        </APIProvider>
+        <Toaster position="top-right" />
+      </ThemeProvider>
+    </BrowserRouter>
+  </QueryClientProvider>
 );

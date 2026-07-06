@@ -14,6 +14,7 @@ import { downloadPdf } from '../lib/pdf/usePdfDownload';
 import { Nodo360Report } from '../lib/pdf/Nodo360Report';
 import Nodo360Reports from '../components/nodo360/Nodo360Reports';
 import Nodo360HubVisual from '../components/nodo360/Nodo360HubVisual';
+import { useAuthStore } from '../store/authStore';
 
 /* ── helpers ── */
 const money  = (n: number) => `$${Number(n ?? 0).toLocaleString('es-CL')}`;
@@ -141,8 +142,11 @@ function StatRow({ label, value, total, color }: { label: string; value: number;
    PAGE
 ══════════════════════════════════════════ */
 export default function Nodo360Page() {
+  const { user } = useAuthStore();
+  const isBombero = user?.role === 'BOMBERO';
+
   const [section, setSection] = useState<'panel' | 'reports'>('panel');
-  const [selectedId, setSelectedId] = useState<string>('');
+  const [selectedId, setSelectedId] = useState<string>(isBombero ? (user?.companyId || '') : '');
 
   const { data: companies, isLoading: loadingCias } = useQuery({
     queryKey: ['companies'],
@@ -250,39 +254,45 @@ export default function Nodo360Page() {
             <Flame className="w-5 h-5 text-white" />
           </div>
           <div>
-            <h1 className="text-xl font-bold text-white">NODO360</h1>
-            <p className="text-sm text-slate-400">
+            <h1 className="text-xl font-bold text-slate-900 dark:text-white">NODO360</h1>
+            <p className="text-sm text-slate-500 dark:text-slate-400">
               {section === 'panel' ? 'Panel unificado por compañía' : 'Centro de reportes y analytics BI'}
             </p>
           </div>
         </div>
 
         <div className="flex flex-wrap items-center gap-3">
-          <div className="flex bg-slate-900 border border-slate-800 rounded-xl p-1">
+          <div className="flex bg-slate-100 dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl p-1">
             <button
               onClick={() => setSection('panel')}
-              className={`flex items-center gap-2 px-3 py-2 rounded-lg text-xs font-semibold transition-all ${section === 'panel' ? 'bg-red-600 text-white' : 'text-slate-400 hover:text-white'}`}
+              className={`flex items-center gap-2 px-3 py-2 rounded-lg text-xs font-semibold transition-all ${section === 'panel' ? 'bg-white dark:bg-red-600 text-red-600 dark:text-white shadow-sm dark:shadow-none' : 'text-slate-500 dark:text-slate-400 hover:text-slate-800 dark:hover:text-white'}`}
             >
               <Target className="w-3.5 h-3.5" /> Panel operativo
             </button>
             <button
               onClick={() => setSection('reports')}
-              className={`flex items-center gap-2 px-3 py-2 rounded-lg text-xs font-semibold transition-all ${section === 'reports' ? 'bg-red-600 text-white' : 'text-slate-400 hover:text-white'}`}
+              className={`flex items-center gap-2 px-3 py-2 rounded-lg text-xs font-semibold transition-all ${section === 'reports' ? 'bg-white dark:bg-red-600 text-red-600 dark:text-white shadow-sm dark:shadow-none' : 'text-slate-500 dark:text-slate-400 hover:text-slate-800 dark:hover:text-white'}`}
             >
               <LineChart className="w-3.5 h-3.5" /> Reportes BI
             </button>
           </div>
           {/* Selector de compañía */}
-          <select
-            value={selectedId}
-            onChange={e => setSelectedId(e.target.value)}
-            className="bg-slate-800 border border-slate-700 text-slate-100 text-sm rounded-xl px-4 py-2.5 focus:outline-none focus:border-red-500 transition-colors min-w-[220px]"
-          >
-            <option value="">— Seleccionar compañía —</option>
-            {(companies ?? []).map((c: any) => (
-              <option key={c.id} value={c.id}>{c.number}ª Cía. — {c.name}</option>
-            ))}
-          </select>
+          {!isBombero ? (
+            <select
+              value={selectedId}
+              onChange={e => setSelectedId(e.target.value)}
+              className="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-900 dark:text-slate-100 text-sm rounded-xl px-4 py-2.5 focus:outline-none focus:border-red-500 transition-colors min-w-[220px] shadow-sm dark:shadow-none"
+            >
+              <option value="">— Seleccionar compañía —</option>
+              {(companies ?? []).map((c: any) => (
+                <option key={c.id} value={c.id}>{c.number}ª Cía. — {c.name}</option>
+              ))}
+            </select>
+          ) : (
+            <div className="bg-slate-800 border border-slate-700 text-slate-100 text-sm rounded-xl px-4 py-2.5 min-w-[220px] opacity-80 cursor-not-allowed">
+              Mi Compañía
+            </div>
+          )}
 
           {/* Exportar PDF */}
           {section === 'panel' && panel && (
@@ -293,7 +303,7 @@ export default function Nodo360Page() {
                 }),
                 `nodo360_cia_${company?.number}_${company?.name?.replace(/\s+/g, '_')}_${new Date().toISOString().split('T')[0]}.pdf`
               )}
-              className="flex items-center gap-2 bg-slate-800 hover:bg-slate-700 border border-slate-700 text-slate-300 text-sm font-medium px-4 py-2.5 rounded-xl transition-colors"
+              className="flex items-center gap-2 bg-white dark:bg-slate-800 hover:bg-slate-50 dark:hover:bg-slate-700 border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-300 text-sm font-medium px-4 py-2.5 rounded-xl transition-colors shadow-sm dark:shadow-none"
             >
               <FileDown className="w-4 h-4" />PDF
             </button>
@@ -311,7 +321,7 @@ export default function Nodo360Page() {
       )}
 
       {/* ── Hub visual ── */}
-      {section === 'panel' && !selectedId && (
+      {section === 'panel' && !selectedId && !isBombero && (
         <Nodo360HubVisual
           companies={companies ?? []}
           onSelectCompany={id => {

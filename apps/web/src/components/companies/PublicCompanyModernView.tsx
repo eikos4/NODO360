@@ -10,6 +10,7 @@ interface Props {
   data: PublicCentral;
   onToggleMember: (m: RosterMember) => void;
   onToggleMaquinista: (m: MaquinistaMember) => void;
+  onToggleByNumber?: (markAvailableOrNum?: boolean | number, explicitNum?: number) => void;
   togglingId?: string | null;
   onEmergency?: boolean;
 }
@@ -52,9 +53,39 @@ function StatCard({ icon: Icon, value, label, subtext, colorClass, isAlert = fal
   );
 }
 
-export default function PublicCompanyModernView({ data, onToggleMember, onToggleMaquinista, togglingId, onEmergency }: Props) {
+export default function PublicCompanyModernView({ data, onToggleMember, onToggleMaquinista, onToggleByNumber, togglingId, onEmergency }: Props) {
   const [search, setSearch] = useState('');
   const [filterState, setFilterState] = useState<'all' | 'available' | 'unavailable'>('all');
+  const [globalSearchResult, setGlobalSearchResult] = useState<any>(null);
+  const [isSearchingGlobal, setIsSearchingGlobal] = useState(false);
+
+  const apiBase = import.meta.env.VITE_API_URL?.replace(/\/$/, '') || '/api';
+
+  useEffect(() => {
+    if (!search || isNaN(Number(search))) {
+      setGlobalSearchResult(null);
+      return;
+    }
+    const num = Number(search);
+    const delay = setTimeout(async () => {
+      try {
+        setIsSearchingGlobal(true);
+        const res = await fetch(`${apiBase}/dispatch/public/${data.slug}/search-operative/${num}`);
+        if (res.ok) {
+          const user = await res.json();
+          // Solo lo guardamos si existe y si no está ya en la compañía actual como oficial, aunque no importa mucho
+          setGlobalSearchResult(user && user.id ? user : null);
+        } else {
+          setGlobalSearchResult(null);
+        }
+      } catch {
+        setGlobalSearchResult(null);
+      } finally {
+        setIsSearchingGlobal(false);
+      }
+    }, 500);
+    return () => clearTimeout(delay);
+  }, [search, data.slug, apiBase]);
   
   const bomberosDisp = data.roster.stats.available;
   const maqDisp = data.maquinistas.stats.available;
@@ -79,10 +110,10 @@ export default function PublicCompanyModernView({ data, onToggleMember, onToggle
   });
 
   return (
-    <div className="h-screen overflow-hidden bg-slate-50 text-slate-800 font-sans p-4 flex flex-col gap-4">
+    <div className="flex-1 min-h-0 overflow-hidden bg-slate-50 text-slate-800 font-sans p-4 flex flex-col gap-4">
       
       {/* HEADER */}
-      <header className="flex flex-wrap items-center justify-between gap-4 bg-white p-4 lg:px-6 border-b border-slate-200/60 rounded-2xl shadow-sm -mt-2 relative z-10">
+      <header className="flex flex-wrap items-center justify-between gap-4 bg-white p-4 lg:px-6 border-b border-slate-200/60 rounded-2xl shadow-sm relative z-10">
         <div className="flex items-center gap-4">
           <div className="flex items-center gap-2 border-r border-slate-200 pr-4">
             <div className="flex -space-x-2">
@@ -138,6 +169,12 @@ export default function PublicCompanyModernView({ data, onToggleMember, onToggle
               <Search className="w-5 h-5 text-slate-400 mx-3 shrink-0" />
               <input 
                 value={search} onChange={e => setSearch(e.target.value)}
+                onKeyDown={e => {
+                  if (e.key === 'Enter' && search.trim() && !isNaN(Number(search))) {
+                    onToggleByNumber?.(undefined, Number(search));
+                    setSearch(''); // clear search after toggle
+                  }
+                }}
                 placeholder="Buscar por N° de bombero o nombre" 
                 className="flex-1 bg-transparent border-none text-sm font-medium placeholder-slate-400 focus:outline-none py-2"
               />
@@ -186,12 +223,25 @@ export default function PublicCompanyModernView({ data, onToggleMember, onToggle
                       <span className="absolute top-2 left-2 bg-red-600 text-white text-[8px] font-black uppercase px-2 py-0.5 rounded-md border border-red-700 animate-pulse">En emergencia</span>
                     ) : isAvail ? (
                       <span className="absolute top-2 left-2 bg-emerald-100 text-emerald-700 text-[8px] font-black uppercase px-2 py-0.5 rounded-md border border-emerald-200">Disponible</span>
+                    ) : m.supportCompanyName ? (
+                      <span className="absolute top-2 left-2 bg-purple-100 text-purple-700 text-[8px] font-black uppercase px-2 py-0.5 rounded-md border border-purple-200">Apoyo a {m.supportCompanyName.replace('Compañía de Bomberos de Parral', 'Cía')}</span>
                     ) : (
                       <span className="absolute top-2 left-2 bg-slate-100 text-slate-500 text-[8px] font-black uppercase px-2 py-0.5 rounded-md border border-slate-200">No Disp.</span>
                     )}
+
+                    {m.supportCompanyId === data.id && (
+                      <span className="absolute top-2 right-2 bg-purple-100 text-purple-700 text-[8px] font-black uppercase px-2 py-0.5 rounded-md border border-purple-200 shadow-sm z-10">Apoyo</span>
+                    )}
                     
-                    <div className={`w-16 h-16 rounded-full overflow-hidden border-2 mt-6 mb-3 shadow-inner ${isAvail ? 'border-emerald-100' : 'border-slate-100 grayscale'}`}>
-                      {m.photoUrl ? <img src={m.photoUrl} className="w-full h-full object-cover" alt={m.firstName} /> : <div className="w-full h-full bg-slate-200" />}
+                    <div className="relative mt-6 mb-3">
+                      <div className={`w-16 h-16 rounded-full overflow-hidden border-2 shadow-inner ${isAvail ? 'border-emerald-100' : 'border-slate-100 grayscale'}`}>
+                        {m.photoUrl ? <img src={m.photoUrl} className="w-full h-full object-cover" alt={m.firstName} /> : <div className="w-full h-full bg-slate-200" />}
+                      </div>
+                      {m.operativeNumber && (
+                        <div className="absolute -bottom-1 -right-1 bg-slate-800 text-white text-[9px] font-black w-6 h-6 rounded-full flex items-center justify-center border-2 border-white shadow-sm z-10">
+                          {m.operativeNumber}
+                        </div>
+                      )}
                     </div>
                     <p className="text-xs font-bold text-slate-800 leading-tight line-clamp-1">{m.firstName} {m.lastName}</p>
                     <p className="text-[10px] text-slate-500 mt-0.5 capitalize">{m.roleLabel || 'Bombero'}</p>
@@ -205,7 +255,54 @@ export default function PublicCompanyModernView({ data, onToggleMember, onToggle
               {filteredBomberos.length === 0 && (
                 <div className="w-full py-8 flex flex-col items-center justify-center text-slate-400">
                   <Users className="w-8 h-8 mb-2 opacity-50" />
-                  <p className="text-sm font-medium">No hay bomberos que coincidan con la búsqueda</p>
+                  <p className="text-sm font-medium">No hay bomberos en la compañía que coincidan con la búsqueda</p>
+                  {search && !isNaN(Number(search)) && onToggleByNumber && (
+                    <div className="mt-4 w-full flex justify-center">
+                      {isSearchingGlobal ? (
+                        <div className="flex items-center gap-2 text-xs text-slate-500">
+                          <Loader2 className="w-4 h-4 animate-spin" /> Buscando bombero N° {search}...
+                        </div>
+                      ) : globalSearchResult ? (
+                        <div className="flex flex-col items-center max-w-xs w-full">
+                          <p className="text-xs text-slate-500 mb-3 text-center">¿Hacer guardia de apoyo en esta compañía?</p>
+                          <button 
+                            key={globalSearchResult.id} 
+                            onClick={() => {
+                              onToggleByNumber(true, Number(search));
+                              setSearch('');
+                            }}
+                            disabled={togglingId === `op-${search}`}
+                            className={`w-40 relative bg-white border border-purple-200 p-4 rounded-xl shadow-md hover:shadow-lg hover:border-purple-400 transition-all flex flex-col items-center text-center ${togglingId === `op-${search}` ? 'opacity-50' : ''}`}
+                          >
+                            <span className="absolute top-2 right-2 bg-purple-100 text-purple-700 text-[9px] font-black uppercase px-2 py-0.5 rounded-md border border-purple-200 shadow-sm z-10">
+                              Apoyo
+                            </span>
+                            
+                            <div className="relative mt-4 mb-3">
+                              <div className="w-20 h-20 rounded-full overflow-hidden border-2 shadow-inner border-purple-100 bg-slate-200">
+                                {globalSearchResult.photoUrl ? (
+                                  <img src={globalSearchResult.photoUrl} className="w-full h-full object-cover" alt={globalSearchResult.firstName} />
+                                ) : null}
+                              </div>
+                              <div className="absolute -bottom-1 -right-1 bg-slate-800 text-white text-[10px] font-black w-7 h-7 rounded-full flex items-center justify-center border-2 border-white shadow-sm z-10">
+                                {globalSearchResult.operativeNumber}
+                              </div>
+                            </div>
+                            <p className="text-sm font-bold text-slate-800 leading-tight line-clamp-1">{globalSearchResult.firstName} {globalSearchResult.lastName}</p>
+                            <p className="text-[10px] font-bold text-purple-600 mt-0.5 capitalize bg-purple-50 px-2 py-0.5 rounded text-center">{globalSearchResult.roleLabel}</p>
+                            
+                            <div className="mt-4 bg-slate-800 text-white w-full py-2 rounded-lg text-xs font-bold flex items-center justify-center gap-1.5 hover:bg-slate-700">
+                              <CheckCircle2 className="w-3.5 h-3.5" /> Marcar Disponible
+                            </div>
+                          </button>
+                        </div>
+                      ) : (
+                        <div className="p-4 border border-slate-200 rounded-xl bg-slate-50 text-center max-w-sm text-xs text-slate-500">
+                          No se encontró ningún bombero activo con el N° {search}
+                        </div>
+                      )}
+                    </div>
+                  )}
                 </div>
               )}
             </div>
@@ -229,8 +326,15 @@ export default function PublicCompanyModernView({ data, onToggleMember, onToggle
                     onClick={() => onToggleMaquinista(m)}
                     disabled={isBusy}
                     className={`w-64 shrink-0 text-left border rounded-xl p-3 flex gap-3 items-center hover:shadow-md transition-all ${isBusy ? 'opacity-50' : ''} ${isAvail ? 'bg-red-50/30 border-red-100 hover:border-red-300' : 'bg-white border-slate-100 hover:border-slate-300'}`}>
-                    <div className={`w-14 h-14 rounded-xl overflow-hidden border-2 shadow-sm shrink-0 bg-slate-200 ${isAvail ? 'border-white' : 'border-slate-100 grayscale'}`}>
-                      {m.photoUrl && <img src={m.photoUrl} className="w-full h-full object-cover" alt={m.firstName} />}
+                    <div className="relative shrink-0">
+                      <div className={`w-14 h-14 rounded-xl overflow-hidden border-2 shadow-sm bg-slate-200 ${isAvail ? 'border-white' : 'border-slate-100 grayscale'}`}>
+                        {m.photoUrl && <img src={m.photoUrl} className="w-full h-full object-cover" alt={m.firstName} />}
+                      </div>
+                      {(m as any).operativeNumber && (
+                        <div className="absolute -bottom-1 -right-1 bg-slate-800 text-white text-[8px] font-black w-5 h-5 rounded-full flex items-center justify-center border-2 border-white shadow-sm z-10">
+                          {(m as any).operativeNumber}
+                        </div>
+                      )}
                     </div>
                     <div className="flex-1 min-w-0">
                       <p className="text-sm font-bold text-slate-800 truncate">{m.firstName} {m.lastName}</p>

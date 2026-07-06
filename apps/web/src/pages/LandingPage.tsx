@@ -710,7 +710,7 @@ function FooterSection() {
               Una plataformas más de <a href="https://kodesk.cl" target="_blank" rel="noopener noreferrer">kodesk.cl</a>
             </p>
             <p className="text-xs text-slate-400 flex items-center gap-2">
-              <span className="w-4 h-4 bg-slate-800 rounded flex items-center justify-center">@</span> contacto@nodo360.cl
+              <span className="w-4 h-4 bg-slate-800 rounded flex items-center justify-center">@</span> nodo360@kodesk.cl
             </p>
           </div>
           

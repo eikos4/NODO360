@@ -17,6 +17,11 @@ const USER_SELECT = {
   operativeNumber: true,
   createdAt: true,
   company: { select: { id: true, name: true, number: true } },
+  achievements: {
+    include: {
+      achievement: true,
+    },
+  },
 } as const;
 
 @Injectable()
