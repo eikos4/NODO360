@@ -11,7 +11,6 @@ services:
       npm install &&
       npx prisma generate --schema=apps/api/prisma/schema.prisma &&
       npx prisma migrate deploy --schema=apps/api/prisma/schema.prisma &&
-      npm run seed &&
       npm run build:api
     startCommand: npm run start --workspace=apps/api
     envVars:
