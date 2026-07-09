@@ -32,7 +32,7 @@ Si el login falla tras un deploy, verifica en el panel de Render:
 3. **nodo360-api** → *Environment* → `FRONTEND_URL` debe coincidir exactamente con la URL del static site
 4. Redeploy manual de **nodo360-api** (botón *Manual Deploy*) y espera ~1 min — el plan free tarda en despertar
 
-Credenciales demo (tras seed automático):
+---
 
 ## Opción B — Manual (panel)
 
