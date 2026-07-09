@@ -28,8 +28,19 @@ async function bootstrap() {
   app.setGlobalPrefix('api');
   app.useGlobalPipes(new ValidationPipe({ whitelist: true, transform: true }));
 
-  const { httpAdapter } = app.get(HttpAdapterHost);
-  app.useGlobalFilters(new PrismaClientExceptionFilter(httpAdapter));
+  const httpAdapter = app.getHttpAdapter();
+  const rootPayload = {
+    ok: true,
+    service: 'NODO360 API',
+    message: 'Servicio activo. Los endpoints están bajo /api',
+    login: '/api/auth/login',
+    health: '/api/ping',
+  };
+  httpAdapter.get('/', (_req: unknown, res: { json: (body: unknown) => void }) => res.json(rootPayload));
+  httpAdapter.get('/api', (_req: unknown, res: { json: (body: unknown) => void }) => res.json(rootPayload));
+
+  const { httpAdapter: adapterHost } = app.get(HttpAdapterHost);
+  app.useGlobalFilters(new PrismaClientExceptionFilter(adapterHost));
 
   app.useStaticAssets(uploadsDir, { prefix: '/uploads' });
 

@@ -31,6 +31,7 @@ import { EmergencyBitacoraModule } from './emergency-bitacora/emergency-bitacora
 import { IncidentLocationPinModule } from './incident-location-pin/incident-location-pin.module';
 import { EmergencyResponseModule } from './emergency-response/emergency-response.module';
 import { StorageModule } from './storage/storage.module';
+import { PingModule } from './ping/ping.module';
 import * as Joi from 'joi';
 
 @Module({
@@ -77,6 +78,7 @@ import * as Joi from 'joi';
     IncidentLocationPinModule,
     EmergencyResponseModule,
     StorageModule,
+    PingModule,
   ],
   providers: [
     {
