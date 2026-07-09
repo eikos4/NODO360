@@ -527,8 +527,8 @@ export default function CentralGlobalPage() {
                 defaultZoom={11}
                 defaultCenter={{ lat: -36.14, lng: -71.82 }} // Parral aprox
                 gestureHandling="greedy"
-                disableDefaultUI
-                mapColorScheme={isDark ? "DARK" : "LIGHT"}
+                disableDefaultUI={true}
+                colorScheme={isDark ? "DARK" : "LIGHT"}
               >
                 {data?.activeEmergencies?.map((e: any) => e.latitude && e.longitude && (
                   <AdvancedMarker key={e.id} position={{ lat: e.latitude, lng: e.longitude }}>

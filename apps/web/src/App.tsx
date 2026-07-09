@@ -41,6 +41,7 @@ import CentralOperativaPage from './pages/CentralOperativaPage';
 import CentralDespachosParralPage from './pages/CentralDespachosParralPage';
 import CentralExpressPage from './pages/CentralExpressPage';
 import BomberoEmergencyPage from './pages/BomberoEmergencyPage';
+import CompanyPublicProfilePage from './pages/CompanyPublicProfilePage';
 
 function PrivateRoute({ children }: { children: React.ReactNode }) {
   const hydrated = useAuthHydrated();
@@ -75,6 +76,7 @@ export default function App() {
       <Route path="/nosotros" element={<NosotrosPage />} />
       <Route path="/login" element={<LoginPage />} />
       <Route path="/central/:slug" element={<DispatchPublicPage />} />
+      <Route path="/cuartel/:slug" element={<CompanyPublicProfilePage />} />
       <Route path="/localizar/:token" element={<IncidentLocationPinPage />} />
       <Route
         element={

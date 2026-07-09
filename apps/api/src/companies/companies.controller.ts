@@ -3,9 +3,7 @@ import {
   UseGuards, UseInterceptors, UploadedFile, BadRequestException, Req,
 } from '@nestjs/common';
 import { FileInterceptor } from '@nestjs/platform-express';
-import { diskStorage } from 'multer';
-import { extname, join } from 'path';
-import { existsSync, mkdirSync } from 'fs';
+import { extname } from 'path';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { RolesGuard } from '../auth/guards/roles.guard';
 import { Roles } from '../auth/decorators/roles.decorator';
@@ -13,16 +11,7 @@ import { CompaniesService } from './companies.service';
 import { CreateCompanyDto } from './dto/create-company.dto';
 import { UpdateCompanyDto } from './dto/update-company.dto';
 
-const UPLOADS_DIR = join(process.cwd(), 'uploads');
-if (!existsSync(UPLOADS_DIR)) mkdirSync(UPLOADS_DIR, { recursive: true });
-
-const imageStorage = diskStorage({
-  destination: UPLOADS_DIR,
-  filename: (_req, file, cb) => {
-    const unique = Date.now() + '-' + Math.round(Math.random() * 1e6);
-    cb(null, unique + extname(file.originalname));
-  },
-});
+import { StorageService } from '../storage/storage.service';
 
 const imageFilter = (_req: any, file: any, cb: any) => {
   /\.(jpg|jpeg|png|gif|webp)$/i.test(extname(file.originalname))
@@ -33,22 +22,29 @@ const imageFilter = (_req: any, file: any, cb: any) => {
 @Controller('companies')
 @UseGuards(JwtAuthGuard, RolesGuard)
 export class CompaniesController {
-  constructor(private companiesService: CompaniesService) {}
+  constructor(
+    private companiesService: CompaniesService,
+    private storageService: StorageService
+  ) {}
 
   @Post('upload-logo')
   @Roles('SUPER_ADMIN', 'COMANDANTE')
-  @UseInterceptors(FileInterceptor('file', { storage: imageStorage, limits: { fileSize: 5 * 1024 * 1024 }, fileFilter: imageFilter }))
+  @UseInterceptors(FileInterceptor('file', { limits: { fileSize: 5 * 1024 * 1024 }, fileFilter: imageFilter }))
   async uploadLogo(@UploadedFile() file: any, @Req() req: any) {
     if (!file) throw new BadRequestException('Imagen requerida');
-    return { logoUrl: `${req.protocol}://${req.get('host')}/uploads/${file.filename}` };
+    const hostUrl = `${req.protocol}://${req.get('host')}`;
+    const fileUrl = await this.storageService.uploadFile(file, hostUrl);
+    return { logoUrl: fileUrl };
   }
 
   @Post('upload-image')
   @Roles('SUPER_ADMIN', 'COMANDANTE')
-  @UseInterceptors(FileInterceptor('file', { storage: imageStorage, limits: { fileSize: 10 * 1024 * 1024 }, fileFilter: imageFilter }))
-  async uploadHeadquartersImage(@UploadedFile() file: any) {
+  @UseInterceptors(FileInterceptor('file', { limits: { fileSize: 10 * 1024 * 1024 }, fileFilter: imageFilter }))
+  async uploadHeadquartersImage(@UploadedFile() file: any, @Req() req: any) {
     if (!file) throw new BadRequestException('Imagen requerida');
-    return { headquartersImageUrl: `/uploads/${file.filename}` };
+    const hostUrl = `${req.protocol}://${req.get('host')}`;
+    const fileUrl = await this.storageService.uploadFile(file, hostUrl);
+    return { headquartersImageUrl: fileUrl };
   }
 
   @Get()

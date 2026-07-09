@@ -967,17 +967,17 @@ async function main() {
     select: { id: true },
     orderBy: { number: 'asc' },
   });
+  let globalOpNumber = 1;
   for (const c of companiesForOp) {
     const members = await prisma.user.findMany({
       where: { companyId: c.id, isActive: true },
       orderBy: [{ lastName: 'asc' }, { firstName: 'asc' }],
       select: { id: true },
     });
-    let n = 1;
     for (const m of members) {
-      if (n > 999) break;
-      await prisma.user.update({ where: { id: m.id }, data: { operativeNumber: n } });
-      n += 1;
+      if (globalOpNumber > 999) break;
+      await prisma.user.update({ where: { id: m.id }, data: { operativeNumber: globalOpNumber } });
+      globalOpNumber += 1;
     }
   }
   console.log('✅ N° operativos por compañía');

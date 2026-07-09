@@ -1,19 +1,6 @@
 import { Controller, Get, Post, Put, Patch, Delete, Param, Body, Query, UseGuards, UseInterceptors, UploadedFile, BadRequestException, Req } from '@nestjs/common';
 import { FileInterceptor } from '@nestjs/platform-express';
-import { diskStorage } from 'multer';
-import { extname, join } from 'path';
-import { existsSync, mkdirSync } from 'fs';
-
-const UPLOADS_DIR = join(process.cwd(), 'uploads');
-if (!existsSync(UPLOADS_DIR)) mkdirSync(UPLOADS_DIR, { recursive: true });
-
-const imageStorage = diskStorage({
-  destination: UPLOADS_DIR,
-  filename: (_req, file, cb) => {
-    const unique = Date.now() + '-' + Math.round(Math.random() * 1e6);
-    cb(null, unique + extname(file.originalname));
-  },
-});
+import { extname } from 'path';
 
 const imageFilter = (_req: any, file: any, cb: any) => {
   /\.(jpg|jpeg|png|gif|webp)$/i.test(extname(file.originalname))
@@ -24,6 +11,7 @@ import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { RolesGuard } from '../auth/guards/roles.guard';
 import { Roles } from '../auth/decorators/roles.decorator';
 import { IncidentsService } from './incidents.service';
+import { StorageService } from '../storage/storage.service';
 import { CreateIncidentDto } from './dto/create-incident.dto';
 import { UpdateIncidentDto } from './dto/update-incident.dto';
 import { DispatchIncidentDto } from './dto/dispatch-incident.dto';
@@ -32,7 +20,10 @@ import { UpdateIncidentChecklistDto } from './dto/update-incident-checklist.dto'
 @Controller('incidents')
 @UseGuards(JwtAuthGuard, RolesGuard)
 export class IncidentsController {
-  constructor(private service: IncidentsService) {}
+  constructor(
+    private service: IncidentsService,
+    private storageService: StorageService
+  ) {}
 
   @Get('stats')
   getStats(@Query('companyId') companyId?: string) {
@@ -51,11 +42,12 @@ export class IncidentsController {
 
   @Post('upload-image')
   @Roles('SUPER_ADMIN', 'COMANDANTE', 'CAPITAN')
-  @UseInterceptors(FileInterceptor('file', { storage: imageStorage, limits: { fileSize: 10 * 1024 * 1024 }, fileFilter: imageFilter }))
+  @UseInterceptors(FileInterceptor('file', { limits: { fileSize: 10 * 1024 * 1024 }, fileFilter: imageFilter }))
   async uploadImage(@UploadedFile() file: any, @Req() req: any) {
     if (!file) throw new BadRequestException('Imagen requerida');
-    const host = `${req.protocol}://${req.get('host')}`;
-    return { imageUrl: `${host}/uploads/${file.filename}` };
+    const hostUrl = `${req.protocol}://${req.get('host')}`;
+    const fileUrl = await this.storageService.uploadFile(file, hostUrl);
+    return { imageUrl: fileUrl };
   }
 
   @Patch(':id/checklist')

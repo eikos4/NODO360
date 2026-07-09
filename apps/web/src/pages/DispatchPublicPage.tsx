@@ -729,7 +729,17 @@ export default function DispatchPublicPage() {
                 Busca tu nombre abajo o escanea el código QR.
               </p>
             </div>
-            <img src={qrUrl} alt="QR sala de máquinas" className={`w-20 h-20 sm:w-24 sm:h-24 rounded-lg border shrink-0 ${isDark ? 'border-slate-600 bg-[#0a1628]' : 'border-slate-300 bg-white'}`} />
+            <div className="flex flex-col items-center gap-2 shrink-0">
+              <img src={qrUrl} alt="QR sala de máquinas" className={`w-20 h-20 sm:w-24 sm:h-24 rounded-lg border ${isDark ? 'border-slate-600 bg-[#0a1628]' : 'border-slate-300 bg-white'}`} />
+              <Link
+                to={`/cuartel/${data.slug}`}
+                className="flex items-center gap-1 px-3 py-1.5 rounded-lg bg-red-600/90 hover:bg-red-500 text-white text-[11px] font-bold transition-colors whitespace-nowrap"
+                title="Ver perfil público de la compañía"
+              >
+                <Siren className="w-3 h-3" />
+                Perfil Público
+              </Link>
+            </div>
           </div>
 
           <div className={`${th.card} rounded-2xl p-4 sm:p-5`}>

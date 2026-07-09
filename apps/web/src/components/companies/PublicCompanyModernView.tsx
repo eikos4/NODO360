@@ -151,8 +151,19 @@ export default function PublicCompanyModernView({ data, onToggleMember, onToggle
             <p className="text-sm font-bold text-slate-800 leading-tight mb-1">Marcar disponibilidad por QR</p>
             <p className="text-[10px] text-slate-500 leading-relaxed">Escanea el código para marcarte como disponible o no disponible.</p>
           </div>
-          <div className="w-20 h-20 shrink-0 bg-slate-100 rounded-xl p-1 border border-slate-200 overflow-hidden flex items-center justify-center">
-             <img src={`https://api.qrserver.com/v1/create-qr-code/?size=150x150&data=nodo360:cuartel:${data.id}`} alt="QR" className="w-full h-full mix-blend-multiply opacity-80" />
+          <div className="flex flex-col items-center gap-2 shrink-0">
+            <div className="w-20 h-20 bg-slate-100 rounded-xl p-1 border border-slate-200 overflow-hidden flex items-center justify-center">
+              <img src={`https://api.qrserver.com/v1/create-qr-code/?size=150x150&data=nodo360:cuartel:${data.id}`} alt="QR" className="w-full h-full mix-blend-multiply opacity-80" />
+            </div>
+            <a
+              href={`/cuartel/${data.slug}`}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="flex items-center gap-1 px-3 py-1.5 rounded-lg bg-red-600 hover:bg-red-500 text-white text-[11px] font-bold transition-colors whitespace-nowrap shadow-sm"
+            >
+              <Siren className="w-3 h-3" />
+              Perfil Público
+            </a>
           </div>
         </div>
       </div>

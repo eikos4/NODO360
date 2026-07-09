@@ -30,6 +30,7 @@ import { TtsModule } from './tts/tts.module';
 import { EmergencyBitacoraModule } from './emergency-bitacora/emergency-bitacora.module';
 import { IncidentLocationPinModule } from './incident-location-pin/incident-location-pin.module';
 import { EmergencyResponseModule } from './emergency-response/emergency-response.module';
+import { StorageModule } from './storage/storage.module';
 import * as Joi from 'joi';
 
 @Module({
@@ -75,6 +76,7 @@ import * as Joi from 'joi';
     EmergencyBitacoraModule,
     IncidentLocationPinModule,
     EmergencyResponseModule,
+    StorageModule,
   ],
   providers: [
     {
