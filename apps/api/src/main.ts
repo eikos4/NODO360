@@ -3,6 +3,7 @@ import { ValidationPipe } from '@nestjs/common';
 import helmet from 'helmet';
 import * as compression from 'compression';
 import { NestExpressApplication } from '@nestjs/platform-express';
+import { Request, Response } from 'express';
 import { join } from 'path';
 import { existsSync, mkdirSync } from 'fs';
 import { AppModule } from './app.module';
@@ -36,8 +37,8 @@ async function bootstrap() {
     login: '/api/auth/login',
     health: '/api/ping',
   };
-  httpAdapter.get('/', (_req: unknown, res: { json: (body: unknown) => void }) => res.json(rootPayload));
-  httpAdapter.get('/api', (_req: unknown, res: { json: (body: unknown) => void }) => res.json(rootPayload));
+  httpAdapter.get('/', (_req: Request, res: Response) => res.json(rootPayload));
+  httpAdapter.get('/api', (_req: Request, res: Response) => res.json(rootPayload));
 
   const { httpAdapter: adapterHost } = app.get(HttpAdapterHost);
   app.useGlobalFilters(new PrismaClientExceptionFilter(adapterHost));

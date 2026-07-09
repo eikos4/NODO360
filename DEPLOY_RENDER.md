@@ -63,7 +63,7 @@ Copia la **Internal Database URL** (la usa la API en la misma región).
 **Build Command:**
 
 ```bash
-npm install && npx prisma generate --schema=apps/api/prisma/schema.prisma && npx prisma migrate deploy --schema=apps/api/prisma/schema.prisma && SEED_IF_EMPTY=true npm run seed --workspace=apps/api -- --if-empty && npm run build:api
+npm install && npx prisma generate --schema=apps/api/prisma/schema.prisma && npx prisma migrate deploy --schema=apps/api/prisma/schema.prisma && npm run build:api && SEED_IF_EMPTY=true npm run seed --workspace=apps/api -- --if-empty
 ```
 
 **Environment variables:**
