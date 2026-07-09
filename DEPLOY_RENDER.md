@@ -21,15 +21,18 @@ Necesitas **3 recursos** en Render:
    - En **nodo360-web** → `VITE_API_URL` = URL API + `/api` (ej. `https://nodo360-api.onrender.com/api`)
 6. Redeploy ambos servicios
 
-### Poblar datos demo (una vez)
+### Poblar datos demo (automático)
 
-En **nodo360-api** → **Shell**:
+El deploy carga los datos demo **automáticamente** si la base de datos está vacía (`SEED_IF_EMPTY` en build + `AUTO_SEED_DEMO` al iniciar la API). **No necesitas Shell** en el primer deploy.
 
-```bash
-cd apps/api && npx prisma db seed
-```
+Si el login falla tras un deploy, verifica en el panel de Render:
 
----
+1. **nodo360-api** → *Logs* → busca `[bootstrap] Seed demo completado` o `Usuarios existentes`
+2. **nodo360-web** → *Environment* → `VITE_API_URL` debe ser `https://TU-API.onrender.com/api` (sin barra final)
+3. **nodo360-api** → *Environment* → `FRONTEND_URL` debe coincidir exactamente con la URL del static site
+4. Redeploy manual de **nodo360-api** (botón *Manual Deploy*) y espera ~1 min — el plan free tarda en despertar
+
+Credenciales demo (tras seed automático):
 
 ## Opción B — Manual (panel)
 
@@ -60,7 +63,7 @@ Copia la **Internal Database URL** (la usa la API en la misma región).
 **Build Command:**
 
 ```bash
-npm install && npx prisma generate --schema=apps/api/prisma/schema.prisma && npx prisma migrate deploy --schema=apps/api/prisma/schema.prisma && npm run build:api
+npm install && npx prisma generate --schema=apps/api/prisma/schema.prisma && npx prisma migrate deploy --schema=apps/api/prisma/schema.prisma && SEED_IF_EMPTY=true npm run seed --workspace=apps/api -- --if-empty && npm run build:api
 ```
 
 **Environment variables:**
@@ -71,6 +74,7 @@ npm install && npx prisma generate --schema=apps/api/prisma/schema.prisma && npx
 | `DATABASE_URL` | *(Internal URL de Postgres)* |
 | `JWT_SECRET` | *(string largo aleatorio, 32+ chars)* |
 | `JWT_EXPIRES_IN` | `7d` |
+| `AUTO_SEED_DEMO` | `true` *(carga demo Parral si la BD está vacía)* |
 | `FRONTEND_URL` | `https://TU-WEB.onrender.com` |
 | `PORT` | *(Render lo inyecta solo)* |
 

@@ -8,6 +8,7 @@ import { useAuthHydrated } from '../hooks/useAuthHydrated';
 import { useThemeStore } from '../store/themeStore';
 import { cn } from '../lib/utils';
 import toast from 'react-hot-toast';
+import axios from 'axios';
 
 const FEATURES = [
   { icon: Shield, title: 'Control Operativo', desc: 'Emergencias, turnos y mantención en tiempo real' },
@@ -48,8 +49,19 @@ export default function LoginPage() {
       await login(email, password);
       const role = useAuthStore.getState().user?.role;
       navigate(getDefaultRouteForRole(role));
-    } catch {
-      toast.error('Credenciales incorrectas');
+    } catch (err) {
+      if (!axios.isAxiosError(err) || !err.response) {
+        toast.error(
+          'No se pudo conectar con el servidor. En Render free la API puede tardar ~30 s en despertar — espera e intenta de nuevo.',
+          { duration: 6000 },
+        );
+      } else if (err.response.status === 401) {
+        toast.error('Credenciales incorrectas o usuario no existe en la base de datos');
+      } else if (err.response.status === 429) {
+        toast.error('Demasiados intentos. Espera un minuto e intenta de nuevo.');
+      } else {
+        toast.error(err.response.data?.message ?? 'Error al iniciar sesión');
+      }
     } finally {
       setLoading(false);
     }

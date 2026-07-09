@@ -8,8 +8,10 @@ import { existsSync, mkdirSync } from 'fs';
 import { AppModule } from './app.module';
 import { HttpAdapterHost } from '@nestjs/core';
 import { PrismaClientExceptionFilter } from './prisma/prisma-client-exception.filter';
+import { ensureDemoDatabaseSeeded } from './bootstrap/ensure-demo-seed';
 
 async function bootstrap() {
+  await ensureDemoDatabaseSeeded();
   const app = await NestFactory.create<NestExpressApplication>(AppModule);
   app.use(helmet({ crossOriginResourcePolicy: { policy: "cross-origin" } }));
   app.use(compression());

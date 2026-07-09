@@ -145,8 +145,21 @@ const COMPANIES_SPEC = [
 ] as const;
 
 async function main() {
-  console.log('🌱 NODO360 — Reseteando BD demo (Cuerpo de Bomberos de Parral — 6 compañías)...\n');
-  await clearDatabase();
+  const ifEmpty =
+    process.env.SEED_IF_EMPTY === 'true' ||
+    process.argv.includes('--if-empty');
+
+  if (ifEmpty) {
+    const userCount = await prisma.user.count();
+    if (userCount > 0) {
+      console.log('✅ Usuarios existentes — seed omitido (--if-empty)');
+      return;
+    }
+    console.log('🌱 BD vacía — cargando demo Parral (Cuerpo de Bomberos — 6 compañías)...\n');
+  } else {
+    console.log('🌱 NODO360 — Reseteando BD demo (Cuerpo de Bomberos de Parral — 6 compañías)...\n');
+    await clearDatabase();
+  }
 
   // ─── 6 Compañías del Cuerpo ───────────────────────────────────────────────
   const companies = await Promise.all(
