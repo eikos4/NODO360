@@ -4,6 +4,7 @@ import { Map, AdvancedMarker, useMap } from '@vis.gl/react-google-maps';
 import {
   Siren, MapPin, Navigation, CheckCircle2, XCircle, UserX, Loader2,
   RefreshCw, Users, Truck, AlertTriangle, Crosshair, Radio, Building2, Volume2, VolumeX,
+  Clock, Flag, Route, Flame,
 } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { api } from '../lib/api';
@@ -13,17 +14,98 @@ import { openGoogleMapsDirections } from '../lib/incident-location-pin';
 import { usePublicDispatchAlarm } from '../hooks/usePublicDispatchAlarm';
 import { COMPANIAS360 } from '../lib/companias360';
 import { useThemeStore } from '../store/themeStore';
+import { cn } from '../lib/utils';
+
+type ResponseStatus = 'GOING' | 'NOT_GOING' | 'NOT_AVAILABLE' | 'ON_SCENE' | 'LOCATION_MARKED';
 
 const AUDIO_KEY = 'nodo360_public_audio_enabled';
 const apiBase = import.meta.env.VITE_API_URL?.replace(/\/$/, '') || '/api';
+
+function ResponseChoiceButton({
+  status,
+  selectedStatus,
+  animatingStatus,
+  onSelect,
+  disabled,
+  className,
+  selectedClassName,
+  children,
+}: {
+  status: ResponseStatus;
+  selectedStatus: ResponseStatus | null;
+  animatingStatus: ResponseStatus | null;
+  onSelect: () => void;
+  disabled?: boolean;
+  className?: string;
+  selectedClassName?: string;
+  children: React.ReactNode;
+}) {
+  const isSelected = selectedStatus === status;
+  const isAnimating = animatingStatus === status;
+
+  return (
+    <button
+      type="button"
+      disabled={disabled}
+      onClick={onSelect}
+      aria-pressed={isSelected}
+      className={cn(
+        'relative overflow-hidden transition-all duration-300',
+        className,
+        isSelected && selectedClassName,
+        isSelected && 'z-10',
+        isAnimating && 'response-choice-pop',
+      )}
+    >
+      {isAnimating && (
+        <span className="absolute inset-0 response-choice-flash pointer-events-none rounded-[inherit]" aria-hidden />
+      )}
+      {children}
+    </button>
+  );
+}
+
+function haversineKm(
+  a: { lat: number; lng: number },
+  b: { lat: number; lng: number },
+): number {
+  const toRad = (d: number) => (d * Math.PI) / 180;
+  const R = 6371;
+  const dLat = toRad(b.lat - a.lat);
+  const dLng = toRad(b.lng - a.lng);
+  const s =
+    Math.sin(dLat / 2) ** 2 +
+    Math.cos(toRad(a.lat)) * Math.cos(toRad(b.lat)) * Math.sin(dLng / 2) ** 2;
+  return R * 2 * Math.atan2(Math.sqrt(s), Math.sqrt(1 - s));
+}
+
+function estimateEtaMinutes(km: number): number {
+  if (km <= 0) return 1;
+  return Math.max(1, Math.round((km / 40) * 60));
+}
+
+function choiceHeadline(status: ResponseStatus | null): { title: string; accent: string } {
+  switch (status) {
+    case 'GOING':
+      return { title: 'TU RESPUESTA EN CAMINO', accent: 'emerald' };
+    case 'ON_SCENE':
+      return { title: 'TU RESPUESTA EN EL LUGAR', accent: 'sky' };
+    case 'NOT_GOING':
+      return { title: 'TU RESPUESTA: NO VOY', accent: 'slate' };
+    case 'NOT_AVAILABLE':
+      return { title: 'TU RESPUESTA: NO DISPONIBLE', accent: 'amber' };
+    case 'LOCATION_MARKED':
+      return { title: 'UBICACIÓN DEL INCENDIO MARCADA', accent: 'red' };
+    default:
+      return { title: 'SIN RESPUESTA AÚN', accent: 'slate' };
+  }
+}
 
 function resolveDispatchSlug(company: CompanyInfo | null): string | null {
   if (!company) return null;
   if (company.dispatchSlug) return company.dispatchSlug;
   return COMPANIAS360.find((c) => c.number === company.number)?.slug ?? null;
 }
-
-type ResponseStatus = 'GOING' | 'NOT_GOING' | 'NOT_AVAILABLE' | 'ON_SCENE' | 'LOCATION_MARKED';
 
 type CompanyInfo = {
   id: string;
@@ -272,6 +354,9 @@ export default function BomberoEmergencyPage() {
   const [urgentPoll, setUrgentPoll] = useState(false);
   const [audioEnabled, setAudioEnabled] = useState(() => sessionStorage.getItem(AUDIO_KEY) === '1');
   const [audioMuted, setAudioMuted] = useState(false);
+  const [optimisticStatus, setOptimisticStatus] = useState<ResponseStatus | null>(null);
+  const [animatingStatus, setAnimatingStatus] = useState<ResponseStatus | null>(null);
+  const choiceAnimTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const pendingAudioReplayRef = useRef(false);
   const { pos, locating, capture } = useGps();
 
@@ -321,6 +406,24 @@ export default function BomberoEmergencyPage() {
   }, [incidents, publicLive, company]);
 
   const selected = displayIncidents.find((i) => i.id === selectedId) ?? displayIncidents[0] ?? null;
+  const selectedChoice = optimisticStatus ?? selected?.myResponse?.status ?? null;
+
+  useEffect(() => {
+    setOptimisticStatus(selected?.myResponse?.status ?? null);
+  }, [selected?.id, selected?.myResponse?.status]);
+
+  useEffect(() => {
+    return () => {
+      if (choiceAnimTimer.current) clearTimeout(choiceAnimTimer.current);
+    };
+  }, []);
+
+  const playChoiceAnimation = (status: ResponseStatus) => {
+    setOptimisticStatus(status);
+    setAnimatingStatus(status);
+    if (choiceAnimTimer.current) clearTimeout(choiceAnimTimer.current);
+    choiceAnimTimer.current = setTimeout(() => setAnimatingStatus(null), 700);
+  };
 
   const alarmEmergencies = useMemo(
     () => displayIncidents.map((i) => ({
@@ -403,7 +506,10 @@ export default function BomberoEmergencyPage() {
       qc.invalidateQueries({ queryKey: ['emergency-response-active'] });
       qc.invalidateQueries({ queryKey: ['operational-map'] });
     },
-    onError: () => toast.error('No se pudo registrar la respuesta'),
+    onError: () => {
+      toast.error('No se pudo registrar la respuesta');
+      setOptimisticStatus(selected?.myResponse?.status ?? null);
+    },
   });
 
   const markMut = useMutation({
@@ -417,7 +523,10 @@ export default function BomberoEmergencyPage() {
       qc.invalidateQueries({ queryKey: ['emergency-response-active'] });
       qc.invalidateQueries({ queryKey: ['operational-map'] });
     },
-    onError: () => toast.error('No se pudo marcar la ubicación'),
+    onError: () => {
+      toast.error('No se pudo marcar la ubicación');
+      setOptimisticStatus(selected?.myResponse?.status ?? null);
+    },
   });
 
   const busy = respondMut.isPending || markMut.isPending;
@@ -436,18 +545,49 @@ export default function BomberoEmergencyPage() {
 
   const mapCenter: [number, number] = mapPoints[0] ?? [-36.1431, -71.8261];
 
-  const handleRespond = async (status: string, withGps = false) => {
+  const destCoords = useMemo(() => {
+    if (!selected) return null;
+    if (selected.fieldGps) return { lat: selected.fieldGps.latitude, lng: selected.fieldGps.longitude };
+    if (selected.dispatchGps) return { lat: selected.dispatchGps.latitude, lng: selected.dispatchGps.longitude };
+    if (selected.mapLat != null && selected.mapLng != null) return { lat: selected.mapLat, lng: selected.mapLng };
+    return null;
+  }, [selected]);
+
+  const tripStats = useMemo(() => {
+    if (!destCoords) return { totalKm: null as number | null, remainingKm: null as number | null, etaMin: null as number | null, progress: 0 };
+    const totalKm = pos
+      ? Math.max(haversineKm(pos, destCoords), 0.1)
+      : null;
+    // Sin GPS del bombero: estimar desde cuartel si hay map del incidente
+    const remainingKm = pos && destCoords ? haversineKm(pos, destCoords) : totalKm;
+    const etaMin = remainingKm != null ? estimateEtaMinutes(remainingKm) : null;
+    const progress =
+      selectedChoice === 'ON_SCENE' || selectedChoice === 'LOCATION_MARKED'
+        ? 1
+        : selectedChoice === 'GOING' && remainingKm != null && totalKm
+          ? Math.min(0.92, Math.max(0.12, 1 - remainingKm / Math.max(totalKm * 1.4, remainingKm + 0.5)))
+          : selectedChoice === 'GOING'
+            ? 0.35
+            : 0;
+    return { totalKm, remainingKm, etaMin, progress };
+  }, [destCoords, pos, selectedChoice]);
+
+  const handleRespond = async (status: ResponseStatus, withGps = false) => {
     if (!selected) return;
+    playChoiceAnimation(status);
     let latitude: number | undefined;
     let longitude: number | undefined;
-    if (withGps) {
+    const wantGps = withGps || status === 'GOING' || status === 'ON_SCENE';
+    if (wantGps) {
       try {
         const p = pos ?? await capture();
         latitude = p.lat;
         longitude = p.lng;
       } catch {
-        toast.error('Activa el GPS para confirmar tu posición');
-        return;
+        if (withGps || status === 'ON_SCENE') {
+          toast.error('Activa el GPS para confirmar tu posición');
+          return;
+        }
       }
     }
     respondMut.mutate({ incidentId: selected.id, status, latitude, longitude });
@@ -455,6 +595,7 @@ export default function BomberoEmergencyPage() {
 
   const handleMarkLocation = async () => {
     if (!selected) return;
+    playChoiceAnimation('LOCATION_MARKED');
     try {
       const p = pos ?? await capture();
       markMut.mutate({ incidentId: selected.id, latitude: p.lat, longitude: p.lng });
@@ -482,30 +623,30 @@ export default function BomberoEmergencyPage() {
       )}
 
       {company && profile && (
-        <div className="rounded-2xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900/70 p-4 flex items-center justify-between gap-4 shadow-md">
-          <div className="flex items-center gap-4 min-w-0">
+        <div className="rounded-2xl border border-slate-200 dark:border-slate-700/80 bg-white dark:bg-[#0b1220] p-3.5 flex items-center justify-between gap-3 shadow-md">
+          <div className="flex items-center gap-3 min-w-0">
             {company.logoUrl ? (
               <img
                 src={company.logoUrl}
                 alt=""
-                className="w-12 h-12 rounded-full object-cover border-2 border-red-500/30 shrink-0"
+                className="w-11 h-11 rounded-full object-cover border-2 border-emerald-500/40 shrink-0"
               />
             ) : (
-              <div className="w-12 h-12 rounded-full bg-red-600/15 border-2 border-red-500/30 flex items-center justify-center shrink-0">
-                <Building2 className="w-6 h-6 text-red-600 dark:text-red-400" />
+              <div className="w-11 h-11 rounded-full bg-emerald-600/20 border-2 border-emerald-500/40 flex items-center justify-center shrink-0">
+                <Building2 className="w-5 h-5 text-emerald-400" />
               </div>
             )}
             <div className="min-w-0">
-              <p className="text-[10px] uppercase tracking-widest text-red-600 dark:text-red-400 font-bold">
-                {company.number}ª Compañía · {company.city}
+              <p className="text-[10px] uppercase tracking-[0.14em] text-emerald-400 font-black truncate">
+                {company.number}ª COMPAÑÍA {company.city?.toUpperCase()}
               </p>
-              <p className="font-black text-slate-900 dark:text-white text-base truncate leading-snug">{company.name}</p>
-              <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5 truncate">
+              <p className="font-black text-slate-900 dark:text-white text-sm truncate leading-snug">
                 {profile.fullName}
                 {profile.operativeNumber != null && (
-                  <span className="text-slate-500 dark:text-slate-400"> · N° {profile.operativeNumber}</span>
+                  <span className="text-slate-500 font-bold"> · N° {profile.operativeNumber}</span>
                 )}
               </p>
+              <p className="text-[11px] text-slate-500 dark:text-slate-400 font-semibold">Bombero Operativo</p>
             </div>
           </div>
           <div className="flex items-center gap-2 shrink-0">
@@ -513,10 +654,10 @@ export default function BomberoEmergencyPage() {
               <button
                 type="button"
                 onClick={() => setAudioMuted((m) => !m)}
-                className={`text-xs font-semibold px-2.5 py-1.5 rounded-lg border transition-all ${
+                className={`text-xs font-bold px-2.5 py-1.5 rounded-lg border transition-all ${
                   audioMuted
                     ? 'border-slate-300 dark:border-slate-600 text-slate-500 dark:text-slate-400 bg-slate-100 dark:bg-slate-800/30'
-                    : 'border-emerald-500/40 text-emerald-300 bg-emerald-500/10'
+                    : 'border-emerald-500/50 text-emerald-300 bg-emerald-500/15'
                 }`}
               >
                 {audioMuted ? (
@@ -530,7 +671,7 @@ export default function BomberoEmergencyPage() {
               type="button"
               onClick={() => void refetch()}
               disabled={isFetching}
-              className="p-2 rounded-lg border border-slate-200 dark:border-slate-700 text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white transition-all hover:bg-slate-100 dark:bg-slate-800"
+              className="p-2 rounded-lg border border-slate-200 dark:border-slate-700 text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white transition-all"
             >
               <RefreshCw className={`w-4 h-4 ${isFetching ? 'animate-spin' : ''}`} />
             </button>
@@ -628,119 +769,257 @@ export default function BomberoEmergencyPage() {
             {selected && (
               <div className="space-y-4">
                 
-                {/* ─── MOBILE VIEW (Phone-First Pager Interface) ─── */}
-                <div className="block lg:hidden space-y-4">
-                  {/* 1. Urgent Alert Banner */}
-                  <div className="bg-gradient-to-br from-red-50 dark:from-red-950/90 to-slate-50 dark:to-slate-900/90 border border-red-200 dark:border-red-500/50 rounded-2xl p-4 shadow-xl shadow-red-950/20 relative overflow-hidden">
-                    <div className="absolute top-4 right-4 flex items-center gap-1.5">
-                      <span className="w-2 h-2 rounded-full bg-red-500 animate-ping absolute" />
-                      <span className="w-2 h-2 rounded-full bg-red-500 relative" />
-                      <span className="text-[9px] font-black tracking-wider text-red-600 dark:text-red-400 uppercase">PAGER ALARMA</span>
-                    </div>
-                    
-                    <div className="space-y-3">
-                      <div>
-                        <span className="text-[10px] font-black uppercase bg-red-100 dark:bg-red-500/20 text-red-700 dark:text-red-300 px-2 py-0.5 rounded border border-red-500/30">
+                {/* ─── MOBILE VIEW (diseño operativo bombero) ─── */}
+                <div className="block lg:hidden space-y-3">
+                  {/* 1. Emergencia activa — card roja */}
+                  <div className="rounded-2xl border-2 border-red-500/70 bg-[#140a0e] p-4 shadow-[0_0_28px_rgba(239,68,68,0.18)] relative overflow-hidden">
+                    <div className="absolute inset-0 bg-gradient-to-br from-red-600/15 via-transparent to-transparent pointer-events-none" />
+                    <div className="relative space-y-3">
+                      <div className="flex items-start justify-between gap-2">
+                        <span className="text-[10px] font-black font-mono uppercase bg-red-600 text-white px-2 py-0.5 rounded">
                           {selected.code}
                         </span>
-                        <h2 className="text-xl font-black text-slate-900 dark:text-white mt-2 leading-tight">{selected.type}</h2>
-                        <p className="text-sm text-slate-600 dark:text-slate-300 mt-1.5 flex items-start gap-1">
-                          <MapPin className="w-4 h-4 text-red-600 dark:text-red-400 shrink-0 mt-0.5" />
-                          <span className="font-semibold">{selected.address}</span>
-                        </p>
+                        <div className="flex items-center gap-1.5">
+                          <span className="relative flex h-2 w-2">
+                            <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-red-400 opacity-75" />
+                            <span className="relative inline-flex rounded-full h-2 w-2 bg-red-500" />
+                          </span>
+                          <span className="text-[9px] font-black tracking-wider text-red-400 uppercase">Emergencia activa</span>
+                        </div>
+                      </div>
+
+                      <div className="flex items-start gap-3">
+                        <div className="w-12 h-12 rounded-full bg-red-600/25 border border-red-500/50 flex items-center justify-center shrink-0 shadow-[0_0_16px_rgba(239,68,68,0.35)]">
+                          <Flame className="w-6 h-6 text-red-400" />
+                        </div>
+                        <div className="min-w-0">
+                          <h2 className="text-lg font-black text-white leading-tight">
+                            {selected.emergencyCodeId ? `${selected.emergencyCodeId} — ` : ''}{selected.type}
+                          </h2>
+                          <p className="text-sm text-slate-300 mt-1 flex items-start gap-1.5">
+                            <MapPin className="w-4 h-4 text-red-400 shrink-0 mt-0.5" />
+                            <span className="font-semibold">{selected.address}</span>
+                          </p>
+                        </div>
                       </div>
 
                       {selected.radioMessage && (
-                        <div className="bg-amber-50 dark:bg-black/60 border border-slate-200 dark:border-slate-800 rounded-xl p-3 font-mono text-[11px] text-amber-800 dark:text-amber-300 leading-relaxed shadow-inner">
-                          <div className="text-[9px] uppercase tracking-wider text-slate-500 dark:text-slate-400 mb-1 flex items-center gap-1 font-sans font-bold">
-                            <Radio className="w-3.5 h-3.5 text-amber-600 dark:text-amber-500 animate-pulse" /> Despacho Central
+                        <div className="bg-black/50 border border-slate-800 rounded-xl p-3 font-mono text-[11px] text-amber-300 leading-relaxed">
+                          <div className="text-[9px] uppercase tracking-wider text-slate-500 mb-1 flex items-center gap-1 font-sans font-bold">
+                            <Radio className="w-3.5 h-3.5 text-amber-500 animate-pulse" /> Despacho Central
                           </div>
                           {selected.radioMessage}
                         </div>
                       )}
 
-                      <div className="text-[10px] text-slate-500 dark:text-slate-400 flex items-center justify-between border-t border-slate-200 dark:border-slate-800/60 pt-2">
-                        <span>Despachado: {new Date(selected.dispatchedAt).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}</span>
-                        <span className="text-red-600 dark:text-red-400 font-bold flex items-center gap-1">
-                          <span className="w-1.5 h-1.5 rounded-full bg-red-500 animate-pulse inline-block" />
+                      <div className="flex items-center justify-between text-[10px] text-slate-400 border-t border-red-900/50 pt-2">
+                        <span className="uppercase tracking-wider font-bold">
+                          Despachado {new Date(selected.dispatchedAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                        </span>
+                        <span className="text-red-400 font-black uppercase flex items-center gap-1.5">
+                          <svg width="36" height="10" viewBox="0 0 36 10" className="opacity-80" aria-hidden>
+                            <polyline fill="none" stroke="currentColor" strokeWidth="1.5" points="0,5 4,5 6,2 8,8 10,4 12,6 14,5 18,5 20,1 22,9 24,3 26,7 28,5 36,5" />
+                          </svg>
                           Hace {getTimeElapsed(selected.dispatchedAt)}
                         </span>
                       </div>
                     </div>
                   </div>
 
-                  {/* 2. Quick Thumb Response Buttons */}
-                  <div className="bg-white dark:bg-slate-900/60 border border-slate-200 dark:border-slate-800 rounded-2xl p-3 shadow-md space-y-2">
-                    <div className="flex justify-between items-center px-1">
-                      <p className="text-[10px] uppercase tracking-widest text-slate-500 dark:text-slate-400 font-bold">Tu Respuesta</p>
-                      <StatusBadge status={selected.myResponse?.status ?? null} />
+                  {/* 2. Estado de respuesta — card verde (si ya respondió) */}
+                  {selectedChoice && (() => {
+                    const head = choiceHeadline(selectedChoice);
+                    const isGoing = selectedChoice === 'GOING' || selectedChoice === 'ON_SCENE';
+                    return (
+                      <div
+                        className={cn(
+                          'rounded-2xl border-2 p-4 relative overflow-hidden',
+                          head.accent === 'emerald' && 'border-emerald-500/60 bg-[#0a1610] shadow-[0_0_24px_rgba(16,185,129,0.2)]',
+                          head.accent === 'sky' && 'border-sky-500/60 bg-[#0a1218] shadow-[0_0_24px_rgba(14,165,233,0.2)]',
+                          head.accent === 'amber' && 'border-amber-500/50 bg-[#161208]',
+                          head.accent === 'slate' && 'border-slate-600/60 bg-[#10141c]',
+                          head.accent === 'red' && 'border-red-500/50 bg-[#160a0c]',
+                        )}
+                      >
+                        <div className="flex items-start justify-between gap-2 mb-3">
+                          <div className="flex items-center gap-2 min-w-0">
+                            <CheckCircle2
+                              className={cn(
+                                'w-7 h-7 shrink-0',
+                                head.accent === 'emerald' && 'text-emerald-400',
+                                head.accent === 'sky' && 'text-sky-400',
+                                head.accent === 'amber' && 'text-amber-400',
+                                head.accent === 'slate' && 'text-slate-400',
+                                head.accent === 'red' && 'text-red-400',
+                              )}
+                            />
+                            <h3 className="text-sm sm:text-base font-black text-white leading-tight tracking-wide">
+                              {head.title}
+                            </h3>
+                          </div>
+                          <span className="shrink-0 text-[9px] font-black uppercase px-2 py-1 rounded-full bg-emerald-500/20 text-emerald-300 border border-emerald-500/40">
+                            Respuesta enviada
+                          </span>
+                        </div>
+
+                        {isGoing && (
+                          <div className="space-y-3">
+                            <div className="flex items-end justify-between gap-3">
+                              <div>
+                                <p className="text-[9px] uppercase tracking-widest text-slate-500 font-bold">ETA estimada</p>
+                                <p className="text-3xl font-black text-emerald-400 leading-none mt-0.5">
+                                  {tripStats.etaMin != null ? `${tripStats.etaMin}` : '—'}
+                                  <span className="text-sm ml-1 text-emerald-500/80">MIN</span>
+                                </p>
+                              </div>
+                              {tripStats.remainingKm != null && (
+                                <p className="text-xs font-bold text-slate-400">
+                                  {tripStats.remainingKm.toFixed(1)} km restantes
+                                </p>
+                              )}
+                            </div>
+
+                            {/* Barra de progreso cuartel → incendio */}
+                            <div className="relative px-1 pt-2 pb-1">
+                              <div className="h-1.5 rounded-full bg-slate-800 overflow-hidden">
+                                <div
+                                  className="h-full rounded-full bg-gradient-to-r from-emerald-600 to-emerald-400 transition-all duration-700"
+                                  style={{ width: `${Math.round(tripStats.progress * 100)}%` }}
+                                />
+                              </div>
+                              <div className="flex justify-between items-center mt-2 relative">
+                                <div className="flex flex-col items-center gap-0.5">
+                                  <Building2 className="w-4 h-4 text-slate-400" />
+                                  <span className="text-[8px] text-slate-500 font-bold uppercase">Cuartel</span>
+                                </div>
+                                <div
+                                  className="absolute top-0 -translate-x-1/2 transition-all duration-700"
+                                  style={{ left: `${Math.round(tripStats.progress * 100)}%` }}
+                                >
+                                  <div className="w-8 h-8 -mt-5 rounded-full bg-emerald-500/20 border border-emerald-400/50 flex items-center justify-center shadow-[0_0_12px_rgba(16,185,129,0.5)]">
+                                    <Truck className="w-4 h-4 text-emerald-300" />
+                                  </div>
+                                </div>
+                                <div className="flex flex-col items-center gap-0.5">
+                                  <MapPin className="w-4 h-4 text-red-400" />
+                                  <span className="text-[8px] text-slate-500 font-bold uppercase">Lugar</span>
+                                </div>
+                              </div>
+                            </div>
+                          </div>
+                        )}
+                      </div>
+                    );
+                  })()}
+
+                  {/* 3. Botones de respuesta */}
+                  <div className="rounded-2xl border border-slate-700/80 bg-[#0b1220] p-3 space-y-2.5 shadow-md">
+                    <div className="grid grid-cols-3 gap-2">
+                      <ResponseChoiceButton
+                        status="GOING"
+                        selectedStatus={selectedChoice}
+                        animatingStatus={animatingStatus}
+                        disabled={busy}
+                        onSelect={() => void handleRespond('GOING')}
+                        className="col-span-1 flex flex-col items-center justify-center gap-1 py-3.5 rounded-xl bg-slate-900/80 border border-slate-700 text-slate-300 disabled:opacity-50 font-black"
+                        selectedClassName="!bg-emerald-600 !border-emerald-400 !text-white shadow-[0_0_22px_rgba(16,185,129,0.55)] scale-[1.02]"
+                      >
+                        <CheckCircle2 className="w-5 h-5" />
+                        <span className="text-[10px] uppercase tracking-wide leading-tight text-center">
+                          {selectedChoice === 'GOING' ? 'Voy en camino' : 'Voy'}
+                        </span>
+                      </ResponseChoiceButton>
+
+                      <ResponseChoiceButton
+                        status="NOT_GOING"
+                        selectedStatus={selectedChoice}
+                        animatingStatus={animatingStatus}
+                        disabled={busy}
+                        onSelect={() => void handleRespond('NOT_GOING')}
+                        className="flex flex-col items-center justify-center gap-1 py-3.5 rounded-xl bg-slate-900/80 border border-slate-700 text-slate-400 disabled:opacity-50 font-bold"
+                        selectedClassName="!bg-slate-600 !border-slate-400 !text-white shadow-[0_0_18px_rgba(148,163,184,0.35)] scale-[1.02]"
+                      >
+                        <XCircle className="w-5 h-5" />
+                        <span className="text-[10px]">No voy</span>
+                      </ResponseChoiceButton>
+
+                      <ResponseChoiceButton
+                        status="NOT_AVAILABLE"
+                        selectedStatus={selectedChoice}
+                        animatingStatus={animatingStatus}
+                        disabled={busy}
+                        onSelect={() => void handleRespond('NOT_AVAILABLE')}
+                        className="flex flex-col items-center justify-center gap-1 py-3.5 rounded-xl bg-slate-900/80 border border-slate-700 text-amber-500/80 disabled:opacity-50 font-bold"
+                        selectedClassName="!bg-amber-600 !border-amber-400 !text-white shadow-[0_0_18px_rgba(245,158,11,0.45)] scale-[1.02]"
+                      >
+                        <UserX className="w-5 h-5" />
+                        <span className="text-[10px]">No disponible</span>
+                      </ResponseChoiceButton>
                     </div>
 
-                    <div className="grid grid-cols-4 gap-2">
-                      {/* VOY (Emerald, Pulsing style) */}
-                      <button
-                        type="button"
+                    <div className="grid grid-cols-2 gap-2">
+                      <ResponseChoiceButton
+                        status="ON_SCENE"
+                        selectedStatus={selectedChoice}
+                        animatingStatus={animatingStatus}
                         disabled={busy}
-                        onClick={() => void handleRespond('GOING')}
-                        className="col-span-2 flex flex-col items-center justify-center gap-1.5 py-4 rounded-xl bg-emerald-600 hover:bg-emerald-500 active:scale-[0.98] disabled:opacity-50 font-black text-white shadow-lg shadow-emerald-950/40 border border-emerald-500/20 transition-all"
-                      >
-                        <CheckCircle2 className="w-6 h-6 text-white" />
-                        <span className="text-base uppercase tracking-wider">Voy</span>
-                      </button>
-                      
-                      {/* NO VOY */}
-                      <button
-                        type="button"
-                        disabled={busy}
-                        onClick={() => respondMut.mutate({ incidentId: selected.id, status: 'NOT_GOING' })}
-                        className="col-span-1 flex flex-col items-center justify-center gap-1.5 py-4 rounded-xl bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:bg-slate-700 active:scale-[0.98] disabled:opacity-50 font-bold text-slate-600 dark:text-slate-300 border border-slate-200 dark:border-slate-700 transition-all text-xs"
-                      >
-                        <XCircle className="w-5 h-5 text-slate-500 dark:text-slate-400" />
-                        <span>No voy</span>
-                      </button>
-
-                      {/* NO DISPONIBLE */}
-                      <button
-                        type="button"
-                        disabled={busy}
-                        onClick={() => respondMut.mutate({ incidentId: selected.id, status: 'NOT_AVAILABLE' })}
-                        className="col-span-1 flex flex-col items-center justify-center gap-1.5 py-4 rounded-xl bg-amber-100 dark:bg-amber-950/50 hover:bg-amber-200 dark:hover:bg-amber-900/50 active:scale-[0.98] disabled:opacity-50 font-bold text-amber-800 dark:text-amber-300 border border-amber-300 dark:border-amber-800/40 transition-all text-xs"
-                      >
-                        <UserX className="w-5 h-5 text-amber-600 dark:text-amber-500" />
-                        <span>No disp.</span>
-                      </button>
-                    </div>
-
-                    <div className="grid grid-cols-2 gap-2 mt-2">
-                      {/* EN EL LUGAR */}
-                      <button
-                        type="button"
-                        disabled={busy}
-                        onClick={() => void handleRespond('ON_SCENE')}
-                        className="flex items-center justify-center gap-2 py-3 rounded-xl bg-sky-600 hover:bg-sky-500 active:scale-[0.98] disabled:opacity-50 font-bold text-white border border-sky-500/30 text-xs transition-all"
+                        onSelect={() => void handleRespond('ON_SCENE')}
+                        className="flex items-center justify-center gap-2 py-3 rounded-xl bg-transparent border border-sky-500/50 text-sky-400 disabled:opacity-50 font-bold text-xs"
+                        selectedClassName="!bg-sky-600 !border-sky-400 !text-white shadow-[0_0_18px_rgba(14,165,233,0.45)]"
                       >
                         <MapPin className="w-4 h-4" />
                         <span>En el lugar</span>
-                      </button>
+                      </ResponseChoiceButton>
 
-                      {/* MARCAR INCENDIO */}
-                      <button
-                        type="button"
+                      <ResponseChoiceButton
+                        status="LOCATION_MARKED"
+                        selectedStatus={selectedChoice}
+                        animatingStatus={animatingStatus}
                         disabled={busy || locating}
-                        onClick={() => void handleMarkLocation()}
-                        className="flex items-center justify-center gap-2 py-3 rounded-xl border border-red-200 dark:border-red-500/40 bg-red-50 dark:bg-red-950/20 hover:bg-red-100 dark:bg-red-950/30 active:scale-[0.98] disabled:opacity-50 font-bold text-red-600 dark:text-red-200 text-xs transition-all"
+                        onSelect={() => void handleMarkLocation()}
+                        className="flex items-center justify-center gap-2 py-3 rounded-xl bg-transparent border border-red-500/50 text-red-400 disabled:opacity-50 font-bold text-xs"
+                        selectedClassName="!bg-red-600 !border-red-400 !text-white shadow-[0_0_18px_rgba(239,68,68,0.45)]"
                       >
                         {locating || markMut.isPending ? (
-                          <Loader2 className="w-4 h-4 animate-spin text-red-600 dark:text-red-400" />
+                          <Loader2 className="w-4 h-4 animate-spin" />
                         ) : (
-                          <Crosshair className="w-4 h-4 text-red-600 dark:text-red-400" />
+                          <Crosshair className="w-4 h-4" />
                         )}
                         <span>Marcar Incendio</span>
-                      </button>
+                      </ResponseChoiceButton>
                     </div>
                   </div>
 
-                  {/* 3. Mobile Navigation/Tabs for secondary info */}
+                  {/* 4. Barra stats azul */}
+                  <div className="rounded-2xl border border-sky-500/40 bg-[#0a1420] px-3 py-3 grid grid-cols-3 gap-1 shadow-[0_0_16px_rgba(14,165,233,0.12)]">
+                    <div className="flex flex-col items-center text-center gap-0.5">
+                      <Clock className="w-3.5 h-3.5 text-sky-400" />
+                      <span className="text-[8px] uppercase tracking-wider text-slate-500 font-bold">Despachado</span>
+                      <span className="text-xs font-black text-white">
+                        {new Date(selected.dispatchedAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                      </span>
+                    </div>
+                    <div className="flex flex-col items-center text-center gap-0.5 border-x border-sky-900/60">
+                      <Route className="w-3.5 h-3.5 text-sky-400" />
+                      <span className="text-[8px] uppercase tracking-wider text-slate-500 font-bold">Distancia</span>
+                      <span className="text-xs font-black text-white">
+                        {tripStats.totalKm != null
+                          ? `${tripStats.totalKm.toFixed(1)} km`
+                          : tripStats.remainingKm != null
+                            ? `${tripStats.remainingKm.toFixed(1)} km`
+                            : '—'}
+                      </span>
+                    </div>
+                    <div className="flex flex-col items-center text-center gap-0.5">
+                      <Flag className="w-3.5 h-3.5 text-sky-400" />
+                      <span className="text-[8px] uppercase tracking-wider text-slate-500 font-bold">ETA est.</span>
+                      <span className="text-xs font-black text-white">
+                        {tripStats.etaMin != null ? `${tripStats.etaMin} min` : '—'}
+                      </span>
+                    </div>
+                  </div>
+
+                  {/* 5. Mapa / dotación (secundario) */}
                   <div className="bg-white dark:bg-slate-900/60 border border-slate-200 dark:border-slate-800 rounded-2xl overflow-hidden shadow-md">
                     <div className="flex border-b border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900/90">
                       <button
@@ -765,7 +1044,7 @@ export default function BomberoEmergencyPage() {
                         }`}
                       >
                         <Users className="w-4 h-4" />
-                        DOTACIÓN Y CARROS ({selected.teamSummary.total})
+                        DOTACIÓN ({selected.teamSummary.total})
                       </button>
                     </div>
 
@@ -792,8 +1071,7 @@ export default function BomberoEmergencyPage() {
                               )}
                             </Map>
                           </div>
-                          
-                          {/* Map Legend */}
+
                           <div className="flex justify-between text-[9px] text-slate-500 dark:text-slate-400 px-1 border-b border-slate-200 dark:border-slate-800 pb-2">
                             <span className="flex items-center gap-1"><span className="w-2 h-2 rounded-full bg-orange-500 inline-block" />Despacho</span>
                             <span className="flex items-center gap-1"><span className="w-2 h-2 rounded-full bg-green-500 inline-block" />Ubicación Confirmada</span>
@@ -829,7 +1107,6 @@ export default function BomberoEmergencyPage() {
 
                       {mobileTab === 'team' && (
                         <div className="space-y-4">
-                          {/* Dispatched vehicles */}
                           <div>
                             <h4 className="text-[10px] uppercase tracking-wider text-slate-500 dark:text-slate-400 font-bold mb-2 flex items-center gap-1">
                               <Truck className="w-3.5 h-3.5" /> Material Mayor Despachado
@@ -849,12 +1126,11 @@ export default function BomberoEmergencyPage() {
 
                           <hr className="border-slate-200 dark:border-slate-800" />
 
-                          {/* Dotation responses list */}
                           <div>
                             <h4 className="text-[10px] uppercase tracking-wider text-slate-500 dark:text-slate-400 font-bold mb-2.5 flex items-center gap-1">
                               <Users className="w-3.5 h-3.5" /> Dotación Respondiendo
                             </h4>
-                            
+
                             <div className="grid grid-cols-4 gap-1 text-[9px] mb-3">
                               <div className="bg-emerald-500/10 text-emerald-300 border border-emerald-500/20 py-1 text-center rounded font-black">
                                 {selected.teamSummary.going} van
@@ -921,7 +1197,7 @@ export default function BomberoEmergencyPage() {
                     </div>
                     
                     <div className="flex flex-col items-end gap-2">
-                      <StatusBadge status={selected.myResponse?.status ?? null} />
+                      <StatusBadge status={selectedChoice} />
                       {audioEnabled && !audioMuted && (
                         <button
                           type="button"
@@ -1045,54 +1321,69 @@ export default function BomberoEmergencyPage() {
                   {/* Actions (Desktop) */}
                   <div className="p-6 bg-white dark:bg-slate-900/30 flex items-center justify-between gap-4">
                     <div className="flex items-center gap-2 flex-1">
-                      <button
-                        type="button"
+                      <ResponseChoiceButton
+                        status="GOING"
+                        selectedStatus={selectedChoice}
+                        animatingStatus={animatingStatus}
                         disabled={busy}
-                        onClick={() => void handleRespond('GOING')}
-                        className="flex-1 flex items-center justify-center gap-2 py-3.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 active:scale-[0.98] disabled:opacity-50 font-black text-white text-sm shadow-md transition-all border border-emerald-500/20"
+                        onSelect={() => void handleRespond('GOING')}
+                        className="flex-1 flex items-center justify-center gap-2 py-3.5 rounded-xl bg-emerald-600/80 hover:bg-emerald-500 active:scale-[0.98] disabled:opacity-50 font-black text-white text-sm shadow-md border border-emerald-500/20"
+                        selectedClassName="!bg-emerald-600 !shadow-[0_0_22px_rgba(16,185,129,0.45)] scale-[1.02]"
                       >
-                        <CheckCircle2 className="w-5 h-5 animate-pulse" />
+                        <CheckCircle2 className="w-5 h-5" />
                         <span>Confirmar asistencia (Voy)</span>
-                      </button>
-                      <button
-                        type="button"
+                      </ResponseChoiceButton>
+                      <ResponseChoiceButton
+                        status="NOT_GOING"
+                        selectedStatus={selectedChoice}
+                        animatingStatus={animatingStatus}
                         disabled={busy}
-                        onClick={() => respondMut.mutate({ incidentId: selected.id, status: 'NOT_GOING' })}
-                        className="px-5 py-3.5 rounded-xl bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:bg-slate-700 active:scale-[0.98] disabled:opacity-50 font-bold text-slate-600 dark:text-slate-300 text-sm border border-slate-200 dark:border-slate-700 transition-all"
+                        onSelect={() => void handleRespond('NOT_GOING')}
+                        className="px-5 py-3.5 rounded-xl bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:bg-slate-700 active:scale-[0.98] disabled:opacity-50 font-bold text-slate-600 dark:text-slate-300 text-sm border border-slate-200 dark:border-slate-700"
+                        selectedClassName="!bg-slate-600 !text-white !border-slate-400"
                       >
                         No voy
-                      </button>
-                      <button
-                        type="button"
+                      </ResponseChoiceButton>
+                      <ResponseChoiceButton
+                        status="NOT_AVAILABLE"
+                        selectedStatus={selectedChoice}
+                        animatingStatus={animatingStatus}
                         disabled={busy}
-                        onClick={() => respondMut.mutate({ incidentId: selected.id, status: 'NOT_AVAILABLE' })}
-                        className="px-5 py-3.5 rounded-xl bg-amber-100 dark:bg-amber-950/45 hover:bg-amber-200 dark:hover:bg-amber-900/50 active:scale-[0.98] disabled:opacity-50 font-bold text-amber-800 dark:text-amber-300 text-sm border border-amber-300 dark:border-amber-800/40 transition-all"
+                        onSelect={() => void handleRespond('NOT_AVAILABLE')}
+                        className="px-5 py-3.5 rounded-xl bg-amber-100 dark:bg-amber-950/45 hover:bg-amber-200 dark:hover:bg-amber-900/50 active:scale-[0.98] disabled:opacity-50 font-bold text-amber-800 dark:text-amber-300 text-sm border border-amber-300 dark:border-amber-800/40"
+                        selectedClassName="!bg-amber-600 !text-white !border-amber-400"
                       >
                         No disp.
-                      </button>
-                      <button
-                        type="button"
+                      </ResponseChoiceButton>
+                      <ResponseChoiceButton
+                        status="ON_SCENE"
+                        selectedStatus={selectedChoice}
+                        animatingStatus={animatingStatus}
                         disabled={busy}
-                        onClick={() => void handleRespond('ON_SCENE')}
-                        className="px-5 py-3.5 rounded-xl bg-sky-600 hover:bg-sky-500 active:scale-[0.98] disabled:opacity-50 font-bold text-slate-900 dark:text-white text-sm transition-all border border-sky-500/20"
+                        onSelect={() => void handleRespond('ON_SCENE')}
+                        className="px-5 py-3.5 rounded-xl bg-sky-600/80 hover:bg-sky-500 active:scale-[0.98] disabled:opacity-50 font-bold text-white text-sm border border-sky-500/20"
+                        selectedClassName="!bg-sky-600 shadow-[0_0_18px_rgba(14,165,233,0.4)]"
                       >
                         En el lugar
-                      </button>
+                      </ResponseChoiceButton>
                     </div>
-                    
-                    <button
-                      type="button"
+
+                    <ResponseChoiceButton
+                      status="LOCATION_MARKED"
+                      selectedStatus={selectedChoice}
+                      animatingStatus={animatingStatus}
                       disabled={busy || locating}
-                      onClick={() => void handleMarkLocation()}
-                      className="flex items-center gap-2 py-3.5 px-6 rounded-xl border border-red-200 dark:border-red-500/50 bg-red-50 dark:bg-red-950/20 hover:bg-red-100 dark:bg-red-950/40 active:scale-[0.98] disabled:opacity-50 font-black text-red-600 dark:text-red-200 text-sm transition-all shadow-md shadow-red-950/10"
+                      onSelect={() => void handleMarkLocation()}
+                      className="flex items-center gap-2 py-3.5 px-6 rounded-xl border border-red-200 dark:border-red-500/50 bg-red-50 dark:bg-red-950/20 hover:bg-red-100 dark:hover:bg-red-950/40 active:scale-[0.98] disabled:opacity-50 font-black text-red-600 dark:text-red-200 text-sm shadow-md shadow-red-950/10"
+                      selectedClassName="!bg-red-600 !text-white !border-red-400"
                     >
                       {locating || markMut.isPending ? (
-                        <Loader2 className="w-4 h-4 animate-spin text-red-600 dark:text-red-400" />
+                        <Loader2 className="w-4 h-4 animate-spin" />
                       ) : (
-                        <Crosshair className="w-4 h-4 text-red-600 dark:text-red-400" />
+                        <Crosshair className="w-4 h-4" />
                       )}
                       <span>Marcar Incendio</span>
-                    </button>
+                    </ResponseChoiceButton>
                   </div>
                 </div>
 
