@@ -15,6 +15,7 @@ import { usePublicDispatchAlarm } from '../hooks/usePublicDispatchAlarm';
 import { COMPANIAS360 } from '../lib/companias360';
 import { useThemeStore } from '../store/themeStore';
 import { cn } from '../lib/utils';
+import RadioPttPanel from '../components/radio/RadioPttPanel';
 
 type ResponseStatus = 'GOING' | 'NOT_GOING' | 'NOT_AVAILABLE' | 'ON_SCENE' | 'LOCATION_MARKED';
 
@@ -990,6 +991,22 @@ export default function BomberoEmergencyPage() {
                     </div>
                   </div>
 
+                  {/* Radio PTT del incidente */}
+                  <RadioPttPanel
+                    incidentId={selected.id}
+                    incidentLabel={`${selected.code} · ${selected.type}`}
+                    enabled
+                    canTalk={
+                      selectedChoice === 'GOING' ||
+                      selectedChoice === 'ON_SCENE' ||
+                      selectedChoice === 'LOCATION_MARKED' ||
+                      user?.role === 'OPERADOR_CENTRAL' ||
+                      user?.role === 'COMANDANTE' ||
+                      user?.role === 'CAPITAN' ||
+                      user?.role === 'SUPER_ADMIN'
+                    }
+                  />
+
                   {/* 4. Barra stats azul */}
                   <div className="rounded-2xl border border-sky-500/40 bg-[#0a1420] px-3 py-3 grid grid-cols-3 gap-1 shadow-[0_0_16px_rgba(14,165,233,0.12)]">
                     <div className="flex flex-col items-center text-center gap-0.5">
@@ -1384,6 +1401,23 @@ export default function BomberoEmergencyPage() {
                       )}
                       <span>Marcar Incendio</span>
                     </ResponseChoiceButton>
+                  </div>
+
+                  <div className="px-6 pb-6">
+                    <RadioPttPanel
+                      incidentId={selected.id}
+                      incidentLabel={`${selected.code} · ${selected.type}`}
+                      enabled
+                      canTalk={
+                        selectedChoice === 'GOING' ||
+                        selectedChoice === 'ON_SCENE' ||
+                        selectedChoice === 'LOCATION_MARKED' ||
+                        user?.role === 'OPERADOR_CENTRAL' ||
+                        user?.role === 'COMANDANTE' ||
+                        user?.role === 'CAPITAN' ||
+                        user?.role === 'SUPER_ADMIN'
+                      }
+                    />
                   </div>
                 </div>
 

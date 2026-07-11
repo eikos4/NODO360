@@ -10,6 +10,7 @@ import { useAuthStore } from '../store/authStore';
 import { useCentralParralTheme } from '../hooks/useCentralParralTheme';
 import DispatchEmergenciesPanel, { type PublicEmergency } from '../components/dispatch/DispatchEmergenciesPanel';
 import PublicEmergencyBanner from '../components/dispatch/PublicEmergencyBanner';
+import RadioPttPanel from '../components/radio/RadioPttPanel';
 
 const POLL_MS = 10_000;
 const apiBase = import.meta.env.VITE_API_URL?.replace(/\/$/, '') || '/api';
@@ -169,10 +170,15 @@ export default function CentralOperativaPage() {
       </div>
 
       {activeForBanner && (
-        <div className="shrink-0 px-3 sm:px-5 pt-3">
+        <div className="shrink-0 px-3 sm:px-5 pt-3 space-y-3">
           <PublicEmergencyBanner
             emergency={activeForBanner}
             onFinalize={() => setDismissedBannerId(activeForBanner.id)}
+          />
+          <RadioPttPanel
+            incidentId={activeForBanner.id}
+            incidentLabel={`${activeForBanner.code} · ${activeForBanner.type}`}
+            canTalk
           />
         </div>
       )}

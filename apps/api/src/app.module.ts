@@ -32,6 +32,7 @@ import { IncidentLocationPinModule } from './incident-location-pin/incident-loca
 import { EmergencyResponseModule } from './emergency-response/emergency-response.module';
 import { StorageModule } from './storage/storage.module';
 import { PingModule } from './ping/ping.module';
+import { RadioModule } from './radio/radio.module';
 import * as Joi from 'joi';
 
 @Module({
@@ -79,6 +80,7 @@ import * as Joi from 'joi';
     EmergencyResponseModule,
     StorageModule,
     PingModule,
+    RadioModule,
   ],
   providers: [
     {
