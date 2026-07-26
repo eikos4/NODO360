@@ -412,6 +412,10 @@ export class DispatchCentralService {
         type: inc.type,
         description: inc.description,
         address: inc.address,
+        companyId: inc.companyId,
+        company: inc.company
+          ? { number: inc.company.number, name: inc.company.name }
+          : undefined,
         latitude: mapLat,
         longitude: mapLng,
         dispatchLatitude: hasDispatchGps ? inc.latitude : null,

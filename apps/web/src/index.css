@@ -214,3 +214,38 @@ html:not(.dark) .leaflet-popup-tip {
 .response-choice-check {
   animation: response-choice-check-in 0.45s cubic-bezier(0.22, 1.2, 0.36, 1) both;
 }
+
+/* ── Vision360 Cuarteles ── */
+@keyframes vision360-flash-green {
+  0% {
+    box-shadow: 0 0 0 0 rgba(16, 185, 129, 0.7);
+    transform: scale(1);
+  }
+  40% {
+    box-shadow: 0 0 24px 4px rgba(16, 185, 129, 0.55);
+    transform: scale(1.04);
+  }
+  100% {
+    box-shadow: 0 0 0 0 rgba(16, 185, 129, 0);
+    transform: scale(1);
+  }
+}
+
+.vision360-flash-green {
+  animation: vision360-flash-green 1.8s ease-out both;
+}
+
+.vision360-card {
+  animation: vision360-card-in 0.55s cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+@keyframes vision360-card-in {
+  from {
+    opacity: 0;
+    transform: translateY(12px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}

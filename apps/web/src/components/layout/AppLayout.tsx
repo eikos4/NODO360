@@ -18,6 +18,7 @@ const IMMERSIVE_ROUTES = [
   '/central-despachos-parral',
   '/central-express',
   '/dispatch/global',
+  '/vision360-cuarteles',
   '/hydrants',
 ];
 

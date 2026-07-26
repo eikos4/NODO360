@@ -42,6 +42,7 @@ import CentralDespachosParralPage from './pages/CentralDespachosParralPage';
 import CentralExpressPage from './pages/CentralExpressPage';
 import BomberoEmergencyPage from './pages/BomberoEmergencyPage';
 import CompanyPublicProfilePage from './pages/CompanyPublicProfilePage';
+import Vision360CuartelesPage from './pages/Vision360CuartelesPage';
 
 function PrivateRoute({ children }: { children: React.ReactNode }) {
   const hydrated = useAuthHydrated();
@@ -115,6 +116,7 @@ export default function App() {
         <Route path="central-despachos-parral" element={<CentralDespachosParralPage />} />
         <Route path="dispatch/global" element={<CentralGlobalPage />} />
         <Route path="central-express" element={<CentralExpressPage />} />
+        <Route path="vision360-cuarteles" element={<Vision360CuartelesPage />} />
         <Route path="central-operativa" element={<CentralOperativaPage />} />
         <Route path="central-despachos" element={<Navigate to="/despacho360" replace />} />
         <Route path="central-despachos/variantes" element={<BotoneraShell />} />

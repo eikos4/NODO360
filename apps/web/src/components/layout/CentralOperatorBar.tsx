@@ -1,5 +1,5 @@
 import { Link, useLocation, useNavigate } from 'react-router-dom';
-import { Flame, LogOut, Moon, Siren, Map, ShieldAlert, Radio, Sun, Zap, Droplets, Globe } from 'lucide-react';
+import { Flame, LogOut, Moon, Siren, Map, ShieldAlert, Radio, Sun, Zap, Droplets, Globe, Eye } from 'lucide-react';
 import { useAuthStore } from '../../store/authStore';
 import { useThemeStore } from '../../store/themeStore';
 import { cn } from '../../lib/utils';
@@ -9,6 +9,7 @@ import { canViewCuartelesOverview } from '../../hooks/useCuartelesOverview';
 const TABS = [
   { to: '/despacho360', label: 'Despacho360', icon: Siren },
   { to: '/central-express', label: 'Central Express', icon: Zap },
+  { to: '/vision360-cuarteles', label: 'Vision360', icon: Eye },
   { to: '/central-despachos-parral', label: 'Central Parral', icon: Flame },
   { to: '/central-operativa', label: 'En vivo', icon: Radio },
   { to: '/dispatch/global', label: 'Global', icon: Globe },
