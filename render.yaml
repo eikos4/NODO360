@@ -29,6 +29,28 @@ services:
         value: "true"
       - key: FRONTEND_URL
         value: https://nodo360-web.onrender.com
+      - key: CLOUDINARY_CLOUD_NAME
+        sync: false
+      - key: CLOUDINARY_API_KEY
+        sync: false
+      - key: CLOUDINARY_API_SECRET
+        sync: false
+      - key: FIREBASE_SERVICE_ACCOUNT_JSON
+        sync: false
+      - key: FIREBASE_WEB_API_KEY
+        sync: false
+      - key: FIREBASE_WEB_AUTH_DOMAIN
+        sync: false
+      - key: FIREBASE_WEB_PROJECT_ID
+        sync: false
+      - key: FIREBASE_WEB_STORAGE_BUCKET
+        sync: false
+      - key: FIREBASE_WEB_MESSAGING_SENDER_ID
+        sync: false
+      - key: FIREBASE_WEB_APP_ID
+        sync: false
+      - key: FIREBASE_WEB_VAPID_KEY
+        sync: false
 
   - type: web
     name: nodo360-web

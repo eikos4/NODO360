@@ -2,32 +2,22 @@ import {
   Controller, Get, Post, Put, Delete, Body, Param, Query, UseGuards,
   UseInterceptors, UploadedFile, BadRequestException, Req,
 } from '@nestjs/common';
-import { FileInterceptor } from '@nestjs/platform-express';
-import { diskStorage } from 'multer';
-import { extname, join } from 'path';
-import { existsSync, mkdirSync } from 'fs';
 import { EmergencyPlansService } from './emergency-plans.service';
 import { CreateEmergencyPlanDto } from './dto/create-emergency-plan.dto';
 import { UpdateEmergencyPlanDto } from './dto/update-emergency-plan.dto';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { RolesGuard } from '../auth/guards/roles.guard';
 import { Roles } from '../auth/decorators/roles.decorator';
-
-const UPLOADS_DIR = join(process.cwd(), 'uploads');
-if (!existsSync(UPLOADS_DIR)) mkdirSync(UPLOADS_DIR, { recursive: true });
-
-const fileStorage = diskStorage({
-  destination: UPLOADS_DIR,
-  filename: (_req, file, cb) => {
-    const unique = Date.now() + '-' + Math.round(Math.random() * 1e6);
-    cb(null, unique + extname(file.originalname));
-  },
-});
+import { StorageService } from '../storage/storage.service';
+import { memoryUpload } from '../storage/upload.interceptor';
 
 @Controller('emergency-plans')
 @UseGuards(JwtAuthGuard, RolesGuard)
 export class EmergencyPlansController {
-  constructor(private readonly emergencyPlansService: EmergencyPlansService) {}
+  constructor(
+    private readonly emergencyPlansService: EmergencyPlansService,
+    private readonly storage: StorageService,
+  ) {}
 
   @Get()
   findAll(@Query() filters: { emergencyType?: string; severity?: string; companyId?: string; status?: string }) {
@@ -36,21 +26,13 @@ export class EmergencyPlansController {
 
   @Post('upload')
   @Roles('SUPER_ADMIN', 'COMANDANTE', 'CAPITAN', 'SECRETARIO')
-  @UseInterceptors(FileInterceptor('file', {
-    storage: fileStorage,
-    limits: { fileSize: 25 * 1024 * 1024 },
-    fileFilter: (_req, file, cb) => {
-      const allowed = /pdf|doc|docx|xls|xlsx|ppt|pptx|png|jpg|jpeg|gif|zip|txt|csv/i;
-      allowed.test(extname(file.originalname))
-        ? cb(null, true)
-        : cb(new BadRequestException('Tipo de archivo no permitido'), false);
-    },
-  }))
-  uploadFile(@UploadedFile() file: any, @Req() req: any) {
+  @UseInterceptors(memoryUpload({ maxBytes: 25 * 1024 * 1024, kind: 'document' }))
+  async uploadFile(@UploadedFile() file: any, @Req() req: any) {
     if (!file) throw new BadRequestException('Archivo requerido');
     const host = `${req.protocol}://${req.get('host')}`;
+    const fileUrl = await this.storage.uploadFile(file, host, 'nodo360/plans');
     return {
-      fileUrl: `${host}/uploads/${file.filename}`,
+      fileUrl,
       name: file.originalname,
       mimeType: file.mimetype,
       sizeBytes: file.size,
@@ -79,10 +61,7 @@ export class EmergencyPlansController {
 
   @Post(':id/attachments')
   @Roles('SUPER_ADMIN', 'COMANDANTE', 'CAPITAN', 'SECRETARIO')
-  @UseInterceptors(FileInterceptor('file', {
-    storage: fileStorage,
-    limits: { fileSize: 25 * 1024 * 1024 },
-  }))
+  @UseInterceptors(memoryUpload({ maxBytes: 25 * 1024 * 1024, kind: 'document' }))
   async addAttachment(
     @Param('id') id: string,
     @UploadedFile() file: any,
@@ -91,9 +70,10 @@ export class EmergencyPlansController {
   ) {
     if (!file) throw new BadRequestException('Archivo requerido');
     const host = `${req.protocol}://${req.get('host')}`;
+    const fileUrl = await this.storage.uploadFile(file, host, 'nodo360/plans');
     return this.emergencyPlansService.addAttachment(id, {
       name: name || file.originalname,
-      fileUrl: `${host}/uploads/${file.filename}`,
+      fileUrl,
       mimeType: file.mimetype,
       sizeBytes: file.size,
     });

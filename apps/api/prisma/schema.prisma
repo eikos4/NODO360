@@ -87,8 +87,21 @@ model User {
   supportCompany                Company?                    @relation("UserSupportCompany", fields: [supportCompanyId], references: [id])
   vehiclesAsPrincipalMaquinista Vehicle[]                   @relation("VehiclePrincipalMaquinista")
   achievements                  UserAchievement[]
+  pushTokens                    DevicePushToken[]
 
   @@index([companyId])
+}
+
+model DevicePushToken {
+  id        String   @id @default(cuid())
+  token     String   @unique
+  platform  String
+  userId    String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
 }
 
 model Vehicle {

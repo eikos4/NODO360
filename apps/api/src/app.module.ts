@@ -33,6 +33,7 @@ import { EmergencyResponseModule } from './emergency-response/emergency-response
 import { StorageModule } from './storage/storage.module';
 import { PingModule } from './ping/ping.module';
 import { RadioModule } from './radio/radio.module';
+import { NotificationsModule } from './notifications/notifications.module';
 import * as Joi from 'joi';
 
 @Module({
@@ -44,6 +45,11 @@ import * as Joi from 'joi';
         JWT_SECRET: Joi.string().required(),
         JWT_EXPIRES_IN: Joi.string().default('7d'),
         PORT: Joi.number().default(3001),
+        CLOUDINARY_URL: Joi.string().optional(),
+        CLOUDINARY_CLOUD_NAME: Joi.string().optional(),
+        CLOUDINARY_API_KEY: Joi.string().optional(),
+        CLOUDINARY_API_SECRET: Joi.string().optional(),
+        FIREBASE_SERVICE_ACCOUNT_JSON: Joi.string().optional(),
       })
     }),
     ThrottlerModule.forRoot([{
@@ -81,6 +87,7 @@ import * as Joi from 'joi';
     StorageModule,
     PingModule,
     RadioModule,
+    NotificationsModule,
   ],
   providers: [
     {

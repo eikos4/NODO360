@@ -3,6 +3,7 @@ import { DispatchSource, Prisma } from '@prisma/client';
 import { randomUUID } from 'crypto';
 import { PrismaService } from '../prisma/prisma.service';
 import { GuardLogService } from '../guard-log/guard-log.service';
+import { PushService } from '../notifications/push.service';
 import { CreateIncidentDto } from './dto/create-incident.dto';
 import { UpdateIncidentDto } from './dto/update-incident.dto';
 import { DispatchIncidentDto } from './dto/dispatch-incident.dto';
@@ -40,6 +41,7 @@ export class IncidentsService {
   constructor(
     private prisma: PrismaService,
     private guardLogService: GuardLogService,
+    private push: PushService,
   ) {}
 
   async findAll(companyId?: string) {
@@ -137,6 +139,21 @@ export class IncidentsService {
     );
 
     await this.recordMutualAidGuardLogs(incident, userId);
+
+    const companyIds = new Set<string>();
+    if (incident.companyId) companyIds.add(incident.companyId);
+    for (const row of incident.vehicles ?? []) {
+      if (row.vehicle?.companyId) companyIds.add(row.vehicle.companyId);
+    }
+    void this.push
+      .notifyDispatch({
+        incidentId: incident.id,
+        code: incident.code,
+        type: incident.type,
+        address: incident.address,
+        companyIds: [...companyIds],
+      })
+      .catch((err) => console.error('[push] despacho', err));
 
     return incident;
   }

@@ -76,10 +76,36 @@ npm install && npx prisma generate --schema=apps/api/prisma/schema.prisma && npx
 | `JWT_EXPIRES_IN` | `7d` |
 | `AUTO_SEED_DEMO` | `true` *(carga demo Parral si la BD está vacía)* |
 | `FRONTEND_URL` | `https://TU-WEB.onrender.com` |
+| `CLOUDINARY_CLOUD_NAME` | *(Dashboard Cloudinary)* |
+| `CLOUDINARY_API_KEY` | *(Dashboard Cloudinary)* |
+| `CLOUDINARY_API_SECRET` | *(Dashboard Cloudinary)* |
 | `PORT` | *(Render lo inyecta solo)* |
 
 URL final API: `https://nodo360-api.onrender.com`  
 Endpoints: `https://nodo360-api.onrender.com/api/...`
+
+### Cloudinary (archivos persistentes)
+
+1. Crea cuenta en [cloudinary.com](https://cloudinary.com) (plan gratis)
+2. En el dashboard copia **Cloud name**, **API Key** y **API Secret**
+3. Pégalas en **nodo360-api** → Environment
+4. Redeploy la API
+5. En logs debe aparecer: `Storage: Cloudinary (persistente)`
+
+### Alarmas en el teléfono (app cerrada)
+
+Sin esto, el bombero **solo ve la alarma si tiene NODO360 abierto**.
+
+1. Crea un proyecto en [Firebase Console](https://console.firebase.google.com)
+2. Activa **Cloud Messaging**
+3. **Project settings → Service accounts → Generate new private key** → pega el JSON en `FIREBASE_SERVICE_ACCOUNT_JSON` (una línea)
+4. **Project settings → General → Your apps → Web**: copia apiKey, projectId, appId, messagingSenderId, etc. a `FIREBASE_WEB_*`
+5. Cloud Messaging → **Web Push certificates** → genera **VAPID** → `FIREBASE_WEB_VAPID_KEY`
+6. Para la **app Android (Capacitor)**: descarga `google-services.json` a `apps/web/android/app/`
+7. Redeploy API. El bombero inicia sesión → banner **Activar notificaciones** → debe aceptar el permiso
+8. Prueba: despacha un 10-0 con el celular en reposo (app cerrada)
+
+**iPhone:** hace falta la app nativa + cuenta Apple Developer. El navegador Safari no despierta apps cerradas de forma fiable.
 
 ---
 
@@ -122,7 +148,8 @@ Perfil operador central: `/central-operativa`
 ## Notas importantes
 
 - **CORS:** la API usa `FRONTEND_URL`; debe coincidir exactamente con la URL del static site (sin barra final).
-- **Uploads:** en plan free el disco es efímero; imágenes subidas pueden perderse al reiniciar.
+- **Uploads:** documentos, fotos y planes van a **Cloudinary**. Sin esas 3 variables, los archivos se guardan en disco local y **se pierden** al redeploy. Plan gratis de Cloudinary (~25 GB) alcanza para empezar.
+- **Producción real:** `AUTO_SEED_DEMO=false` y planes pagados (API Starter + Postgres Basic).
 - **Cold start:** el plan free “duerme” la API; el primer login puede tardar ~30 s.
 - **Build web:** localmente usamos `tsc && vite build`; en Render usamos `build:render` (solo Vite) para evitar errores de tipos de Leaflet.
 
@@ -134,3 +161,6 @@ Perfil operador central: `/central-operativa`
 - [ ] Dashboard carga datos
 - [ ] Módulo Salud y mapa funcionan
 - [ ] `FRONTEND_URL` y `VITE_API_URL` actualizados si cambiaste nombres de servicios
+- [ ] Cloudinary configurado: subir un PDF/foto y confirmar que el link es `res.cloudinary.com`
+- [ ] Redeploy de la API y verificar que el archivo **sigue** abriéndose
+- [ ] Firebase FCM: el bombero activa notificaciones y recibe alarma con la app cerrada

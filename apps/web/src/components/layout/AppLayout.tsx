@@ -10,6 +10,8 @@ import { useThemeStore } from '../../store/themeStore';
 import { LogOut, Sun, Moon, HelpCircle, Menu, X, Building2, Flame } from 'lucide-react';
 import UserIdentityBlock from './UserIdentityBlock';
 import { cn } from '../../lib/utils';
+import PushAlarmBanner from '../PushAlarmBanner';
+import { unregisterPushToken } from '../../lib/push-notifications';
 
 const IMMERSIVE_ROUTES = [
   '/despacho360',
@@ -67,8 +69,10 @@ export default function AppLayout() {
   };
 
   const handleLogout = () => {
-    logout();
-    navigate('/login');
+    void unregisterPushToken().finally(() => {
+      logout();
+      navigate('/login');
+    });
   };
 
   // Filter items visible to user based on role
@@ -107,6 +111,7 @@ export default function AppLayout() {
             !isImmersive && "pb-20 md:pb-6"
           )}
         >
+          {!isImmersive && <PushAlarmBanner />}
           <Outlet />
         </main>
 

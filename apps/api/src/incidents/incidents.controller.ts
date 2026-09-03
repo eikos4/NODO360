@@ -1,17 +1,10 @@
 import { Controller, Get, Post, Put, Patch, Delete, Param, Body, Query, UseGuards, UseInterceptors, UploadedFile, BadRequestException, Req } from '@nestjs/common';
-import { FileInterceptor } from '@nestjs/platform-express';
-import { extname } from 'path';
-
-const imageFilter = (_req: any, file: any, cb: any) => {
-  /\.(jpg|jpeg|png|gif|webp)$/i.test(extname(file.originalname))
-    ? cb(null, true)
-    : cb(new BadRequestException('Solo se permiten imágenes (jpg, png, gif, webp)'), false);
-};
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { RolesGuard } from '../auth/guards/roles.guard';
 import { Roles } from '../auth/decorators/roles.decorator';
 import { IncidentsService } from './incidents.service';
 import { StorageService } from '../storage/storage.service';
+import { memoryUpload } from '../storage/upload.interceptor';
 import { CreateIncidentDto } from './dto/create-incident.dto';
 import { UpdateIncidentDto } from './dto/update-incident.dto';
 import { DispatchIncidentDto } from './dto/dispatch-incident.dto';
@@ -42,11 +35,11 @@ export class IncidentsController {
 
   @Post('upload-image')
   @Roles('SUPER_ADMIN', 'COMANDANTE', 'CAPITAN')
-  @UseInterceptors(FileInterceptor('file', { limits: { fileSize: 10 * 1024 * 1024 }, fileFilter: imageFilter }))
+  @UseInterceptors(memoryUpload({ maxBytes: 10 * 1024 * 1024, kind: 'image' }))
   async uploadImage(@UploadedFile() file: any, @Req() req: any) {
     if (!file) throw new BadRequestException('Imagen requerida');
     const hostUrl = `${req.protocol}://${req.get('host')}`;
-    const fileUrl = await this.storageService.uploadFile(file, hostUrl);
+    const fileUrl = await this.storageService.uploadFile(file, hostUrl, 'nodo360/incidents');
     return { imageUrl: fileUrl };
   }
 

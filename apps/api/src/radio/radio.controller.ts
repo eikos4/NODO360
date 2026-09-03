@@ -9,11 +9,9 @@ import {
   UseGuards,
   UseInterceptors,
 } from '@nestjs/common';
-import { FileInterceptor } from '@nestjs/platform-express';
-import { memoryStorage } from 'multer';
-import { extname } from 'path';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { StorageService } from '../storage/storage.service';
+import { memoryUpload } from '../storage/upload.interceptor';
 import { RadioService } from './radio.service';
 
 @Controller('radio')
@@ -34,18 +32,7 @@ export class RadioController {
   }
 
   @Post('upload')
-  @UseInterceptors(
-    FileInterceptor('file', {
-      storage: memoryStorage(),
-      limits: { fileSize: 3 * 1024 * 1024 },
-      fileFilter: (_req, file, cb) => {
-        const ok =
-          /^audio\//i.test(file.mimetype) ||
-          /\.(webm|ogg|mp3|m4a|wav)$/i.test(extname(file.originalname));
-        cb(ok ? null : new BadRequestException('Solo audio'), ok);
-      },
-    }),
-  )
+  @UseInterceptors(memoryUpload({ maxBytes: 3 * 1024 * 1024, kind: 'audio' }))
   async upload(@UploadedFile() file: any, @Req() req: any) {
     if (!file?.buffer) throw new BadRequestException('Audio requerido');
     const hostUrl = `${req.protocol}://${req.get('host')}`;
@@ -53,7 +40,7 @@ export class RadioController {
       ...file,
       originalname: file.originalname || `radio-${Date.now()}.webm`,
     };
-    const audioUrl = await this.storage.uploadFile(named, hostUrl);
+    const audioUrl = await this.storage.uploadFile(named, hostUrl, 'nodo360/radio');
     return { audioUrl };
   }
 }

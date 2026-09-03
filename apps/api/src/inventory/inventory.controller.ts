@@ -2,10 +2,6 @@ import {
   Controller, Get, Post, Put, Delete, Param, Body, Query,
   UseGuards, UseInterceptors, UploadedFile, BadRequestException, Req,
 } from '@nestjs/common';
-import { FileInterceptor } from '@nestjs/platform-express';
-import { diskStorage } from 'multer';
-import { extname, join } from 'path';
-import { existsSync, mkdirSync } from 'fs';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { RolesGuard } from '../auth/guards/roles.guard';
 import { Roles } from '../auth/decorators/roles.decorator';
@@ -14,28 +10,16 @@ import { CreateEquipmentDto } from './dto/create-equipment.dto';
 import { UpdateEquipmentDto } from './dto/update-equipment.dto';
 import { CreateVehicleDto } from './dto/create-vehicle.dto';
 import { UpdateVehicleDto } from './dto/update-vehicle.dto';
-
-const UPLOADS_DIR = join(process.cwd(), 'uploads');
-if (!existsSync(UPLOADS_DIR)) mkdirSync(UPLOADS_DIR, { recursive: true });
-
-const imageStorage = diskStorage({
-  destination: UPLOADS_DIR,
-  filename: (_req, file, cb) => {
-    const unique = Date.now() + '-' + Math.round(Math.random() * 1e6);
-    cb(null, unique + extname(file.originalname));
-  },
-});
-
-const imageFilter = (_req: any, file: any, cb: any) => {
-  /\.(jpg|jpeg|png|gif|webp)$/i.test(extname(file.originalname))
-    ? cb(null, true)
-    : cb(new BadRequestException('Solo se permiten imágenes (jpg, png, gif, webp)'), false);
-};
+import { StorageService } from '../storage/storage.service';
+import { memoryUpload } from '../storage/upload.interceptor';
 
 @Controller()
 @UseGuards(JwtAuthGuard, RolesGuard)
 export class InventoryController {
-  constructor(private inventoryService: InventoryService) {}
+  constructor(
+    private inventoryService: InventoryService,
+    private storage: StorageService,
+  ) {}
 
   // ─── Dashboard ────────────────────────────────────────────────────────────
 
@@ -55,20 +39,20 @@ export class InventoryController {
 
   @Post('vehicles/upload-image')
   @Roles('SUPER_ADMIN', 'COMANDANTE', 'ENCARGADO_MATERIAL')
-  @UseInterceptors(FileInterceptor('file', { storage: imageStorage, limits: { fileSize: 10 * 1024 * 1024 }, fileFilter: imageFilter }))
+  @UseInterceptors(memoryUpload({ maxBytes: 10 * 1024 * 1024, kind: 'image' }))
   async uploadVehicleImage(@UploadedFile() file: any, @Req() req: any) {
     if (!file) throw new BadRequestException('Imagen requerida');
     const host = `${req.protocol}://${req.get('host')}`;
-    return { imageUrl: `${host}/uploads/${file.filename}` };
+    return { imageUrl: await this.storage.uploadFile(file, host, 'nodo360/vehicles') };
   }
 
   @Post('equipment/upload-image')
   @Roles('SUPER_ADMIN', 'COMANDANTE', 'ENCARGADO_MATERIAL')
-  @UseInterceptors(FileInterceptor('file', { storage: imageStorage, limits: { fileSize: 10 * 1024 * 1024 }, fileFilter: imageFilter }))
+  @UseInterceptors(memoryUpload({ maxBytes: 10 * 1024 * 1024, kind: 'image' }))
   async uploadEquipmentImage(@UploadedFile() file: any, @Req() req: any) {
     if (!file) throw new BadRequestException('Imagen requerida');
     const host = `${req.protocol}://${req.get('host')}`;
-    return { imageUrl: `${host}/uploads/${file.filename}` };
+    return { imageUrl: await this.storage.uploadFile(file, host, 'nodo360/equipment') };
   }
 
   // ─── Equipment ────────────────────────────────────────────────────────────
