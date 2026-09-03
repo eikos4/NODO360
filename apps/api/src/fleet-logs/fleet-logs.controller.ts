@@ -59,7 +59,7 @@ export class FleetLogsController {
   }
 
   @Post()
-  @Roles('SUPER_ADMIN', 'COMANDANTE', 'ENCARGADO_MATERIAL', 'CAPITAN', 'BOMBERO')
+  @Roles('SUPER_ADMIN', 'COMANDANTE', 'ENCARGADO_MATERIAL', 'CAPITAN', 'BOMBERO', 'BOMBERO_HONORARIO', 'BOMBERO_INICIAL', 'BOMBERO_PROFESIONAL')
   create(@Body() dto: CreateFleetLogDto, @Req() req: any) {
     return this.service.create(dto, req.user.id);
   }

@@ -59,7 +59,7 @@ export default function FleetLogPage() {
   const qc = useQueryClient();
   const user = useAuthStore((s) => s.user);
   const canEdit = ['SUPER_ADMIN', 'COMANDANTE', 'ENCARGADO_MATERIAL'].includes(user?.role ?? '');
-  const canCreate = ['SUPER_ADMIN', 'COMANDANTE', 'ENCARGADO_MATERIAL', 'CAPITAN', 'BOMBERO'].includes(user?.role ?? '');
+  const canCreate = ['SUPER_ADMIN', 'COMANDANTE', 'ENCARGADO_MATERIAL', 'CAPITAN', 'BOMBERO', 'BOMBERO_HONORARIO', 'BOMBERO_INICIAL', 'BOMBERO_PROFESIONAL'].includes(user?.role ?? '');
 
   const [searchParams] = useSearchParams();
   const [tab, setTab] = useState<Tab>('resumen');

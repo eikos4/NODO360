@@ -53,22 +53,24 @@ const ROLE_HIERARCHY = [
   },
   {
     level: 4,
-    roles: ['BOMBERO'],
-    label: 'Bomberos Operativos',
+    roles: ['BOMBERO', 'BOMBERO_HONORARIO', 'BOMBERO_INICIAL', 'BOMBERO_PROFESIONAL'],
+    label: 'Bomberos',
     color: 'text-slate-300',
     bg: 'bg-slate-700/30',
     border: 'border-slate-600/40',
     ring: 'ring-slate-500/20',
     dot: 'bg-slate-400',
     icon: UserCheck,
-    description: 'Personal operativo de línea',
+    description: 'Personal operativo, honorario, inicial y profesional',
   },
 ];
 
 const ROLE_LABEL: Record<string, string> = {
   SUPER_ADMIN: 'Super Admin', COMANDANTE: 'Comandante', CAPITAN: 'Capitán',
   ENCARGADO_MATERIAL: 'Enc. Material', SECRETARIO: 'Secretario/a',
-  TESORERO: 'Tesorero/a', BOMBERO: 'Bombero', AUDITOR: 'Auditor',
+  TESORERO: 'Tesorero/a', BOMBERO: 'Bombero Operativo',
+  BOMBERO_HONORARIO: 'Bombero Honorario', BOMBERO_INICIAL: 'Bombero Inicial',
+  BOMBERO_PROFESIONAL: 'Bombero Profesional', AUDITOR: 'Auditor',
 };
 
 /* ── Tarjeta de persona ── */

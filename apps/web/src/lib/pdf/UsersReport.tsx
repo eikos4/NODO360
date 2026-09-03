@@ -8,7 +8,10 @@ const ROLE_LABELS: Record<string, string> = {
   ENCARGADO_MATERIAL: 'Enc. Material',
   SECRETARIO:         'Secretario/a',
   TESORERO:           'Tesorero/a',
-  BOMBERO:            'Bombero',
+  BOMBERO:            'Bombero Operativo',
+  BOMBERO_HONORARIO:  'Bombero Honorario',
+  BOMBERO_INICIAL:    'Bombero Inicial',
+  BOMBERO_PROFESIONAL:'Bombero Profesional',
   AUDITOR:            'Auditor',
 };
 

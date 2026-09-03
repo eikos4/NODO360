@@ -7,6 +7,9 @@ export enum Role {
   SECRETARIO = 'SECRETARIO',
   TESORERO = 'TESORERO',
   BOMBERO = 'BOMBERO',
+  BOMBERO_HONORARIO = 'BOMBERO_HONORARIO',
+  BOMBERO_INICIAL = 'BOMBERO_INICIAL',
+  BOMBERO_PROFESIONAL = 'BOMBERO_PROFESIONAL',
   AUDITOR = 'AUDITOR',
 }
 
@@ -19,5 +22,20 @@ export const ROLE_LABELS: Record<Role, string> = {
   [Role.SECRETARIO]: 'Secretario/a',
   [Role.TESORERO]: 'Tesorero/a',
   [Role.BOMBERO]: 'Bombero Operativo',
+  [Role.BOMBERO_HONORARIO]: 'Bombero Honorario',
+  [Role.BOMBERO_INICIAL]: 'Bombero Inicial',
+  [Role.BOMBERO_PROFESIONAL]: 'Bombero Profesional',
   [Role.AUDITOR]: 'Auditor / Inspector',
 };
+
+/** Roles con permisos de bombero en terreno (respuesta a emergencias, etc.) */
+export const BOMBERO_ROLES: Role[] = [
+  Role.BOMBERO,
+  Role.BOMBERO_HONORARIO,
+  Role.BOMBERO_INICIAL,
+  Role.BOMBERO_PROFESIONAL,
+];
+
+export function isBomberoRole(role?: string | null): boolean {
+  return !!role && (BOMBERO_ROLES as string[]).includes(role);
+}

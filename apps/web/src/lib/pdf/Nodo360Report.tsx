@@ -159,7 +159,11 @@ const ROLE_LABELS: Record<string, string> = {
   SUPER_ADMIN: 'Super Administrador', COMANDANTE: 'Comandante',
   CAPITAN: 'Capitán / Oficial', ENCARGADO_MATERIAL: 'Enc. Material Mayor',
   SECRETARIO: 'Secretario/a', TESORERO: 'Tesorero/a',
-  BOMBERO: 'Bombero Operativo', AUDITOR: 'Auditor / Inspector',
+  BOMBERO: 'Bombero Operativo',
+  BOMBERO_HONORARIO: 'Bombero Honorario',
+  BOMBERO_INICIAL: 'Bombero Inicial',
+  BOMBERO_PROFESIONAL: 'Bombero Profesional',
+  AUDITOR: 'Auditor / Inspector',
 };
 
 const STATUS_LABEL: Record<string, string> = {

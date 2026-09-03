@@ -5,6 +5,7 @@ import {
 } from 'lucide-react';
 import { PublicCentral, RosterMember, MaquinistaMember, FleetVehicle } from '../../pages/DispatchPublicPage';
 import { PublicEmergency } from '../dispatch/DispatchEmergenciesPanel';
+import RoleBadge from '../RoleBadge';
 
 interface Props {
   data: PublicCentral;
@@ -255,7 +256,9 @@ export default function PublicCompanyModernView({ data, onToggleMember, onToggle
                       )}
                     </div>
                     <p className="text-xs font-bold text-slate-800 leading-tight line-clamp-1">{m.firstName} {m.lastName}</p>
-                    <p className="text-[10px] text-slate-500 mt-0.5 capitalize">{m.roleLabel || 'Bombero'}</p>
+                    <div className="mt-1 scale-90 origin-top">
+                      <RoleBadge role={m.role} size="xs" />
+                    </div>
                     <div className="flex items-center gap-1 mt-2">
                       <span className={`w-1.5 h-1.5 rounded-full ${isAvail ? 'bg-emerald-500' : 'bg-slate-400'}`} />
                       <span className="text-[9px] font-semibold text-slate-500">{isAvail ? 'En cuartel' : 'Fuera'}</span>

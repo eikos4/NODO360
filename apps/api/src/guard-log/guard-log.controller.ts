@@ -35,7 +35,7 @@ export class GuardLogController {
   }
 
   @Post('open')
-  @Roles('SUPER_ADMIN', 'COMANDANTE', 'CAPITAN', 'BOMBERO', 'SECRETARIO')
+  @Roles('SUPER_ADMIN', 'COMANDANTE', 'CAPITAN', 'BOMBERO', 'BOMBERO_HONORARIO', 'BOMBERO_INICIAL', 'BOMBERO_PROFESIONAL', 'SECRETARIO')
   open(
     @Query('companyId') companyId: string,
     @Query('date') date?: string,
@@ -45,7 +45,7 @@ export class GuardLogController {
   }
 
   @Post(':id/entries')
-  @Roles('SUPER_ADMIN', 'COMANDANTE', 'CAPITAN', 'BOMBERO', 'SECRETARIO')
+  @Roles('SUPER_ADMIN', 'COMANDANTE', 'CAPITAN', 'BOMBERO', 'BOMBERO_HONORARIO', 'BOMBERO_INICIAL', 'BOMBERO_PROFESIONAL', 'SECRETARIO')
   addEntry(
     @Param('id') id: string,
     @Body() dto: CreateGuardLogEntryDto,
@@ -61,7 +61,7 @@ export class GuardLogController {
   }
 
   @Post(':id/handovers')
-  @Roles('SUPER_ADMIN', 'COMANDANTE', 'CAPITAN', 'BOMBERO', 'SECRETARIO')
+  @Roles('SUPER_ADMIN', 'COMANDANTE', 'CAPITAN', 'BOMBERO', 'BOMBERO_HONORARIO', 'BOMBERO_INICIAL', 'BOMBERO_PROFESIONAL', 'SECRETARIO')
   addHandover(@Param('id') id: string, @Body() dto: CreateGuardHandoverDto) {
     return this.service.addHandover(id, dto);
   }

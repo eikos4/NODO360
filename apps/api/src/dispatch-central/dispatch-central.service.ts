@@ -13,10 +13,14 @@ const ROLE_LABELS: Record<string, string> = {
   SUPER_ADMIN: 'Super Admin',
   COMANDANTE: 'Comandante',
   CAPITAN: 'Capitán',
+  OPERADOR_CENTRAL: 'Operador Central',
   ENCARGADO_MATERIAL: 'Enc. Material',
   TESORERO: 'Tesorero',
   SECRETARIO: 'Secretario',
-  BOMBERO: 'Bombero',
+  BOMBERO: 'Bombero Operativo',
+  BOMBERO_HONORARIO: 'Bombero Honorario',
+  BOMBERO_INICIAL: 'Bombero Inicial',
+  BOMBERO_PROFESIONAL: 'Bombero Profesional',
   AUDITOR: 'Auditor',
 };
 

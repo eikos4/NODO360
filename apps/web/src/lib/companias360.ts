@@ -16,9 +16,11 @@ export function isCompanias360Path(pathname: string) {
   return pathname.startsWith('/central/') && pathname !== '/central-operativa';
 }
 
+import { isBomberoRole } from './roles';
+
 /** Bomberos solo ven la sala de su compañía; el resto ve las 6 de Parral. */
 export function filterCompanias360ForRole(role: string, companyNumber?: number | null) {
-  if (role === 'BOMBERO' && companyNumber != null) {
+  if (isBomberoRole(role) && companyNumber != null) {
     return COMPANIAS360.filter((c) => c.number === companyNumber);
   }
   return [...COMPANIAS360];

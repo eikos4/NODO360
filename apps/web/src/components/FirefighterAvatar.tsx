@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { Flame, Star } from 'lucide-react';
+import { roleInfo } from '../lib/roles';
 
 type Variant = 'bombero' | 'maquinista';
 
@@ -47,6 +48,7 @@ export default function FirefighterAvatar({
   variant = 'bombero',
   principal = false,
   statusDot = true,
+  role,
   className = '',
 }: {
   photoUrl?: string | null;
@@ -56,10 +58,14 @@ export default function FirefighterAvatar({
   variant?: Variant;
   principal?: boolean;
   statusDot?: boolean;
+  /** Si se pasa, muestra el icono del tipo de bombero (honorario, inicial, etc.) */
+  role?: string | null;
   className?: string;
 }) {
   const [imgError, setImgError] = useState(false);
   const showPhoto = !!photoUrl && !imgError;
+  const roleMeta = role ? roleInfo(role) : null;
+  const RoleIcon = roleMeta?.icon;
 
   const dim =
     size === 'lg' ? 'w-28 h-28 sm:w-32 sm:h-32'
@@ -72,6 +78,11 @@ export default function FirefighterAvatar({
       : available
         ? BORDER[variant].on
         : BORDER[variant].off;
+
+  const roleBadgeSize =
+    size === 'lg' ? 'w-7 h-7' : size === 'sm' ? 'w-4 h-4' : 'w-6 h-6';
+  const roleIconSize =
+    size === 'lg' ? 'w-3.5 h-3.5' : size === 'sm' ? 'w-2.5 h-2.5' : 'w-3 h-3';
 
   return (
     <div className={`relative ${dim} rounded-full overflow-hidden border-[3px] shrink-0 transition-all ${border} ${className}`}>
@@ -95,6 +106,14 @@ export default function FirefighterAvatar({
       {principal && size !== 'sm' && (
         <span className="absolute -top-0.5 -right-0.5 w-7 h-7 rounded-full bg-amber-500 border-2 border-slate-900 flex items-center justify-center">
           <Star className="w-3.5 h-3.5 text-amber-950 fill-amber-950" />
+        </span>
+      )}
+      {RoleIcon && (
+        <span
+          className={`absolute -bottom-0.5 -left-0.5 ${roleBadgeSize} rounded-full bg-slate-950 border-2 border-slate-800 flex items-center justify-center shadow-md`}
+          title={roleMeta!.label}
+        >
+          <RoleIcon className={`${roleIconSize} ${roleMeta!.iconClass}`} />
         </span>
       )}
     </div>

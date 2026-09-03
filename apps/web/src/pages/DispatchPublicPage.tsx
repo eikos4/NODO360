@@ -6,7 +6,9 @@ import {
   Sun, Moon,
 } from 'lucide-react';
 import toast from 'react-hot-toast';
+import { api } from '../lib/api';
 import FirefighterAvatar, { FirefighterPlaceholder } from '../components/FirefighterAvatar';
+import RoleBadge from '../components/RoleBadge';
 import DispatchEmergenciesPanel, { type PublicEmergency } from '../components/dispatch/DispatchEmergenciesPanel';
 import PublicEmergencyBanner from '../components/dispatch/PublicEmergencyBanner';
 import EmergencyReturnCelebration from '../components/dispatch/EmergencyReturnCelebration';
@@ -905,7 +907,9 @@ export default function DispatchPublicPage() {
                     <div className="p-3 flex-1 flex flex-col gap-2">
                       <div>
                         <p className={`font-bold text-sm truncate ${th.memberName}`}>{m.firstName} {m.lastName}</p>
-                        <p className={`text-[11px] ${th.memberRole}`}>{m.roleLabel}</p>
+                        <div className="mt-1">
+                          <RoleBadge role={m.role} size="xs" />
+                        </div>
                       </div>
                       <span className={`mt-auto w-full text-center text-xs font-bold py-2 rounded-lg ${
                         on ? th.memberBtnOn : th.memberBtnOff

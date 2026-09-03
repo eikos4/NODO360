@@ -21,7 +21,9 @@ export function isCentralOperator(role?: string | null) {
 
 export function getDefaultRouteForRole(role?: string | null) {
   if (isCentralOperator(role)) return '/despacho360';
-  if (role === 'BOMBERO') return '/emergencia-respuesta';
+  if (role === 'BOMBERO' || role === 'BOMBERO_HONORARIO' || role === 'BOMBERO_INICIAL' || role === 'BOMBERO_PROFESIONAL') {
+    return '/emergencia-respuesta';
+  }
   return '/dashboard';
 }
 

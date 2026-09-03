@@ -368,13 +368,14 @@ function CompanyVisionCard({
                     fullName={m.fullName}
                     available
                     size="sm"
+                    role={m.role}
                     className="!w-11 !h-11 shadow-[0_0_14px_rgba(16,185,129,0.35)]"
                   />
                   <p className="text-[10px] font-bold text-emerald-50 text-center leading-tight line-clamp-2 w-full">
                     {m.firstName}
                   </p>
-                  <p className="text-[8px] font-mono text-emerald-400/70">
-                    {m.operativeNumber != null ? `N°${m.operativeNumber}` : '·'}
+                  <p className="text-[8px] font-semibold text-emerald-400/80 truncate w-full text-center" title={m.roleLabel}>
+                    {m.roleLabel?.replace(/^Bombero\s+/i, '') || '·'}
                   </p>
                 </div>
               ))}

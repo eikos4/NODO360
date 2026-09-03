@@ -17,6 +17,7 @@ import toast from 'react-hot-toast';
 import { downloadPdf } from '../../lib/pdf/usePdfDownload';
 import { Nodo360BiReport } from '../../lib/pdf/Nodo360BiReport';
 import { useAuthStore } from '../../store/authStore';
+import { isBomberoRole } from '../../lib/roles';
 
 const CHART_COLORS = ['#ef4444', '#3b82f6', '#10b981', '#f59e0b', '#8b5cf6', '#06b6d4', '#ec4899', '#14b8a6'];
 const money = (n: number) => `$${Number(n ?? 0).toLocaleString('es-CL')}`;
@@ -59,7 +60,7 @@ type Props = {
 
 export default function Nodo360Reports({ companyId, companies, onCompanyChange }: Props) {
   const { user } = useAuthStore();
-  const isBombero = user?.role === 'BOMBERO';
+  const isBombero = isBomberoRole(user?.role);
 
   const [reportTab, setReportTab] = useState<'actual' | 'charts'>('actual');
   const [chartScope, setChartScope] = useState<'global' | 'company'>(isBombero ? 'company' : 'global');

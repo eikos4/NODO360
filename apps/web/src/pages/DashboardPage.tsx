@@ -19,6 +19,9 @@ const ROLE_LABELS: Record<string, string> = {
   SECRETARIO: 'Secretario/a',
   TESORERO: 'Tesorero/a',
   BOMBERO: 'Bombero Operativo',
+  BOMBERO_HONORARIO: 'Bombero Honorario',
+  BOMBERO_INICIAL: 'Bombero Inicial',
+  BOMBERO_PROFESIONAL: 'Bombero Profesional',
   AUDITOR: 'Auditor / Inspector',
 };
 
@@ -87,6 +90,9 @@ const ROLE_MODULES: Record<string, { label: string; path: string; icon: React.El
     { label: 'Alertas', path: '/alerts', icon: Siren, color: 'text-red-400', desc: 'Estado de vencimientos' },
   ],
 };
+ROLE_MODULES.BOMBERO_HONORARIO = ROLE_MODULES.BOMBERO;
+ROLE_MODULES.BOMBERO_INICIAL = ROLE_MODULES.BOMBERO;
+ROLE_MODULES.BOMBERO_PROFESIONAL = ROLE_MODULES.BOMBERO;
 
 const daysUntil = (d: string) => Math.ceil((new Date(d).getTime() - Date.now()) / 86400000);
 

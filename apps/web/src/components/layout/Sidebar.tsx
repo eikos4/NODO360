@@ -16,7 +16,7 @@ const SIDEBAR_COMPACT_KEY = 'nodo360_sidebar_compact';
 
 export type NavItem = { to: string; label: string; icon: React.ElementType; roles: string[]; soon?: boolean };
 export const navItems: NavItem[] = [
-  { to: '/emergencia-respuesta', label: 'Mi emergencia', icon: Siren, roles: ['SUPER_ADMIN', 'COMANDANTE', 'CAPITAN', 'BOMBERO', 'ENCARGADO_MATERIAL'] },
+  { to: '/emergencia-respuesta', label: 'Mi emergencia', icon: Siren, roles: ['SUPER_ADMIN', 'COMANDANTE', 'CAPITAN', 'BOMBERO', 'BOMBERO_HONORARIO', 'BOMBERO_INICIAL', 'BOMBERO_PROFESIONAL', 'ENCARGADO_MATERIAL'] },
   { to: '/nodo360',    label: 'NODO360',      icon: Zap,             roles: ['ALL'] },
   { to: '/central-operativa', label: 'Central en vivo', icon: Radio, roles: ['OPERADOR_CENTRAL', 'SUPER_ADMIN', 'COMANDANTE', 'CAPITAN'] },
   { to: '/despacho360', label: 'Despacho360', icon: Siren, roles: ['SUPER_ADMIN', 'COMANDANTE', 'CAPITAN', 'OPERADOR_CENTRAL'] },
@@ -41,9 +41,9 @@ export const navItems: NavItem[] = [
   { to: '/incidents',  label: 'Emergencias',  icon: ShieldAlert,     roles: ['SUPER_ADMIN', 'COMANDANTE', 'CAPITAN', 'OPERADOR_CENTRAL'] },
   { to: '/maintenance',label: 'Mantención',   icon: Wrench,          roles: ['SUPER_ADMIN', 'COMANDANTE', 'ENCARGADO_MATERIAL'] },
   { to: '/motores',     label: 'Motores',      icon: Gauge,           roles: ['SUPER_ADMIN', 'COMANDANTE', 'ENCARGADO_MATERIAL', 'CAPITAN'] },
-  { to: '/fleet-logs',  label: 'Libro flota',  icon: Fuel,            roles: ['SUPER_ADMIN', 'COMANDANTE', 'ENCARGADO_MATERIAL', 'CAPITAN', 'BOMBERO'] },
+  { to: '/fleet-logs',  label: 'Libro flota',  icon: Fuel,            roles: ['SUPER_ADMIN', 'COMANDANTE', 'ENCARGADO_MATERIAL', 'CAPITAN', 'BOMBERO', 'BOMBERO_HONORARIO', 'BOMBERO_INICIAL', 'BOMBERO_PROFESIONAL'] },
   { to: '/shifts',     label: 'Guardia',      icon: Truck,           roles: ['SUPER_ADMIN', 'COMANDANTE', 'CAPITAN'] },
-  { to: '/guard-log',  label: 'Bitácora',     icon: BookOpen,        roles: ['SUPER_ADMIN', 'COMANDANTE', 'CAPITAN', 'BOMBERO', 'SECRETARIO'] },
+  { to: '/guard-log',  label: 'Bitácora',     icon: BookOpen,        roles: ['SUPER_ADMIN', 'COMANDANTE', 'CAPITAN', 'BOMBERO', 'BOMBERO_HONORARIO', 'BOMBERO_INICIAL', 'BOMBERO_PROFESIONAL', 'SECRETARIO'] },
   { to: '/documents',  label: 'Documentos',   icon: FileText,        roles: ['ALL'] },
   { to: '/purchases',  label: 'Compras',      icon: ShoppingCart,    roles: ['SUPER_ADMIN', 'TESORERO', 'SECRETARIO', 'COMANDANTE'] },
   { to: '/finance',    label: 'Finanzas',     icon: DollarSign,      roles: ['SUPER_ADMIN', 'TESORERO', 'AUDITOR', 'COMANDANTE'] },

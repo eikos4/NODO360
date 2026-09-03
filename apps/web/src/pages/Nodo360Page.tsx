@@ -15,6 +15,7 @@ import { Nodo360Report } from '../lib/pdf/Nodo360Report';
 import Nodo360Reports from '../components/nodo360/Nodo360Reports';
 import Nodo360HubVisual from '../components/nodo360/Nodo360HubVisual';
 import { useAuthStore } from '../store/authStore';
+import { isBomberoRole } from '../lib/roles';
 
 /* ── helpers ── */
 const money  = (n: number) => `$${Number(n ?? 0).toLocaleString('es-CL')}`;
@@ -25,7 +26,8 @@ const daysUntil = (d: string) => Math.ceil((new Date(d).getTime() - Date.now()) 
 const ROLE_LABELS: Record<string, string> = {
   SUPER_ADMIN: 'S.Admin', COMANDANTE: 'Cdte.', CAPITAN: 'Capitán',
   ENCARGADO_MATERIAL: 'Enc.Mat.', SECRETARIO: 'Secret.',
-  TESORERO: 'Tesorero', BOMBERO: 'Bombero', AUDITOR: 'Auditor',
+  TESORERO: 'Tesorero', BOMBERO: 'Operativo', BOMBERO_HONORARIO: 'Honorario',
+  BOMBERO_INICIAL: 'Inicial', BOMBERO_PROFESIONAL: 'Profesional', AUDITOR: 'Auditor',
 };
 
 const STATUS_COLOR: Record<string, string> = {
@@ -143,7 +145,7 @@ function StatRow({ label, value, total, color }: { label: string; value: number;
 ══════════════════════════════════════════ */
 export default function Nodo360Page() {
   const { user } = useAuthStore();
-  const isBombero = user?.role === 'BOMBERO';
+  const isBombero = isBomberoRole(user?.role);
 
   const [section, setSection] = useState<'panel' | 'reports'>('panel');
   const [selectedId, setSelectedId] = useState<string>(isBombero ? (user?.companyId || '') : '');

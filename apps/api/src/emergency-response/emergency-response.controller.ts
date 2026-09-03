@@ -5,7 +5,17 @@ import { Roles } from '../auth/decorators/roles.decorator';
 import { EmergencyResponseService } from './emergency-response.service';
 import { MarkEmergencyLocationDto, RespondEmergencyDto } from './dto/respond-emergency.dto';
 
-const RESPONDER_ROLES = ['SUPER_ADMIN', 'BOMBERO', 'CAPITAN', 'COMANDANTE', 'OPERADOR_CENTRAL', 'ENCARGADO_MATERIAL'] as const;
+const RESPONDER_ROLES = [
+  'SUPER_ADMIN',
+  'BOMBERO',
+  'BOMBERO_HONORARIO',
+  'BOMBERO_INICIAL',
+  'BOMBERO_PROFESIONAL',
+  'CAPITAN',
+  'COMANDANTE',
+  'OPERADOR_CENTRAL',
+  'ENCARGADO_MATERIAL',
+] as const;
 
 @Controller('emergency-response')
 @UseGuards(JwtAuthGuard, RolesGuard)
