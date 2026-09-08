@@ -63,8 +63,10 @@ Copia la **Internal Database URL** (la usa la API en la misma región).
 **Build Command:**
 
 ```bash
-npm install && npx prisma generate --schema=apps/api/prisma/schema.prisma && npx prisma migrate deploy --schema=apps/api/prisma/schema.prisma && npm run build:api && SEED_IF_EMPTY=true npm run seed --workspace=apps/api -- --if-empty
+npm install && npx prisma generate --schema=apps/api/prisma/schema.prisma && npx prisma migrate resolve --rolled-back 20260907213000_incident_operational_contract --schema=apps/api/prisma/schema.prisma ; npx prisma migrate deploy --schema=apps/api/prisma/schema.prisma && npm run build:api && SEED_IF_EMPTY=true npm run seed --workspace=apps/api -- --if-empty
 ```
+
+> **Nota:** El `prisma migrate resolve --rolled-back ...` marca la migración fallida como "rolled back" para que Prisma la pueda re-intentar. El `;` (en lugar de `&&`) hace que continúe aunque no haya migración fallida.
 
 **Environment variables:**
 
