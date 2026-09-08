@@ -1,5 +1,6 @@
 import {
   BadRequestException,
+  ConflictException,
   ForbiddenException,
   Injectable,
   NotFoundException,
@@ -7,6 +8,9 @@ import {
 import { EmergencyResponseStatus, Prisma } from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
 import { DispatchCentralService } from '../dispatch-central/dispatch-central.service';
+import { AlarmQueueService } from '../notifications/alarm-queue.service';
+import { EmergencyBroadcaster } from '../emergency-realtime/emergency-broadcaster.service';
+import { EMERGENCY_EVENT_NAMES } from '../emergency-realtime/emergency-events.contract';
 
 const RESPONSE_LABELS: Record<EmergencyResponseStatus, string> = {
   GOING: 'Voy',
@@ -44,14 +48,21 @@ export class EmergencyResponseService {
   constructor(
     private prisma: PrismaService,
     private dispatchCentral: DispatchCentralService,
+    private alarms: AlarmQueueService,
+    private emergencyBroadcaster: EmergencyBroadcaster,
   ) {}
 
   private incidentsForCompany(companyId: string): Prisma.IncidentWhereInput {
     return {
       closedAt: null,
-      OR: [
-        { companyId },
-        { vehicles: { some: { vehicle: { companyId } } } },
+      status: { in: ['ACTIVE', 'ARRIVED'] },
+      AND: [
+        {
+          OR: [
+            { companyId },
+            { vehicles: { some: { vehicle: { companyId } } } },
+          ],
+        },
       ],
     };
   }
@@ -68,9 +79,14 @@ export class EmergencyResponseService {
         photoUrl: true,
         operativeNumber: true,
         stationAvailable: true,
+        isActive: true,
+        company: { select: { isActive: true } },
       },
     });
-    if (!user?.companyId) throw new ForbiddenException('Usuario sin compañía asignada');
+    if (!user?.isActive) throw new ForbiddenException('Usuario inactivo');
+    if (!user.companyId || !user.company?.isActive) {
+      throw new ForbiddenException('Usuario sin compañía activa asignada');
+    }
     return user;
   }
 
@@ -114,11 +130,13 @@ export class EmergencyResponseService {
 
   private mapResponse(r: {
     id: string;
-    status: EmergencyResponseStatus;
+    status: EmergencyResponseStatus | null;
     latitude: number | null;
     longitude: number | null;
     markerLatitude: number | null;
     markerLongitude: number | null;
+    onSceneAt: Date | null;
+    locationMarkedAt: Date | null;
     note: string | null;
     respondedAt: Date;
     updatedAt: Date;
@@ -127,11 +145,14 @@ export class EmergencyResponseService {
     return {
       id: r.id,
       status: r.status,
-      statusLabel: RESPONSE_LABELS[r.status],
+      statusLabel: r.status ? RESPONSE_LABELS[r.status] : null,
       latitude: r.latitude,
       longitude: r.longitude,
       markerLatitude: r.markerLatitude,
       markerLongitude: r.markerLongitude,
+      onSceneAt: r.onSceneAt,
+      locationMarkedAt: r.locationMarkedAt,
+      locationMarked: r.locationMarkedAt != null,
       note: r.note,
       respondedAt: r.respondedAt,
       updatedAt: r.updatedAt,
@@ -257,6 +278,30 @@ export class EmergencyResponseService {
     };
   }
 
+  async getSnapshot(userId: string) {
+    const user = await this.getUserOrThrow(userId);
+    const companyId = user.companyId!;
+    const where = this.incidentsForCompany(companyId);
+    const [active, incidentVersion, responseVersion] = await Promise.all([
+      this.listActive(userId),
+      this.prisma.incident.aggregate({ where, _max: { updatedAt: true } }),
+      this.prisma.incidentEmergencyResponse.aggregate({
+        where: { incident: where },
+        _max: { updatedAt: true },
+      }),
+    ]);
+    const latest = Math.max(
+      incidentVersion._max.updatedAt?.getTime() ?? 0,
+      responseVersion._max.updatedAt?.getTime() ?? 0,
+    );
+    return {
+      schemaVersion: 1,
+      snapshotVersion: latest ? new Date(latest).toISOString() : new Date(0).toISOString(),
+      serverTime: new Date().toISOString(),
+      ...active,
+    };
+  }
+
   private emptyTeamSummary() {
     return {
       going: 0,
@@ -271,7 +316,8 @@ export class EmergencyResponseService {
 
   private summarizeResponses(
     rows: {
-      status: EmergencyResponseStatus;
+      status: EmergencyResponseStatus | null;
+      locationMarkedAt: Date | null;
       user: { id: string; firstName: string; lastName: string; photoUrl: string | null; operativeNumber: number | null };
     }[],
   ) {
@@ -288,13 +334,14 @@ export class EmergencyResponseService {
       if (r.status === 'NOT_GOING') counts.notGoing += 1;
       if (r.status === 'NOT_AVAILABLE') counts.notAvailable += 1;
       if (r.status === 'ON_SCENE') counts.onScene += 1;
-      if (r.status === 'LOCATION_MARKED') counts.locationMarked += 1;
+      if (r.locationMarkedAt != null || r.status === 'LOCATION_MARKED') counts.locationMarked += 1;
     }
     return {
       ...counts,
       responses: rows.map((r) => ({
         status: r.status,
-        statusLabel: RESPONSE_LABELS[r.status],
+        statusLabel: r.status ? RESPONSE_LABELS[r.status] : null,
+        locationMarked: r.locationMarkedAt != null || r.status === 'LOCATION_MARKED',
         user: {
           id: r.user.id,
           firstName: r.user.firstName,
@@ -338,7 +385,13 @@ export class EmergencyResponseService {
   async respond(
     userId: string,
     incidentId: string,
-    dto: { status: EmergencyResponseStatus; latitude?: number; longitude?: number; note?: string },
+    dto: {
+      status: EmergencyResponseStatus;
+      latitude?: number;
+      longitude?: number;
+      note?: string;
+      idempotencyKey?: string;
+    },
   ) {
     const user = await this.getUserOrThrow(userId);
     const companyId = user.companyId!;
@@ -353,42 +406,133 @@ export class EmergencyResponseService {
       throw new BadRequestException('Use el endpoint de marcar ubicación para LOCATION_MARKED');
     }
 
+    const idempotencyKey = dto.idempotencyKey?.trim() || undefined;
+    if (idempotencyKey && idempotencyKey.length > 128) {
+      throw new BadRequestException('La clave idempotente excede 128 caracteres');
+    }
+    const note = dto.note?.trim() || null;
     const data = {
       status: dto.status,
       latitude: dto.latitude ?? null,
       longitude: dto.longitude ?? null,
-      note: dto.note?.trim() || null,
+      note,
       respondedAt: new Date(),
+      ...(dto.status === 'ON_SCENE' ? { onSceneAt: new Date() } : {}),
     };
 
-    const response = await this.prisma.incidentEmergencyResponse.upsert({
-      where: { incidentId_userId: { incidentId, userId } },
-      create: { incidentId, userId, ...data },
-      update: data,
-      include: {
-        user: { select: { id: true, firstName: true, lastName: true, photoUrl: true, operativeNumber: true } },
-      },
-    });
+    const execute = () =>
+      this.prisma.$transaction(async (tx) => {
+        if (idempotencyKey) {
+          const previous = await tx.incidentEmergencyResponseHistory.findUnique({
+            where: {
+              incidentId_userId_idempotencyKey: { incidentId, userId, idempotencyKey },
+            },
+          });
+          if (previous) {
+            if (
+              previous.eventType !== 'RESPONSE' ||
+              previous.status !== dto.status ||
+              previous.latitude !== (dto.latitude ?? null) ||
+              previous.longitude !== (dto.longitude ?? null) ||
+              previous.note !== note
+            ) {
+              throw new ConflictException('La clave idempotente ya fue usada con otra respuesta');
+            }
+            const existing = await tx.incidentEmergencyResponse.findUniqueOrThrow({
+              where: { incidentId_userId: { incidentId, userId } },
+              include: {
+                user: { select: { id: true, firstName: true, lastName: true, photoUrl: true, operativeNumber: true } },
+              },
+            });
+            return { response: existing, replayed: true };
+          }
+        }
 
-    if (dto.status === 'NOT_AVAILABLE') {
-      await this.prisma.user.update({
-        where: { id: userId },
-        data: { stationAvailable: false, stationAvailableAt: null },
-      });
-    }
+        await tx.incidentEmergencyResponseHistory.create({
+          data: {
+            incidentId,
+            userId,
+            eventType: 'RESPONSE',
+            status: dto.status,
+            latitude: dto.latitude ?? null,
+            longitude: dto.longitude ?? null,
+            note,
+            idempotencyKey,
+          },
+        });
 
-    if (dto.status === 'GOING' || dto.status === 'ON_SCENE') {
-      await this.prisma.user.update({
-        where: { id: userId },
-        data: { stationAvailable: true, stationAvailableAt: new Date() },
+        const response = await tx.incidentEmergencyResponse.upsert({
+          where: { incidentId_userId: { incidentId, userId } },
+          create: { incidentId, userId, ...data },
+          update: data,
+          include: {
+            user: { select: { id: true, firstName: true, lastName: true, photoUrl: true, operativeNumber: true } },
+          },
+        });
+
+        if (dto.status === 'NOT_AVAILABLE') {
+          await tx.user.update({
+            where: { id: userId },
+            data: { stationAvailable: false, stationAvailableAt: null },
+          });
+        } else if (dto.status === 'GOING' || dto.status === 'ON_SCENE') {
+          await tx.user.update({
+            where: { id: userId },
+            data: { stationAvailable: true, stationAvailableAt: new Date() },
+          });
+        }
+        return { response, replayed: false };
       });
+
+    let result: Awaited<ReturnType<typeof execute>>;
+    try {
+      result = await execute();
+    } catch (error) {
+      if (
+        !idempotencyKey ||
+        !(error instanceof Prisma.PrismaClientKnownRequestError) ||
+        error.code !== 'P2002'
+      ) {
+        throw error;
+      }
+      const previous = await this.prisma.incidentEmergencyResponseHistory.findUnique({
+        where: { incidentId_userId_idempotencyKey: { incidentId, userId, idempotencyKey } },
+      });
+      if (
+        !previous ||
+        previous.eventType !== 'RESPONSE' ||
+        previous.status !== dto.status ||
+        previous.latitude !== (dto.latitude ?? null) ||
+        previous.longitude !== (dto.longitude ?? null) ||
+        previous.note !== note
+      ) {
+        throw new ConflictException('La clave idempotente ya fue usada con otra respuesta');
+      }
+      const response = await this.prisma.incidentEmergencyResponse.findUniqueOrThrow({
+        where: { incidentId_userId: { incidentId, userId } },
+        include: {
+          user: { select: { id: true, firstName: true, lastName: true, photoUrl: true, operativeNumber: true } },
+        },
+      });
+      result = { response, replayed: true };
     }
 
     const involvedCompanyIds = await this.involvedCompanyIds(incidentId);
+    const mappedResponse = this.mapResponse(result.response);
+    if (!result.replayed) {
+      this.emergencyBroadcaster.emit({
+        event: EMERGENCY_EVENT_NAMES.responseUpdated,
+        incidentId,
+        companyIds: involvedCompanyIds,
+        snapshotVersion: result.response.updatedAt,
+        data: { response: mappedResponse, replayed: false },
+      });
+    }
 
     return {
       ok: true,
-      response: this.mapResponse(response),
+      response: mappedResponse,
+      replayed: result.replayed,
       involvedCompanyIds,
       message: `${RESPONSE_LABELS[dto.status]} registrado`,
     };
@@ -397,61 +541,184 @@ export class EmergencyResponseService {
   async markLocation(
     userId: string,
     incidentId: string,
-    dto: { latitude: number; longitude: number; note?: string },
+    dto: { latitude: number; longitude: number; note?: string; idempotencyKey?: string },
   ) {
     const user = await this.getUserOrThrow(userId);
     const companyId = user.companyId!;
 
     const incident = await this.prisma.incident.findFirst({
       where: { id: incidentId, ...this.incidentsForCompany(companyId) },
-      select: { id: true, latitude: true, longitude: true, closedAt: true },
+      select: {
+        id: true,
+        code: true,
+        type: true,
+        address: true,
+        latitude: true,
+        longitude: true,
+        closedAt: true,
+      },
     });
     if (!incident) throw new NotFoundException('Emergencia no encontrada o ya cerrada');
 
-    await this.prisma.incident.update({
-      where: { id: incidentId },
-      data: {
-        confirmedLatitude: dto.latitude,
-        confirmedLongitude: dto.longitude,
-        locationPinAt: new Date(),
-        locationPinNote: dto.note?.trim() || `Marcado por ${user.firstName} ${user.lastName}`,
-        ...(incident.latitude == null ? { latitude: dto.latitude } : {}),
-        ...(incident.longitude == null ? { longitude: dto.longitude } : {}),
-      },
+    const markedAt = new Date();
+    const note = dto.note?.trim() || null;
+    const idempotencyKey = dto.idempotencyKey?.trim() || undefined;
+    if (idempotencyKey && idempotencyKey.length > 128) {
+      throw new BadRequestException('La clave idempotente excede 128 caracteres');
+    }
+    const execute = () => this.prisma.$transaction(async (tx) => {
+      if (idempotencyKey) {
+        const previous = await tx.incidentEmergencyResponseHistory.findUnique({
+          where: { incidentId_userId_idempotencyKey: { incidentId, userId, idempotencyKey } },
+        });
+        if (previous) {
+          if (
+            previous.eventType !== 'LOCATION_MARKED' ||
+            previous.latitude !== dto.latitude ||
+            previous.longitude !== dto.longitude ||
+            previous.note !== note
+          ) {
+            throw new ConflictException('La clave idempotente ya fue usada con otra ubicación');
+          }
+          const existing = await tx.incidentEmergencyResponse.findUniqueOrThrow({
+            where: { incidentId_userId: { incidentId, userId } },
+            include: {
+              user: { select: { id: true, firstName: true, lastName: true, photoUrl: true, operativeNumber: true } },
+            },
+          });
+          const currentIncident = await tx.incident.findUniqueOrThrow({
+            where: { id: incidentId },
+            select: { updatedAt: true, locationPinAt: true },
+          });
+          return { response: existing, incident: currentIncident, replayed: true };
+        }
+      }
+
+      const updatedIncident = await tx.incident.update({
+        where: { id: incidentId },
+        data: {
+          confirmedLatitude: dto.latitude,
+          confirmedLongitude: dto.longitude,
+          locationPinAt: markedAt,
+          locationPinNote: note || `Marcado por ${user.firstName} ${user.lastName}`,
+          ...(incident.latitude == null ? { latitude: dto.latitude } : {}),
+          ...(incident.longitude == null ? { longitude: dto.longitude } : {}),
+        },
+        select: { updatedAt: true, locationPinAt: true },
+      });
+
+      const current = await tx.incidentEmergencyResponse.upsert({
+        where: { incidentId_userId: { incidentId, userId } },
+        create: {
+          incidentId,
+          userId,
+          status: null,
+          markerLatitude: dto.latitude,
+          markerLongitude: dto.longitude,
+          locationMarkedAt: markedAt,
+        },
+        update: {
+          markerLatitude: dto.latitude,
+          markerLongitude: dto.longitude,
+          locationMarkedAt: markedAt,
+        },
+        include: {
+          user: { select: { id: true, firstName: true, lastName: true, photoUrl: true, operativeNumber: true } },
+        },
+      });
+
+      await tx.incidentEmergencyResponseHistory.create({
+        data: {
+          incidentId,
+          userId,
+          eventType: 'LOCATION_MARKED',
+          status: current.status,
+          latitude: dto.latitude,
+          longitude: dto.longitude,
+          note,
+          idempotencyKey,
+        },
+      });
+      return { response: current, incident: updatedIncident, replayed: false };
     });
 
-    const response = await this.prisma.incidentEmergencyResponse.upsert({
-      where: { incidentId_userId: { incidentId, userId } },
-      create: {
-        incidentId,
-        userId,
-        status: 'LOCATION_MARKED',
-        markerLatitude: dto.latitude,
-        markerLongitude: dto.longitude,
-        latitude: dto.latitude,
-        longitude: dto.longitude,
-        note: dto.note?.trim() || null,
-      },
-      update: {
-        status: 'LOCATION_MARKED',
-        markerLatitude: dto.latitude,
-        markerLongitude: dto.longitude,
-        latitude: dto.latitude,
-        longitude: dto.longitude,
-        note: dto.note?.trim() || null,
-        respondedAt: new Date(),
-      },
-      include: {
-        user: { select: { id: true, firstName: true, lastName: true, photoUrl: true, operativeNumber: true } },
-      },
-    });
+    let result: Awaited<ReturnType<typeof execute>>;
+    try {
+      result = await execute();
+    } catch (error) {
+      if (
+        !idempotencyKey ||
+        !(error instanceof Prisma.PrismaClientKnownRequestError) ||
+        error.code !== 'P2002'
+      ) {
+        throw error;
+      }
+      const previous = await this.prisma.incidentEmergencyResponseHistory.findUnique({
+        where: { incidentId_userId_idempotencyKey: { incidentId, userId, idempotencyKey } },
+      });
+      if (
+        !previous ||
+        previous.eventType !== 'LOCATION_MARKED' ||
+        previous.latitude !== dto.latitude ||
+        previous.longitude !== dto.longitude ||
+        previous.note !== note
+      ) {
+        throw new ConflictException('La clave idempotente ya fue usada con otra ubicación');
+      }
+      const [response, currentIncident] = await Promise.all([
+        this.prisma.incidentEmergencyResponse.findUniqueOrThrow({
+          where: { incidentId_userId: { incidentId, userId } },
+          include: {
+            user: { select: { id: true, firstName: true, lastName: true, photoUrl: true, operativeNumber: true } },
+          },
+        }),
+        this.prisma.incident.findUniqueOrThrow({
+          where: { id: incidentId },
+          select: { updatedAt: true, locationPinAt: true },
+        }),
+      ]);
+      result = { response, incident: currentIncident, replayed: true };
+    }
 
     const involvedCompanyIds = await this.involvedCompanyIds(incidentId);
+    if (!result.replayed) {
+      await this.alarms.enqueue({
+        incidentId,
+        eventType: 'LOCATION',
+        dedupKey: `incident:${incidentId}:location:${dto.latitude.toFixed(6)}:${dto.longitude.toFixed(6)}`,
+        title: `UBICACIÓN ${incident.code}`,
+        body: `${incident.type} — ubicación crítica actualizada`,
+        companyIds: involvedCompanyIds,
+        data: {
+          code: incident.code,
+          type: incident.type,
+          address: incident.address,
+          latitude: String(dto.latitude),
+          longitude: String(dto.longitude),
+        },
+      });
+    }
+    const mappedResponse = this.mapResponse(result.response);
+    const fieldGps = {
+      latitude: dto.latitude,
+      longitude: dto.longitude,
+      confirmedAt: result.incident.locationPinAt,
+    };
+    if (!result.replayed) {
+      this.emergencyBroadcaster.emit({
+        event: EMERGENCY_EVENT_NAMES.locationUpdated,
+        incidentId,
+        companyIds: involvedCompanyIds,
+        snapshotVersion: result.incident.updatedAt,
+        data: { response: mappedResponse, fieldGps, replayed: false },
+      });
+    }
 
     return {
       ok: true,
-      response: this.mapResponse(response),
-      fieldGps: { latitude: dto.latitude, longitude: dto.longitude },
+      response: mappedResponse,
+      fieldGps,
+      replayed: result.replayed,
       involvedCompanyIds,
       message: 'Ubicación del incendio notificada a la central',
     };

@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import {
   Siren, MapPin, Phone, Mail, Users, Truck, Clock, Flame, ChevronLeft,
-  CheckCircle2, AlertCircle, Wrench, BarChart3, Calendar, Shield, Star, Zap,
+  AlertCircle, BarChart3, Calendar, Shield, Star, Zap,
 } from 'lucide-react';
 
 const apiBase = import.meta.env.VITE_API_URL?.replace(/\/$/, '') || '/api';

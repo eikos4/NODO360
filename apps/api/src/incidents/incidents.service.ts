@@ -1,9 +1,11 @@
-import { Injectable, NotFoundException, ConflictException, BadRequestException, GoneException } from '@nestjs/common';
-import { DispatchSource, Prisma } from '@prisma/client';
-import { randomUUID } from 'crypto';
+import { Injectable, NotFoundException, ConflictException, BadRequestException, ForbiddenException } from '@nestjs/common';
+import { DispatchSource, IncidentStatus, Prisma } from '@prisma/client';
+import { createHash, randomUUID } from 'crypto';
 import { PrismaService } from '../prisma/prisma.service';
 import { GuardLogService } from '../guard-log/guard-log.service';
-import { PushService } from '../notifications/push.service';
+import { AlarmQueueService } from '../notifications/alarm-queue.service';
+import { EmergencyBroadcaster } from '../emergency-realtime/emergency-broadcaster.service';
+import { EMERGENCY_EVENT_NAMES } from '../emergency-realtime/emergency-events.contract';
 import { CreateIncidentDto } from './dto/create-incident.dto';
 import { UpdateIncidentDto } from './dto/update-incident.dto';
 import { DispatchIncidentDto } from './dto/dispatch-incident.dto';
@@ -36,12 +38,19 @@ const INCLUDE = {
   },
 };
 
+export type IncidentAuthUser = {
+  id: string;
+  role: string;
+  companyId: string | null;
+};
+
 @Injectable()
 export class IncidentsService {
   constructor(
     private prisma: PrismaService,
     private guardLogService: GuardLogService,
-    private push: PushService,
+    private alarms: AlarmQueueService,
+    private emergencyBroadcaster: EmergencyBroadcaster,
   ) {}
 
   async findAll(companyId?: string) {
@@ -51,6 +60,59 @@ export class IncidentsService {
       orderBy: { dispatchedAt: 'desc' },
     });
     return rows.map((inc) => this.withChecklistMeta(inc));
+  }
+
+  async findAllAuthorized(user: IncidentAuthUser, requestedCompanyId?: string) {
+    if (user.role === 'SUPER_ADMIN') return this.findAll(requestedCompanyId);
+    if (!user.companyId) throw new ForbiddenException('Usuario sin compañía asignada');
+    if (requestedCompanyId && requestedCompanyId !== user.companyId) {
+      throw new ForbiddenException('No puede consultar incidentes de otra compañía');
+    }
+    const rows = await this.prisma.incident.findMany({
+      where: {
+        OR: [
+          { companyId: user.companyId },
+          { vehicles: { some: { vehicle: { companyId: user.companyId } } } },
+        ],
+      },
+      include: INCLUDE,
+      orderBy: { dispatchedAt: 'desc' },
+    });
+    return rows.map((incident) => this.withChecklistMeta(incident));
+  }
+
+  async findByIdAuthorized(id: string, user: IncidentAuthUser) {
+    if (user.role !== 'SUPER_ADMIN') {
+      if (!user.companyId) throw new ForbiddenException('Usuario sin compañía asignada');
+      const permitted = await this.prisma.incident.findFirst({
+        where: {
+          id,
+          OR: [
+            { companyId: user.companyId },
+            { vehicles: { some: { vehicle: { companyId: user.companyId } } } },
+          ],
+        },
+        select: { id: true },
+      });
+      if (!permitted) throw new NotFoundException('Emergencia no encontrada');
+    }
+    return this.findById(id);
+  }
+
+  async assertCanManage(id: string, user: IncidentAuthUser) {
+    if (user.role === 'SUPER_ADMIN') return;
+    if (!user.companyId) throw new ForbiddenException('Usuario sin compañía asignada');
+    const owned = await this.prisma.incident.findFirst({
+      where: { id, companyId: user.companyId },
+      select: { id: true },
+    });
+    if (!owned) throw new ForbiddenException('No puede modificar una emergencia de otra compañía');
+  }
+
+  assertCanCreateFor(companyId: string, user: IncidentAuthUser) {
+    if (user.role !== 'SUPER_ADMIN' && user.companyId !== companyId) {
+      throw new ForbiddenException('No puede despachar para otra compañía');
+    }
   }
 
   async findById(id: string) {
@@ -140,21 +202,6 @@ export class IncidentsService {
 
     await this.recordMutualAidGuardLogs(incident, userId);
 
-    const companyIds = new Set<string>();
-    if (incident.companyId) companyIds.add(incident.companyId);
-    for (const row of incident.vehicles ?? []) {
-      if (row.vehicle?.companyId) companyIds.add(row.vehicle.companyId);
-    }
-    void this.push
-      .notifyDispatch({
-        incidentId: incident.id,
-        code: incident.code,
-        type: incident.type,
-        address: incident.address,
-        companyIds: [...companyIds],
-      })
-      .catch((err) => console.error('[push] despacho', err));
-
     return incident;
   }
 
@@ -211,38 +258,74 @@ export class IncidentsService {
       data.dispatchSource === 'BOTONERA' ? DispatchSource.BOTONERA : DispatchSource.MANUAL;
 
     const match = await this.resolveMatchingPlan(data.companyId, data.type);
+    const status =
+      data.status ??
+      (data.closedAt ? IncidentStatus.CLOSED : data.arrivedAt ? IncidentStatus.ARRIVED : IncidentStatus.ACTIVE);
+    const arrivedAt =
+      status === IncidentStatus.ARRIVED
+        ? data.arrivedAt ?? new Date()
+        : status === IncidentStatus.ACTIVE
+          ? undefined
+          : data.arrivedAt;
+    const closedAt =
+      status === IncidentStatus.CLOSED || status === IncidentStatus.CANCELLED
+        ? data.closedAt ?? new Date()
+        : undefined;
 
-    const incident = await this.prisma.incident.create({
-      data: {
-        code: data.code,
-        type: data.type,
-        description: data.description,
-        address: data.address,
-        latitude: data.latitude,
-        longitude: data.longitude,
-        locationPinToken: data.locationPinToken,
-        dispatchedAt: data.dispatchedAt,
-        arrivedAt: data.arrivedAt,
-        closedAt: data.closedAt,
-        report: data.report,
-        imageUrl: data.imageUrl,
-        companyId: data.companyId,
-        dispatchSource,
-        dispatchNotes: data.dispatchNotes,
-        emergencyPlanId: match?.planId,
-        planChecklist: match?.checklist ?? [],
-        participants: participantIds?.length
-          ? { create: participantIds.map((uid) => ({ userId: uid })) }
-          : undefined,
-        vehicles: vehicleIds?.length
-          ? { create: vehicleIds.map((vid) => ({ vehicleId: vid })) }
-          : undefined,
-      },
-      include: INCLUDE,
+    const incident = await this.prisma.$transaction(async (tx) => {
+      const created = await tx.incident.create({
+        data: {
+          code: data.code,
+          type: data.type,
+          description: data.description,
+          address: data.address,
+          status,
+          latitude: data.latitude,
+          longitude: data.longitude,
+          locationPinToken: data.locationPinToken,
+          dispatchedAt: data.dispatchedAt,
+          arrivedAt,
+          closedAt,
+          report: data.report,
+          imageUrl: data.imageUrl,
+          companyId: data.companyId,
+          dispatchSource,
+          dispatchNotes: data.dispatchNotes,
+          emergencyPlanId: match?.planId,
+          planChecklist: match?.checklist ?? [],
+          participants: participantIds?.length
+            ? { create: participantIds.map((uid) => ({ userId: uid })) }
+            : undefined,
+          vehicles: vehicleIds?.length
+            ? { create: vehicleIds.map((vid) => ({ vehicleId: vid })) }
+            : undefined,
+        },
+        include: INCLUDE,
+      });
+      const companyIds = new Set<string>([created.companyId]);
+      created.vehicles.forEach((row) => companyIds.add(row.vehicle.companyId));
+      await this.alarms.enqueue(
+        {
+          incidentId: created.id,
+          eventType: 'DISPATCH',
+          dedupKey: `incident:${created.id}:dispatch`,
+          title: `ALARMA ${created.code}`,
+          body: `${created.type} — ${created.address}`,
+          companyIds: [...companyIds],
+          data: {
+            code: created.code,
+            type: created.type,
+            address: created.address,
+          },
+        },
+        tx,
+      );
+      return created;
     });
 
     const full = await this.findById(incident.id);
 
+    let result: typeof full & { guardLogLinked: boolean; guardLogId?: string };
     try {
       const guardLog = await this.guardLogService.recordDispatchFromIncident({
         companyId: full.companyId,
@@ -256,10 +339,20 @@ export class IncidentsService {
         participantLines: full.participants?.map((p) => `${p.user.firstName} ${p.user.lastName}`) ?? [],
         authorId: userId,
       });
-      return { ...full, guardLogLinked: true, guardLogId: guardLog.log?.id };
+      result = { ...full, guardLogLinked: true, guardLogId: guardLog.log?.id };
     } catch {
-      return { ...full, guardLogLinked: false };
+      result = { ...full, guardLogLinked: false };
     }
+    const companyIds = new Set<string>([full.companyId]);
+    full.vehicles.forEach((row: any) => companyIds.add(row.vehicle.companyId));
+    this.emergencyBroadcaster.emit({
+      event: EMERGENCY_EVENT_NAMES.dispatchCreated,
+      incidentId: full.id,
+      companyIds: [...companyIds],
+      snapshotVersion: full.updatedAt,
+      data: { incident: result },
+    });
+    return result;
   }
 
   async updateChecklist(id: string, dto: UpdateIncidentChecklistDto) {
@@ -284,11 +377,19 @@ export class IncidentsService {
       data: { planChecklist: updated as unknown as Prisma.InputJsonValue },
     });
 
-    return this.findById(id);
+    const result = await this.findById(id);
+    this.emergencyBroadcaster.emit({
+      event: EMERGENCY_EVENT_NAMES.incidentUpdated,
+      incidentId: result.id,
+      companyIds: [result.companyId, ...result.vehicles.map((row: any) => row.vehicle.companyId)],
+      snapshotVersion: result.updatedAt,
+      data: { incident: result },
+    });
+    return result;
   }
 
   async update(id: string, dto: UpdateIncidentDto) {
-    await this.findById(id);
+    const incident = await this.findById(id);
     const { participantIds, vehicleIds, dispatchSource, ...data } = dto;
 
     if (participantIds !== undefined) {
@@ -306,13 +407,98 @@ export class IncidentsService {
     }
 
     const updateData: Prisma.IncidentUpdateInput = { ...data };
+    if (dto.status) {
+      updateData.status = dto.status;
+      if (dto.status === IncidentStatus.ACTIVE) {
+        updateData.arrivedAt = null;
+        updateData.closedAt = null;
+      } else if (dto.status === IncidentStatus.ARRIVED) {
+        updateData.arrivedAt = dto.arrivedAt ?? incident.arrivedAt ?? new Date();
+        updateData.closedAt = null;
+      } else {
+        updateData.closedAt = dto.closedAt ?? incident.closedAt ?? new Date();
+      }
+    } else if (dto.closedAt) {
+      updateData.status = IncidentStatus.CLOSED;
+    } else if (dto.arrivedAt) {
+      updateData.status = IncidentStatus.ARRIVED;
+    }
     if (dispatchSource !== undefined) {
       updateData.dispatchSource =
         dispatchSource === 'BOTONERA' ? DispatchSource.BOTONERA : DispatchSource.MANUAL;
     }
 
     await this.prisma.incident.update({ where: { id }, data: updateData });
-    return this.findById(id);
+    const updated = await this.findById(id);
+    const critical =
+      dto.status !== undefined ||
+      dto.closedAt !== undefined ||
+      dto.address !== undefined ||
+      dto.type !== undefined ||
+      dto.latitude !== undefined ||
+      dto.longitude !== undefined ||
+      participantIds !== undefined ||
+      vehicleIds !== undefined ||
+      dto.dispatchNotes !== undefined;
+    if (critical) {
+      const eventType =
+        updated.status === IncidentStatus.CANCELLED
+          ? 'CANCELLED'
+          : updated.status === IncidentStatus.CLOSED
+            ? 'CLOSED'
+            : 'CRITICAL_UPDATE';
+      const companyIds = new Set<string>([updated.companyId]);
+      updated.vehicles.forEach((row: any) => companyIds.add(row.vehicle.companyId));
+      const fingerprint = createHash('sha256')
+        .update(
+          JSON.stringify({
+            status: updated.status,
+            type: updated.type,
+            address: updated.address,
+            latitude: updated.latitude,
+            longitude: updated.longitude,
+            dispatchNotes: updated.dispatchNotes,
+            participants: updated.participants.map((row: any) => row.user.id).sort(),
+            vehicles: updated.vehicles.map((row: any) => row.vehicle.id).sort(),
+          }),
+        )
+        .digest('hex')
+        .slice(0, 24);
+      const label =
+        eventType === 'CANCELLED'
+          ? 'CANCELADA'
+          : eventType === 'CLOSED'
+            ? 'CERRADA'
+            : 'ACTUALIZACIÓN';
+      await this.alarms.enqueue({
+        incidentId: updated.id,
+        eventType,
+        dedupKey: `incident:${updated.id}:${eventType.toLowerCase()}:${fingerprint}`,
+        title: `${label} ${updated.code}`,
+        body: `${updated.type} — ${updated.address}`,
+        companyIds: [...companyIds],
+        data: {
+          code: updated.code,
+          type: updated.type,
+          address: updated.address,
+          status: updated.status,
+        },
+      });
+    }
+    const realtimeEvent =
+      updated.status === IncidentStatus.CANCELLED
+        ? EMERGENCY_EVENT_NAMES.incidentCancelled
+        : updated.status === IncidentStatus.CLOSED
+          ? EMERGENCY_EVENT_NAMES.incidentClosed
+          : EMERGENCY_EVENT_NAMES.incidentUpdated;
+    this.emergencyBroadcaster.emit({
+      event: realtimeEvent,
+      incidentId: updated.id,
+      companyIds: [updated.companyId, ...updated.vehicles.map((row: any) => row.vehicle.companyId)],
+      snapshotVersion: updated.updatedAt,
+      data: { incident: updated },
+    });
+    return updated;
   }
 
   async delete(id: string) {

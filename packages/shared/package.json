@@ -1,6 +1,9 @@
 {
   "name": "@nodo360/shared",
   "version": "1.0.0",
+  "scripts": {
+    "test": "vitest run --passWithNoTests"
+  },
   "main": "src/index.ts",
   "types": "src/index.ts"
 }

@@ -2,7 +2,7 @@ import { Controller, Get, Post, Put, Patch, Delete, Param, Body, Query, UseGuard
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { RolesGuard } from '../auth/guards/roles.guard';
 import { Roles } from '../auth/decorators/roles.decorator';
-import { IncidentsService } from './incidents.service';
+import { IncidentAuthUser, IncidentsService } from './incidents.service';
 import { StorageService } from '../storage/storage.service';
 import { memoryUpload } from '../storage/upload.interceptor';
 import { CreateIncidentDto } from './dto/create-incident.dto';
@@ -19,18 +19,22 @@ export class IncidentsController {
   ) {}
 
   @Get('stats')
-  getStats(@Query('companyId') companyId?: string) {
+  getStats(@Req() req: { user: IncidentAuthUser }, @Query('companyId') companyId?: string) {
+    if (req.user.role !== 'SUPER_ADMIN') {
+      this.service.assertCanCreateFor(companyId ?? req.user.companyId ?? '', req.user);
+      return this.service.getStats(req.user.companyId!);
+    }
     return this.service.getStats(companyId);
   }
 
   @Get()
-  findAll(@Query('companyId') companyId?: string) {
-    return this.service.findAll(companyId);
+  findAll(@Req() req: { user: IncidentAuthUser }, @Query('companyId') companyId?: string) {
+    return this.service.findAllAuthorized(req.user, companyId);
   }
 
   @Get(':id')
-  findById(@Param('id') id: string) {
-    return this.service.findById(id);
+  findById(@Param('id') id: string, @Req() req: { user: IncidentAuthUser }) {
+    return this.service.findByIdAuthorized(id, req.user);
   }
 
   @Post('upload-image')
@@ -45,31 +49,45 @@ export class IncidentsController {
 
   @Patch(':id/checklist')
   @Roles('SUPER_ADMIN', 'COMANDANTE', 'CAPITAN')
-  updateChecklist(@Param('id') id: string, @Body() dto: UpdateIncidentChecklistDto) {
+  async updateChecklist(
+    @Param('id') id: string,
+    @Body() dto: UpdateIncidentChecklistDto,
+    @Req() req: { user: IncidentAuthUser },
+  ) {
+    await this.service.assertCanManage(id, req.user);
     return this.service.updateChecklist(id, dto);
   }
 
   @Post('dispatch')
   @Roles('SUPER_ADMIN', 'COMANDANTE', 'CAPITAN', 'OPERADOR_CENTRAL')
-  dispatch(@Body() dto: DispatchIncidentDto, @Req() req: any) {
+  dispatch(@Body() dto: DispatchIncidentDto, @Req() req: { user: IncidentAuthUser }) {
+    this.service.assertCanCreateFor(dto.companyId, req.user);
     return this.service.dispatch(dto, req.user?.id);
   }
 
   @Post()
   @Roles('SUPER_ADMIN', 'COMANDANTE', 'CAPITAN')
-  create(@Body() dto: CreateIncidentDto, @Req() req: any) {
+  create(@Body() dto: CreateIncidentDto, @Req() req: { user: IncidentAuthUser }) {
+    this.service.assertCanCreateFor(dto.companyId, req.user);
     return this.service.create(dto, req.user?.id);
   }
 
   @Put(':id')
   @Roles('SUPER_ADMIN', 'COMANDANTE', 'CAPITAN')
-  update(@Param('id') id: string, @Body() dto: UpdateIncidentDto) {
+  async update(
+    @Param('id') id: string,
+    @Body() dto: UpdateIncidentDto,
+    @Req() req: { user: IncidentAuthUser },
+  ) {
+    await this.service.assertCanManage(id, req.user);
+    if (dto.companyId) this.service.assertCanCreateFor(dto.companyId, req.user);
     return this.service.update(id, dto);
   }
 
   @Delete(':id')
   @Roles('SUPER_ADMIN', 'COMANDANTE')
-  delete(@Param('id') id: string) {
+  async delete(@Param('id') id: string, @Req() req: { user: IncidentAuthUser }) {
+    await this.service.assertCanManage(id, req.user);
     return this.service.delete(id);
   }
 }

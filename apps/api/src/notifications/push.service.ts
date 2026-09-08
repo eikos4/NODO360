@@ -3,6 +3,7 @@ import { ConfigService } from '@nestjs/config';
 import { cert, getApps, initializeApp } from 'firebase-admin/app';
 import { getMessaging, type Messaging } from 'firebase-admin/messaging';
 import { PrismaService } from '../prisma/prisma.service';
+import { resolveAlarmTone, resolveApnsSound } from './alarm-payload';
 
 export type AlarmPayload = {
   incidentId: string;
@@ -10,6 +11,13 @@ export type AlarmPayload = {
   type: string;
   address: string;
   companyIds: string[];
+};
+
+export type QueuedAlarmPayload = {
+  token: string;
+  title: string;
+  body: string;
+  data: Record<string, string>;
 };
 
 @Injectable()
@@ -64,6 +72,53 @@ export class PushService {
     return { ok: true };
   }
 
+  async sendQueuedAlarm(payload: QueuedAlarmPayload) {
+    if (!this.ready || !this.messaging) {
+      const error = new Error('FCM no está configurado');
+      (error as Error & { code?: string }).code = 'fcm/not-configured';
+      throw error;
+    }
+    const tone = resolveAlarmTone(
+      payload.data.emergencyCodeId,
+      payload.data.code,
+      payload.data.type,
+      payload.title,
+      payload.body,
+    );
+    return this.messaging.send({
+      token: payload.token,
+      notification: { title: payload.title, body: payload.body },
+      data: payload.data,
+      android: {
+        priority: 'high',
+        notification: {
+          channelId: tone.channelId,
+          sound: tone.sound,
+          priority: 'max',
+        },
+      },
+      apns: {
+        headers: { 'apns-priority': '10', 'apns-push-type': 'alert' },
+        payload: {
+          aps: {
+            sound: resolveApnsSound(tone.sound, this.config),
+            alert: { title: payload.title, body: payload.body },
+            contentAvailable: true,
+            category: 'NODO360_EMERGENCY',
+          },
+        },
+      },
+      webpush: {
+        notification: {
+          title: payload.title,
+          body: payload.body,
+          requireInteraction: true,
+        },
+        fcmOptions: { link: payload.data.url || '/emergencia-respuesta' },
+      },
+    });
+  }
+
   async notifyDispatch(payload: AlarmPayload) {
     const companyIds = [...new Set(payload.companyIds.filter(Boolean))];
     if (!companyIds.length) return { sent: 0 };
@@ -92,6 +147,7 @@ export class PushService {
 
     const title = `ALARMA ${payload.code}`;
     const body = `${payload.type} — ${payload.address}`;
+    const tone = resolveAlarmTone(payload.code, payload.type);
     const tokens = devices.map((d) => d.token);
     const stale: string[] = [];
     let sent = 0;
@@ -111,17 +167,19 @@ export class PushService {
         android: {
           priority: 'high',
           notification: {
-            channelId: 'nodo360_alarms',
-            sound: 'default',
+            channelId: tone.channelId,
+            sound: tone.sound,
             priority: 'max',
           },
         },
         apns: {
+          headers: { 'apns-priority': '10', 'apns-push-type': 'alert' },
           payload: {
             aps: {
-              sound: 'default',
+              sound: resolveApnsSound(tone.sound, this.config),
               alert: { title, body },
               contentAvailable: true,
+              category: 'NODO360_EMERGENCY',
             },
           },
         },
@@ -151,4 +209,5 @@ export class PushService {
     this.logger.log(`Despacho ${payload.code}: push ${sent}/${tokens.length}`);
     return { sent };
   }
+
 }

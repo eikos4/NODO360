@@ -107,6 +107,18 @@ Sin esto, el bombero **solo ve la alarma si tiene NODO360 abierto**.
 
 **iPhone:** hace falta la app nativa + cuenta Apple Developer. El navegador Safari no despierta apps cerradas de forma fiable.
 
+La API persiste cada alarma y entrega por dispositivo en PostgreSQL antes de
+enviarla a FCM. El worker integrado reintenta con backoff y recupera entregas
+interrumpidas; no requiere Redis. Sus variables `ALARM_WORKER_*` y
+`ALARM_QUEUE_TTL_SECONDS` son opcionales y están documentadas en
+`apps/api/.env.example`. En el despliegue inicial debe existir una sola instancia
+con `ALARM_WORKER_ENABLED=true`.
+
+Endpoints autenticados para clientes:
+- `GET /api/notifications/mine`: estado e historial propio.
+- `POST /api/notifications/:id/opened`: registra apertura.
+- `POST /api/notifications/:id/acknowledged`: registra acuse.
+
 ---
 
 ### 3. Static Site — Web

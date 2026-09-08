@@ -1,0 +1,7 @@
+<?xml version='1.0' encoding='utf-8'?>
+<resources>
+    <string name="app_name">Nodo360</string>
+    <string name="title_activity_main">Nodo360</string>
+    <string name="package_name">cl.nodo360.mobile</string>
+    <string name="custom_url_scheme">cl.nodo360.mobile</string>
+</resources>

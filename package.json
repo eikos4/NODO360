@@ -9,8 +9,12 @@
   "scripts": {
     "dev:api": "npm run dev --workspace=apps/api",
     "dev:web": "npm run dev --workspace=apps/web",
+    "dev:mobile": "npm run dev --workspace=apps/mobile",
     "build:api": "npm run build --workspace=apps/api",
     "build:web": "npm run build --workspace=apps/web",
+    "build:mobile": "npm run build --workspace=apps/mobile",
+    "test": "npm run test --workspaces --if-present",
+    "sync:mobile": "npm run sync --workspace=apps/mobile",
     "start:api": "npm run start:prod --workspace=apps/api",
     "start:web": "npm run start --workspace=apps/web",
     "prisma:generate": "npm run prisma:generate --workspace=apps/api",
@@ -22,7 +26,8 @@
   },
   "devDependencies": {
     "@nestjs/cli": "^10.3.0",
-    "prisma": "^5.10.0"
+    "prisma": "^5.10.0",
+    "vitest": "^2.1.9"
   },
   "engines": {
     "node": "20.x"

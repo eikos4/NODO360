@@ -149,7 +149,7 @@ export class EmergencyBitacoraService {
           }),
       this.prisma.incident.update({
         where: { id: incident.id },
-        data: { closedAt: incident.closedAt ?? now },
+        data: { status: 'CLOSED', closedAt: incident.closedAt ?? now },
       }),
     ]);
 
@@ -161,7 +161,7 @@ export class EmergencyBitacoraService {
     const now = new Date();
     await this.prisma.incident.update({
       where: { id: incident.id },
-      data: { closedAt: incident.closedAt ?? now },
+      data: { status: 'CLOSED', closedAt: incident.closedAt ?? now },
     });
     return {
       incidentId: incident.id,

@@ -1,0 +1,7 @@
+{
+  "_comment": "Placeholder only. Download the real google-services.json for cl.nodo360.mobile from Firebase Console and save it beside this file. Never commit it.",
+  "project_info": {
+    "project_id": "REPLACE_FROM_FIREBASE_CONSOLE"
+  },
+  "client": []
+}

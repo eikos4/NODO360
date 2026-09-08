@@ -2,8 +2,8 @@ import { useState, useMemo, useEffect } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import {
   Plus, Pencil, Trash2, X, Search, Building2, MapPin, Route, Users,
-  Calendar, CheckCircle2, Clock, XCircle, Map as MapIcon, List, Signpost,
-  ClipboardList, Filter, ChevronRight, PlayCircle,
+  Calendar, CheckCircle2, Clock, Map as MapIcon, List, Signpost,
+  ClipboardList, PlayCircle,
 } from 'lucide-react';
 import { Map, AdvancedMarker, InfoWindow, useMap } from '@vis.gl/react-google-maps';
 import { api } from '../lib/api';

@@ -1,10 +1,12 @@
-import { IsString, IsNotEmpty, IsOptional, IsDateString, IsArray, IsNumber } from 'class-validator';
+import { IsString, IsNotEmpty, IsOptional, IsDateString, IsArray, IsNumber, IsIn } from 'class-validator';
 
 export class CreateIncidentDto {
   @IsString() @IsNotEmpty() code: string;
   @IsString() @IsNotEmpty() type: string;
   @IsString() @IsNotEmpty() description: string;
   @IsString() @IsNotEmpty() address: string;
+  @IsOptional() @IsIn(['ACTIVE', 'ARRIVED', 'CLOSED', 'CANCELLED'])
+  status?: 'ACTIVE' | 'ARRIVED' | 'CLOSED' | 'CANCELLED';
   @IsOptional() @IsNumber() latitude?: number;
   @IsOptional() @IsNumber() longitude?: number;
   @IsOptional() @IsString() locationPinToken?: string;

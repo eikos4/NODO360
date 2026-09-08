@@ -1,4 +1,4 @@
-import { Body, Controller, Get, Param, Post, Req, UseGuards } from '@nestjs/common';
+import { Body, Controller, Get, Headers, Param, Post, Req, UseGuards } from '@nestjs/common';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { RolesGuard } from '../auth/guards/roles.guard';
 import { Roles } from '../auth/decorators/roles.decorator';
@@ -28,6 +28,12 @@ export class EmergencyResponseController {
     return this.service.listActive(req.user.id);
   }
 
+  @Get('snapshot')
+  @Roles(...RESPONDER_ROLES)
+  getSnapshot(@Req() req: { user: { id: string } }) {
+    return this.service.getSnapshot(req.user.id);
+  }
+
   @Get(':incidentId')
   @Roles(...RESPONDER_ROLES)
   getDetail(@Param('incidentId') incidentId: string, @Req() req: { user: { id: string } }) {
@@ -39,9 +45,13 @@ export class EmergencyResponseController {
   respond(
     @Param('incidentId') incidentId: string,
     @Body() dto: RespondEmergencyDto,
+    @Headers('idempotency-key') idempotencyKey: string | undefined,
     @Req() req: { user: { id: string } },
   ) {
-    return this.service.respond(req.user.id, incidentId, dto);
+    return this.service.respond(req.user.id, incidentId, {
+      ...dto,
+      idempotencyKey: dto.idempotencyKey ?? idempotencyKey,
+    });
   }
 
   @Post(':incidentId/mark-location')
@@ -49,8 +59,12 @@ export class EmergencyResponseController {
   markLocation(
     @Param('incidentId') incidentId: string,
     @Body() dto: MarkEmergencyLocationDto,
+    @Headers('idempotency-key') idempotencyKey: string | undefined,
     @Req() req: { user: { id: string } },
   ) {
-    return this.service.markLocation(req.user.id, incidentId, dto);
+    return this.service.markLocation(req.user.id, incidentId, {
+      ...dto,
+      idempotencyKey: dto.idempotencyKey ?? idempotencyKey,
+    });
   }
 }

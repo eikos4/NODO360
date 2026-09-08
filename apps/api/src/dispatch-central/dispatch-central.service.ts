@@ -3,7 +3,7 @@ import {
   Injectable,
   NotFoundException,
 } from '@nestjs/common';
-import { EquipmentStatus, FleetLogType, DispatchSource } from '@prisma/client';
+import { EquipmentStatus, FleetLogType, DispatchSource, IncidentStatus } from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
 import { UpdateDispatchCentralDto } from './dto/update-dispatch-central.dto';
 
@@ -324,7 +324,7 @@ export class DispatchCentralService {
           this.incidentsInvolvingCompany(companyId),
           {
             OR: [
-              { closedAt: null },
+              { status: { in: [IncidentStatus.ACTIVE, IncidentStatus.ARRIVED] } },
               {
                 AND: [{ latitude: { not: null } }, { longitude: { not: null } }],
               },
@@ -337,6 +337,7 @@ export class DispatchCentralService {
       select: {
         companyId: true,
         id: true,
+        status: true,
         code: true,
         type: true,
         description: true,
@@ -431,7 +432,13 @@ export class DispatchCentralService {
         hasFieldGps,
         dispatchedAt: inc.dispatchedAt,
         closedAt: inc.closedAt,
-        status: inc.closedAt ? 'CERRADA' : 'ACTIVA',
+        operationalStatus: inc.status,
+        status:
+          inc.status === 'CANCELLED'
+            ? 'CANCELADA'
+            : inc.status === 'CLOSED'
+              ? 'CERRADA'
+              : 'ACTIVA',
         alarmBy,
         dispatchSource: inc.dispatchSource,
         vehicles,
@@ -820,7 +827,7 @@ export class DispatchCentralService {
           this.prisma.incident.count({
             where: {
               ...this.incidentsInvolvingCompany(c.id),
-              closedAt: null,
+              status: { in: [IncidentStatus.ACTIVE, IncidentStatus.ARRIVED] },
             },
           }),
         ]);
@@ -867,11 +874,12 @@ export class DispatchCentralService {
     );
 
     const activeIncidents = await this.prisma.incident.findMany({
-      where: { closedAt: null },
+      where: { status: { in: [IncidentStatus.ACTIVE, IncidentStatus.ARRIVED] } },
       orderBy: { createdAt: 'desc' },
       select: {
         id: true,
         companyId: true,
+        status: true,
         code: true,
         type: true,
         description: true,

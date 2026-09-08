@@ -49,45 +49,47 @@ model Company {
 }
 
 model User {
-  id                            String                      @id @default(cuid())
-  rut                           String                      @unique
+  id                            String                             @id @default(cuid())
+  rut                           String                             @unique
   firstName                     String
   lastName                      String
-  email                         String                      @unique
+  email                         String                             @unique
   passwordHash                  String
-  role                          Role                        @default(BOMBERO)
-  isActive                      Boolean                     @default(true)
-  createdAt                     DateTime                    @default(now())
-  updatedAt                     DateTime                    @updatedAt
+  role                          Role                               @default(BOMBERO)
+  isActive                      Boolean                            @default(true)
+  createdAt                     DateTime                           @default(now())
+  updatedAt                     DateTime                           @updatedAt
   companyId                     String?
-  stationAvailable              Boolean                     @default(false)
+  stationAvailable              Boolean                            @default(false)
   stationAvailableAt            DateTime?
   photoUrl                      String?
-  isMaquinista                  Boolean                     @default(false)
-  maquinistaAvailable           Boolean                     @default(false)
-  maquinistaPrincipal           Boolean                     @default(false)
-  operativeNumber               Int?                        @unique
+  isMaquinista                  Boolean                            @default(false)
+  maquinistaAvailable           Boolean                            @default(false)
+  maquinistaPrincipal           Boolean                            @default(false)
+  operativeNumber               Int?                               @unique
   supportCompanyId              String?
   emergencyBitacoraEntries      EmergencyBitacoraEntry[]
-  fleetLogsDriven               FleetLog[]                  @relation("FleetLogDriver")
-  fleetLogsRegistered           FleetLog[]                  @relation("FleetLogRegisteredBy")
-  handoversFrom                 GuardHandover[]             @relation("HandoverFrom")
-  handoversTo                   GuardHandover[]             @relation("HandoverTo")
-  guardLogsOpened               GuardLog[]                  @relation("GuardLogOpenedBy")
+  fleetLogsDriven               FleetLog[]                         @relation("FleetLogDriver")
+  fleetLogsRegistered           FleetLog[]                         @relation("FleetLogRegisteredBy")
+  handoversFrom                 GuardHandover[]                    @relation("HandoverFrom")
+  handoversTo                   GuardHandover[]                    @relation("HandoverTo")
+  guardLogsOpened               GuardLog[]                         @relation("GuardLogOpenedBy")
   guardLogEntries               GuardLogEntry[]
   healthRecord                  HealthRecord?
   emergencyResponses            IncidentEmergencyResponse[]
+  emergencyResponseHistory      IncidentEmergencyResponseHistory[]
   incidents                     IncidentParticipant[]
-  inventoryAudits               InventoryAudit[]            @relation("InventoryAuditAuditor")
+  inventoryAudits               InventoryAudit[]                   @relation("InventoryAuditAuditor")
   certifications                MemberCertification[]
   memberProfile                 MemberProfile?
   shifts                        Shift[]
   contributions                 SocialContribution[]
-  company                       Company?                    @relation(fields: [companyId], references: [id])
-  supportCompany                Company?                    @relation("UserSupportCompany", fields: [supportCompanyId], references: [id])
-  vehiclesAsPrincipalMaquinista Vehicle[]                   @relation("VehiclePrincipalMaquinista")
+  company                       Company?                           @relation(fields: [companyId], references: [id])
+  supportCompany                Company?                           @relation("UserSupportCompany", fields: [supportCompanyId], references: [id])
+  vehiclesAsPrincipalMaquinista Vehicle[]                          @relation("VehiclePrincipalMaquinista")
   achievements                  UserAchievement[]
   pushTokens                    DevicePushToken[]
+  alarmDeliveries               AlarmDelivery[]
 
   @@index([companyId])
 }
@@ -100,8 +102,68 @@ model DevicePushToken {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
   user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  alarmDeliveries AlarmDelivery[]
 
   @@index([userId])
+}
+
+model AlarmNotification {
+  id           String                  @id @default(cuid())
+  incidentId   String?
+  eventType    String
+  dedupKey     String                  @unique
+  title        String
+  body         String
+  data         Json
+  status       AlarmDeliveryStatus     @default(QUEUED)
+  expiresAt    DateTime
+  createdAt    DateTime                @default(now())
+  updatedAt    DateTime                @updatedAt
+  incident     Incident?               @relation(fields: [incidentId], references: [id], onDelete: SetNull)
+  deliveries   AlarmDelivery[]
+
+  @@index([incidentId, createdAt])
+  @@index([status, expiresAt])
+}
+
+model AlarmDelivery {
+  id             String                  @id @default(cuid())
+  notificationId String
+  deviceId       String?
+  userId         String
+  tokenSnapshot  String
+  platform       String
+  status         AlarmDeliveryStatus     @default(QUEUED)
+  attempts       Int                     @default(0)
+  nextAttemptAt  DateTime                @default(now())
+  lockedAt       DateTime?
+  sentAt         DateTime?
+  openedAt       DateTime?
+  acknowledgedAt DateTime?
+  failedAt       DateTime?
+  lastError      String?
+  createdAt      DateTime                @default(now())
+  updatedAt      DateTime                @updatedAt
+  notification   AlarmNotification       @relation(fields: [notificationId], references: [id], onDelete: Cascade)
+  device         DevicePushToken?        @relation(fields: [deviceId], references: [id], onDelete: SetNull)
+  user           User                    @relation(fields: [userId], references: [id], onDelete: Cascade)
+  history        AlarmDeliveryHistory[]
+
+  @@unique([notificationId, deviceId])
+  @@index([status, nextAttemptAt])
+  @@index([userId, createdAt])
+  @@index([notificationId, status])
+}
+
+model AlarmDeliveryHistory {
+  id         String              @id @default(cuid())
+  deliveryId String
+  status     AlarmDeliveryStatus
+  detail     String?
+  createdAt  DateTime            @default(now())
+  delivery   AlarmDelivery       @relation(fields: [deliveryId], references: [id], onDelete: Cascade)
+
+  @@index([deliveryId, createdAt])
 }
 
 model Vehicle {
@@ -152,39 +214,43 @@ model Equipment {
 }
 
 model Incident {
-  id                 String                      @id @default(cuid())
-  code               String                      @unique
-  type               String
-  description        String
-  address            String
-  latitude           Float?
-  longitude          Float?
-  dispatchedAt       DateTime
-  arrivedAt          DateTime?
-  closedAt           DateTime?
-  report             String?
-  createdAt          DateTime                    @default(now())
-  updatedAt          DateTime                    @updatedAt
-  companyId          String
-  imageUrl           String?
-  dispatchNotes      String?
-  dispatchSource     DispatchSource?             @default(MANUAL)
-  emergencyPlanId    String?
-  planChecklist      Json?
-  locationPinToken   String?                     @unique
-  locationPinAt      DateTime?
-  confirmedLatitude  Float?
-  confirmedLongitude Float?
-  locationPinNote    String?
-  bitacoraEntry      EmergencyBitacoraEntry?
-  guardLogEntries    GuardLogEntry?
-  company            Company                     @relation(fields: [companyId], references: [id])
-  emergencyPlan      EmergencyPlan?              @relation(fields: [emergencyPlanId], references: [id])
-  emergencyResponses IncidentEmergencyResponse[]
-  participants       IncidentParticipant[]
-  vehicles           IncidentVehicle[]
+  id                       String                             @id @default(cuid())
+  code                     String                             @unique
+  type                     String
+  description              String
+  address                  String
+  status                   IncidentStatus                     @default(ACTIVE)
+  latitude                 Float?
+  longitude                Float?
+  dispatchedAt             DateTime
+  arrivedAt                DateTime?
+  closedAt                 DateTime?
+  report                   String?
+  createdAt                DateTime                           @default(now())
+  updatedAt                DateTime                           @updatedAt
+  companyId                String
+  imageUrl                 String?
+  dispatchNotes            String?
+  dispatchSource           DispatchSource?                    @default(MANUAL)
+  emergencyPlanId          String?
+  planChecklist            Json?
+  locationPinToken         String?                            @unique
+  locationPinAt            DateTime?
+  confirmedLatitude        Float?
+  confirmedLongitude       Float?
+  locationPinNote          String?
+  bitacoraEntry            EmergencyBitacoraEntry?
+  guardLogEntries          GuardLogEntry?
+  company                  Company                            @relation(fields: [companyId], references: [id])
+  emergencyPlan            EmergencyPlan?                     @relation(fields: [emergencyPlanId], references: [id])
+  emergencyResponses       IncidentEmergencyResponse[]
+  emergencyResponseHistory IncidentEmergencyResponseHistory[]
+  participants             IncidentParticipant[]
+  vehicles                 IncidentVehicle[]
+  alarmNotifications       AlarmNotification[]
 
   @@index([companyId])
+  @@index([companyId, status])
 }
 
 model IncidentVehicle {
@@ -233,23 +299,44 @@ model UserAchievement {
 }
 
 model IncidentEmergencyResponse {
-  id              String                  @id @default(cuid())
-  incidentId      String
-  userId          String
-  status          EmergencyResponseStatus
-  latitude        Float?
-  longitude       Float?
-  markerLatitude  Float?
-  markerLongitude Float?
-  note            String?
-  respondedAt     DateTime                @default(now())
-  updatedAt       DateTime                @updatedAt
-  incident        Incident                @relation(fields: [incidentId], references: [id], onDelete: Cascade)
-  user            User                    @relation(fields: [userId], references: [id], onDelete: Cascade)
+  id               String                   @id @default(cuid())
+  incidentId       String
+  userId           String
+  status           EmergencyResponseStatus?
+  latitude         Float?
+  longitude        Float?
+  markerLatitude   Float?
+  markerLongitude  Float?
+  onSceneAt        DateTime?
+  locationMarkedAt DateTime?
+  note             String?
+  respondedAt      DateTime                 @default(now())
+  updatedAt        DateTime                 @updatedAt
+  incident         Incident                 @relation(fields: [incidentId], references: [id], onDelete: Cascade)
+  user             User                     @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@unique([incidentId, userId])
   @@index([incidentId])
   @@index([userId])
+}
+
+model IncidentEmergencyResponseHistory {
+  id             String                     @id @default(cuid())
+  incidentId     String
+  userId         String
+  eventType      EmergencyResponseEventType
+  status         EmergencyResponseStatus?
+  latitude       Float?
+  longitude      Float?
+  note           String?
+  idempotencyKey String?
+  createdAt      DateTime                   @default(now())
+  incident       Incident                   @relation(fields: [incidentId], references: [id], onDelete: Cascade)
+  user           User                       @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([incidentId, userId, idempotencyKey])
+  @@index([incidentId, createdAt])
+  @@index([userId, createdAt])
 }
 
 model Maintenance {
@@ -838,11 +925,23 @@ enum DispatchSource {
   MANUAL
 }
 
+enum IncidentStatus {
+  ACTIVE
+  ARRIVED
+  CLOSED
+  CANCELLED
+}
+
 enum EmergencyResponseStatus {
   GOING
   NOT_GOING
   NOT_AVAILABLE
   ON_SCENE
+  LOCATION_MARKED
+}
+
+enum EmergencyResponseEventType {
+  RESPONSE
   LOCATION_MARKED
 }
 
@@ -1041,4 +1140,14 @@ enum HealthConditionSeverity {
   MODERADO
   SEVERO
   CRITICO
+}
+
+enum AlarmDeliveryStatus {
+  QUEUED
+  PROCESSING
+  SENT
+  FAILED
+  EXPIRED
+  OPENED
+  ACKNOWLEDGED
 }

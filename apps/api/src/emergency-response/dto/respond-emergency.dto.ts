@@ -1,4 +1,4 @@
-import { IsIn, IsNumber, IsOptional, IsString, Max, Min } from 'class-validator';
+import { IsIn, IsNumber, IsOptional, IsString, Max, MaxLength, Min } from 'class-validator';
 
 export const EMERGENCY_RESPONSE_STATUSES = [
   'GOING',
@@ -28,6 +28,11 @@ export class RespondEmergencyDto {
   @IsOptional()
   @IsString()
   note?: string;
+
+  @IsOptional()
+  @IsString()
+  @MaxLength(128)
+  idempotencyKey?: string;
 }
 
 export class MarkEmergencyLocationDto {
@@ -44,4 +49,9 @@ export class MarkEmergencyLocationDto {
   @IsOptional()
   @IsString()
   note?: string;
+
+  @IsOptional()
+  @IsString()
+  @MaxLength(128)
+  idempotencyKey?: string;
 }
