@@ -50,7 +50,11 @@ export const navItems: NavItem[] = [
   { to: '/membership', label: 'Tesorería Social', icon: HandCoins,   roles: ['SUPER_ADMIN', 'TESORERO', 'SECRETARIO', 'COMANDANTE', 'AUDITOR', 'CAPITAN'] },
 ];
 
-export default function Sidebar() {
+interface SidebarProps {
+  onStartTour?: () => void;
+}
+
+export default function Sidebar({ onStartTour: _onStartTour }: SidebarProps) {
   const user = useAuthStore((s) => s.user);
   const company = useAuthCompany();
   const role = user?.role ?? '';
