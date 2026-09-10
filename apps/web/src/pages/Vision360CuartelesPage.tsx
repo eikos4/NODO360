@@ -3,7 +3,7 @@ import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { Link } from 'react-router-dom';
 import {
   Building2, Truck, Users, Siren, RefreshCw, Radio, AlertTriangle,
-  CheckCircle2, UserX, Flame, Activity, Eye,
+  CheckCircle2, UserX, Flame, Activity, Eye, Moon, Sun,
 } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { api } from '../lib/api';
@@ -12,6 +12,7 @@ import FirefighterAvatar from '../components/FirefighterAvatar';
 import { subscribeAnyDispatchLive } from '../lib/dispatch-live-sync';
 import { isCentralOperator } from '../lib/roleAccess';
 import { useAuthStore } from '../store/authStore';
+import { useCentralParralTheme } from '../hooks/useCentralParralTheme';
 
 type RosterMember = {
   id: string;
@@ -88,12 +89,14 @@ function VehicleHero({
   operativa,
   inEmergency,
   availableCount,
+  isDark,
 }: {
   vehicle: FleetVehicle | null;
   company: VisionCompany;
   operativa: boolean;
   inEmergency: boolean;
   availableCount: number;
+  isDark: boolean;
 }) {
   const [imgError, setImgError] = useState(false);
   const src = !imgError && vehicle?.imageUrl ? vehicle.imageUrl : FALLBACK_TRUCK;
@@ -110,8 +113,14 @@ function VehicleHero({
           !operativo && vehicle && 'grayscale-[40%]',
         )}
       />
-      <div className="absolute inset-0 bg-gradient-to-t from-[#05080f] via-[#05080f]/55 to-transparent" />
-      <div className="absolute inset-0 bg-gradient-to-r from-[#05080f]/80 via-transparent to-cyan-950/20" />
+      <div className={cn(
+        'absolute inset-0 bg-gradient-to-t to-transparent',
+        isDark ? 'from-[#05080f] via-[#05080f]/55' : 'from-white via-white/70',
+      )} />
+      <div className={cn(
+        'absolute inset-0 bg-gradient-to-r via-transparent',
+        isDark ? 'from-[#05080f]/80 to-cyan-950/20' : 'from-white/80 to-cyan-100/30',
+      )} />
       <div
         className="absolute inset-0 opacity-[0.12] pointer-events-none mix-blend-overlay"
         style={{
@@ -136,16 +145,27 @@ function VehicleHero({
                 className="relative w-14 h-14 rounded-2xl object-cover border-2 border-cyan-300/50 shadow-[0_0_20px_rgba(34,211,238,0.45)]"
               />
             ) : (
-              <div className="relative w-14 h-14 rounded-2xl bg-slate-900/90 border-2 border-cyan-400/40 flex items-center justify-center shadow-[0_0_20px_rgba(34,211,238,0.35)]">
-                <Building2 className="w-7 h-7 text-cyan-300" />
+              <div className={cn(
+                'relative w-14 h-14 rounded-2xl border-2 flex items-center justify-center',
+                isDark
+                  ? 'bg-slate-900/90 border-cyan-400/40 shadow-[0_0_20px_rgba(34,211,238,0.35)]'
+                  : 'bg-white border-cyan-400 shadow-md',
+              )}>
+                <Building2 className="w-7 h-7 text-cyan-500" />
               </div>
             )}
           </div>
           <div className="min-w-0">
-            <p className="text-[10px] font-black uppercase tracking-[0.2em] text-cyan-300 drop-shadow">
+            <p className={cn(
+              'text-[10px] font-black uppercase tracking-[0.2em] drop-shadow',
+              isDark ? 'text-cyan-300' : 'text-cyan-800',
+            )}>
               {company.number}ª · {company.city}
             </p>
-            <h2 className="text-lg sm:text-xl font-black text-white leading-tight truncate drop-shadow-lg">
+            <h2 className={cn(
+              'text-lg sm:text-xl font-black leading-tight truncate drop-shadow-lg',
+              isDark ? 'text-[#fff]' : 'text-slate-900',
+            )}>
               {company.name}
             </h2>
           </div>
@@ -164,7 +184,10 @@ function VehicleHero({
               <AlertTriangle className="w-3 h-3" /> Atención
             </span>
           )}
-          <span className="text-[10px] font-black text-white/90 bg-black/40 backdrop-blur-sm px-2 py-0.5 rounded-lg border border-white/10">
+          <span className={cn(
+            'text-[10px] font-black backdrop-blur-sm px-2 py-0.5 rounded-lg border',
+            isDark ? 'text-[#fff] bg-black/40 border-white/10' : 'text-slate-800 bg-white/85 border-slate-200',
+          )}>
             {availableCount} disponibles
           </span>
         </div>
@@ -175,11 +198,20 @@ function VehicleHero({
         <div>
           {vehicle ? (
             <>
-              <p className="text-[9px] uppercase tracking-[0.18em] font-bold text-cyan-300/80">Unidad principal</p>
-              <p className="font-mono text-2xl font-black text-white tracking-wider drop-shadow-lg leading-none">
+              <p className={cn(
+                'text-[9px] uppercase tracking-[0.18em] font-bold',
+                isDark ? 'text-cyan-300/80' : 'text-cyan-800',
+              )}>Unidad principal</p>
+              <p className={cn(
+                'font-mono text-2xl font-black tracking-wider drop-shadow-lg leading-none',
+                isDark ? 'text-[#fff]' : 'text-slate-900',
+              )}>
                 {vehicle.patent}
               </p>
-              <p className="text-xs text-slate-200/90 font-semibold mt-0.5">
+              <p className={cn(
+                'text-xs font-semibold mt-0.5',
+                isDark ? 'text-slate-200/90' : 'text-slate-700',
+              )}>
                 {vehicle.type || `${vehicle.brand} ${vehicle.model}`}
               </p>
             </>
@@ -192,8 +224,12 @@ function VehicleHero({
             className={cn(
               'text-[10px] font-black uppercase px-2.5 py-1 rounded-lg border backdrop-blur-md',
               operativo
-                ? 'bg-emerald-500/25 text-emerald-200 border-emerald-400/40'
-                : 'bg-slate-800/70 text-slate-300 border-slate-600',
+                ? isDark
+                  ? 'bg-emerald-500/25 text-emerald-200 border-emerald-400/40'
+                  : 'bg-emerald-50 text-emerald-800 border-emerald-300'
+                : isDark
+                  ? 'bg-slate-800/70 text-slate-300 border-slate-600'
+                  : 'bg-white/90 text-slate-600 border-slate-300',
             )}
           >
             {vehicle.statusLabel || vehicle.status}
@@ -204,26 +240,35 @@ function VehicleHero({
   );
 }
 
-function FleetThumb({ vehicle }: { vehicle: FleetVehicle }) {
+function FleetThumb({ vehicle, isDark }: { vehicle: FleetVehicle; isDark: boolean }) {
   const [err, setErr] = useState(false);
   const operativo = vehicle.status === 'OPERATIVO';
   return (
     <div
       className={cn(
         'relative w-20 h-14 rounded-lg overflow-hidden border shrink-0',
-        operativo ? 'border-cyan-400/40 shadow-[0_0_12px_rgba(34,211,238,0.25)]' : 'border-slate-700 opacity-60',
+        operativo
+          ? isDark
+            ? 'border-cyan-400/40 shadow-[0_0_12px_rgba(34,211,238,0.25)]'
+            : 'border-cyan-300 shadow-sm'
+          : isDark
+            ? 'border-slate-700 opacity-60'
+            : 'border-slate-200 opacity-70',
       )}
       title={`${vehicle.patent} · ${vehicle.statusLabel}`}
     >
       {vehicle.imageUrl && !err ? (
         <img src={vehicle.imageUrl} alt={vehicle.patent} onError={() => setErr(true)} className="w-full h-full object-cover" />
       ) : (
-        <div className="w-full h-full bg-slate-900 flex items-center justify-center">
+        <div className={cn('w-full h-full flex items-center justify-center', isDark ? 'bg-slate-900' : 'bg-slate-100')}>
           <Truck className="w-5 h-5 text-slate-500" />
         </div>
       )}
-      <div className="absolute inset-x-0 bottom-0 bg-black/70 px-1 py-0.5">
-        <p className="text-[8px] font-mono font-black text-white truncate text-center">{vehicle.patent}</p>
+      <div className={cn('absolute inset-x-0 bottom-0 px-1 py-0.5', isDark ? 'bg-black/70' : 'bg-white/90')}>
+        <p className={cn(
+          'text-[8px] font-mono font-black truncate text-center',
+          isDark ? 'text-[#fff]' : 'text-slate-800',
+        )}>{vehicle.patent}</p>
       </div>
     </div>
   );
@@ -233,10 +278,12 @@ function CompanyVisionCard({
   company,
   emergencies,
   flashIds,
+  isDark,
 }: {
   company: VisionCompany;
   emergencies: ActiveEmergency[];
   flashIds: Set<string>;
+  isDark: boolean;
 }) {
   const operativa = companyOperativa(company);
   const available = company.roster.members.filter((m) => m.stationAvailable);
@@ -262,12 +309,19 @@ function CompanyVisionCard({
   return (
     <article
       className={cn(
-        'group relative rounded-3xl border overflow-hidden transition-all duration-500 vision360-card bg-[#070b14]',
+        'group relative rounded-3xl border overflow-hidden transition-all duration-500 vision360-card',
+        isDark ? 'bg-[#070b14]' : 'bg-white shadow-sm',
         inEmergency
-          ? 'border-red-500/70 shadow-[0_0_40px_rgba(239,68,68,0.28)]'
+          ? isDark
+            ? 'border-red-500/70 shadow-[0_0_40px_rgba(239,68,68,0.28)]'
+            : 'border-red-400 shadow-md shadow-red-100'
           : operativa
-            ? 'border-cyan-500/35 shadow-[0_0_32px_rgba(34,211,238,0.12)] hover:border-cyan-400/55'
-            : 'border-slate-700/80',
+            ? isDark
+              ? 'border-cyan-500/35 shadow-[0_0_32px_rgba(34,211,238,0.12)] hover:border-cyan-400/55'
+              : 'border-cyan-300 shadow-md shadow-cyan-100 hover:border-cyan-400'
+            : isDark
+              ? 'border-slate-700/80'
+              : 'border-slate-200',
       )}
     >
       <VehicleHero
@@ -276,16 +330,20 @@ function CompanyVisionCard({
         operativa={operativa}
         inEmergency={inEmergency}
         availableCount={available.length}
+        isDark={isDark}
       />
 
       {companyEmergencies.length > 0 && (
-        <div className="px-4 py-2 border-y border-red-500/25 bg-red-950/50 space-y-1">
+        <div className={cn(
+          'px-4 py-2 border-y space-y-1',
+          isDark ? 'border-red-500/25 bg-red-950/50' : 'border-red-200 bg-red-50',
+        )}>
           {companyEmergencies.slice(0, 2).map((e) => (
             <div key={e.id} className="flex items-start gap-2 text-xs">
-              <Siren className="w-3.5 h-3.5 text-red-400 shrink-0 mt-0.5 animate-pulse" />
+              <Siren className="w-3.5 h-3.5 text-red-500 shrink-0 mt-0.5 animate-pulse" />
               <div className="min-w-0">
-                <p className="font-black text-red-100 truncate">{e.code} · {e.type}</p>
-                <p className="text-[10px] text-red-300/70 truncate">{e.address}</p>
+                <p className={cn('font-black truncate', isDark ? 'text-red-100' : 'text-red-800')}>{e.code} · {e.type}</p>
+                <p className={cn('text-[10px] truncate', isDark ? 'text-red-300/70' : 'text-red-600/80')}>{e.address}</p>
               </div>
             </div>
           ))}
@@ -295,7 +353,10 @@ function CompanyVisionCard({
       <div className="p-4 space-y-4">
         {/* Maquinista del carro principal */}
         {maq && (
-          <div className="flex items-center gap-3 rounded-2xl border border-amber-500/25 bg-amber-500/5 px-3 py-2.5">
+          <div className={cn(
+            'flex items-center gap-3 rounded-2xl border px-3 py-2.5',
+            isDark ? 'border-amber-500/25 bg-amber-500/5' : 'border-amber-200 bg-amber-50',
+          )}>
             <FirefighterAvatar
               photoUrl={maq.photoUrl}
               fullName={maq.fullName || `${maq.firstName} ${maq.lastName}`}
@@ -305,15 +366,20 @@ function CompanyVisionCard({
               principal={maq.maquinistaPrincipal}
             />
             <div className="min-w-0 flex-1">
-              <p className="text-[9px] uppercase tracking-wider font-black text-amber-400/80">Maquinista unidad</p>
-              <p className="text-sm font-bold text-white truncate">
+              <p className={cn(
+                'text-[9px] uppercase tracking-wider font-black',
+                isDark ? 'text-amber-400/80' : 'text-amber-700',
+              )}>Maquinista unidad</p>
+              <p className={cn('text-sm font-bold truncate', isDark ? 'text-white' : 'text-slate-900')}>
                 {maq.firstName} {maq.lastName}
               </p>
             </div>
             <span
               className={cn(
                 'text-[9px] font-black uppercase px-2 py-1 rounded-lg',
-                maq.maquinistaAvailable ? 'bg-emerald-500/20 text-emerald-300' : 'bg-slate-700 text-slate-400',
+                maq.maquinistaAvailable
+                  ? isDark ? 'bg-emerald-500/20 text-emerald-300' : 'bg-emerald-100 text-emerald-800'
+                  : isDark ? 'bg-slate-700 text-slate-400' : 'bg-slate-100 text-slate-500',
               )}
             >
               {maq.maquinistaAvailable ? 'Listo' : 'No disp.'}
@@ -334,7 +400,7 @@ function CompanyVisionCard({
             </div>
             <div className="flex gap-2 overflow-x-auto scrollbar-none pb-1">
               {secondaryVehicles.map((v) => (
-                <FleetThumb key={v.id} vehicle={v} />
+                <FleetThumb key={v.id} vehicle={v} isDark={isDark} />
               ))}
             </div>
           </div>
@@ -349,8 +415,11 @@ function CompanyVisionCard({
             <span className="text-sm font-black text-emerald-300 tabular-nums">{available.length}</span>
           </div>
           {available.length === 0 ? (
-            <div className="rounded-2xl border border-dashed border-slate-700/80 px-3 py-5 text-center">
-              <UserX className="w-6 h-6 text-slate-600 mx-auto mb-1.5" />
+            <div className={cn(
+              'rounded-2xl border border-dashed px-3 py-5 text-center',
+              isDark ? 'border-slate-700/80' : 'border-slate-200 bg-slate-50',
+            )}>
+              <UserX className="w-6 h-6 text-slate-400 mx-auto mb-1.5" />
               <p className="text-xs text-slate-500 font-semibold">Sin bomberos disponibles</p>
             </div>
           ) : (
@@ -359,7 +428,10 @@ function CompanyVisionCard({
                 <div
                   key={m.id}
                   className={cn(
-                    'flex flex-col items-center gap-1.5 w-[4.5rem] rounded-2xl border border-emerald-400/25 bg-gradient-to-b from-emerald-500/15 to-transparent px-1.5 py-2 transition-all',
+                    'flex flex-col items-center gap-1.5 w-[4.5rem] rounded-2xl border px-1.5 py-2 transition-all',
+                    isDark
+                      ? 'border-emerald-400/25 bg-gradient-to-b from-emerald-500/15 to-transparent'
+                      : 'border-emerald-200 bg-gradient-to-b from-emerald-50 to-white',
                     flashIds.has(`m:${m.id}`) && 'vision360-flash-green scale-110 border-emerald-300/60',
                   )}
                 >
@@ -371,7 +443,10 @@ function CompanyVisionCard({
                     role={m.role}
                     className="!w-11 !h-11 shadow-[0_0_14px_rgba(16,185,129,0.35)]"
                   />
-                  <p className="text-[10px] font-bold text-emerald-50 text-center leading-tight line-clamp-2 w-full">
+                  <p className={cn(
+                    'text-[10px] font-bold text-center leading-tight line-clamp-2 w-full',
+                    isDark ? 'text-emerald-50' : 'text-emerald-900',
+                  )}>
                     {m.firstName}
                   </p>
                   <p className="text-[8px] font-semibold text-emerald-400/80 truncate w-full text-center" title={m.roleLabel}>
@@ -386,7 +461,12 @@ function CompanyVisionCard({
         {company.dispatchSlug && (
           <Link
             to={`/central/${company.dispatchSlug}`}
-            className="flex items-center justify-center gap-2 w-full py-2.5 rounded-xl border border-cyan-500/30 bg-cyan-500/10 hover:bg-cyan-500/20 text-cyan-300 text-xs font-black uppercase tracking-wider transition-colors"
+            className={cn(
+              'flex items-center justify-center gap-2 w-full py-2.5 rounded-xl border text-xs font-black uppercase tracking-wider transition-colors',
+              isDark
+                ? 'border-cyan-500/30 bg-cyan-500/10 hover:bg-cyan-500/20 text-cyan-300'
+                : 'border-cyan-200 bg-cyan-50 hover:bg-cyan-100 text-cyan-800',
+            )}
           >
             <Radio className="w-3.5 h-3.5" /> Sala pública
           </Link>
@@ -399,6 +479,7 @@ function CompanyVisionCard({
 export default function Vision360CuartelesPage() {
   const user = useAuthStore((s) => s.user);
   const isOperator = isCentralOperator(user?.role);
+  const { tokens: th, toggleTheme, isDark } = useCentralParralTheme();
   const qc = useQueryClient();
   const prevRef = useRef<Map<string, boolean>>(new Map());
   const [flashIds, setFlashIds] = useState<Set<string>>(new Set());
@@ -488,29 +569,47 @@ export default function Vision360CuartelesPage() {
   }, [companies]);
 
   return (
-    <div className="min-h-full bg-[#05080f] text-slate-200">
+    <div className={cn('flex-1 min-h-0 overflow-y-auto overflow-x-hidden scrollbar-thin transition-colors duration-300', th.shell)}>
       <div className="max-w-[1600px] mx-auto px-3 sm:px-5 py-4 space-y-4 pb-10">
         {!isOperator && (
-          <div className="flex items-center gap-3">
-            <div className="w-11 h-11 rounded-xl bg-cyan-600/20 border border-cyan-500/40 flex items-center justify-center">
-              <Eye className="w-5 h-5 text-cyan-300" />
+          <div className="flex items-center justify-between gap-3">
+            <div className="flex items-center gap-3">
+              <div className={cn(
+                'w-11 h-11 rounded-xl border flex items-center justify-center',
+                isDark ? 'bg-cyan-600/20 border-cyan-500/40' : 'bg-cyan-50 border-cyan-200',
+              )}>
+                <Eye className={cn('w-5 h-5', isDark ? 'text-cyan-300' : 'text-cyan-700')} />
+              </div>
+              <div>
+                <h1 className={cn('text-xl font-black tracking-tight', th.title)}>Vision360 Cuarteles</h1>
+                <p className={cn('text-xs', th.subtitle)}>Vista dinámica de carros, dotación y disponibilidad en vivo</p>
+              </div>
             </div>
-            <div>
-              <h1 className="text-xl font-black text-white tracking-tight">Vision360 Cuarteles</h1>
-              <p className="text-xs text-slate-400">Vista dinámica de carros, dotación y disponibilidad en vivo</p>
-            </div>
+            <button
+              type="button"
+              onClick={toggleTheme}
+              className={cn('p-2 rounded-lg border transition-colors', th.btnGhost)}
+              title={isDark ? 'Modo claro' : 'Modo oscuro'}
+            >
+              {isDark ? <Sun className="w-4 h-4" /> : <Moon className="w-4 h-4" />}
+            </button>
           </div>
         )}
 
-        <div className="rounded-2xl border border-cyan-500/30 bg-gradient-to-r from-cyan-950/40 via-[#0b1220] to-[#0b1220] p-4 flex flex-wrap items-center justify-between gap-4 shadow-[0_0_24px_rgba(34,211,238,0.08)]">
+        <div className={cn(
+          'rounded-2xl border p-4 flex flex-wrap items-center justify-between gap-4',
+          isDark
+            ? 'border-cyan-500/30 bg-gradient-to-r from-cyan-950/40 via-[#0b1220] to-[#0b1220] shadow-[0_0_24px_rgba(34,211,238,0.08)]'
+            : 'border-cyan-200 bg-white shadow-sm',
+        )}>
           <div className="flex items-center gap-3">
             <div className="relative">
-              <Activity className="w-6 h-6 text-cyan-400" />
+              <Activity className={cn('w-6 h-6', isDark ? 'text-cyan-400' : 'text-cyan-600')} />
               <span className="absolute -top-0.5 -right-0.5 w-2 h-2 rounded-full bg-emerald-400 animate-ping" />
             </div>
             <div>
-              <p className="text-[10px] uppercase tracking-[0.18em] font-black text-cyan-400">Monitoreo en vivo</p>
-              <p className="text-sm font-bold text-white">
+              <p className={cn('text-[10px] uppercase tracking-[0.18em] font-black', isDark ? 'text-cyan-400' : 'text-cyan-700')}>Monitoreo en vivo</p>
+              <p className={cn('text-sm font-bold', th.title)}>
                 {companies.length} cuarteles · {emergencies.length} emergencia{emergencies.length === 1 ? '' : 's'} activa{emergencies.length === 1 ? '' : 's'}
               </p>
             </div>
@@ -518,10 +617,10 @@ export default function Vision360CuartelesPage() {
 
           <div className="flex flex-wrap gap-2">
             {[
-              { label: 'Disponibles', value: totals.available, color: 'text-emerald-300 border-emerald-500/30 bg-emerald-500/10' },
-              { label: 'Carros OK', value: totals.fleet, color: 'text-sky-300 border-sky-500/30 bg-sky-500/10' },
-              { label: 'Maquinistas', value: totals.maq, color: 'text-amber-300 border-amber-500/30 bg-amber-500/10' },
-              { label: 'Operativas', value: totals.operativas, color: 'text-cyan-300 border-cyan-500/30 bg-cyan-500/10' },
+              { label: 'Disponibles', value: totals.available, color: isDark ? 'text-emerald-300 border-emerald-500/30 bg-emerald-500/10' : 'text-emerald-800 border-emerald-200 bg-emerald-50' },
+              { label: 'Carros OK', value: totals.fleet, color: isDark ? 'text-sky-300 border-sky-500/30 bg-sky-500/10' : 'text-sky-800 border-sky-200 bg-sky-50' },
+              { label: 'Maquinistas', value: totals.maq, color: isDark ? 'text-amber-300 border-amber-500/30 bg-amber-500/10' : 'text-amber-800 border-amber-200 bg-amber-50' },
+              { label: 'Operativas', value: totals.operativas, color: isDark ? 'text-cyan-300 border-cyan-500/30 bg-cyan-500/10' : 'text-cyan-800 border-cyan-200 bg-cyan-50' },
             ].map((s) => (
               <div key={s.label} className={cn('px-3 py-1.5 rounded-xl border text-center min-w-[76px]', s.color)}>
                 <p className="text-lg font-black leading-none">{s.value}</p>
@@ -530,21 +629,41 @@ export default function Vision360CuartelesPage() {
             ))}
           </div>
 
-          <button
-            type="button"
-            onClick={() => void refetch()}
-            className="flex items-center gap-2 px-3 py-2 rounded-xl border border-slate-700 text-slate-300 hover:text-white hover:bg-slate-800 text-xs font-bold"
-          >
-            <RefreshCw className={cn('w-3.5 h-3.5', isFetching && 'animate-spin')} />
-            Actualizar
-          </button>
+          <div className="flex items-center gap-2">
+            {isOperator && (
+              <button
+                type="button"
+                onClick={toggleTheme}
+                className={cn('p-2 rounded-xl border transition-colors', th.btnGhost)}
+                title={isDark ? 'Modo claro' : 'Modo oscuro'}
+              >
+                {isDark ? <Sun className="w-4 h-4" /> : <Moon className="w-4 h-4" />}
+              </button>
+            )}
+            <button
+              type="button"
+              onClick={() => void refetch()}
+              className={cn('flex items-center gap-2 px-3 py-2 rounded-xl border text-xs font-bold', th.refreshBtn)}
+            >
+              <RefreshCw className={cn('w-3.5 h-3.5', isFetching && 'animate-spin')} />
+              Actualizar
+            </button>
+          </div>
         </div>
 
         {feed.length > 0 && (
-          <div className="rounded-xl border border-emerald-500/20 bg-emerald-950/20 px-3 py-2 flex gap-2 overflow-x-auto scrollbar-none">
-            <Flame className="w-4 h-4 text-emerald-400 shrink-0 mt-0.5" />
+          <div className={cn(
+            'rounded-xl border px-3 py-2 flex gap-2 overflow-x-auto scrollbar-none',
+            isDark ? 'border-emerald-500/20 bg-emerald-950/20' : 'border-emerald-200 bg-emerald-50',
+          )}>
+            <Flame className="w-4 h-4 text-emerald-500 shrink-0 mt-0.5" />
             {feed.slice(0, 4).map((f) => (
-              <span key={f.id} className="shrink-0 text-[11px] font-semibold text-emerald-200/90 border border-emerald-500/20 rounded-lg px-2 py-1 bg-emerald-500/5">
+              <span key={f.id} className={cn(
+                'shrink-0 text-[11px] font-semibold border rounded-lg px-2 py-1',
+                isDark
+                  ? 'text-emerald-200/90 border-emerald-500/20 bg-emerald-500/5'
+                  : 'text-emerald-800 border-emerald-200 bg-white',
+              )}>
                 {f.text}
               </span>
             ))}
@@ -552,13 +671,13 @@ export default function Vision360CuartelesPage() {
         )}
 
         {isLoading ? (
-          <div className="flex items-center justify-center py-24 text-slate-500 gap-2">
+          <div className={cn('flex items-center justify-center py-24 gap-2', th.subtitle)}>
             <RefreshCw className="w-5 h-5 animate-spin" /> Cargando cuarteles…
           </div>
         ) : companies.length === 0 ? (
-          <div className="rounded-2xl border border-slate-800 bg-slate-900/50 p-10 text-center">
-            <Building2 className="w-10 h-10 text-slate-600 mx-auto mb-3" />
-            <p className="font-bold text-white">Sin compañías activas</p>
+          <div className={cn('rounded-2xl border p-10 text-center', isDark ? 'border-slate-800 bg-slate-900/50' : 'border-slate-200 bg-white shadow-sm')}>
+            <Building2 className="w-10 h-10 text-slate-400 mx-auto mb-3" />
+            <p className={cn('font-bold', th.title)}>Sin compañías activas</p>
           </div>
         ) : (
           <div className="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 gap-4">
@@ -568,24 +687,34 @@ export default function Vision360CuartelesPage() {
                 company={c}
                 emergencies={emergencies}
                 flashIds={flashIds}
+                isDark={isDark}
               />
             ))}
           </div>
         )}
 
         {emergencies.length > 0 && (
-          <section className="rounded-2xl border border-red-500/30 bg-red-950/20 p-4">
-            <h3 className="text-xs font-black uppercase tracking-wider text-red-400 mb-3 flex items-center gap-2">
+          <section className={cn(
+            'rounded-2xl border p-4',
+            isDark ? 'border-red-500/30 bg-red-950/20' : 'border-red-200 bg-red-50',
+          )}>
+            <h3 className={cn(
+              'text-xs font-black uppercase tracking-wider mb-3 flex items-center gap-2',
+              isDark ? 'text-red-400' : 'text-red-700',
+            )}>
               <Siren className="w-4 h-4" /> Emergencias activas en el cuerpo
             </h3>
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2">
               {emergencies.map((e) => (
-                <div key={e.id} className="rounded-xl border border-red-500/25 bg-black/30 px-3 py-2.5">
-                  <p className="text-[10px] font-mono text-red-300">{e.code}</p>
-                  <p className="text-sm font-bold text-white">{e.type}</p>
-                  <p className="text-[11px] text-slate-400 truncate">{e.address}</p>
+                <div key={e.id} className={cn(
+                  'rounded-xl border px-3 py-2.5',
+                  isDark ? 'border-red-500/25 bg-black/30' : 'border-red-200 bg-white',
+                )}>
+                  <p className={cn('text-[10px] font-mono', isDark ? 'text-red-300' : 'text-red-600')}>{e.code}</p>
+                  <p className={cn('text-sm font-bold', th.title)}>{e.type}</p>
+                  <p className={cn('text-[11px] truncate', th.subtitle)}>{e.address}</p>
                   {e.company && (
-                    <p className="text-[10px] text-red-400/80 mt-1 font-semibold">
+                    <p className={cn('text-[10px] mt-1 font-semibold', isDark ? 'text-red-400/80' : 'text-red-600')}>
                       {e.company.number}ª · {e.company.name}
                     </p>
                   )}
@@ -595,7 +724,7 @@ export default function Vision360CuartelesPage() {
           </section>
         )}
 
-        <p className="text-center text-[10px] text-slate-600 flex items-center justify-center gap-1">
+        <p className={cn('text-center text-[10px] flex items-center justify-center gap-1', th.footer)}>
           <Radio className="w-3 h-3" /> Actualización automática · cambios de disponibilidad se destacan en vivo
         </p>
       </div>

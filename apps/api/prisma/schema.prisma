@@ -69,6 +69,7 @@ model User {
   operativeNumber               Int?                               @unique
   supportCompanyId              String?
   emergencyBitacoraEntries      EmergencyBitacoraEntry[]
+  incidentTimelineEvents        IncidentTimelineEvent[]
   fleetLogsDriven               FleetLog[]                         @relation("FleetLogDriver")
   fleetLogsRegistered           FleetLog[]                         @relation("FleetLogRegisteredBy")
   handoversFrom                 GuardHandover[]                    @relation("HandoverFrom")
@@ -241,6 +242,7 @@ model Incident {
   locationPinNote          String?
   bitacoraEntry            EmergencyBitacoraEntry?
   guardLogEntries          GuardLogEntry?
+  timelineEvents           IncidentTimelineEvent[]
   company                  Company                            @relation(fields: [companyId], references: [id])
   emergencyPlan            EmergencyPlan?                     @relation(fields: [emergencyPlanId], references: [id])
   emergencyResponses       IncidentEmergencyResponse[]
@@ -251,6 +253,21 @@ model Incident {
 
   @@index([companyId])
   @@index([companyId, status])
+}
+
+model IncidentTimelineEvent {
+  id         String                @id @default(cuid())
+  incidentId String
+  kind       IncidentTimelineKind
+  label      String
+  note       String?
+  occurredAt DateTime              @default(now())
+  authorId   String?
+  createdAt  DateTime              @default(now())
+  incident   Incident              @relation(fields: [incidentId], references: [id], onDelete: Cascade)
+  author     User?                 @relation(fields: [authorId], references: [id], onDelete: SetNull)
+
+  @@index([incidentId, occurredAt])
 }
 
 model IncidentVehicle {
@@ -1095,6 +1112,73 @@ enum EmergencyBitacoraSource {
   MANUAL
   SALA_MAQUINAS
   INCIDENTE
+}
+
+enum IncidentTimelineKind {
+  AVISO
+  CONFIRMACION
+  DIRECCION_ACTUALIZADA
+  CAMBIO_CLAVE
+  SEGUNDA_ALARMA
+  TERCERA_ALARMA
+  DESPACHO
+  EN_CAMINO
+  ACCIDENTE_RUTA
+  UNIDAD_AVERIADA
+  EN_LUGAR
+  RECONOCIMIENTO
+  PUESTO_MANDO
+  PERIMETRO
+  APOYO
+  REFUERZO
+  SAMU
+  CARABINEROS
+  PDI
+  CONAF
+  SENAPRED
+  MUNICIPALIDAD
+  ELECTRICIDAD
+  AGUAS
+  GRUA
+  HIDRANTE
+  AGUA_INSUFICIENTE
+  VENTILACION
+  ATAQUE_INTERIOR
+  ATAQUE_EXTERIOR
+  BUSQUEDA
+  RESCATE
+  EVACUACION
+  CORTE_LUZ
+  CORTE_GAS
+  CIERRE_VIA
+  HAZMAT
+  EXPLOSION
+  COLAPSO
+  PROPAGACION
+  REBROTE
+  AMAGO
+  PERSONAS
+  PERSONA_ATRAPADA
+  MENOR_INVOLUCRADO
+  VICTIMA
+  VICTIMA_FATAL
+  TRASLADO
+  INTOXICACION
+  QUEMADURA
+  RCP
+  PRIMEROS_AUXILIOS
+  BOMBERO_HERIDO
+  BOMBERO_ATRAPADO
+  MAYDAY
+  CONTROLADO
+  EXTINTO
+  FALSA_ALARMA
+  VIGILANCIA
+  ENTREGA_LUGAR
+  REGRESO
+  EN_CUARTEL
+  DISPONIBLE
+  COMENTARIO
 }
 
 enum FleetLogType {

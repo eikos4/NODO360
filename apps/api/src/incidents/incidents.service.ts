@@ -36,6 +36,7 @@ const INCLUDE = {
       },
     },
   },
+  _count: { select: { timelineEvents: true } },
 };
 
 export type IncidentAuthUser = {
@@ -301,6 +302,16 @@ export class IncidentsService {
             : undefined,
         },
         include: INCLUDE,
+      });
+      await tx.incidentTimelineEvent.create({
+        data: {
+          incidentId: created.id,
+          kind: 'DESPACHO',
+          label: 'Despacho',
+          note: data.dispatchNotes?.trim() || null,
+          occurredAt: created.dispatchedAt,
+          authorId: userId ?? null,
+        },
       });
       const companyIds = new Set<string>([created.companyId]);
       created.vehicles.forEach((row) => companyIds.add(row.vehicle.companyId));

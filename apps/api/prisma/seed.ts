@@ -50,6 +50,12 @@ async function clearDatabase() {
   await prisma.guardLogEntry.deleteMany();
   await prisma.guardHandover.deleteMany();
   await prisma.guardLog.deleteMany();
+  await prisma.alarmDeliveryHistory.deleteMany();
+  await prisma.alarmDelivery.deleteMany();
+  await prisma.alarmNotification.deleteMany();
+  await prisma.devicePushToken.deleteMany();
+  await prisma.incidentTimelineEvent.deleteMany();
+  await prisma.incidentEmergencyResponseHistory.deleteMany();
   await prisma.incidentParticipant.deleteMany();
   await prisma.incidentVehicle.deleteMany();
   await prisma.incident.deleteMany();
@@ -66,6 +72,7 @@ async function clearDatabase() {
   await prisma.vehicle.deleteMany();
   await prisma.hydrant.deleteMany();
   await prisma.announcement.deleteMany();
+  await prisma.userAchievement.deleteMany();
   await prisma.user.deleteMany();
   await prisma.company.deleteMany();
 }

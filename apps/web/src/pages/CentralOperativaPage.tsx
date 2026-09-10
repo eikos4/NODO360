@@ -3,7 +3,7 @@ import { useQuery } from '@tanstack/react-query';
 import { Link } from 'react-router-dom';
 import {
   Siren, Users, Truck, RefreshCw, Radio, MapPin, Clock,
-  ExternalLink, AlertTriangle, CheckCircle2, Flame, Moon, Sun,
+  ExternalLink, AlertTriangle, CheckCircle2, Flame, Moon, Sun, BookOpen,
 } from 'lucide-react';
 import { api } from '../lib/api';
 import { useAuthStore } from '../store/authStore';
@@ -300,6 +300,13 @@ export default function CentralOperativaPage() {
             >
               <Flame className="w-4 h-4 text-orange-500" />
               Mapa 360
+            </Link>
+            <Link
+              to="/central-bitacora"
+              className={`col-span-2 flex items-center justify-center gap-2 font-semibold text-sm py-3 rounded-xl transition-colors ${th.btnSecondary}`}
+            >
+              <BookOpen className="w-4 h-4 text-amber-400" />
+              Bitácora operacional
             </Link>
             {slug && (
               <a

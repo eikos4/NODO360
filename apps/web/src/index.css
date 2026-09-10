@@ -239,6 +239,41 @@ html:not(.dark) .leaflet-popup-tip {
   animation: vision360-card-in 0.55s cubic-bezier(0.22, 1, 0.36, 1) both;
 }
 
+/* ── Bitácora operacional (sala de radio) ── */
+@keyframes ops-timeline-in {
+  from {
+    opacity: 0;
+    transform: translateX(-12px) scale(0.98);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0) scale(1);
+  }
+}
+
+@keyframes ops-timeline-pulse {
+  0%, 100% { box-shadow: 0 0 0 0 rgba(248, 113, 113, 0.55); }
+  50% { box-shadow: 0 0 0 8px rgba(248, 113, 113, 0); }
+}
+
+@keyframes ops-timeline-line-draw {
+  from { transform: scaleY(0); }
+  to { transform: scaleY(1); }
+}
+
+.ops-timeline-item {
+  animation: ops-timeline-in 0.45s cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+.ops-timeline-live {
+  animation: ops-timeline-pulse 1.6s ease-out infinite;
+}
+
+.ops-timeline-line {
+  transform-origin: top;
+  animation: ops-timeline-line-draw 0.7s ease-out both;
+}
+
 @keyframes vision360-card-in {
   from {
     opacity: 0;

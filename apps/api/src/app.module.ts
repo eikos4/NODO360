@@ -28,6 +28,7 @@ import { HealthModule } from './health/health.module';
 import { DispatchCentralModule } from './dispatch-central/dispatch-central.module';
 import { TtsModule } from './tts/tts.module';
 import { EmergencyBitacoraModule } from './emergency-bitacora/emergency-bitacora.module';
+import { IncidentTimelineModule } from './incident-timeline/incident-timeline.module';
 import { IncidentLocationPinModule } from './incident-location-pin/incident-location-pin.module';
 import { EmergencyResponseModule } from './emergency-response/emergency-response.module';
 import { StorageModule } from './storage/storage.module';
@@ -82,6 +83,7 @@ import * as Joi from 'joi';
     DispatchCentralModule,
     TtsModule,
     EmergencyBitacoraModule,
+    IncidentTimelineModule,
     IncidentLocationPinModule,
     EmergencyResponseModule,
     StorageModule,

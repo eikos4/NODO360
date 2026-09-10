@@ -10,6 +10,7 @@ import {
   Zap, Activity, Radar, BatteryCharging, Siren,
 } from 'lucide-react';
 import DispatchMapPicker from '../components/map/DispatchMapPicker';
+import IncidentOperationalTimeline from '../components/dispatch/IncidentOperationalTimeline';
 import { api } from '../lib/api';
 import toast from 'react-hot-toast';
 import { createElement } from 'react';
@@ -273,6 +274,12 @@ export default function IncidentsPage() {
           </div>
         </div>
         <div className="flex items-center gap-3">
+          <Link
+            to="/central-bitacora"
+            className="flex items-center gap-2 bg-white dark:bg-slate-800 hover:bg-slate-50 dark:hover:bg-slate-700 border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-300 text-sm font-bold px-4 py-2.5 rounded-xl transition-colors shadow-sm"
+          >
+            <BookOpen className="w-4 h-4" />Bitácora en vivo
+          </Link>
           {!!incidents?.length && (
             <button
               onClick={() => downloadPdf(
@@ -647,6 +654,22 @@ export default function IncidentsPage() {
                     );
                   })}
                 </div>
+              </div>
+
+              <div className="bg-slate-50 dark:bg-slate-950/50 rounded-xl p-4 border border-slate-200 dark:border-slate-800/80">
+                <div className="flex items-center justify-between gap-2 mb-4">
+                  <div className="flex items-center gap-2">
+                    <BookOpen className="w-4 h-4 text-amber-600 dark:text-amber-400" />
+                    <p className="text-xs font-bold text-slate-700 dark:text-slate-300 uppercase tracking-widest">Bitácora operacional</p>
+                  </div>
+                  <Link
+                    to={`/central-bitacora?incidente=${selected.id}`}
+                    className="text-[11px] font-semibold text-amber-700 dark:text-amber-400 hover:underline"
+                  >
+                    Abrir en sala de radio
+                  </Link>
+                </div>
+                <IncidentOperationalTimeline incidentId={selected.id} compact canDelete={!selected.closedAt} />
               </div>
 
               {/* Plan de emergencia Checklist */}

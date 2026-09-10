@@ -293,6 +293,7 @@ export default function CentralExpressPage() {
         <nav className="hidden md:flex items-center gap-1 text-xs font-semibold">
           <span className={`px-3 py-1.5 rounded-lg ${th.navActive}`}>Despacho</span>
           <Link to="/incidents" className={`px-3 py-1.5 rounded-lg ${th.navIdle}`}>Incidentes</Link>
+          <Link to="/central-bitacora" className={`px-3 py-1.5 rounded-lg ${th.navIdle}`}>Bitácora</Link>
           <Link to="/operational-map" className={`px-3 py-1.5 rounded-lg ${th.navIdle}`}>Recursos</Link>
           <Link to="/despacho360" className={`px-3 py-1.5 rounded-lg ${th.navIdle}`}>Despacho360</Link>
         </nav>

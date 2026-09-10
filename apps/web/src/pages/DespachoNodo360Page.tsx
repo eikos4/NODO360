@@ -23,6 +23,7 @@ import {
   VolumeX,
   Zap,
   GraduationCap,
+  BookOpen,
 } from 'lucide-react';
 import { useQuickDispatch } from '../hooks/useQuickDispatch';
 import { EMERGENCY_MAIN_TYPES } from '../lib/emergency-codes';
@@ -124,6 +125,7 @@ export default function DespachoNodo360Page() {
           <nav className="hidden md:flex items-center gap-1 mr-2">
             {[
               { to: '/central-operativa', label: 'En vivo', icon: Radio },
+              { to: '/central-bitacora', label: 'Bitácora', icon: BookOpen },
               { to: '/operational-map', label: 'Mapa', icon: Map },
               { to: '/incidents', label: 'Emergencias', icon: ShieldAlert },
             ].map(({ to, label, icon: Icon }) => (

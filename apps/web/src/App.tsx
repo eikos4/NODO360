@@ -38,6 +38,7 @@ import GuardLogPage from './pages/GuardLogPage';
 import InventoryAuditsPage from './pages/InventoryAuditsPage';
 import FleetLogPage from './pages/FleetLogPage';
 import CentralOperativaPage from './pages/CentralOperativaPage';
+import CentralBitacoraPage from './pages/CentralBitacoraPage';
 import CentralDespachosParralPage from './pages/CentralDespachosParralPage';
 import CentralExpressPage from './pages/CentralExpressPage';
 import BomberoEmergencyPage from './pages/BomberoEmergencyPage';
@@ -118,6 +119,7 @@ export default function App() {
         <Route path="central-express" element={<CentralExpressPage />} />
         <Route path="vision360-cuarteles" element={<Vision360CuartelesPage />} />
         <Route path="central-operativa" element={<CentralOperativaPage />} />
+        <Route path="central-bitacora" element={<CentralBitacoraPage />} />
         <Route path="central-despachos" element={<Navigate to="/despacho360" replace />} />
         <Route path="central-despachos/variantes" element={<BotoneraShell />} />
         <Route path="botonera" element={<Navigate to="/despacho360" replace />} />

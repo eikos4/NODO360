@@ -17,6 +17,7 @@ const IMMERSIVE_ROUTES = [
   '/despacho360',
   '/central-despachos',
   '/central-operativa',
+  '/central-bitacora',
   '/central-despachos-parral',
   '/central-express',
   '/dispatch/global',

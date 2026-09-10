@@ -6,6 +6,7 @@ export const CENTRAL_OPERATOR_ROUTES = [
   '/central-despachos-parral',
   '/central-express',
   '/central-operativa',
+  '/central-bitacora',
   '/central-despachos',
   '/central-despachos/variantes',
   '/operational-map',
