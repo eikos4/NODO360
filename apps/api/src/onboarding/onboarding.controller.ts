@@ -22,6 +22,11 @@ export class OnboardingController {
     return this.onboarding.provisionCuerpo(dto);
   }
 
+  @Post('parral')
+  provisionParral() {
+    return this.onboarding.provisionParral();
+  }
+
   @Post('users/import')
   importUsers(@Body() dto: ImportUsersDto) {
     return this.onboarding.importUsers(dto);

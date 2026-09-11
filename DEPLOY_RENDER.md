@@ -160,12 +160,16 @@ Endpoints autenticados para clientes:
 
 | Rol | Email | Password |
 |-----|-------|----------|
+| Kodesk (plataforma) | `nodo360@kodesk.cl` | `Kodesk360!` |
 | Super Admin | `admin@nodo360.cl` | `Admin1234!` |
 | Capitán | `martinez@bomberosparral.cl` | `Demo1234!` |
 | Operador Central | `central@bomberosparral.cl` | `Demo1234!` |
 
-Vista pública demo: `/central/bomberos-parral`  
+Vista pública demo: `/central/bomberos-parral` (también `/central/parral-segunda` … `/central/parral-sexta-remulcao`)  
+Consola Kodesk: `/implementacion` — crea o repara el Cuerpo de Parral (6 compañías)  
 Perfil operador central: `/central-operativa`
+
+Al arrancar, la API asegura: dueño Kodesk, las 6 compañías y los mandos/capitanes piloto si faltan. No borra datos existentes.
 
 ---
 
@@ -181,7 +185,8 @@ Perfil operador central: `/central-operativa`
 
 ## Checklist post-deploy
 
-- [ ] Login en la URL del frontend
+- [ ] Login Kodesk en `https://www.nodo360.net` → `/implementacion` y 6 cuarteles
+- [ ] Login Super Admin y Central (`admin@nodo360.cl`, `central@bomberosparral.cl`)
 - [ ] Dashboard carga datos
 - [ ] Módulo Salud y mapa funcionan
 - [ ] `FRONTEND_URL` y `VITE_API_URL` actualizados si cambiaste nombres de servicios

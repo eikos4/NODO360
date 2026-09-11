@@ -269,6 +269,7 @@ export default function LoginPage() {
             {/* Demo profiles selection */}
             <div className="space-y-1.5 max-h-[170px] overflow-y-auto pr-0.5 scrollbar-thin">
               {[
+                { role: 'Kodesk', email: 'nodo360@kodesk.cl', pass: 'Kodesk360!', label: 'Plataforma' },
                 { role: 'Super Admin', email: 'admin@nodo360.cl', pass: 'Admin1234!', label: 'C1 · Admin' },
                 { role: 'Comandante', email: 'gonzalez@bomberosparral.cl', pass: 'Demo1234!', label: 'Institucional' },
                 { role: 'Sala de Radio', email: 'central@bomberosparral.cl', pass: 'Demo1234!', label: 'Central 360' },

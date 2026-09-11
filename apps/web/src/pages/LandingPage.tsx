@@ -156,6 +156,8 @@ function HeroSection() {
               <div className="w-8 h-8 rounded-full bg-slate-800 flex items-center justify-center text-xs">2</div>
               <div className="w-8 h-8 rounded-full bg-slate-800 flex items-center justify-center text-xs">3</div>
               <div className="w-8 h-8 rounded-full bg-slate-800 flex items-center justify-center text-xs">4</div>
+              <div className="w-8 h-8 rounded-full bg-slate-800 flex items-center justify-center text-xs">5</div>
+              <div className="w-8 h-8 rounded-full bg-slate-800 flex items-center justify-center text-xs">6</div>
             </div>
             <p className="text-white font-bold text-lg border-l border-slate-700 pl-4 ml-2">
               Tecnologia <br/><span className="text-xs font-normal text-slate-400">Cuerpos de Bomberos</span>

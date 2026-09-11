@@ -4,10 +4,13 @@ import { Role } from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
 import { ProvisionCuerpoDto } from './dto/provision-cuerpo.dto';
 import { ImportUsersDto } from './dto/import-users.dto';
+import { PARRAL_COMPANIES, PARRAL_CUERPO } from './parral-cuerpo';
 
 const DEFAULT_PASSWORD = 'Demo1234!';
 
 const ROLE_ALIASES: Record<string, Role> = {
+  SUPER_ADMIN: Role.SUPER_ADMIN,
+  ADMIN: Role.SUPER_ADMIN,
   COMANDANTE: Role.COMANDANTE,
   CDTE: Role.COMANDANTE,
   CAPITAN: Role.CAPITAN,
@@ -90,6 +93,24 @@ export class OnboardingService {
     };
   }
 
+  provisionParral(defaultPassword?: string) {
+    return this.provisionCuerpo({
+      city: PARRAL_CUERPO.city,
+      region: PARRAL_CUERPO.region,
+      bodyName: PARRAL_CUERPO.bodyName,
+      phone: PARRAL_CUERPO.phone,
+      enablePublicDispatch: true,
+      createCommandStaff: false,
+      defaultPassword: defaultPassword || DEFAULT_PASSWORD,
+      companies: PARRAL_COMPANIES.map((company) => ({
+        number: company.number,
+        name: company.name,
+        address: company.address,
+        dispatchSlug: company.dispatchSlug,
+      })),
+    });
+  }
+
   async provisionCuerpo(dto: ProvisionCuerpoDto) {
     const password = dto.defaultPassword || DEFAULT_PASSWORD;
     const citySlug = slugify(dto.city) || 'cuerpo';
@@ -104,7 +125,8 @@ export class OnboardingService {
         continue;
       }
 
-      let dispatchSlug = row.number === 1 ? `bomberos-${citySlug}` : `${citySlug}-${row.number}`;
+      let dispatchSlug = row.dispatchSlug?.trim()
+        || (row.number === 1 ? `bomberos-${citySlug}` : `${citySlug}-${row.number}`);
       const slugTaken = await this.prisma.company.findUnique({ where: { dispatchSlug } });
       if (slugTaken) dispatchSlug = `${citySlug}-${row.number}-${Date.now().toString(36)}`;
 
@@ -139,7 +161,14 @@ export class OnboardingService {
       if (!first) throw new BadRequestException('No hay compañías para asignar mandos');
 
       const hash = await bcrypt.hash(password, 10);
-      const staff = [
+      const staff: Array<{
+        role: Role;
+        email: string;
+        firstName: string;
+        lastName: string;
+        rut: string;
+        companyId: string;
+      }> = [
         {
           role: Role.COMANDANTE,
           email: `comandante.${citySlug}@nodo360.net`,

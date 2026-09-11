@@ -8,6 +8,7 @@ import toast from 'react-hot-toast';
 import { api } from '../lib/api';
 import { useAuthStore } from '../store/authStore';
 import { cn } from '../lib/utils';
+import { PARRAL_COMPANIES, PARRAL_CSV_TEMPLATE, PARRAL_CUERPO } from '../lib/parral-cuerpo';
 
 const REGIONS = [
   'Arica y Parinacota', 'Tarapacá', 'Antofagasta', 'Atacama', 'Coquimbo', 'Valparaíso',
@@ -15,19 +16,7 @@ const REGIONS = [
   'Los Lagos', 'Aysén', 'Magallanes',
 ];
 
-const CSV_TEMPLATE = `rut,nombres,apellidos,email,rol,n_compania,n_operativo
-12.345.678-9,Juan,Pérez,juan.perez@bomberos.cl,BOMBERO,1,12
-11.222.333-4,Ana,Martínez,ana.martinez@bomberos.cl,CAPITAN,1,1`;
-
 type CompanyRow = { number: string; name: string; address: string };
-
-function emptyRows(count: number): CompanyRow[] {
-  return Array.from({ length: count }, (_, i) => ({
-    number: String(i + 1),
-    name: i === 0 ? 'Primera Compañía' : `${i + 1}ª Compañía`,
-    address: '',
-  }));
-}
 
 function parseRoster(text: string) {
   const lines = text.split(/\r?\n/).map((l) => l.trim()).filter(Boolean);
@@ -52,15 +41,15 @@ function parseRoster(text: string) {
 export default function SuperAdminImplementacionPage() {
   const user = useAuthStore((s) => s.user);
   const qc = useQueryClient();
-  const [city, setCity] = useState('');
-  const [region, setRegion] = useState('Maule');
-  const [bodyName, setBodyName] = useState('');
-  const [count, setCount] = useState(8);
-  const [rows, setRows] = useState<CompanyRow[]>(() => emptyRows(8));
-  const [createStaff, setCreateStaff] = useState(true);
+  const [city, setCity] = useState(PARRAL_CUERPO.city);
+  const [region, setRegion] = useState(PARRAL_CUERPO.region);
+  const [bodyName, setBodyName] = useState(PARRAL_CUERPO.bodyName);
+  const [count, setCount] = useState(PARRAL_COMPANIES.length);
+  const [rows, setRows] = useState<CompanyRow[]>(() => [...PARRAL_COMPANIES]);
+  const [createStaff, setCreateStaff] = useState(false);
   const [enablePublic, setEnablePublic] = useState(true);
   const [password, setPassword] = useState('Demo1234!');
-  const [rosterText, setRosterText] = useState(CSV_TEMPLATE);
+  const [rosterText, setRosterText] = useState(PARRAL_CSV_TEMPLATE);
   const [lastCredentials, setLastCredentials] = useState<Array<{ role: string; email: string; password: string; company?: string }>>([]);
 
   const { data: status } = useQuery({
@@ -92,6 +81,19 @@ export default function SuperAdminImplementacionPage() {
       if (data.skipped?.length) toast(`${data.skipped.length} omitidos`);
     },
     onError: (e: any) => toast.error(e.response?.data?.message ?? 'No se pudo crear el Cuerpo'),
+  });
+
+  const provisionParral = useMutation({
+    mutationFn: () => api.post('/onboarding/parral').then((r) => r.data),
+    onSuccess: (data) => {
+      qc.invalidateQueries({ queryKey: ['onboarding-status'] });
+      qc.invalidateQueries({ queryKey: ['companies'] });
+      qc.invalidateQueries({ queryKey: ['users'] });
+      setLastCredentials(data.credentials ?? []);
+      toast.success(`Parral listo: ${data.created.length} cuartel(es) nuevos`);
+      if (data.skipped?.length) toast(`${data.skipped.length} ya existían`);
+    },
+    onError: (e: any) => toast.error(e.response?.data?.message ?? 'No se pudo implementar Parral'),
   });
 
   const importUsers = useMutation({
@@ -146,7 +148,7 @@ export default function SuperAdminImplementacionPage() {
             <Crown className="w-6 h-6 text-amber-400" /> Consola de implementación
           </h1>
           <p className="text-sm text-slate-500 mt-1 max-w-2xl">
-            Perfil de Kodesk: crear Cuerpos, cuarteles y cargar nóminas CSV a escala.
+            Perfil Kodesk. El piloto de Parral (6 compañías) se carga por defecto.
             El Super Admin del Cuerpo no ve esta consola.
           </p>
         </div>
@@ -208,8 +210,16 @@ export default function SuperAdminImplementacionPage() {
       <section className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl p-5 space-y-4">
         <div>
           <h2 className="text-sm font-black flex items-center gap-2"><Building2 className="w-4 h-4 text-red-500" /> 1. Crear Cuerpo y cuarteles</h2>
-          <p className="text-xs text-slate-500 mt-1">Ejemplo: Parral, 8 compañías. Si el N° ya existe, se omite.</p>
+          <p className="text-xs text-slate-500 mt-1">Parral viene precargado (6 compañías). Si el N° ya existe, se omite.</p>
         </div>
+        <button
+          type="button"
+          disabled={provisionParral.isPending}
+          onClick={() => provisionParral.mutate()}
+          className="px-4 py-2.5 rounded-xl bg-amber-500 hover:bg-amber-600 text-zinc-950 text-sm font-black"
+        >
+          {provisionParral.isPending ? 'Implementando Parral…' : 'Implementar Cuerpo de Parral (6 compañías)'}
+        </button>
         <div className="grid grid-cols-1 md:grid-cols-4 gap-3">
           <label className="text-xs font-bold space-y-1">
             Ciudad
@@ -317,10 +327,10 @@ export default function SuperAdminImplementacionPage() {
           <button
             type="button"
             onClick={() => {
-              const blob = new Blob([CSV_TEMPLATE], { type: 'text/csv;charset=utf-8' });
+              const blob = new Blob([PARRAL_CSV_TEMPLATE], { type: 'text/csv;charset=utf-8' });
               const a = document.createElement('a');
               a.href = URL.createObjectURL(blob);
-              a.download = 'nodo360-nomina.csv';
+              a.download = 'nodo360-nomina-parral.csv';
               a.click();
             }}
             className="text-xs font-bold flex items-center gap-1 px-3 py-2 rounded-xl border border-slate-200 dark:border-slate-700"

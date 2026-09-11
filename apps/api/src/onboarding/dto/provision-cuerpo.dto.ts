@@ -28,6 +28,10 @@ export class ProvisionCompanyRowDto {
   @IsOptional()
   @IsString()
   address?: string;
+
+  @IsOptional()
+  @IsString()
+  dispatchSlug?: string;
 }
 
 export class ProvisionCuerpoDto {

@@ -11,11 +11,13 @@ import { HttpAdapterHost } from '@nestjs/core';
 import { PrismaClientExceptionFilter } from './prisma/prisma-client-exception.filter';
 import { ensureDemoDatabaseSeeded } from './bootstrap/ensure-demo-seed';
 import { ensureKodeskOwner } from './bootstrap/ensure-kodesk-owner';
+import { ensureParralCuerpo } from './bootstrap/ensure-parral-cuerpo';
 import { getAllowedCorsOrigins } from './common/cors-origins';
 
 async function bootstrap() {
   await ensureDemoDatabaseSeeded();
   await ensureKodeskOwner();
+  await ensureParralCuerpo();
   const app = await NestFactory.create<NestExpressApplication>(AppModule);
   app.use(helmet({ crossOriginResourcePolicy: { policy: "cross-origin" } }));
   app.use(compression());

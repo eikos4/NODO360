@@ -6,7 +6,7 @@
     "dev": "vite",
     "build": "tsc && vite build",
     "test": "vitest run --passWithNoTests",
-    "build:render": "tsc && vite build",
+    "build:render": "vite build",
     "preview": "vite preview",
     "start": "npx serve -s dist -l tcp://0.0.0.0:${PORT:-5173}"
   },

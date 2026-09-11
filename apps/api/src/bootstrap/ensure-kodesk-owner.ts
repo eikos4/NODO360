@@ -24,10 +24,10 @@ export async function ensureKodeskOwner(): Promise<void> {
   try {
     if (!(await roleHasKodesk(prisma))) {
       await prisma.$executeRawUnsafe(`ALTER TYPE "Role" ADD VALUE IF NOT EXISTS 'KODESK'`);
-      await prisma.$disconnect();
     }
   } catch (err) {
     console.error('[bootstrap] No se pudo agregar Role.KODESK:', err);
+  } finally {
     await prisma.$disconnect();
   }
 
