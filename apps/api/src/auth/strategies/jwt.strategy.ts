@@ -27,6 +27,7 @@ export class JwtStrategy extends PassportStrategy(Strategy) {
         role: true,
         companyId: true,
         isActive: true,
+        company: { select: { cuerpoId: true } },
       },
     });
     if (!user?.isActive) {
@@ -39,6 +40,7 @@ export class JwtStrategy extends PassportStrategy(Strategy) {
       email: user.email,
       role: user.role,
       companyId: user.companyId,
+      cuerpoId: user.company?.cuerpoId ?? null,
     };
   }
 }

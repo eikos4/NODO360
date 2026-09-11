@@ -40,8 +40,8 @@ export class CompaniesController {
   }
 
   @Get()
-  findAll() {
-    return this.companiesService.findAll();
+  findAll(@Req() req: any) {
+    return this.companiesService.findAll(req.user);
   }
 
   @Get(':id')
@@ -51,8 +51,8 @@ export class CompaniesController {
 
   @Post()
   @Roles('SUPER_ADMIN')
-  create(@Body() dto: CreateCompanyDto) {
-    return this.companiesService.create(dto);
+  create(@Body() dto: CreateCompanyDto, @Req() req: any) {
+    return this.companiesService.create(dto, req.user);
   }
 
   @Put(':id')

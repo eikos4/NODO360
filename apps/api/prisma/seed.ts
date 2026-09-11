@@ -74,7 +74,9 @@ async function clearDatabase() {
   await prisma.announcement.deleteMany();
   await prisma.userAchievement.deleteMany();
   await prisma.user.deleteMany();
+  await prisma.platformLog.deleteMany();
   await prisma.company.deleteMany();
+  await prisma.cuerpo.deleteMany();
 }
 
 const HQ_IMAGE = 'https://images.unsplash.com/photo-1581092918056-0c4c3acd3789?w=1200&h=800&fit=crop';
@@ -168,6 +170,16 @@ async function main() {
     await clearDatabase();
   }
 
+  const cuerpo = await prisma.cuerpo.create({
+    data: {
+      name: 'Cuerpo de Bomberos de Parral',
+      city: 'Parral',
+      region: 'Maule',
+      phone: CUERPO_PHONE,
+      slug: 'bomberos-parral',
+    },
+  });
+
   // ─── 6 Compañías del Cuerpo ───────────────────────────────────────────────
   const companies = await Promise.all(
     COMPANIES_SPEC.map((spec) =>
@@ -185,6 +197,7 @@ async function main() {
           dispatchAvailable: true,
           logoUrl: `https://api.dicebear.com/7.x/identicon/png?seed=parral-cia${spec.number}&size=128`,
           headquartersImageUrl: HQ_IMAGE,
+          cuerpoId: cuerpo.id,
         },
       }),
     ),

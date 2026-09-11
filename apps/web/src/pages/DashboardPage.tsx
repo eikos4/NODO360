@@ -28,7 +28,7 @@ const ROLE_LABELS: Record<string, string> = {
 
 const ROLE_MODULES: Record<string, { label: string; path: string; icon: React.ElementType; color: string; desc: string }[]> = {
   KODESK: [
-    { label: 'Kodesk Console', path: '/implementacion', icon: Rocket, color: 'text-amber-400', desc: 'Crear Cuerpos, cuarteles y nóminas CSV' },
+    { label: 'Kodesk Console', path: '/implementacion', icon: Rocket, color: 'text-amber-400', desc: 'Cuerpos, compañías, nóminas y log de errores' },
     { label: 'Compañías', path: '/companies', icon: Building2, color: 'text-blue-400', desc: 'Todas las compañías de la plataforma' },
     { label: 'Personal', path: '/users', icon: Users, color: 'text-emerald-400', desc: 'Nómina global' },
   ],

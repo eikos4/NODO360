@@ -10,4 +10,5 @@ export class CreateCompanyDto {
   @IsOptional() @IsEmail() email?: string;
   @IsOptional() @IsString() logoUrl?: string;
   @IsOptional() @IsString() headquartersImageUrl?: string;
+  @IsOptional() @IsString() cuerpoId?: string;
 }

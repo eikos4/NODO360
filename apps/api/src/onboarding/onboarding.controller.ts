@@ -17,6 +17,11 @@ export class OnboardingController {
     return this.onboarding.status();
   }
 
+  @Get('logs')
+  logs() {
+    return this.onboarding.listLogs();
+  }
+
   @Post('cuerpo')
   provisionCuerpo(@Body() dto: ProvisionCuerpoDto) {
     return this.onboarding.provisionCuerpo(dto);

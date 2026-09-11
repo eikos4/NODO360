@@ -57,6 +57,10 @@ export class ImportUserRowDto {
 export class ImportUsersDto {
   @IsOptional()
   @IsString()
+  cuerpoId?: string;
+
+  @IsOptional()
+  @IsString()
   @MinLength(6)
   defaultPassword?: string;
 

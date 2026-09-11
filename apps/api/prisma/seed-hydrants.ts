@@ -11,9 +11,20 @@ async function main() {
   });
 
   if (!company) {
+    const cuerpo = await prisma.cuerpo.upsert({
+      where: { slug: 'bomberos-parral' },
+      create: {
+        name: 'Cuerpo de Bomberos de Parral',
+        city: 'Parral',
+        region: 'Maule',
+        phone: '+56 73 246 2600',
+        slug: 'bomberos-parral',
+      },
+      update: {},
+    });
     company = await prisma.company.create({
       data: {
-        name: 'Cuerpo de Bomberos de Parral',
+        name: 'Primera Compañía de Bomberos de Parral',
         number: 1,
         region: 'Maule',
         city: 'Parral',
@@ -22,6 +33,7 @@ async function main() {
         email: 'contacto@bomberosparral.cl',
         dispatchSlug: 'bomberos-parral',
         dispatchPublicEnabled: true,
+        cuerpoId: cuerpo.id,
       },
     });
   }

@@ -9,6 +9,8 @@ export interface AuthCompany {
   city: string;
   logoUrl: string | null;
   dispatchSlug?: string | null;
+  cuerpoId?: string | null;
+  cuerpo?: { id: string; name: string; city: string } | null;
 }
 
 export interface AuthUser {

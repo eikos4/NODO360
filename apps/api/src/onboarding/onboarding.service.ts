@@ -2,6 +2,7 @@ import { BadRequestException, Injectable } from '@nestjs/common';
 import * as bcrypt from 'bcryptjs';
 import { Role } from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
+import { PlatformLogService } from '../platform/platform-log.service';
 import { ProvisionCuerpoDto } from './dto/provision-cuerpo.dto';
 import { ImportUsersDto } from './dto/import-users.dto';
 import { PARRAL_COMPANIES, PARRAL_CUERPO } from './parral-cuerpo';
@@ -50,37 +51,41 @@ function parseRole(raw?: string): Role {
 
 @Injectable()
 export class OnboardingService {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly logs: PlatformLogService,
+  ) {}
 
   async status() {
-    const [companies, users] = await Promise.all([
-      this.prisma.company.findMany({
+    const [cuerpos, userCount, errorCount] = await Promise.all([
+      this.prisma.cuerpo.findMany({
         where: { isActive: true },
-        orderBy: { number: 'asc' },
+        orderBy: { name: 'asc' },
         include: {
-          _count: { select: { users: true, vehicles: true } },
-          users: { where: { isActive: true }, select: { role: true } },
+          companies: {
+            where: { isActive: true },
+            orderBy: { number: 'asc' },
+            include: {
+              _count: { select: { users: true, vehicles: true } },
+              users: { where: { isActive: true }, select: { role: true } },
+            },
+          },
         },
       }),
-      this.prisma.user.findMany({
-        where: { isActive: true },
-        select: { role: true },
+      this.prisma.user.count({ where: { isActive: true } }),
+      this.prisma.platformLog.count({
+        where: {
+          level: 'ERROR',
+          createdAt: { gte: new Date(Date.now() - 7 * 86400000) },
+        },
       }),
     ]);
 
-    const byRole: Record<string, number> = {};
-    for (const user of users) {
-      byRole[user.role] = (byRole[user.role] ?? 0) + 1;
-    }
-
-    return {
-      companies: companies.length,
-      users: users.length,
-      byRole,
-      hasComandante: (byRole.COMANDANTE ?? 0) > 0,
-      hasOperadorCentral: (byRole.OPERADOR_CENTRAL ?? 0) > 0,
-      companiesReady: companies.map((company) => ({
+    const companiesReady = cuerpos.flatMap((cuerpo) =>
+      cuerpo.companies.map((company) => ({
         id: company.id,
+        cuerpoId: cuerpo.id,
+        cuerpoName: cuerpo.name,
         number: company.number,
         name: company.name,
         city: company.city,
@@ -90,7 +95,42 @@ export class OnboardingService {
         dispatchSlug: company.dispatchSlug,
         publicEnabled: company.dispatchPublicEnabled,
       })),
+    );
+
+    const byRole: Record<string, number> = {};
+    const roleRows = await this.prisma.user.groupBy({
+      by: ['role'],
+      where: { isActive: true },
+      _count: { role: true },
+    });
+    for (const row of roleRows) {
+      byRole[row.role] = row._count.role;
+    }
+
+    return {
+      cuerpos: cuerpos.length,
+      companies: companiesReady.length,
+      users: userCount,
+      recentErrors: errorCount,
+      byRole,
+      hasComandante: (byRole.COMANDANTE ?? 0) > 0,
+      hasOperadorCentral: (byRole.OPERADOR_CENTRAL ?? 0) > 0,
+      bodies: cuerpos.map((cuerpo) => ({
+        id: cuerpo.id,
+        name: cuerpo.name,
+        city: cuerpo.city,
+        region: cuerpo.region,
+        slug: cuerpo.slug,
+        companies: cuerpo.companies.length,
+        users: cuerpo.companies.reduce((sum, c) => sum + c._count.users, 0),
+        ready: cuerpo.companies.filter((c) => c._count.users > 0 && c.users.some((u) => u.role === Role.CAPITAN)).length,
+      })),
+      companiesReady,
     };
+  }
+
+  listLogs(level?: string) {
+    return this.logs.list(120, level);
   }
 
   provisionParral(defaultPassword?: string) {
@@ -114,14 +154,39 @@ export class OnboardingService {
   async provisionCuerpo(dto: ProvisionCuerpoDto) {
     const password = dto.defaultPassword || DEFAULT_PASSWORD;
     const citySlug = slugify(dto.city) || 'cuerpo';
+    const bodyName = dto.bodyName?.trim() || `Cuerpo de Bomberos de ${dto.city}`;
+    const slug = slugify(bodyName) || citySlug;
+
+    let cuerpo = await this.prisma.cuerpo.findUnique({ where: { slug } });
+    if (!cuerpo) {
+      cuerpo = await this.prisma.cuerpo.create({
+        data: {
+          name: bodyName,
+          city: dto.city,
+          region: dto.region,
+          phone: dto.phone,
+          slug,
+        },
+      });
+      await this.logs.write({
+        level: 'INFO',
+        source: 'onboarding',
+        message: `Cuerpo creado: ${bodyName}`,
+        cuerpoId: cuerpo.id,
+        detail: { city: dto.city, region: dto.region, companies: dto.companies.length },
+      });
+    }
+
     const createdCompanies: Array<{ id: string; number: number; name: string; dispatchSlug: string | null }> = [];
     const skipped: string[] = [];
     const credentials: Array<{ role: string; email: string; password: string; company?: string }> = [];
 
     for (const row of dto.companies) {
-      const exists = await this.prisma.company.findUnique({ where: { number: row.number } });
+      const exists = await this.prisma.company.findUnique({
+        where: { cuerpoId_number: { cuerpoId: cuerpo.id, number: row.number } },
+      });
       if (exists) {
-        skipped.push(`Compañía ${row.number}ª ya existe (${exists.name})`);
+        skipped.push(`${cuerpo.name}: ${row.number}ª ya existe (${exists.name})`);
         continue;
       }
 
@@ -142,6 +207,7 @@ export class OnboardingService {
           dispatchSlug,
           dispatchPublicEnabled: Boolean(dto.enablePublicDispatch),
           dispatchAvailable: true,
+          cuerpoId: cuerpo.id,
         },
       });
       createdCompanies.push({
@@ -154,7 +220,7 @@ export class OnboardingService {
 
     if (dto.createCommandStaff) {
       const allCompanies = await this.prisma.company.findMany({
-        where: { isActive: true },
+        where: { isActive: true, cuerpoId: cuerpo.id },
         orderBy: { number: 'asc' },
       });
       const first = allCompanies[0];
@@ -222,8 +288,16 @@ export class OnboardingService {
       }
     }
 
+    await this.logs.write({
+      level: createdCompanies.length ? 'INFO' : 'WARN',
+      source: 'onboarding',
+      message: `${cuerpo.name}: ${createdCompanies.length} cuartel(es) nuevos, ${skipped.length} omitidos`,
+      cuerpoId: cuerpo.id,
+    });
+
     return {
-      bodyName: dto.bodyName || `Cuerpo de Bomberos de ${dto.city}`,
+      cuerpo: { id: cuerpo.id, name: cuerpo.name, slug: cuerpo.slug },
+      bodyName: cuerpo.name,
       created: createdCompanies,
       skipped,
       credentials,
@@ -232,7 +306,17 @@ export class OnboardingService {
 
   async importUsers(dto: ImportUsersDto) {
     const password = dto.defaultPassword || DEFAULT_PASSWORD;
-    const companies = await this.prisma.company.findMany({ where: { isActive: true } });
+    const cuerpoId = dto.cuerpoId;
+    if (!cuerpoId) {
+      const count = await this.prisma.cuerpo.count({ where: { isActive: true } });
+      if (count > 1) {
+        throw new BadRequestException('Hay varios Cuerpos. Elegí a cuál cargar la nómina.');
+      }
+    }
+
+    const companies = await this.prisma.company.findMany({
+      where: { isActive: true, ...(cuerpoId ? { cuerpoId } : {}) },
+    });
     const byNumber = new Map(companies.map((c) => [c.number, c]));
     const created: Array<{ email: string; role: string; company?: string }> = [];
     const skipped: string[] = [];
@@ -244,7 +328,7 @@ export class OnboardingService {
       const company = row.companyNumber != null ? byNumber.get(row.companyNumber) : undefined;
 
       if (row.companyNumber != null && !company) {
-        skipped.push(`Fila ${index + 1}: no existe compañía ${row.companyNumber}ª`);
+        skipped.push(`Fila ${index + 1}: no existe compañía ${row.companyNumber}ª en este Cuerpo`);
         continue;
       }
 
@@ -281,6 +365,13 @@ export class OnboardingService {
       });
       created.push({ email, role, company: company?.name });
     }
+
+    await this.logs.write({
+      level: skipped.length && !created.length ? 'WARN' : 'INFO',
+      source: 'onboarding',
+      message: `Nómina: ${created.length} creados, ${skipped.length} omitidos`,
+      cuerpoId: cuerpoId ?? companies[0]?.cuerpoId,
+    });
 
     return { created, skipped, defaultPassword: password };
   }

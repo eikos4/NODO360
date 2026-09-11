@@ -6,6 +6,7 @@ import { GuardLogService } from '../guard-log/guard-log.service';
 import { AlarmQueueService } from '../notifications/alarm-queue.service';
 import { EmergencyBroadcaster } from '../emergency-realtime/emergency-broadcaster.service';
 import { EMERGENCY_EVENT_NAMES } from '../emergency-realtime/emergency-events.contract';
+import { cuerpoIdForUser } from '../common/cuerpo-scope';
 import { CreateIncidentDto } from './dto/create-incident.dto';
 import { UpdateIncidentDto } from './dto/update-incident.dto';
 import { DispatchIncidentDto } from './dto/dispatch-incident.dto';
@@ -64,7 +65,18 @@ export class IncidentsService {
   }
 
   async findAllAuthorized(user: IncidentAuthUser, requestedCompanyId?: string) {
-    if (user.role === 'SUPER_ADMIN' || user.role === 'KODESK') return this.findAll(requestedCompanyId);
+    if (user.role === 'KODESK') return this.findAll(requestedCompanyId);
+    if (user.role === 'SUPER_ADMIN') {
+      if (requestedCompanyId) return this.findAll(requestedCompanyId);
+      const cuerpoId = await cuerpoIdForUser(this.prisma, user);
+      if (!cuerpoId) return this.findAll();
+      const rows = await this.prisma.incident.findMany({
+        where: { company: { cuerpoId } },
+        include: INCLUDE,
+        orderBy: { dispatchedAt: 'desc' },
+      });
+      return rows.map((inc) => this.withChecklistMeta(inc));
+    }
     if (!user.companyId) throw new ForbiddenException('Usuario sin compañía asignada');
     if (requestedCompanyId && requestedCompanyId !== user.companyId) {
       throw new ForbiddenException('No puede consultar incidentes de otra compañía');

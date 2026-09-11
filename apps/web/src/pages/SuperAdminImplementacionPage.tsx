@@ -2,7 +2,7 @@ import { useMemo, useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { Link, Navigate } from 'react-router-dom';
 import {
-  Building2, CheckCircle2, Copy, Download, Rocket, Upload, Users, AlertTriangle, Crown,
+  Building2, CheckCircle2, Copy, Download, Rocket, Upload, Users, AlertTriangle, Crown, ScrollText,
 } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { api } from '../lib/api';
@@ -41,14 +41,21 @@ function parseRoster(text: string) {
 export default function SuperAdminImplementacionPage() {
   const user = useAuthStore((s) => s.user);
   const qc = useQueryClient();
-  const [city, setCity] = useState(PARRAL_CUERPO.city);
-  const [region, setRegion] = useState(PARRAL_CUERPO.region);
-  const [bodyName, setBodyName] = useState(PARRAL_CUERPO.bodyName);
-  const [count, setCount] = useState(PARRAL_COMPANIES.length);
-  const [rows, setRows] = useState<CompanyRow[]>(() => [...PARRAL_COMPANIES]);
-  const [createStaff, setCreateStaff] = useState(false);
+  const [city, setCity] = useState('');
+  const [region, setRegion] = useState('Maule');
+  const [bodyName, setBodyName] = useState('');
+  const [count, setCount] = useState(6);
+  const [rows, setRows] = useState<CompanyRow[]>(() =>
+    Array.from({ length: 6 }, (_, i) => ({
+      number: String(i + 1),
+      name: i === 0 ? 'Primera Compañía' : `${i + 1}ª Compañía`,
+      address: '',
+    })),
+  );
+  const [createStaff, setCreateStaff] = useState(true);
   const [enablePublic, setEnablePublic] = useState(true);
   const [password, setPassword] = useState('Demo1234!');
+  const [rosterCuerpoId, setRosterCuerpoId] = useState('');
   const [rosterText, setRosterText] = useState(PARRAL_CSV_TEMPLATE);
   const [lastCredentials, setLastCredentials] = useState<Array<{ role: string; email: string; password: string; company?: string }>>([]);
 
@@ -56,6 +63,13 @@ export default function SuperAdminImplementacionPage() {
     queryKey: ['onboarding-status'],
     queryFn: () => api.get('/onboarding/status').then((r) => r.data),
     enabled: user?.role === 'KODESK',
+  });
+
+  const { data: logs } = useQuery({
+    queryKey: ['platform-logs'],
+    queryFn: () => api.get('/onboarding/logs').then((r) => r.data),
+    enabled: user?.role === 'KODESK',
+    refetchInterval: 30_000,
   });
 
   const provision = useMutation({
@@ -76,8 +90,9 @@ export default function SuperAdminImplementacionPage() {
       qc.invalidateQueries({ queryKey: ['onboarding-status'] });
       qc.invalidateQueries({ queryKey: ['companies'] });
       qc.invalidateQueries({ queryKey: ['users'] });
+      qc.invalidateQueries({ queryKey: ['platform-logs'] });
       setLastCredentials(data.credentials ?? []);
-      toast.success(`${data.created.length} cuartel(es) creados`);
+      toast.success(`${data.cuerpo?.name ?? data.bodyName}: ${data.created.length} cuartel(es)`);
       if (data.skipped?.length) toast(`${data.skipped.length} omitidos`);
     },
     onError: (e: any) => toast.error(e.response?.data?.message ?? 'No se pudo crear el Cuerpo'),
@@ -89,6 +104,7 @@ export default function SuperAdminImplementacionPage() {
       qc.invalidateQueries({ queryKey: ['onboarding-status'] });
       qc.invalidateQueries({ queryKey: ['companies'] });
       qc.invalidateQueries({ queryKey: ['users'] });
+      qc.invalidateQueries({ queryKey: ['platform-logs'] });
       setLastCredentials(data.credentials ?? []);
       toast.success(`Parral listo: ${data.created.length} cuartel(es) nuevos`);
       if (data.skipped?.length) toast(`${data.skipped.length} ya existían`);
@@ -100,21 +116,27 @@ export default function SuperAdminImplementacionPage() {
     mutationFn: () => {
       const users = parseRoster(rosterText);
       if (!users.length) throw new Error('La nómina está vacía o mal formateada');
-      return api.post('/onboarding/users/import', { defaultPassword: password, users }).then((r) => r.data);
+      return api.post('/onboarding/users/import', {
+        defaultPassword: password,
+        cuerpoId: rosterCuerpoId || undefined,
+        users,
+      }).then((r) => r.data);
     },
     onSuccess: (data) => {
       qc.invalidateQueries({ queryKey: ['onboarding-status'] });
       qc.invalidateQueries({ queryKey: ['users'] });
+      qc.invalidateQueries({ queryKey: ['platform-logs'] });
       toast.success(`${data.created.length} bomberos cargados`);
       if (data.skipped?.length) toast.error(`${data.skipped.length} filas omitidas`);
     },
     onError: (e: any) => toast.error(e.response?.data?.message ?? e.message ?? 'Error al importar'),
   });
 
+  const bodies = status?.bodies ?? [];
+
   const ready = useMemo(() => {
-    if (!status) return 0;
-    return (status.companiesReady ?? []).filter((c: any) => c.users > 0 && c.hasCapitan).length;
-  }, [status]);
+    return bodies.reduce((sum: number, b: any) => sum + (b.ready ?? 0), 0);
+  }, [bodies]);
 
   if (user?.role !== 'KODESK') {
     return <Navigate to="/dashboard" replace />;
@@ -133,6 +155,14 @@ export default function SuperAdminImplementacionPage() {
     });
   };
 
+  const loadParralTemplate = () => {
+    setCity(PARRAL_CUERPO.city);
+    setRegion(PARRAL_CUERPO.region);
+    setBodyName(PARRAL_CUERPO.bodyName);
+    setCount(PARRAL_COMPANIES.length);
+    setRows(PARRAL_COMPANIES.map((c) => ({ number: c.number, name: c.name, address: c.address })));
+  };
+
   const copyCreds = () => {
     const text = lastCredentials.map((c) => `${c.role}\t${c.email}\t${c.password}`).join('\n');
     void navigator.clipboard.writeText(text);
@@ -143,13 +173,13 @@ export default function SuperAdminImplementacionPage() {
     <div className="space-y-6">
       <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl p-5 flex flex-wrap items-start justify-between gap-4">
         <div>
-          <p className="text-[10px] font-black uppercase tracking-[0.2em] text-amber-500">Kodesk · Plataforma NODO360</p>
+          <p className="text-[10px] font-black uppercase tracking-[0.2em] text-amber-500">Kodesk · Super Super Admin</p>
           <h1 className="text-2xl font-black text-slate-900 dark:text-white flex items-center gap-2 mt-1">
-            <Crown className="w-6 h-6 text-amber-400" /> Consola de implementación
+            <Crown className="w-6 h-6 text-amber-400" /> Consola de plataforma
           </h1>
           <p className="text-sm text-slate-500 mt-1 max-w-2xl">
-            Perfil Kodesk. El piloto de Parral (6 compañías) se carga por defecto.
-            El Super Admin del Cuerpo no ve esta consola.
+            Dueño de NODO360. Acá se crean Cuerpos (hasta 8 en paralelo, 6 compañías c/u),
+            se cargan nóminas y se revisan errores. El Super Admin de cada Cuerpo no ve esta consola.
           </p>
         </div>
         <div className="flex gap-2">
@@ -158,12 +188,13 @@ export default function SuperAdminImplementacionPage() {
         </div>
       </div>
 
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+      <div className="grid grid-cols-2 md:grid-cols-5 gap-3">
         {[
+          { label: 'Cuerpos', value: status?.cuerpos ?? '—', icon: Crown },
           { label: 'Cuarteles', value: status?.companies ?? '—', icon: Building2 },
           { label: 'Personal', value: status?.users ?? '—', icon: Users },
           { label: 'Listos p/ piloto', value: ready, icon: Rocket },
-          { label: 'Mandos', value: `${status?.hasComandante ? 'Cdte' : '—'} · ${status?.hasOperadorCentral ? 'Central' : '—'}`, icon: CheckCircle2 },
+          { label: 'Errores 7d', value: status?.recentErrors ?? 0, icon: AlertTriangle },
         ].map((s) => (
           <div key={s.label} className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl p-4">
             <s.icon className="w-4 h-4 text-red-400 mb-2" />
@@ -173,57 +204,51 @@ export default function SuperAdminImplementacionPage() {
         ))}
       </div>
 
-      {!!status?.companiesReady?.length && (
-        <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl overflow-hidden">
-          <div className="px-4 py-3 border-b border-slate-200 dark:border-slate-800">
-            <h2 className="text-sm font-black">Estado por cuartel</h2>
-          </div>
-          <div className="overflow-x-auto">
-            <table className="w-full text-sm">
-              <thead className="text-[10px] uppercase tracking-wider text-slate-500">
-                <tr>
-                  <th className="text-left px-4 py-2">N°</th>
-                  <th className="text-left px-4 py-2">Compañía</th>
-                  <th className="text-left px-4 py-2">Personal</th>
-                  <th className="text-left px-4 py-2">Capitán</th>
-                  <th className="text-left px-4 py-2">Sala pública</th>
-                </tr>
-              </thead>
-              <tbody>
-                {status.companiesReady.map((c: any) => (
-                  <tr key={c.id} className="border-t border-slate-100 dark:border-slate-800">
-                    <td className="px-4 py-2 font-mono font-bold">{c.number}ª</td>
-                    <td className="px-4 py-2">{c.name}</td>
-                    <td className="px-4 py-2">{c.users}</td>
-                    <td className="px-4 py-2">{c.hasCapitan ? 'Sí' : <span className="text-amber-500">Falta</span>}</td>
-                    <td className="px-4 py-2 text-xs">
-                      {c.dispatchSlug ? `/central/${c.dispatchSlug}` : '—'}
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
+      {!!bodies.length && (
+        <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-3">
+          {bodies.map((b: any) => (
+            <div key={b.id} className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl p-4">
+              <p className="text-[10px] font-black uppercase tracking-wider text-amber-500">{b.city} · {b.region}</p>
+              <h3 className="font-black text-slate-900 dark:text-white mt-1">{b.name}</h3>
+              <p className="text-xs text-slate-500 mt-2">{b.companies} compañías · {b.users} personas · {b.ready} con capitán</p>
+              <button
+                type="button"
+                onClick={() => setRosterCuerpoId(b.id)}
+                className="mt-3 text-xs font-bold text-red-600"
+              >
+                Cargar nómina aquí
+              </button>
+            </div>
+          ))}
         </div>
       )}
 
       <section className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl p-5 space-y-4">
         <div>
           <h2 className="text-sm font-black flex items-center gap-2"><Building2 className="w-4 h-4 text-red-500" /> 1. Crear Cuerpo y cuarteles</h2>
-          <p className="text-xs text-slate-500 mt-1">Parral viene precargado (6 compañías). Si el N° ya existe, se omite.</p>
+          <p className="text-xs text-slate-500 mt-1">Cada Cuerpo tiene su propia 1ª–6ª. Parral no pisa a Linares ni a Talca.</p>
         </div>
-        <button
-          type="button"
-          disabled={provisionParral.isPending}
-          onClick={() => provisionParral.mutate()}
-          className="px-4 py-2.5 rounded-xl bg-amber-500 hover:bg-amber-600 text-zinc-950 text-sm font-black"
-        >
-          {provisionParral.isPending ? 'Implementando Parral…' : 'Implementar Cuerpo de Parral (6 compañías)'}
-        </button>
+        <div className="flex flex-wrap gap-2">
+          <button
+            type="button"
+            disabled={provisionParral.isPending}
+            onClick={() => provisionParral.mutate()}
+            className="px-4 py-2.5 rounded-xl bg-amber-500 hover:bg-amber-600 text-zinc-950 text-sm font-black"
+          >
+            {provisionParral.isPending ? 'Implementando Parral…' : 'Implementar Cuerpo de Parral (6)'}
+          </button>
+          <button
+            type="button"
+            onClick={loadParralTemplate}
+            className="px-3 py-2 rounded-xl border border-slate-200 dark:border-slate-700 text-xs font-bold"
+          >
+            Usar plantilla Parral
+          </button>
+        </div>
         <div className="grid grid-cols-1 md:grid-cols-4 gap-3">
           <label className="text-xs font-bold space-y-1">
             Ciudad
-            <input value={city} onChange={(e) => setCity(e.target.value)} placeholder="Parral" className="w-full rounded-xl border border-slate-300 dark:border-slate-700 bg-transparent px-3 py-2 text-sm" />
+            <input value={city} onChange={(e) => setCity(e.target.value)} placeholder="Linares" className="w-full rounded-xl border border-slate-300 dark:border-slate-700 bg-transparent px-3 py-2 text-sm" />
           </label>
           <label className="text-xs font-bold space-y-1">
             Región
@@ -233,7 +258,7 @@ export default function SuperAdminImplementacionPage() {
           </label>
           <label className="text-xs font-bold space-y-1">
             Nombre del Cuerpo
-            <input value={bodyName} onChange={(e) => setBodyName(e.target.value)} placeholder="Cuerpo de Bomberos de Parral" className="w-full rounded-xl border border-slate-300 dark:border-slate-700 bg-transparent px-3 py-2 text-sm" />
+            <input value={bodyName} onChange={(e) => setBodyName(e.target.value)} placeholder="Cuerpo de Bomberos de Linares" className="w-full rounded-xl border border-slate-300 dark:border-slate-700 bg-transparent px-3 py-2 text-sm" />
           </label>
           <label className="text-xs font-bold space-y-1">
             Cantidad de compañías
@@ -292,7 +317,7 @@ export default function SuperAdminImplementacionPage() {
             city.trim() ? 'bg-red-600 hover:bg-red-700' : 'bg-slate-400 cursor-not-allowed',
           )}
         >
-          {provision.isPending ? 'Creando…' : `Crear ${count} cuarteles`}
+          {provision.isPending ? 'Creando…' : `Crear Cuerpo con ${count} cuarteles`}
         </button>
       </section>
 
@@ -321,8 +346,8 @@ export default function SuperAdminImplementacionPage() {
       <section className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl p-5 space-y-3">
         <div className="flex flex-wrap items-center justify-between gap-2">
           <div>
-            <h2 className="text-sm font-black flex items-center gap-2"><Upload className="w-4 h-4 text-red-500" /> 2. Cargar lista de bomberos</h2>
-            <p className="text-xs text-slate-500 mt-1">CSV o pegar: rut, nombres, apellidos, email, rol, n° compañía, n° operativo</p>
+            <h2 className="text-sm font-black flex items-center gap-2"><Upload className="w-4 h-4 text-red-500" /> 2. Cargar perfiles / nómina</h2>
+            <p className="text-xs text-slate-500 mt-1">CSV: rut, nombres, apellidos, email, rol, n° compañía, n° operativo. El N° de compañía es de ese Cuerpo.</p>
           </div>
           <button
             type="button"
@@ -330,7 +355,7 @@ export default function SuperAdminImplementacionPage() {
               const blob = new Blob([PARRAL_CSV_TEMPLATE], { type: 'text/csv;charset=utf-8' });
               const a = document.createElement('a');
               a.href = URL.createObjectURL(blob);
-              a.download = 'nodo360-nomina-parral.csv';
+              a.download = 'nodo360-nomina.csv';
               a.click();
             }}
             className="text-xs font-bold flex items-center gap-1 px-3 py-2 rounded-xl border border-slate-200 dark:border-slate-700"
@@ -338,6 +363,19 @@ export default function SuperAdminImplementacionPage() {
             <Download className="w-3.5 h-3.5" /> Plantilla CSV
           </button>
         </div>
+        <label className="text-xs font-bold space-y-1 block max-w-md">
+          Cuerpo destino
+          <select
+            value={rosterCuerpoId}
+            onChange={(e) => setRosterCuerpoId(e.target.value)}
+            className="w-full rounded-xl border border-slate-300 dark:border-slate-700 bg-transparent px-3 py-2 text-sm"
+          >
+            <option value="">{bodies.length <= 1 ? 'Cuerpo único / Parral' : 'Seleccionar Cuerpo'}</option>
+            {bodies.map((b: any) => (
+              <option key={b.id} value={b.id}>{b.name}</option>
+            ))}
+          </select>
+        </label>
         <textarea
           value={rosterText}
           onChange={(e) => setRosterText(e.target.value)}
@@ -360,15 +398,87 @@ export default function SuperAdminImplementacionPage() {
           </label>
           <button
             type="button"
-            disabled={importUsers.isPending}
+            disabled={importUsers.isPending || (bodies.length > 1 && !rosterCuerpoId)}
             onClick={() => importUsers.mutate()}
-            className="px-4 py-2.5 rounded-xl bg-red-600 hover:bg-red-700 text-white text-sm font-black"
+            className="px-4 py-2.5 rounded-xl bg-red-600 hover:bg-red-700 text-white text-sm font-black disabled:bg-slate-400"
           >
             {importUsers.isPending ? 'Cargando…' : 'Importar nómina'}
           </button>
           <p className="text-[11px] text-slate-500">Clave inicial de todos: {password}</p>
         </div>
       </section>
+
+      <section className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl p-5 space-y-3">
+        <h2 className="text-sm font-black flex items-center gap-2"><ScrollText className="w-4 h-4 text-red-500" /> 3. Log de plataforma</h2>
+        <p className="text-xs text-slate-500">Altas de Cuerpos, nóminas y errores 500 de la API.</p>
+        <div className="overflow-x-auto max-h-80">
+          <table className="w-full text-xs">
+            <thead className="text-[10px] uppercase tracking-wider text-slate-500">
+              <tr>
+                <th className="text-left px-2 py-2">Cuando</th>
+                <th className="text-left px-2 py-2">Nivel</th>
+                <th className="text-left px-2 py-2">Origen</th>
+                <th className="text-left px-2 py-2">Cuerpo</th>
+                <th className="text-left px-2 py-2">Mensaje</th>
+              </tr>
+            </thead>
+            <tbody>
+              {(logs ?? []).length === 0 && (
+                <tr><td colSpan={5} className="px-2 py-6 text-slate-400">Sin eventos todavía</td></tr>
+              )}
+              {(logs ?? []).map((log: any) => (
+                <tr key={log.id} className="border-t border-slate-100 dark:border-slate-800">
+                  <td className="px-2 py-1.5 font-mono text-[10px] whitespace-nowrap">
+                    {new Date(log.createdAt).toLocaleString('es-CL')}
+                  </td>
+                  <td className={cn('px-2 py-1.5 font-black', log.level === 'ERROR' ? 'text-red-500' : log.level === 'WARN' ? 'text-amber-500' : 'text-slate-500')}>
+                    {log.level}
+                  </td>
+                  <td className="px-2 py-1.5">{log.source}</td>
+                  <td className="px-2 py-1.5">{log.cuerpo?.name ?? '—'}</td>
+                  <td className="px-2 py-1.5">{log.message}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      </section>
+
+      {!!status?.companiesReady?.length && (
+        <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl overflow-hidden">
+          <div className="px-4 py-3 border-b border-slate-200 dark:border-slate-800">
+            <h2 className="text-sm font-black flex items-center gap-2"><CheckCircle2 className="w-4 h-4" /> Estado por cuartel</h2>
+          </div>
+          <div className="overflow-x-auto">
+            <table className="w-full text-sm">
+              <thead className="text-[10px] uppercase tracking-wider text-slate-500">
+                <tr>
+                  <th className="text-left px-4 py-2">Cuerpo</th>
+                  <th className="text-left px-4 py-2">N°</th>
+                  <th className="text-left px-4 py-2">Compañía</th>
+                  <th className="text-left px-4 py-2">Personal</th>
+                  <th className="text-left px-4 py-2">Capitán</th>
+                  <th className="text-left px-4 py-2">Sala pública</th>
+                </tr>
+              </thead>
+              <tbody>
+                {status.companiesReady.map((c: any) => (
+                  <tr key={c.id} className="border-t border-slate-100 dark:border-slate-800">
+                    <td className="px-4 py-2 text-xs text-amber-600 dark:text-amber-400 font-bold">{c.cuerpoName}</td>
+                    <td className="px-4 py-2 font-mono font-bold">{c.number}ª</td>
+                    <td className="px-4 py-2">{c.name}</td>
+                    <td className="px-4 py-2">{c.users}</td>
+                    <td className="px-4 py-2">{c.hasCapitan ? 'Sí' : <span className="text-amber-500">Falta</span>}</td>
+                    <td className="px-4 py-2 text-xs">
+                      {c.dispatchSlug ? `/central/${c.dispatchSlug}` : '—'}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

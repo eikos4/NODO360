@@ -6,6 +6,7 @@ import {
   Camera, ImageOff, Package, ChevronRight, Search, FileDown, BookOpen,
 } from 'lucide-react';
 import { api } from '../lib/api';
+import { useAuthStore } from '../store/authStore';
 import toast from 'react-hot-toast';
 import { createElement } from 'react';
 import { CompanyReport } from '../lib/pdf/CompanyReport';
@@ -16,11 +17,12 @@ interface CompanyFormData {
   name: string; number: string; region: string; city: string;
   address: string; phone: string; email: string;
   logoUrl: string; headquartersImageUrl: string;
+  cuerpoId: string;
 }
 
 const EMPTY_FORM: CompanyFormData = {
   name: '', number: '', region: 'Metropolitana', city: '', address: '',
-  phone: '', email: '', logoUrl: '', headquartersImageUrl: '',
+  phone: '', email: '', logoUrl: '', headquartersImageUrl: '', cuerpoId: '',
 };
 
 const REGIONS = [
@@ -50,6 +52,7 @@ const ordinal = (n: number) => {
 const inpIcon = 'w-full bg-white dark:bg-slate-900 border border-slate-300 dark:border-slate-700 rounded-xl pl-10 pr-4 py-3 text-sm text-slate-900 dark:text-slate-100 placeholder-slate-400 dark:placeholder-slate-500 focus:outline-none focus:border-red-500 dark:focus:border-red-500 focus:ring-1 focus:ring-red-500 transition-all';
 
 export default function CompaniesPage() {
+  const currentUser = useAuthStore((s) => s.user);
   const qc = useQueryClient();
   const [showForm, setShowForm] = useState(false);
   const [editing, setEditing] = useState<any>(null);
@@ -65,6 +68,11 @@ export default function CompaniesPage() {
   const { data: companies, isLoading } = useQuery({
     queryKey: ['companies'],
     queryFn: () => api.get('/companies').then((r) => r.data),
+  });
+  const { data: onboarding } = useQuery({
+    queryKey: ['onboarding-status'],
+    queryFn: () => api.get('/onboarding/status').then((r) => r.data),
+    enabled: currentUser?.role === 'KODESK',
   });
 
   const createMutation = useMutation({
@@ -102,6 +110,7 @@ export default function CompaniesPage() {
       number: parseInt(form.number),
       logoUrl: form.logoUrl || undefined,
       headquartersImageUrl: form.headquartersImageUrl || undefined,
+      cuerpoId: form.cuerpoId || undefined,
     };
     editing ? updateMutation.mutate({ id: editing.id, data: payload }) : createMutation.mutate(payload);
   };
@@ -113,6 +122,7 @@ export default function CompaniesPage() {
       city: company.city, address: company.address, phone: company.phone ?? '',
       email: company.email ?? '', logoUrl: company.logoUrl ?? '',
       headquartersImageUrl: company.headquartersImageUrl ?? '',
+      cuerpoId: company.cuerpoId ?? company.cuerpo?.id ?? '',
     });
     setShowForm(true);
     setDetail(null);
@@ -126,7 +136,7 @@ export default function CompaniesPage() {
   const totalEquip = companies?.reduce((s: number, c: any) => s + (c._count?.equipment ?? 0), 0) ?? 0;
 
   const filtered = (companies ?? []).filter((c: any) =>
-    `${c.name} ${c.city} ${c.region} ${c.number}`.toLowerCase().includes(search.toLowerCase())
+    `${c.name} ${c.city} ${c.region} ${c.number} ${c.cuerpo?.name ?? ''}`.toLowerCase().includes(search.toLowerCase())
   );
 
   return (
@@ -255,6 +265,17 @@ export default function CompaniesPage() {
                   <div className="relative"><Building2 className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
                     <input value={form.name} onChange={set('name')} required placeholder="Ej: Primera Compañía 'Bomba Germania'" className={inpIcon} /></div>
                 </div>
+                {currentUser?.role === 'KODESK' && (
+                  <div className="md:col-span-2">
+                    <label className="block text-xs font-bold text-slate-600 dark:text-slate-400 mb-1.5 uppercase tracking-wider">Cuerpo *</label>
+                    <select value={form.cuerpoId} onChange={set('cuerpoId')} required className={`${inpIcon} appearance-none pl-4`}>
+                      <option value="">Seleccionar Cuerpo</option>
+                      {(onboarding?.bodies ?? []).map((b: any) => (
+                        <option key={b.id} value={b.id}>{b.name} · {b.city}</option>
+                      ))}
+                    </select>
+                  </div>
+                )}
                 <div>
                   <label className="block text-xs font-bold text-slate-600 dark:text-slate-400 mb-1.5 uppercase tracking-wider">Número de Compañía *</label>
                   <div className="relative"><Hash className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
@@ -509,6 +530,9 @@ export default function CompaniesPage() {
                     }
                   </div>
 
+                  {c.cuerpo?.name && (
+                    <p className="text-[10px] font-black uppercase tracking-wider text-amber-600 dark:text-amber-400 mb-1">{c.cuerpo.name}</p>
+                  )}
                   <h3 className="text-xl font-black text-slate-900 dark:text-white leading-snug mb-1 line-clamp-1 group-hover:text-red-600 dark:group-hover:text-red-400 transition-colors">{c.name}</h3>
                   
                   <div className="flex items-center gap-1.5 text-sm text-slate-500 dark:text-slate-400 mb-5">

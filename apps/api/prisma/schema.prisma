@@ -7,10 +7,24 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
+model Cuerpo {
+  id        String        @id @default(cuid())
+  name      String
+  city      String
+  region    String
+  phone     String?
+  slug      String        @unique
+  isActive  Boolean       @default(true)
+  createdAt DateTime      @default(now())
+  updatedAt DateTime      @updatedAt
+  companies Company[]
+  logs      PlatformLog[]
+}
+
 model Company {
   id                    String                   @id @default(cuid())
   name                  String
-  number                Int                      @unique
+  number                Int
   region                String
   city                  String
   address               String
@@ -24,6 +38,8 @@ model Company {
   dispatchSlug          String?                  @unique
   dispatchPublicEnabled Boolean                  @default(false)
   dispatchAvailable     Boolean                  @default(true)
+  cuerpoId              String
+  cuerpo                Cuerpo                   @relation(fields: [cuerpoId], references: [id], onDelete: Restrict)
   budgets               Budget[]
   drills                Drill[]
   emergencyBitacora     EmergencyBitacoraEntry[]
@@ -46,6 +62,9 @@ model Company {
   users                 User[]
   supportUsers          User[]                   @relation("UserSupportCompany")
   vehicles              Vehicle[]
+
+  @@unique([cuerpoId, number])
+  @@index([cuerpoId])
 }
 
 model User {
@@ -66,7 +85,7 @@ model User {
   isMaquinista                  Boolean                            @default(false)
   maquinistaAvailable           Boolean                            @default(false)
   maquinistaPrincipal           Boolean                            @default(false)
-  operativeNumber               Int?                               @unique
+  operativeNumber               Int?
   supportCompanyId              String?
   emergencyBitacoraEntries      EmergencyBitacoraEntry[]
   incidentTimelineEvents        IncidentTimelineEvent[]
@@ -92,7 +111,22 @@ model User {
   pushTokens                    DevicePushToken[]
   alarmDeliveries               AlarmDelivery[]
 
+  @@unique([companyId, operativeNumber])
   @@index([companyId])
+}
+
+model PlatformLog {
+  id        String   @id @default(cuid())
+  level     String
+  source    String
+  message   String
+  detail    Json?
+  cuerpoId  String?
+  cuerpo    Cuerpo?  @relation(fields: [cuerpoId], references: [id], onDelete: SetNull)
+  createdAt DateTime @default(now())
+
+  @@index([createdAt])
+  @@index([level, createdAt])
 }
 
 model DevicePushToken {

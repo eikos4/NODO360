@@ -18,8 +18,8 @@ export class UsersController {
 
   @Get()
   @Roles('SUPER_ADMIN', 'COMANDANTE', 'CAPITAN', 'OPERADOR_CENTRAL')
-  findAll(@Query('companyId') companyId?: string) {
-    return this.usersService.findAll(companyId);
+  findAll(@Query('companyId') companyId?: string, @Req() req?: any) {
+    return this.usersService.findAll(companyId, req?.user);
   }
 
   @Post('upload-photo')

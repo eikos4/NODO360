@@ -4,16 +4,36 @@ import { PARRAL_COMPANIES, PARRAL_CUERPO } from '../onboarding/parral-cuerpo';
 
 const DEMO_PASSWORD = 'Demo1234!';
 const ADMIN_PASSWORD = 'Admin1234!';
+const PARRAL_SLUG = 'bomberos-parral';
 
-/** Crea las 6 compañías de Parral si faltan. No borra ni pisa las existentes. */
+/** Crea el Cuerpo de Parral y sus 6 compañías si faltan. No borra datos. */
 export async function ensureParralCuerpo(): Promise<void> {
   const prisma = new PrismaClient();
   try {
+    const cuerpo = await prisma.cuerpo.upsert({
+      where: { slug: PARRAL_SLUG },
+      create: {
+        name: PARRAL_CUERPO.bodyName,
+        city: PARRAL_CUERPO.city,
+        region: PARRAL_CUERPO.region,
+        phone: PARRAL_CUERPO.phone,
+        slug: PARRAL_SLUG,
+      },
+      update: {
+        name: PARRAL_CUERPO.bodyName,
+        city: PARRAL_CUERPO.city,
+        region: PARRAL_CUERPO.region,
+        isActive: true,
+      },
+    });
+
     let created = 0;
     let repaired = 0;
 
     for (const spec of PARRAL_COMPANIES) {
-      const byNumber = await prisma.company.findUnique({ where: { number: spec.number } });
+      const byNumber = await prisma.company.findUnique({
+        where: { cuerpoId_number: { cuerpoId: cuerpo.id, number: spec.number } },
+      });
       if (!byNumber) {
         const slugTaken = await prisma.company.findUnique({ where: { dispatchSlug: spec.dispatchSlug } });
         await prisma.company.create({
@@ -28,6 +48,7 @@ export async function ensureParralCuerpo(): Promise<void> {
             dispatchSlug: slugTaken ? `${spec.dispatchSlug}-${spec.number}` : spec.dispatchSlug,
             dispatchPublicEnabled: true,
             dispatchAvailable: true,
+            cuerpoId: cuerpo.id,
           },
         });
         created += 1;
@@ -35,10 +56,12 @@ export async function ensureParralCuerpo(): Promise<void> {
       }
 
       const patch: {
+        cuerpoId?: string;
         dispatchSlug?: string;
         dispatchPublicEnabled?: boolean;
         dispatchAvailable?: boolean;
       } = {};
+      if (byNumber.cuerpoId !== cuerpo.id) patch.cuerpoId = cuerpo.id;
       if (!byNumber.dispatchSlug) {
         const slugTaken = await prisma.company.findUnique({ where: { dispatchSlug: spec.dispatchSlug } });
         if (!slugTaken) patch.dispatchSlug = spec.dispatchSlug;
@@ -51,14 +74,14 @@ export async function ensureParralCuerpo(): Promise<void> {
       }
     }
 
-    const usersCreated = await ensureParralPilotUsers(prisma);
+    const usersCreated = await ensureParralPilotUsers(prisma, cuerpo.id);
 
     if (created > 0 || repaired > 0 || usersCreated > 0) {
       console.log(
         `[bootstrap] Parral: ${created} compañía(s) nuevas, ${repaired} sala(s) reparadas, ${usersCreated} usuario(s) piloto`,
       );
     } else {
-      console.log('[bootstrap] Parral: 6 compañías y usuarios piloto ya presentes');
+      console.log('[bootstrap] Parral: Cuerpo + 6 compañías y usuarios piloto ya presentes');
     }
   } catch (err) {
     console.error('[bootstrap] No se pudieron asegurar las compañías de Parral:', err);
@@ -67,10 +90,9 @@ export async function ensureParralCuerpo(): Promise<void> {
   }
 }
 
-/** Crea mandos y capitanes oficiales solo si el email/RUT no existen. */
-async function ensureParralPilotUsers(prisma: PrismaClient): Promise<number> {
+async function ensureParralPilotUsers(prisma: PrismaClient, cuerpoId: string): Promise<number> {
   const companies = await prisma.company.findMany({
-    where: { number: { in: [...PARRAL_COMPANIES.map((c) => c.number)] } },
+    where: { cuerpoId, number: { in: [...PARRAL_COMPANIES.map((c) => c.number)] } },
     orderBy: { number: 'asc' },
   });
   const byNumber = new Map(companies.map((c) => [c.number, c]));
@@ -173,12 +195,7 @@ async function ensureParralPilotUsers(prisma: PrismaClient): Promise<number> {
       where: { OR: [{ email: person.email }, { rut: person.rut }] },
     });
     if (exists) continue;
-    await prisma.user.create({
-      data: {
-        ...person,
-        isActive: true,
-      },
-    });
+    await prisma.user.create({ data: { ...person, isActive: true } });
     created += 1;
   }
   return created;

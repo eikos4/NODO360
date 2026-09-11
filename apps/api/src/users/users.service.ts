@@ -1,6 +1,7 @@
 import { Injectable, NotFoundException, ConflictException, BadRequestException } from '@nestjs/common';
 import * as bcrypt from 'bcryptjs';
 import { PrismaService } from '../prisma/prisma.service';
+import { Actor, cuerpoIdForUser, isPlatformOwner } from '../common/cuerpo-scope';
 import { CreateUserDto } from './dto/create-user.dto';
 import { UpdateUserDto } from './dto/update-user.dto';
 
@@ -16,7 +17,7 @@ const USER_SELECT = {
   photoUrl: true,
   operativeNumber: true,
   createdAt: true,
-  company: { select: { id: true, name: true, number: true } },
+  company: { select: { id: true, name: true, number: true, cuerpoId: true, cuerpo: { select: { id: true, name: true } } } },
   achievements: {
     include: {
       achievement: true,
@@ -28,9 +29,14 @@ const USER_SELECT = {
 export class UsersService {
   constructor(private prisma: PrismaService) {}
 
-  async findAll(companyId?: string) {
+  async findAll(companyId?: string, actor?: Actor) {
+    const where: Record<string, unknown> = companyId ? { companyId } : {};
+    if (actor && !isPlatformOwner(actor.role) && !companyId) {
+      const cuerpoId = await cuerpoIdForUser(this.prisma, actor);
+      if (cuerpoId) where.company = { cuerpoId };
+    }
     return this.prisma.user.findMany({
-      where: companyId ? { companyId } : {},
+      where,
       select: USER_SELECT,
       orderBy: [{ operativeNumber: 'asc' }, { lastName: 'asc' }],
     });
