@@ -66,7 +66,7 @@ const ROLE_HIERARCHY = [
 ];
 
 const ROLE_LABEL: Record<string, string> = {
-  SUPER_ADMIN: 'Super Admin', COMANDANTE: 'Comandante', CAPITAN: 'Capitán',
+  KODESK: 'Kodesk', SUPER_ADMIN: 'Super Admin', COMANDANTE: 'Comandante', CAPITAN: 'Capitán',
   ENCARGADO_MATERIAL: 'Enc. Material', SECRETARIO: 'Secretario/a',
   TESORERO: 'Tesorero/a', BOMBERO: 'Bombero Operativo',
   BOMBERO_HONORARIO: 'Bombero Honorario', BOMBERO_INICIAL: 'Bombero Inicial',

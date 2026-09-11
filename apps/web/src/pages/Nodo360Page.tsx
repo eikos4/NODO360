@@ -24,7 +24,7 @@ const fmtDate = (d?: string | null) =>
 const daysUntil = (d: string) => Math.ceil((new Date(d).getTime() - Date.now()) / 86400000);
 
 const ROLE_LABELS: Record<string, string> = {
-  SUPER_ADMIN: 'S.Admin', COMANDANTE: 'Cdte.', CAPITAN: 'Capitán',
+  KODESK: 'Kodesk', SUPER_ADMIN: 'S.Admin', COMANDANTE: 'Cdte.', CAPITAN: 'Capitán',
   ENCARGADO_MATERIAL: 'Enc.Mat.', SECRETARIO: 'Secret.',
   TESORERO: 'Tesorero', BOMBERO: 'Operativo', BOMBERO_HONORARIO: 'Honorario',
   BOMBERO_INICIAL: 'Inicial', BOMBERO_PROFESIONAL: 'Profesional', AUDITOR: 'Auditor',

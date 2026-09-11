@@ -44,6 +44,7 @@ import CentralExpressPage from './pages/CentralExpressPage';
 import BomberoEmergencyPage from './pages/BomberoEmergencyPage';
 import CompanyPublicProfilePage from './pages/CompanyPublicProfilePage';
 import Vision360CuartelesPage from './pages/Vision360CuartelesPage';
+import SuperAdminImplementacionPage from './pages/SuperAdminImplementacionPage';
 
 function PrivateRoute({ children }: { children: React.ReactNode }) {
   const hydrated = useAuthHydrated();
@@ -88,6 +89,7 @@ export default function App() {
         }
       >
         <Route path="dashboard" element={<DashboardPage />} />
+        <Route path="implementacion" element={<SuperAdminImplementacionPage />} />
         <Route path="companies" element={<CompaniesPage />} />
         <Route path="users" element={<UsersPage />} />
         <Route path="inventory" element={<InventoryPage />} />

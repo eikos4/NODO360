@@ -917,6 +917,7 @@ model Vaccination {
 }
 
 enum Role {
+  KODESK
   SUPER_ADMIN
   COMANDANTE
   CAPITAN

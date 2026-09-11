@@ -5,7 +5,8 @@ services:
     name: nodo360-api
     runtime: node
     region: oregon
-    plan: free
+    plan: starter
+    healthCheckPath: /api/ping
     rootDir: .
     buildCommand: >-
       npm install &&
@@ -28,7 +29,7 @@ services:
       - key: AUTO_SEED_DEMO
         value: "true"
       - key: FRONTEND_URL
-        value: https://nodo360-web.onrender.com
+        value: https://nodo360.net,https://www.nodo360.net,https://nodo360-web.onrender.com
       - key: CLOUDINARY_CLOUD_NAME
         sync: false
       - key: CLOUDINARY_API_KEY
@@ -68,7 +69,7 @@ services:
 
 databases:
   - name: nodo360-db
-    plan: free
+    plan: basic-256mb
     region: oregon
     databaseName: nodo360
     user: nodo360

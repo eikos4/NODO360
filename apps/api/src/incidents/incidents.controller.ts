@@ -20,7 +20,7 @@ export class IncidentsController {
 
   @Get('stats')
   getStats(@Req() req: { user: IncidentAuthUser }, @Query('companyId') companyId?: string) {
-    if (req.user.role !== 'SUPER_ADMIN') {
+    if (req.user.role !== 'SUPER_ADMIN' && req.user.role !== 'KODESK') {
       this.service.assertCanCreateFor(companyId ?? req.user.companyId ?? '', req.user);
       return this.service.getStats(req.user.companyId!);
     }

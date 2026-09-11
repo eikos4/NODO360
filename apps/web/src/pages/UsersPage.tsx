@@ -14,6 +14,7 @@ import { downloadPdf } from '../lib/pdf/usePdfDownload';
 import FirefighterAvatar from '../components/FirefighterAvatar';
 import RoleBadge from '../components/RoleBadge';
 import { ROLES, roleInfo } from '../lib/roles';
+import { useAuthStore } from '../store/authStore';
 
 const ICON_MAP: Record<string, any> = {
   Siren, Moon, Shield, Zap, Medal, Trophy
@@ -37,6 +38,8 @@ const EMPTY_FORM: UserFormData = {
 };
 
 export default function UsersPage() {
+  const currentUser = useAuthStore((s) => s.user);
+  const assignableRoles = ROLES.filter((r) => r.value !== 'KODESK' || currentUser?.role === 'KODESK');
   const qc = useQueryClient();
   const [showForm, setShowForm] = useState(false);
   const [editing, setEditing] = useState<any>(null);
@@ -273,7 +276,7 @@ export default function UsersPage() {
                 <Shield className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-slate-500" />
                 <select value={form.role} onChange={set('role')}
                   className="w-full bg-slate-800 border border-slate-700 rounded-xl pl-9 pr-3 py-2.5 text-sm text-slate-100 focus:outline-none focus:border-red-500 focus:ring-1 focus:ring-red-500/50 transition-all appearance-none">
-                  {ROLES.map(r => <option key={r.value} value={r.value}>{r.label}</option>)}
+                  {assignableRoles.map(r => <option key={r.value} value={r.value}>{r.label}</option>)}
                 </select>
               </div>
             </div>
@@ -333,7 +336,7 @@ export default function UsersPage() {
           <select value={filterRole} onChange={e => setFilterRole(e.target.value)}
             className="bg-slate-900 border border-slate-800 rounded-xl pl-9 pr-4 py-2 text-sm text-slate-300 focus:outline-none focus:border-red-500 transition-all appearance-none">
             <option value="">Todos los roles</option>
-            {ROLES.map(r => <option key={r.value} value={r.value}>{r.label}</option>)}
+            {assignableRoles.map(r => <option key={r.value} value={r.value}>{r.label}</option>)}
           </select>
         </div>
         <div className="relative">

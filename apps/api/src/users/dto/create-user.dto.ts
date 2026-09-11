@@ -1,6 +1,7 @@
 import { IsEmail, IsEnum, IsInt, IsNotEmpty, IsOptional, IsString, Max, Min, MinLength } from 'class-validator';
 
 export enum Role {
+  KODESK = 'KODESK',
   SUPER_ADMIN = 'SUPER_ADMIN',
   COMANDANTE = 'COMANDANTE',
   CAPITAN = 'CAPITAN',

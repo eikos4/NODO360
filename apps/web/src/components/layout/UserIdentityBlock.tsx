@@ -4,6 +4,7 @@ import { useAuthStore } from '../../store/authStore';
 import { useAuthCompany } from '../../hooks/useAuthCompany';
 
 const ROLE_LABELS: Record<string, string> = {
+  KODESK: 'Kodesk · Plataforma',
   SUPER_ADMIN: 'Super Administrador',
   COMANDANTE: 'Comandante',
   CAPITAN: 'Capitán / Oficial',

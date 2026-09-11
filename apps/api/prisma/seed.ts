@@ -195,6 +195,18 @@ async function main() {
 
   const pwd = await hash('Demo1234!');
   const pwdAdmin = await hash('Admin1234!');
+  const pwdKodesk = await hash('Kodesk360!');
+
+  await prisma.user.create({
+    data: {
+      rut: '77.111.222-3',
+      firstName: 'Kodesk',
+      lastName: 'Platform',
+      email: 'nodo360@kodesk.cl',
+      passwordHash: pwdKodesk,
+      role: 'KODESK',
+    },
+  });
 
   const superAdmin = await prisma.user.create({
     data: {
@@ -1008,6 +1020,7 @@ async function main() {
   console.log('  Central: Dieciocho 685 — Vista pública: /central/bomberos-parral');
   console.log('  Compañías: 1ª–3ª urbanas | 4ª periférica | 5ª Catillo | 6ª Remulcao');
   console.log('──────────────────────────────────────────────────');
+  console.log('  KODESK:        nodo360@kodesk.cl          /  Kodesk360!  → /implementacion');
   console.log('  SUPER ADMIN:   admin@nodo360.cl           /  Admin1234!');
   console.log('  COMANDANTE:    gonzalez@bomberosparral.cl /  Demo1234!');
   console.log('  CAPITÁN:       martinez@bomberosparral.cl /  Demo1234!');

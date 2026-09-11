@@ -35,6 +35,7 @@ import { StorageModule } from './storage/storage.module';
 import { PingModule } from './ping/ping.module';
 import { RadioModule } from './radio/radio.module';
 import { NotificationsModule } from './notifications/notifications.module';
+import { OnboardingModule } from './onboarding/onboarding.module';
 import * as Joi from 'joi';
 
 @Module({
@@ -90,6 +91,7 @@ import * as Joi from 'joi';
     PingModule,
     RadioModule,
     NotificationsModule,
+    OnboardingModule,
   ],
   providers: [
     {

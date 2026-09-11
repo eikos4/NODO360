@@ -4,7 +4,7 @@ import {
   LayoutDashboard, Building2, Users, Package,
   Truck, FileText, ShieldAlert, Wrench, DollarSign,
   Flame, Bell, ShoppingCart, Zap, Gauge, Network, Siren, Megaphone, Droplets, Shield, HandCoins, Signpost,
-  GraduationCap, Map, BookOpen, ClipboardCheck, Fuel, HeartPulse, PanelLeftClose, PanelLeft, Radio, Globe, Eye
+  GraduationCap, Map, BookOpen, ClipboardCheck, Fuel, HeartPulse, PanelLeftClose, PanelLeft, Radio, Globe, Eye, Crown
 } from 'lucide-react';
 import { useAuthStore } from '../../store/authStore';
 import { cn } from '../../lib/utils';
@@ -16,6 +16,7 @@ const SIDEBAR_COMPACT_KEY = 'nodo360_sidebar_compact';
 
 export type NavItem = { to: string; label: string; icon: React.ElementType; roles: string[]; soon?: boolean };
 export const navItems: NavItem[] = [
+  { to: '/implementacion', label: 'Kodesk Console', icon: Crown, roles: ['KODESK'] },
   { to: '/emergencia-respuesta', label: 'Mi emergencia', icon: Siren, roles: ['SUPER_ADMIN', 'COMANDANTE', 'CAPITAN', 'BOMBERO', 'BOMBERO_HONORARIO', 'BOMBERO_INICIAL', 'BOMBERO_PROFESIONAL', 'ENCARGADO_MATERIAL'] },
   { to: '/nodo360',    label: 'NODO360',      icon: Zap,             roles: ['ALL'] },
   { to: '/central-operativa', label: 'Central en vivo', icon: Radio, roles: ['OPERADOR_CENTRAL', 'SUPER_ADMIN', 'COMANDANTE', 'CAPITAN'] },
@@ -68,7 +69,7 @@ export default function Sidebar({ onStartTour: _onStartTour }: SidebarProps) {
   }, [compact]);
 
   const visibleItems = navItems.filter(
-    (item) => item.roles.includes('ALL') || item.roles.includes(role)
+    (item) => role === 'KODESK' || item.roles.includes('ALL') || item.roles.includes(role)
   );
 
   const companias360After =

@@ -52,8 +52,10 @@ export default function LoginPage() {
     } catch (err) {
       if (!axios.isAxiosError(err) || !err.response) {
         toast.error(
-          'No se pudo conectar con el servidor. En Render free la API puede tardar ~30 s en despertar — espera e intenta de nuevo.',
-          { duration: 6000 },
+          window.location.host.startsWith('www.')
+            ? 'El login desde www está bloqueado por CORS. En Render → nodo360-api → FRONTEND_URL agregá https://www.nodo360.net y hacé Restart.'
+            : 'No se pudo conectar con la API. Verificá que nodo360-api esté en plan Starter y FRONTEND_URL incluya este dominio.',
+          { duration: 8000 },
         );
       } else if (err.response.status === 401) {
         toast.error('Credenciales incorrectas o usuario no existe en la base de datos');

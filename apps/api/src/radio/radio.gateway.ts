@@ -12,6 +12,7 @@ import { JwtService } from '@nestjs/jwt';
 import { Server, Socket } from 'socket.io';
 import { PrismaService } from '../prisma/prisma.service';
 import { RadioService, RadioTransmission } from './radio.service';
+import { isAllowedCorsOrigin } from '../common/cors-origins';
 
 type SocketUser = {
   userId: string;
@@ -26,14 +27,7 @@ type SocketUser = {
   namespace: '/radio',
   cors: {
     origin: (origin, cb) => {
-      const allowed = [
-        'http://localhost:5173',
-        'http://localhost:5174',
-        ...(process.env.FRONTEND_URL
-          ? process.env.FRONTEND_URL.split(',').map((o) => o.trim().replace(/\/$/, ''))
-          : []),
-      ];
-      if (!origin || allowed.includes(origin)) return cb(null, true);
+      if (isAllowedCorsOrigin(origin)) return cb(null, true);
       return cb(null, false);
     },
     credentials: true,
@@ -110,7 +104,7 @@ export class RadioGateway implements OnGatewayConnection, OnGatewayDisconnect {
   }
 
   private canAccessChannel(user: SocketUser, channelId: string): boolean {
-    if (user.role === 'SUPER_ADMIN' || user.role === 'COMANDANTE' || user.role === 'OPERADOR_CENTRAL') {
+    if (user.role === 'KODESK' || user.role === 'SUPER_ADMIN' || user.role === 'COMANDANTE' || user.role === 'OPERADOR_CENTRAL') {
       return true;
     }
     if (channelId.startsWith('company:')) {

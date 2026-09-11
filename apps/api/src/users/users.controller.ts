@@ -1,4 +1,4 @@
-import { Controller, Get, Post, Put, Param, Body, Query, UseGuards, Delete, UseInterceptors, UploadedFile, BadRequestException, Req } from '@nestjs/common';
+import { Controller, Get, Post, Put, Param, Body, Query, UseGuards, Delete, UseInterceptors, UploadedFile, BadRequestException, ForbiddenException, Req } from '@nestjs/common';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { RolesGuard } from '../auth/guards/roles.guard';
 import { Roles } from '../auth/decorators/roles.decorator';
@@ -40,13 +40,19 @@ export class UsersController {
 
   @Post()
   @Roles('SUPER_ADMIN', 'COMANDANTE')
-  create(@Body() dto: CreateUserDto) {
+  create(@Body() dto: CreateUserDto, @Req() req: any) {
+    if (dto.role === 'KODESK' && req.user?.role !== 'KODESK') {
+      throw new ForbiddenException('El perfil Kodesk solo lo asigna Kodesk');
+    }
     return this.usersService.create(dto);
   }
 
   @Put(':id')
   @Roles('SUPER_ADMIN', 'COMANDANTE')
-  update(@Param('id') id: string, @Body() dto: UpdateUserDto) {
+  update(@Param('id') id: string, @Body() dto: UpdateUserDto, @Req() req: any) {
+    if (dto.role === 'KODESK' && req.user?.role !== 'KODESK') {
+      throw new ForbiddenException('El perfil Kodesk solo lo asigna Kodesk');
+    }
     return this.usersService.update(id, dto);
   }
 

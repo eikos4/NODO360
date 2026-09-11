@@ -1,7 +1,7 @@
 import type { LucideIcon } from 'lucide-react';
 import {
   Award, Briefcase, Flame, GraduationCap, Shield, ShieldAlert,
-  Radio, Package, BookOpen, Wallet, Search,
+  Radio, Package, BookOpen, Wallet, Search, Crown,
 } from 'lucide-react';
 
 export const BOMBERO_ROLES = [
@@ -28,6 +28,7 @@ export type RoleMeta = {
 };
 
 export const ROLES: RoleMeta[] = [
+  { value: 'KODESK', label: 'Kodesk · Dueño de plataforma', short: 'Kodesk', color: 'from-zinc-800 to-black', badge: 'bg-zinc-900/90 text-amber-300 border-amber-500/40', icon: Crown, iconClass: 'text-amber-400' },
   { value: 'SUPER_ADMIN', label: 'Super Administrador', short: 'S.Admin', color: 'from-red-600 to-red-800', badge: 'bg-red-600/15 text-red-700 dark:bg-red-600/20 dark:text-red-400 border-red-600/25', icon: ShieldAlert, iconClass: 'text-red-500 dark:text-red-400' },
   { value: 'COMANDANTE', label: 'Comandante', short: 'Cdte.', color: 'from-orange-600 to-orange-800', badge: 'bg-orange-600/15 text-orange-800 dark:bg-orange-600/20 dark:text-orange-400 border-orange-600/25', icon: Shield, iconClass: 'text-orange-600 dark:text-orange-400' },
   { value: 'CAPITAN', label: 'Capitán / Oficial Operativo', short: 'Capitán', color: 'from-yellow-600 to-yellow-800', badge: 'bg-yellow-500/15 text-yellow-800 dark:bg-yellow-600/20 dark:text-yellow-400 border-yellow-600/25', icon: Shield, iconClass: 'text-yellow-600 dark:text-yellow-400' },

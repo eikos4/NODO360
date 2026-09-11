@@ -7,6 +7,7 @@ import { Logger } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
 import { Server, Socket } from 'socket.io';
 import { PrismaService } from '../prisma/prisma.service';
+import { isAllowedCorsOrigin } from '../common/cors-origins';
 import {
   EMERGENCY_SOCKET_NAMESPACE,
   EmergencyEventEnvelope,
@@ -18,14 +19,7 @@ const roomForCompany = (companyId: string) => `emergency:company:${companyId}`;
   namespace: EMERGENCY_SOCKET_NAMESPACE,
   cors: {
     origin: (origin, callback) => {
-      const allowed = [
-        'http://localhost:5173',
-        'http://localhost:5174',
-        ...(process.env.FRONTEND_URL
-          ? process.env.FRONTEND_URL.split(',').map((value) => value.trim().replace(/\/$/, ''))
-          : []),
-      ];
-      callback(null, !origin || allowed.includes(origin));
+      callback(null, isAllowedCorsOrigin(origin));
     },
     credentials: true,
   },
@@ -66,7 +60,7 @@ export class EmergencyGateway implements OnGatewayConnection {
       if (!user?.isActive) return client.disconnect(true);
 
       let companyIds: string[];
-      if (user.role === 'SUPER_ADMIN') {
+      if (user.role === 'SUPER_ADMIN' || user.role === 'KODESK') {
         const companies = await this.prisma.company.findMany({
           where: { isActive: true },
           select: { id: true },

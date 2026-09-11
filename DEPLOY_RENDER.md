@@ -30,7 +30,17 @@ Si el login falla tras un deploy, verifica en el panel de Render:
 1. **nodo360-api** → *Logs* → busca `[bootstrap] Seed demo completado` o `Usuarios existentes`
 2. **nodo360-web** → *Environment* → `VITE_API_URL` debe ser `https://TU-API.onrender.com/api` (sin barra final)
 3. **nodo360-api** → *Environment* → `FRONTEND_URL` debe coincidir exactamente con la URL del static site
-4. Redeploy manual de **nodo360-api** (botón *Manual Deploy*) y espera ~1 min — el plan free tarda en despertar
+4. Redeploy manual de **nodo360-api** (botón *Manual Deploy*)
+
+### Siempre encendida (producción)
+
+El plan **Free** de la API se duerme a los ~15 min. Para que el login no pida esperar:
+
+1. [dashboard.render.com](https://dashboard.render.com) → **nodo360-api** → **Settings** → **Instance Type** → **Starter** (~USD 7/mes)
+2. **nodo360-db** → **Settings** → sube a **Basic-256mb** (~USD 6/mes). El Postgres Free **caduca a los 30 días**
+3. Agrega tarjeta en **Billing**. El static site (`nodo360-web`) puede seguir en Free
+
+Costo piso: ~USD 13/mes. Sin esto, Central no es 24/7.
 
 ---
 

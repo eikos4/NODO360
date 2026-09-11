@@ -6,12 +6,13 @@ import {
   CheckCircle2, Siren, ChevronRight, LayoutDashboard,
   CalendarCheck, FileText, ShoppingCart,
   Wallet, Wrench, FlameKindling, BarChart3,
-  TrendingUp, MapPin, Activity, Bell, BookOpen, ClipboardCheck, Fuel,
+  TrendingUp, MapPin, Activity, Bell, BookOpen, ClipboardCheck, Fuel, Rocket,
 } from 'lucide-react';
 import { api } from '../lib/api';
 import { useAuthStore } from '../store/authStore';
 
 const ROLE_LABELS: Record<string, string> = {
+  KODESK: 'Kodesk · Plataforma',
   SUPER_ADMIN: 'Super Administrador',
   COMANDANTE: 'Comandante',
   CAPITAN: 'Capitán / Oficial Operativo',
@@ -26,6 +27,11 @@ const ROLE_LABELS: Record<string, string> = {
 };
 
 const ROLE_MODULES: Record<string, { label: string; path: string; icon: React.ElementType; color: string; desc: string }[]> = {
+  KODESK: [
+    { label: 'Kodesk Console', path: '/implementacion', icon: Rocket, color: 'text-amber-400', desc: 'Crear Cuerpos, cuarteles y nóminas CSV' },
+    { label: 'Compañías', path: '/companies', icon: Building2, color: 'text-blue-400', desc: 'Todas las compañías de la plataforma' },
+    { label: 'Personal', path: '/users', icon: Users, color: 'text-emerald-400', desc: 'Nómina global' },
+  ],
   SUPER_ADMIN: [
     { label: 'Compañías', path: '/companies', icon: Building2, color: 'text-blue-400', desc: 'Gestionar todas las compañías' },
     { label: 'Usuarios', path: '/users', icon: Users, color: 'text-emerald-400', desc: 'Administrar personal y roles' },

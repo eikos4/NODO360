@@ -10,9 +10,12 @@ import { AppModule } from './app.module';
 import { HttpAdapterHost } from '@nestjs/core';
 import { PrismaClientExceptionFilter } from './prisma/prisma-client-exception.filter';
 import { ensureDemoDatabaseSeeded } from './bootstrap/ensure-demo-seed';
+import { ensureKodeskOwner } from './bootstrap/ensure-kodesk-owner';
+import { getAllowedCorsOrigins } from './common/cors-origins';
 
 async function bootstrap() {
   await ensureDemoDatabaseSeeded();
+  await ensureKodeskOwner();
   const app = await NestFactory.create<NestExpressApplication>(AppModule);
   app.use(helmet({ crossOriginResourcePolicy: { policy: "cross-origin" } }));
   app.use(compression());
@@ -20,14 +23,7 @@ async function bootstrap() {
   const uploadsDir = join(process.cwd(), 'uploads');
   if (!existsSync(uploadsDir)) mkdirSync(uploadsDir, { recursive: true });
 
-  const corsOrigins = [
-    'http://localhost:5173',
-    'http://localhost:5174',
-    'http://localhost:5175',
-    'http://localhost:5176',
-    ...(process.env.FRONTEND_URL ? process.env.FRONTEND_URL.split(',').map((o) => o.trim().replace(/\/$/, '')) : []),
-  ];
-  app.enableCors({ origin: corsOrigins, credentials: true });
+  app.enableCors({ origin: getAllowedCorsOrigins(), credentials: true });
   app.setGlobalPrefix('api');
   app.useGlobalPipes(new ValidationPipe({ whitelist: true, transform: true }));
 

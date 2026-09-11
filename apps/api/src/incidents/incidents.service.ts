@@ -64,7 +64,7 @@ export class IncidentsService {
   }
 
   async findAllAuthorized(user: IncidentAuthUser, requestedCompanyId?: string) {
-    if (user.role === 'SUPER_ADMIN') return this.findAll(requestedCompanyId);
+    if (user.role === 'SUPER_ADMIN' || user.role === 'KODESK') return this.findAll(requestedCompanyId);
     if (!user.companyId) throw new ForbiddenException('Usuario sin compañía asignada');
     if (requestedCompanyId && requestedCompanyId !== user.companyId) {
       throw new ForbiddenException('No puede consultar incidentes de otra compañía');
@@ -83,7 +83,7 @@ export class IncidentsService {
   }
 
   async findByIdAuthorized(id: string, user: IncidentAuthUser) {
-    if (user.role !== 'SUPER_ADMIN') {
+    if (user.role !== 'SUPER_ADMIN' && user.role !== 'KODESK') {
       if (!user.companyId) throw new ForbiddenException('Usuario sin compañía asignada');
       const permitted = await this.prisma.incident.findFirst({
         where: {
@@ -101,7 +101,7 @@ export class IncidentsService {
   }
 
   async assertCanManage(id: string, user: IncidentAuthUser) {
-    if (user.role === 'SUPER_ADMIN') return;
+    if (user.role === 'SUPER_ADMIN' || user.role === 'KODESK') return;
     if (!user.companyId) throw new ForbiddenException('Usuario sin compañía asignada');
     const owned = await this.prisma.incident.findFirst({
       where: { id, companyId: user.companyId },
@@ -111,7 +111,7 @@ export class IncidentsService {
   }
 
   assertCanCreateFor(companyId: string, user: IncidentAuthUser) {
-    if (user.role !== 'SUPER_ADMIN' && user.companyId !== companyId) {
+    if (user.role !== 'SUPER_ADMIN' && user.role !== 'KODESK' && user.companyId !== companyId) {
       throw new ForbiddenException('No puede despachar para otra compañía');
     }
   }

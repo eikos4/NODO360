@@ -20,7 +20,12 @@ export function isCentralOperator(role?: string | null) {
   return role === OPERADOR_CENTRAL_ROLE;
 }
 
+export function isKodesk(role?: string | null) {
+  return role === 'KODESK';
+}
+
 export function getDefaultRouteForRole(role?: string | null) {
+  if (isKodesk(role)) return '/implementacion';
   if (isCentralOperator(role)) return '/despacho360';
   if (role === 'BOMBERO' || role === 'BOMBERO_HONORARIO' || role === 'BOMBERO_INICIAL' || role === 'BOMBERO_PROFESIONAL') {
     return '/emergencia-respuesta';
