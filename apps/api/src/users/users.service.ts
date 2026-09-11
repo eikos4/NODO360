@@ -16,6 +16,8 @@ const USER_SELECT = {
   isActive: true,
   photoUrl: true,
   operativeNumber: true,
+  stationAvailable: true,
+  stationAvailableAt: true,
   createdAt: true,
   company: { select: { id: true, name: true, number: true, cuerpoId: true, cuerpo: { select: { id: true, name: true } } } },
   achievements: {
@@ -53,6 +55,30 @@ export class UsersService {
 
   async findByEmail(email: string) {
     return this.prisma.user.findUnique({ where: { email } });
+  }
+
+  async findByLogin(identifier: string) {
+    const raw = identifier.trim();
+    if (!raw) return null;
+
+    const byEmail = await this.prisma.user.findFirst({
+      where: { email: { equals: raw.toLowerCase(), mode: 'insensitive' } },
+    });
+    if (byEmail) return byEmail;
+
+    const exactRut = await this.prisma.user.findFirst({ where: { rut: raw } });
+    if (exactRut) return exactRut;
+
+    const rutNorm = raw.replace(/[^0-9kK]/g, '').toUpperCase();
+    if (rutNorm.length < 7) return null;
+
+    const matches = await this.prisma.$queryRaw<Array<{ id: string }>>`
+      SELECT id FROM "User"
+      WHERE upper(regexp_replace(rut, '[^0-9Kk]', '', 'g')) = ${rutNorm}
+      LIMIT 1
+    `;
+    if (!matches[0]) return null;
+    return this.prisma.user.findUnique({ where: { id: matches[0].id } });
   }
 
   private async assertOperativeNumber(

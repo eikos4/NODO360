@@ -66,10 +66,13 @@ export function useEmergencySync(enabled: boolean) {
     if (!queue.length) return;
     setConnection('syncing');
     queue = await flushResponseQueue(queue, async (item) => {
+        const path = item.action === 'mark-location'
+          ? `/emergency-response/${item.incidentId}/mark-location`
+          : `/emergency-response/${item.incidentId}/respond`;
         await api.post(
-          `/emergency-response/${item.incidentId}/respond`,
+          path,
           {
-            status: item.status,
+            ...(item.action === 'mark-location' ? {} : { status: item.status }),
             latitude: item.latitude,
             longitude: item.longitude,
             idempotencyKey: item.id,
@@ -92,17 +95,64 @@ export function useEmergencySync(enabled: boolean) {
       id: crypto.randomUUID(),
       incidentId,
       status,
+      action: 'respond',
       ...position,
       createdAt: new Date().toISOString(),
       attempts: 0,
     };
     const queue = await localStore.getQueue();
     await localStore.setQueue(replacePendingResponse(queue, item));
-    setPendingCount(queue.filter((entry) => entry.incidentId !== incidentId).length + 1);
+    setPendingCount(replacePendingResponse(queue, item).length);
+    setSnapshot((current) => current ? {
+      ...current,
+      incidents: current.incidents.map((incident) => {
+        if (incident.id !== incidentId) return incident;
+        const prev = incident.myResponse?.status;
+        const goingDelta = (status === 'GOING' && prev !== 'GOING' ? 1 : 0) - (prev === 'GOING' && status !== 'GOING' ? 1 : 0);
+        const onSceneDelta = (status === 'ON_SCENE' && prev !== 'ON_SCENE' ? 1 : 0) - (prev === 'ON_SCENE' && status !== 'ON_SCENE' ? 1 : 0);
+        const notGoingDelta = (status === 'NOT_GOING' && prev !== 'NOT_GOING' ? 1 : 0) - (prev === 'NOT_GOING' && status !== 'NOT_GOING' ? 1 : 0);
+        const holdDelta = (status === 'NOT_AVAILABLE' && prev !== 'NOT_AVAILABLE' ? 1 : 0) - (prev === 'NOT_AVAILABLE' && status !== 'NOT_AVAILABLE' ? 1 : 0);
+        return {
+          ...incident,
+          myResponse: { status, statusLabel: current.statusLabels[status] || status },
+          teamSummary: {
+            ...incident.teamSummary,
+            going: Math.max(0, incident.teamSummary.going + goingDelta),
+            onScene: Math.max(0, incident.teamSummary.onScene + onSceneDelta),
+            notGoing: Math.max(0, incident.teamSummary.notGoing + notGoingDelta),
+            notAvailable: Math.max(0, incident.teamSummary.notAvailable + holdDelta),
+          },
+        };
+      }),
+    } : current);
+    if (navigator.onLine) await flushQueue();
+  }, [flushQueue]);
+
+  const markLocation = useCallback(async (
+    incidentId: string,
+    position: { latitude: number; longitude: number },
+  ) => {
+    const item: QueuedResponse = {
+      id: crypto.randomUUID(),
+      incidentId,
+      status: 'ON_SCENE',
+      action: 'mark-location',
+      ...position,
+      createdAt: new Date().toISOString(),
+      attempts: 0,
+    };
+    const queue = await localStore.getQueue();
+    await localStore.setQueue(replacePendingResponse(queue, item));
+    setPendingCount(replacePendingResponse(queue, item).length);
     setSnapshot((current) => current ? {
       ...current,
       incidents: current.incidents.map((incident) => incident.id === incidentId
-        ? { ...incident, myResponse: { status, statusLabel: current.statusLabels[status] || status } }
+        ? {
+            ...incident,
+            fieldGps: { latitude: position.latitude, longitude: position.longitude, confirmedAt: new Date().toISOString() },
+            mapLat: position.latitude,
+            mapLng: position.longitude,
+          }
         : incident),
     } : current);
     if (navigator.onLine) await flushQueue();
@@ -180,6 +230,7 @@ export function useEmergencySync(enabled: boolean) {
     lastError,
     refresh,
     respond,
+    markLocation,
     markNotification,
   };
 }

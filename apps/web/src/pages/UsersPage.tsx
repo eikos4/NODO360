@@ -195,8 +195,12 @@ export default function UsersPage() {
                 <Users className="w-5 h-5 text-red-400" />
               </div>
               <div>
-                <h2 className="text-sm font-bold text-white">{editing ? 'Editar bombero' : 'Registrar nuevo bombero'}</h2>
-                <p className="text-xs text-slate-500">Completa la información del personal</p>
+                <h2 className="text-sm font-bold text-white">{editing ? 'Editar perfil' : 'Registrar nuevo perfil'}</h2>
+                <p className="text-xs text-slate-500">
+                  {form.role === 'OPERADOR_CENTRAL'
+                    ? 'Centralista: queda vinculada a la sala de radio (Despacho360, Central en vivo, bitácora).'
+                    : 'Completa la información del personal'}
+                </p>
               </div>
             </div>
             <button onClick={reset} className="p-1.5 text-slate-500 hover:text-slate-300 hover:bg-slate-800 rounded-lg transition-colors">
@@ -308,7 +312,11 @@ export default function UsersPage() {
                   className="w-full bg-slate-800 border border-slate-700 rounded-xl pl-9 pr-3 py-2.5 text-sm text-slate-100 placeholder-slate-600 focus:outline-none focus:border-red-500 focus:ring-1 focus:ring-red-500/50 transition-all"
                 />
               </div>
-              <p className="text-[10px] text-slate-600 mt-1">Único por compañía · visible en sala pública</p>
+              <p className="text-[10px] text-slate-600 mt-1">
+                {form.role === 'OPERADOR_CENTRAL'
+                  ? 'La centralista opera todo el Cuerpo. Elegí una compañía del Cuerpo para vincularla a la sala de radio.'
+                  : 'Único por compañía · visible en sala pública'}
+              </p>
             </div>
 
             </div>

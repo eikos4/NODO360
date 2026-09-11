@@ -6,6 +6,7 @@ import {
   Patch,
   Post,
   Query,
+  Req,
   UseGuards,
 } from '@nestjs/common';
 import { DispatchCentralService } from './dispatch-central.service';
@@ -13,6 +14,7 @@ import { UpdateDispatchCentralDto } from './dto/update-dispatch-central.dto';
 import { ToggleStationAvailabilityDto } from './dto/toggle-station-availability.dto';
 import { ToggleByOperativeNumberDto } from './dto/toggle-by-operative-number.dto';
 import { ToggleMaquinistaDto } from './dto/toggle-maquinista.dto';
+import { ToggleMyAvailabilityDto } from './dto/toggle-my-availability.dto';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { RolesGuard } from '../auth/guards/roles.guard';
 import { Roles } from '../auth/decorators/roles.decorator';
@@ -66,6 +68,15 @@ export class DispatchCentralController {
       available: dto.available,
       principal: dto.principal,
     });
+  }
+
+  @Patch('me/availability')
+  @UseGuards(JwtAuthGuard)
+  toggleMine(
+    @Body() dto: ToggleMyAvailabilityDto,
+    @Req() req: { user: { id: string } },
+  ) {
+    return this.service.toggleMyStationAvailability(req.user.id, dto.available);
   }
 
   @Get('central/:companyId/roster')

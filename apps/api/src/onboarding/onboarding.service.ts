@@ -5,24 +5,35 @@ import { PrismaService } from '../prisma/prisma.service';
 import { PlatformLogService } from '../platform/platform-log.service';
 import { ProvisionCuerpoDto } from './dto/provision-cuerpo.dto';
 import { ImportUsersDto } from './dto/import-users.dto';
+import { CreateCentralistasDto } from './dto/create-centralistas.dto';
+import { AddCompanyDto } from './dto/add-company.dto';
+import { mergeDuplicateCuerpos } from './dedupe-cuerpos';
 import { PARRAL_COMPANIES, PARRAL_CUERPO } from './parral-cuerpo';
 
 const DEFAULT_PASSWORD = 'Demo1234!';
 
 const ROLE_ALIASES: Record<string, Role> = {
   SUPER_ADMIN: Role.SUPER_ADMIN,
+  SUPER_ADMINISTRADOR: Role.SUPER_ADMIN,
   ADMIN: Role.SUPER_ADMIN,
   COMANDANTE: Role.COMANDANTE,
   CDTE: Role.COMANDANTE,
   CAPITAN: Role.CAPITAN,
   CAPITÁN: Role.CAPITAN,
+  OFICIAL_OPERATIVO: Role.CAPITAN,
   OPERADOR_CENTRAL: Role.OPERADOR_CENTRAL,
+  OPERADOR_CENTRAL_DE_DESPACHO: Role.OPERADOR_CENTRAL,
   CENTRAL: Role.OPERADOR_CENTRAL,
+  CENTRALISTA: Role.OPERADOR_CENTRAL,
+  CENTRALISTAS: Role.OPERADOR_CENTRAL,
+  SALA_DE_RADIO: Role.OPERADOR_CENTRAL,
   ENCARGADO_MATERIAL: Role.ENCARGADO_MATERIAL,
+  ENCARGADO_MATERIAL_MAYOR: Role.ENCARGADO_MATERIAL,
   MATERIAL: Role.ENCARGADO_MATERIAL,
   SECRETARIO: Role.SECRETARIO,
   TESORERO: Role.TESORERO,
   BOMBERO: Role.BOMBERO,
+  BOMBERO_OPERATIVO: Role.BOMBERO,
   BOMBERO_HONORARIO: Role.BOMBERO_HONORARIO,
   HONORARIO: Role.BOMBERO_HONORARIO,
   BOMBERO_INICIAL: Role.BOMBERO_INICIAL,
@@ -30,6 +41,9 @@ const ROLE_ALIASES: Record<string, Role> = {
   BOMBERO_PROFESIONAL: Role.BOMBERO_PROFESIONAL,
   PROFESIONAL: Role.BOMBERO_PROFESIONAL,
   AUDITOR: Role.AUDITOR,
+  I: Role.BOMBERO_INICIAL,
+  HONORARIO_BOMBERO_OPERATIVO: Role.BOMBERO_HONORARIO,
+  HONORARIO_BOMBERO: Role.BOMBERO_HONORARIO,
 };
 
 function slugify(value: string) {
@@ -44,8 +58,18 @@ function slugify(value: string) {
 
 function parseRole(raw?: string): Role {
   if (!raw) return Role.BOMBERO;
-  const key = raw.trim().toUpperCase().replace(/\s+/g, '_');
+  const key = raw
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .trim()
+    .toUpperCase()
+    .replace(/[\/|-]+/g, ' ')
+    .replace(/\s+/g, '_');
   if (key === 'KODESK') return Role.BOMBERO;
+  if (key.includes('HONORARIO')) return Role.BOMBERO_HONORARIO;
+  if (key === 'I' || key.includes('INICIAL')) return Role.BOMBERO_INICIAL;
+  if (key.includes('PROFESIONAL')) return Role.BOMBERO_PROFESIONAL;
+  if (key.includes('CENTRALISTA') || key.includes('SALA_DE_RADIO')) return Role.OPERADOR_CENTRAL;
   return ROLE_ALIASES[key] ?? Role.BOMBERO;
 }
 
@@ -57,7 +81,8 @@ export class OnboardingService {
   ) {}
 
   async status() {
-    const [cuerpos, userCount, errorCount] = await Promise.all([
+    await mergeDuplicateCuerpos(this.prisma as any);
+    const [cuerpos, userCount, errorCount, centralistas] = await Promise.all([
       this.prisma.cuerpo.findMany({
         where: { isActive: true },
         orderBy: { name: 'asc' },
@@ -78,6 +103,18 @@ export class OnboardingService {
           level: 'ERROR',
           createdAt: { gte: new Date(Date.now() - 7 * 86400000) },
         },
+      }),
+      this.prisma.user.findMany({
+        where: { isActive: true, role: Role.OPERADOR_CENTRAL },
+        select: {
+          id: true,
+          firstName: true,
+          lastName: true,
+          email: true,
+          rut: true,
+          company: { select: { cuerpoId: true } },
+        },
+        orderBy: { lastName: 'asc' },
       }),
     ]);
 
@@ -115,16 +152,33 @@ export class OnboardingService {
       byRole,
       hasComandante: (byRole.COMANDANTE ?? 0) > 0,
       hasOperadorCentral: (byRole.OPERADOR_CENTRAL ?? 0) > 0,
-      bodies: cuerpos.map((cuerpo) => ({
-        id: cuerpo.id,
-        name: cuerpo.name,
-        city: cuerpo.city,
-        region: cuerpo.region,
-        slug: cuerpo.slug,
-        companies: cuerpo.companies.length,
-        users: cuerpo.companies.reduce((sum, c) => sum + c._count.users, 0),
-        ready: cuerpo.companies.filter((c) => c._count.users > 0 && c.users.some((u) => u.role === Role.CAPITAN)).length,
-      })),
+      bodies: cuerpos.map((cuerpo) => {
+        const sala = centralistas.filter((u) => u.company?.cuerpoId === cuerpo.id);
+        return {
+          id: cuerpo.id,
+          name: cuerpo.name,
+          city: cuerpo.city,
+          region: cuerpo.region,
+          slug: cuerpo.slug,
+          companies: cuerpo.companies.length,
+          quartels: cuerpo.companies.map((company) => ({
+            id: company.id,
+            number: company.number,
+            name: company.name,
+            users: company._count.users,
+            hasCapitan: company.users.some((u) => u.role === Role.CAPITAN),
+          })),
+          users: cuerpo.companies.reduce((sum, c) => sum + c._count.users, 0),
+          ready: cuerpo.companies.filter((c) => c._count.users > 0 && c.users.some((u) => u.role === Role.CAPITAN)).length,
+          centralistas: sala.map((u) => ({
+            id: u.id,
+            firstName: u.firstName,
+            lastName: u.lastName,
+            email: u.email,
+            rut: u.rut,
+          })),
+        };
+      }),
       companiesReady,
     };
   }
@@ -151,13 +205,38 @@ export class OnboardingService {
     });
   }
 
+  async findExistingCuerpo(city: string, bodyName: string) {
+    const isParral = /parral/i.test(city) || /parral/i.test(bodyName);
+    if (isParral) {
+      const bySlug = await this.prisma.cuerpo.findUnique({ where: { slug: 'bomberos-parral' } });
+      if (bySlug) return bySlug;
+      const byCity = await this.prisma.cuerpo.findFirst({
+        where: { isActive: true, city: { equals: 'Parral', mode: 'insensitive' } },
+        orderBy: { createdAt: 'asc' },
+      });
+      if (byCity) return byCity;
+    }
+    const slug = slugify(bodyName) || slugify(city);
+    const bySlug = slug ? await this.prisma.cuerpo.findUnique({ where: { slug } }) : null;
+    if (bySlug) return bySlug;
+    return this.prisma.cuerpo.findFirst({
+      where: {
+        isActive: true,
+        city: { equals: city, mode: 'insensitive' },
+        name: { equals: bodyName, mode: 'insensitive' },
+      },
+    });
+  }
+
   async provisionCuerpo(dto: ProvisionCuerpoDto) {
+    await mergeDuplicateCuerpos(this.prisma as any);
     const password = dto.defaultPassword || DEFAULT_PASSWORD;
     const citySlug = slugify(dto.city) || 'cuerpo';
     const bodyName = dto.bodyName?.trim() || `Cuerpo de Bomberos de ${dto.city}`;
-    const slug = slugify(bodyName) || citySlug;
+    const isParral = /parral/i.test(dto.city) || /parral/i.test(bodyName);
+    const slug = isParral ? 'bomberos-parral' : (slugify(bodyName) || citySlug);
 
-    let cuerpo = await this.prisma.cuerpo.findUnique({ where: { slug } });
+    let cuerpo = await this.findExistingCuerpo(dto.city, bodyName);
     if (!cuerpo) {
       cuerpo = await this.prisma.cuerpo.create({
         data: {
@@ -174,6 +253,11 @@ export class OnboardingService {
         message: `Cuerpo creado: ${bodyName}`,
         cuerpoId: cuerpo.id,
         detail: { city: dto.city, region: dto.region, companies: dto.companies.length },
+      });
+    } else if (!cuerpo.isActive) {
+      cuerpo = await this.prisma.cuerpo.update({
+        where: { id: cuerpo.id },
+        data: { isActive: true, name: bodyName, city: dto.city, region: dto.region },
       });
     }
 
@@ -374,6 +458,270 @@ export class OnboardingService {
     });
 
     return { created, skipped, defaultPassword: password };
+  }
+
+  async createCentralistas(dto: CreateCentralistasDto) {
+    const cuerpo = await this.prisma.cuerpo.findUnique({
+      where: { id: dto.cuerpoId },
+      include: {
+        companies: { where: { isActive: true }, orderBy: { number: 'asc' } },
+      },
+    });
+    if (!cuerpo) throw new BadRequestException('Cuerpo no encontrado');
+    const home = cuerpo.companies[0];
+    if (!home) throw new BadRequestException('El Cuerpo no tiene compañías. Creá los cuarteles primero.');
+
+    const existing = await this.prisma.user.count({
+      where: {
+        isActive: true,
+        role: Role.OPERADOR_CENTRAL,
+        company: { cuerpoId: cuerpo.id },
+      },
+    });
+    const incoming = dto.operators.length;
+    if (existing + incoming > 6) {
+      throw new BadRequestException(
+        `Este Cuerpo ya tiene ${existing} centralista(s). Máximo 6. Podés cargar ${Math.max(0, 6 - existing)} más.`,
+      );
+    }
+
+    const password = dto.defaultPassword || DEFAULT_PASSWORD;
+    const created: Array<{ role: string; email: string; password: string; name: string }> = [];
+    const skipped: string[] = [];
+
+    for (const [index, row] of dto.operators.entries()) {
+      const email = row.email.trim().toLowerCase();
+      const rut = row.rut.trim();
+      const firstName = row.firstName.trim();
+      const lastName = row.lastName.trim();
+      const hash = await bcrypt.hash(row.password || password, 10);
+
+      const dup = await this.prisma.user.findFirst({
+        where: { OR: [{ email }, { rut }] },
+      });
+      if (dup) {
+        skipped.push(`Fila ${index + 1}: ${email} / ${rut} ya existe`);
+        continue;
+      }
+
+      await this.prisma.user.create({
+        data: {
+          rut,
+          firstName,
+          lastName,
+          email,
+          role: Role.OPERADOR_CENTRAL,
+          companyId: home.id,
+          passwordHash: hash,
+          isActive: true,
+        },
+      });
+      created.push({
+        role: 'OPERADOR_CENTRAL',
+        email,
+        password: row.password || password,
+        name: `${firstName} ${lastName}`,
+      });
+    }
+
+    await this.logs.write({
+      level: skipped.length && !created.length ? 'WARN' : 'INFO',
+      source: 'onboarding',
+      message: `${cuerpo.name}: ${created.length} centralista(s) para sala de radio`,
+      cuerpoId: cuerpo.id,
+    });
+
+    return {
+      cuerpo: { id: cuerpo.id, name: cuerpo.name },
+      created,
+      skipped,
+      remaining: 6 - existing - created.length,
+    };
+  }
+
+  async resetUserPassword(userId: string, password: string) {
+    const user = await this.prisma.user.findUnique({ where: { id: userId } });
+    if (!user || user.role === Role.KODESK) {
+      throw new BadRequestException('Usuario no encontrado');
+    }
+    const passwordHash = await bcrypt.hash(password, 10);
+    await this.prisma.user.update({
+      where: { id: user.id },
+      data: { passwordHash, isActive: true },
+    });
+    await this.logs.write({
+      level: 'INFO',
+      source: 'onboarding',
+      message: `Clave restablecida: ${user.email}`,
+      cuerpoId: user.companyId
+        ? (await this.prisma.company.findUnique({ where: { id: user.companyId }, select: { cuerpoId: true } }))?.cuerpoId
+        : undefined,
+    });
+    return { id: user.id, email: user.email, role: user.role, password };
+  }
+
+  async addCompany(cuerpoId: string, dto: AddCompanyDto) {
+    const cuerpo = await this.prisma.cuerpo.findUnique({ where: { id: cuerpoId } });
+    if (!cuerpo || !cuerpo.isActive) throw new BadRequestException('Cuerpo no encontrado');
+
+    const exists = await this.prisma.company.findUnique({
+      where: { cuerpoId_number: { cuerpoId, number: dto.number } },
+    });
+    if (exists?.isActive) {
+      throw new BadRequestException(`Ya existe la ${dto.number}ª en ${cuerpo.name}`);
+    }
+    if (exists && !exists.isActive) {
+      return this.prisma.company.update({
+        where: { id: exists.id },
+        data: {
+          isActive: true,
+          name: dto.name.trim(),
+          address: dto.address?.trim() || exists.address,
+        },
+      });
+    }
+
+    const citySlug = slugify(cuerpo.city) || 'cuerpo';
+    let dispatchSlug = dto.number === 1 ? `bomberos-${citySlug}` : `${citySlug}-${dto.number}`;
+    const slugTaken = await this.prisma.company.findUnique({ where: { dispatchSlug } });
+    if (slugTaken) dispatchSlug = `${citySlug}-${dto.number}-${Date.now().toString(36)}`;
+
+    const company = await this.prisma.company.create({
+      data: {
+        name: dto.name.trim(),
+        number: dto.number,
+        region: cuerpo.region,
+        city: cuerpo.city,
+        address: dto.address?.trim() || `Cuartel ${dto.number}ª — ${cuerpo.city}`,
+        dispatchSlug,
+        dispatchPublicEnabled: true,
+        dispatchAvailable: true,
+        cuerpoId,
+      },
+    });
+    await this.logs.write({
+      level: 'INFO',
+      source: 'onboarding',
+      message: `${cuerpo.name}: agregada ${dto.number}ª ${dto.name}`,
+      cuerpoId,
+    });
+    return company;
+  }
+
+  async deactivateCompany(id: string) {
+    const company = await this.prisma.company.findUnique({
+      where: { id },
+      include: { cuerpo: { select: { name: true } } },
+    });
+    if (!company) throw new BadRequestException('Compañía no encontrada');
+    await this.prisma.company.update({ where: { id }, data: { isActive: false } });
+    await this.logs.write({
+      level: 'WARN',
+      source: 'onboarding',
+      message: `Compañía desactivada: ${company.number}ª ${company.name}`,
+      cuerpoId: company.cuerpoId,
+    });
+    return { ok: true, id, name: company.name };
+  }
+
+  async deactivateCuerpo(id: string) {
+    const cuerpo = await this.prisma.cuerpo.findUnique({ where: { id } });
+    if (!cuerpo) throw new BadRequestException('Cuerpo no encontrado');
+    await this.prisma.company.updateMany({ where: { cuerpoId: id }, data: { isActive: false } });
+    await this.prisma.cuerpo.update({ where: { id }, data: { isActive: false } });
+    await this.logs.write({
+      level: 'WARN',
+      source: 'onboarding',
+      message: `Cuerpo desactivado: ${cuerpo.name}`,
+      cuerpoId: id,
+    });
+    return { ok: true, id, name: cuerpo.name };
+  }
+
+  async dedupeCuerpos() {
+    const merged = await mergeDuplicateCuerpos(this.prisma as any);
+    await this.logs.write({
+      level: merged ? 'INFO' : 'INFO',
+      source: 'onboarding',
+      message: merged ? `Se unificaron ${merged} Cuerpo(s) duplicado(s)` : 'No había Cuerpos duplicados',
+    });
+    return { merged };
+  }
+
+  async resetPlatform() {
+    const snapshot = {
+      cuerpos: await this.prisma.cuerpo.count(),
+      companies: await this.prisma.company.count(),
+      users: await this.prisma.user.count({ where: { role: { not: 'KODESK' } } }),
+    };
+
+    await this.prisma.$transaction(async (tx) => {
+      await tx.vaccination.deleteMany();
+      await tx.medication.deleteMany();
+      await tx.allergy.deleteMany();
+      await tx.medicalCondition.deleteMany();
+      await tx.medicalExam.deleteMany();
+      await tx.healthRecord.deleteMany();
+      await tx.memberCertification.deleteMany();
+      await tx.drill.deleteMany();
+      await tx.evacuationRoute.deleteMany();
+      await tx.meetingPoint.deleteMany();
+      await tx.emergencyPlanVersion.deleteMany();
+      await tx.emergencyPlanAttachment.deleteMany();
+      await tx.socialContribution.deleteMany();
+      await tx.membershipFee.deleteMany();
+      await tx.memberProfile.deleteMany();
+      await tx.guardLogEntry.deleteMany();
+      await tx.guardHandover.deleteMany();
+      await tx.guardLog.deleteMany();
+      await tx.alarmDeliveryHistory.deleteMany();
+      await tx.alarmDelivery.deleteMany();
+      await tx.alarmNotification.deleteMany();
+      await tx.devicePushToken.deleteMany();
+      await tx.incidentTimelineEvent.deleteMany();
+      await tx.incidentEmergencyResponseHistory.deleteMany();
+      await tx.incidentEmergencyResponse.deleteMany();
+      await tx.incidentParticipant.deleteMany();
+      await tx.incidentVehicle.deleteMany();
+      await tx.emergencyBitacoraEntry.deleteMany();
+      await tx.incident.deleteMany();
+      await tx.emergencyPlan.deleteMany();
+      await tx.maintenance.deleteMany();
+      await tx.fleetLog.deleteMany();
+      await tx.inventoryAuditItem.deleteMany();
+      await tx.inventoryAudit.deleteMany();
+      await tx.shift.deleteMany();
+      await tx.invoice.deleteMany();
+      await tx.purchase.deleteMany();
+      await tx.budget.deleteMany();
+      await tx.document.deleteMany();
+      await tx.equipment.deleteMany();
+      await tx.vehicle.deleteMany();
+      await tx.hydrant.deleteMany();
+      await tx.announcement.deleteMany();
+      await tx.userAchievement.deleteMany();
+      await tx.user.deleteMany({ where: { role: { not: 'KODESK' } } });
+      await tx.user.updateMany({
+        where: { role: 'KODESK' },
+        data: { companyId: null, supportCompanyId: null },
+      });
+      await tx.platformLog.deleteMany();
+      await tx.company.deleteMany();
+      await tx.cuerpo.deleteMany();
+    });
+
+    await this.logs.write({
+      level: 'WARN',
+      source: 'onboarding',
+      message: `Reset completo: ${snapshot.cuerpos} cuerpos, ${snapshot.companies} compañías, ${snapshot.users} usuarios`,
+      detail: snapshot,
+    });
+
+    return {
+      ok: true,
+      deleted: snapshot,
+      kept: 'Usuario Kodesk intacto',
+    };
   }
 
   private staffRut(prefix: number, n: number) {

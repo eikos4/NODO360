@@ -8,7 +8,7 @@ const ROLE_LABELS: Record<string, string> = {
   SUPER_ADMIN: 'Super Administrador',
   COMANDANTE: 'Comandante',
   CAPITAN: 'Capitán / Oficial',
-  OPERADOR_CENTRAL: 'Operador Central',
+  OPERADOR_CENTRAL: 'Centralista · Sala de radio',
   ENCARGADO_MATERIAL: 'Encargado Material',
   SECRETARIO: 'Secretario/a',
   TESORERO: 'Tesorero/a',

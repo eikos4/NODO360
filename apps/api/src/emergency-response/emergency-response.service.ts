@@ -20,6 +20,22 @@ const RESPONSE_LABELS: Record<EmergencyResponseStatus, string> = {
   LOCATION_MARKED: 'Ubicación marcada',
 };
 
+const ROLE_LABELS: Record<string, string> = {
+  KODESK: 'Kodesk',
+  SUPER_ADMIN: 'Administrador del cuerpo',
+  COMANDANTE: 'Comandante',
+  CAPITAN: 'Capitán',
+  ENCARGADO_MATERIAL: 'Encargado de material',
+  SECRETARIO: 'Secretario/a',
+  TESORERO: 'Tesorero/a',
+  BOMBERO: 'Bombero',
+  BOMBERO_HONORARIO: 'Bombero honorario',
+  BOMBERO_INICIAL: 'Bombero inicial',
+  BOMBERO_PROFESIONAL: 'Bombero profesional',
+  AUDITOR: 'Auditor',
+  OPERADOR_CENTRAL: 'Operador de central',
+};
+
 const INCIDENT_SELECT = {
   id: true,
   code: true,
@@ -721,6 +737,117 @@ export class EmergencyResponseService {
       replayed: result.replayed,
       involvedCompanyIds,
       message: 'Ubicación del incendio notificada a la central',
+    };
+  }
+
+  async getMyProfile(userId: string) {
+    const user = await this.prisma.user.findUnique({
+      where: { id: userId },
+      select: {
+        id: true,
+        firstName: true,
+        lastName: true,
+        email: true,
+        rut: true,
+        role: true,
+        photoUrl: true,
+        operativeNumber: true,
+        stationAvailable: true,
+        isMaquinista: true,
+        createdAt: true,
+        company: {
+          select: {
+            id: true,
+            name: true,
+            number: true,
+            city: true,
+            logoUrl: true,
+            cuerpo: { select: { name: true } },
+          },
+        },
+        memberProfile: {
+          select: { memberNumber: true, status: true, joinedAt: true },
+        },
+      },
+    });
+    if (!user) throw new NotFoundException('Usuario no encontrado');
+
+    const responses = await this.prisma.incidentEmergencyResponse.findMany({
+      where: { userId, status: { not: null } },
+      select: {
+        status: true,
+        respondedAt: true,
+        onSceneAt: true,
+        incident: {
+          select: {
+            id: true,
+            code: true,
+            type: true,
+            address: true,
+            dispatchedAt: true,
+            closedAt: true,
+            status: true,
+          },
+        },
+      },
+      orderBy: { respondedAt: 'desc' },
+      take: 40,
+    });
+
+    const counts = await this.prisma.incidentEmergencyResponse.groupBy({
+      by: ['status'],
+      where: { userId, status: { not: null } },
+      _count: { _all: true },
+    });
+    const byStatus = Object.fromEntries(
+      counts.map((row) => [row.status ?? 'NONE', row._count._all]),
+    ) as Record<string, number>;
+    const going = byStatus.GOING ?? 0;
+    const onScene = byStatus.ON_SCENE ?? 0;
+    const notGoing = byStatus.NOT_GOING ?? 0;
+    const notAvailable = byStatus.NOT_AVAILABLE ?? 0;
+
+    return {
+      user: {
+        id: user.id,
+        firstName: user.firstName,
+        lastName: user.lastName,
+        fullName: `${user.firstName} ${user.lastName}`.trim(),
+        email: user.email,
+        rut: user.rut,
+        role: user.role,
+        roleLabel: ROLE_LABELS[user.role] ?? user.role,
+        photoUrl: user.photoUrl,
+        operativeNumber: user.operativeNumber,
+        stationAvailable: user.stationAvailable,
+        isMaquinista: user.isMaquinista,
+        company: user.company,
+        cuerpoName: user.company?.cuerpo?.name ?? null,
+        memberNumber: user.memberProfile?.memberNumber ?? null,
+        memberStatus: user.memberProfile?.status ?? null,
+        joinedAt: user.memberProfile?.joinedAt ?? user.createdAt,
+      },
+      stats: {
+        total: going + onScene + notGoing + notAvailable,
+        attended: going + onScene,
+        going,
+        onScene,
+        notGoing,
+        notAvailable,
+      },
+      emergencies: responses.map((row) => ({
+        id: row.incident.id,
+        code: this.parseEmergencyCodeId(row.incident.type) || row.incident.code,
+        type: row.incident.type,
+        address: row.incident.address,
+        dispatchedAt: row.incident.dispatchedAt,
+        closedAt: row.incident.closedAt,
+        incidentStatus: row.incident.status,
+        status: row.status,
+        statusLabel: row.status ? RESPONSE_LABELS[row.status] : 'Sin respuesta',
+        respondedAt: row.respondedAt,
+        onSceneAt: row.onSceneAt,
+      })),
     };
   }
 

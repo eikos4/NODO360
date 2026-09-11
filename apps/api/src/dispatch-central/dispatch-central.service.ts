@@ -1,5 +1,6 @@
 import {
   ConflictException,
+  ForbiddenException,
   Injectable,
   NotFoundException,
 } from '@nestjs/common';
@@ -13,7 +14,7 @@ const ROLE_LABELS: Record<string, string> = {
   SUPER_ADMIN: 'Super Admin',
   COMANDANTE: 'Comandante',
   CAPITAN: 'Capitán',
-  OPERADOR_CENTRAL: 'Operador Central',
+  OPERADOR_CENTRAL: 'Centralista',
   ENCARGADO_MATERIAL: 'Enc. Material',
   TESORERO: 'Tesorero',
   SECRETARIO: 'Secretario',
@@ -634,6 +635,37 @@ export class DispatchCentralService {
     });
 
     return this.getPublicBySlug(slug);
+  }
+
+  async toggleMyStationAvailability(userId: string, available: boolean) {
+    const user = await this.prisma.user.findUnique({
+      where: { id: userId },
+      select: { id: true, isActive: true, companyId: true },
+    });
+    if (!user?.isActive) throw new NotFoundException('Usuario no encontrado');
+    if (!user.companyId) {
+      throw new ForbiddenException('Usuario sin compañía asignada');
+    }
+
+    const updated = await this.prisma.user.update({
+      where: { id: userId },
+      data: {
+        stationAvailable: available,
+        stationAvailableAt: available ? new Date() : null,
+        supportCompanyId: null,
+      },
+      select: {
+        stationAvailable: true,
+        stationAvailableAt: true,
+        company: { select: { id: true, name: true, number: true, dispatchSlug: true } },
+      },
+    });
+
+    return {
+      stationAvailable: updated.stationAvailable,
+      stationAvailableAt: updated.stationAvailableAt,
+      company: updated.company,
+    };
   }
 
   async searchOperativeGlobally(slug: string, operativeNumber: number) {

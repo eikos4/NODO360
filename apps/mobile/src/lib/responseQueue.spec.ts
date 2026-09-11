@@ -19,6 +19,12 @@ describe('offline response queue', () => {
     expect(replacePendingResponse([first, other], replacement)).toEqual([other, replacement]);
   });
 
+  it('keeps respond and mark-location as separate pending items', () => {
+    const respond = queued('r1', 'incident-1');
+    const pin = { ...queued('m1', 'incident-1'), action: 'mark-location' as const, latitude: -36.1, longitude: -71.8 };
+    expect(replacePendingResponse([respond], pin)).toEqual([respond, pin]);
+  });
+
   it('removes successful and terminal 4xx responses, retaining retryable failures', async () => {
     const success = queued('success', 'incident-1');
     const serverFailure = queued('server', 'incident-2');

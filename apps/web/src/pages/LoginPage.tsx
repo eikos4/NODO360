@@ -46,7 +46,7 @@ export default function LoginPage() {
     e.preventDefault();
     setLoading(true);
     try {
-      await login(email, password);
+      await login(email.trim(), password);
       const role = useAuthStore.getState().user?.role;
       navigate(getDefaultRouteForRole(role));
     } catch (err) {
@@ -58,7 +58,7 @@ export default function LoginPage() {
           { duration: 8000 },
         );
       } else if (err.response.status === 401) {
-        toast.error('Credenciales incorrectas o usuario no existe en la base de datos');
+        toast.error('Usuario o clave incorrectos');
       } else if (err.response.status === 429) {
         toast.error('Demasiados intentos. Espera un minuto e intenta de nuevo.');
       } else {
@@ -202,16 +202,16 @@ export default function LoginPage() {
             <form onSubmit={handleSubmit} className="space-y-4">
               <div>
                 <label className="block text-[10px] font-black text-slate-400 dark:text-slate-500 mb-1.5 uppercase tracking-widest">
-                  Identificador (Email)
+                  Correo o RUT
                 </label>
                 <input
-                  type="email"
+                  type="text"
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
                   className="w-full bg-slate-100/60 dark:bg-[#070b14] border border-slate-200 dark:border-slate-850 rounded-xl px-4 py-3.5 text-slate-900 dark:text-white placeholder-slate-400 dark:placeholder-slate-650 focus:outline-none focus:border-red-500 focus:ring-2 focus:ring-red-500/25 dark:focus:ring-red-500/10 transition-all text-xs font-semibold"
-                  placeholder="bombero@compania.cl"
+                  placeholder="RUT o correo institucional"
                   required
-                  autoComplete="email"
+                  autoComplete="username"
                 />
               </div>
 
@@ -260,43 +260,9 @@ export default function LoginPage() {
               </button>
             </form>
 
-            <div className="flex items-center gap-3 my-5">
-              <div className="flex-1 h-px bg-slate-200 dark:bg-slate-800" />
-              <span className="text-slate-400 dark:text-slate-600 text-[9px] font-black uppercase tracking-widest">Cargar Perfil Táctico</span>
-              <div className="flex-1 h-px bg-slate-200 dark:bg-slate-800" />
-            </div>
-
-            {/* Demo profiles selection */}
-            <div className="space-y-1.5 max-h-[170px] overflow-y-auto pr-0.5 scrollbar-thin">
-              {[
-                { role: 'Kodesk', email: 'nodo360@kodesk.cl', pass: 'Kodesk360!', label: 'Plataforma' },
-                { role: 'Super Admin', email: 'admin@nodo360.cl', pass: 'Admin1234!', label: 'C1 · Admin' },
-                { role: 'Comandante', email: 'gonzalez@bomberosparral.cl', pass: 'Demo1234!', label: 'Institucional' },
-                { role: 'Sala de Radio', email: 'central@bomberosparral.cl', pass: 'Demo1234!', label: 'Central 360' },
-                { role: 'Tesorero', email: 'torres@bomberosparral.cl', pass: 'Demo1234!', label: 'C1 · Finanzas' },
-                { role: 'Bombero', email: 'fuentes@bomberosparral.cl', pass: 'Demo1234!', label: 'C1 · Operativo' },
-              ].map(acc => (
-                <button
-                  key={acc.email}
-                  type="button"
-                  onClick={() => { setEmail(acc.email); setPassword(acc.pass); }}
-                  className="w-full flex items-center justify-between bg-slate-100/50 dark:bg-[#070b14]/50 hover:bg-slate-150 dark:hover:bg-[#070b14] border border-slate-200 dark:border-slate-800 rounded-xl px-3.5 py-2.5 transition-all group active:scale-[0.99] text-left"
-                >
-                  <div className="flex items-center gap-3 min-w-0">
-                    <div className="w-6 h-6 rounded bg-red-500/10 dark:bg-red-500/15 flex items-center justify-center shrink-0">
-                      <Flame className="w-3.5 h-3.5 text-red-500 dark:text-red-400" />
-                    </div>
-                    <div className="min-w-0">
-                      <p className="text-[11px] font-bold text-slate-800 dark:text-slate-200">{acc.role}</p>
-                      <p className="text-[9px] text-slate-400 dark:text-slate-500 truncate">{acc.email}</p>
-                    </div>
-                  </div>
-                  <span className="text-[9px] font-bold text-slate-400 bg-slate-200/50 dark:bg-slate-800/80 px-2 py-0.5 rounded shrink-0 group-hover:text-red-500 transition-colors">
-                    {acc.label}
-                  </span>
-                </button>
-              ))}
-            </div>
+            <p className="text-center text-[10px] text-slate-400 dark:text-slate-600 mt-5 uppercase tracking-widest font-bold">
+              Acceso restringido al personal autorizado
+            </p>
           </div>
           
           {/* Copyright footer */}

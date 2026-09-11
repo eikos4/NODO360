@@ -17,7 +17,7 @@ export const ROLE_LABELS: Record<Role, string> = {
   [Role.SUPER_ADMIN]: 'Super Administrador',
   [Role.COMANDANTE]: 'Comandante',
   [Role.CAPITAN]: 'Capitán / Oficial Operativo',
-  [Role.OPERADOR_CENTRAL]: 'Operador Central de Despacho',
+  [Role.OPERADOR_CENTRAL]: 'Centralista · Sala de radio',
   [Role.ENCARGADO_MATERIAL]: 'Encargado de Material Mayor',
   [Role.SECRETARIO]: 'Secretario/a',
   [Role.TESORERO]: 'Tesorero/a',

@@ -2,11 +2,16 @@ import type { QueuedResponse } from '../types';
 
 export type QueueSendResult = { status?: number };
 
+function queueKey(item: Pick<QueuedResponse, 'incidentId' | 'action'>) {
+  return `${item.incidentId}:${item.action ?? 'respond'}`;
+}
+
 export function replacePendingResponse(
   queue: QueuedResponse[],
   next: QueuedResponse,
 ): QueuedResponse[] {
-  return [...queue.filter((entry) => entry.incidentId !== next.incidentId), next];
+  const key = queueKey(next);
+  return [...queue.filter((entry) => queueKey(entry) !== key), next];
 }
 
 export async function flushResponseQueue(

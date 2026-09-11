@@ -13,7 +13,7 @@ export class AuthService {
   ) {}
 
   async validateUser(email: string, password: string) {
-    const user = await this.usersService.findByEmail(email);
+    const user = await this.usersService.findByLogin(email);
     if (!user || !user.isActive) throw new UnauthorizedException('Credenciales inválidas');
     const valid = await bcrypt.compare(password, user.passwordHash);
     if (!valid) throw new UnauthorizedException('Credenciales inválidas');
@@ -48,6 +48,8 @@ export class AuthService {
         role: user.role,
         companyId: user.companyId,
         isActive: user.isActive,
+        stationAvailable: user.stationAvailable ?? false,
+        stationAvailableAt: user.stationAvailableAt ?? null,
         company,
       },
     };

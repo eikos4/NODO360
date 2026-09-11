@@ -46,5 +46,9 @@ export class UpdateAnnouncementDto extends PartialType(CreateAnnouncementDto) {
 
   @IsString()
   @IsOptional()
+  imageUrl?: string;
+
+  @IsString()
+  @IsOptional()
   companyId?: string;
 }

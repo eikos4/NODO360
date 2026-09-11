@@ -37,6 +37,8 @@
 	<true/>
 	<key>NSLocationWhenInUseUsageDescription</key>
 	<string>Nodo360 usa tu ubicación al responder una emergencia y para abrir la ruta al incidente.</string>
+	<key>NSMicrophoneUsageDescription</key>
+	<string>Nodo360 usa el micrófono para transmitir por el canal de radio operativa.</string>
 	<key>Nodo360CriticalAlertsEnabled</key>
 	<false/>
 	<key>UIBackgroundModes</key>

@@ -1,6 +1,7 @@
 import { PrismaClient, Role } from '@prisma/client';
 import * as bcrypt from 'bcryptjs';
 import { PARRAL_COMPANIES, PARRAL_CUERPO } from '../onboarding/parral-cuerpo';
+import { mergeDuplicateCuerpos } from '../onboarding/dedupe-cuerpos';
 
 const DEMO_PASSWORD = 'Demo1234!';
 const ADMIN_PASSWORD = 'Admin1234!';
@@ -74,11 +75,12 @@ export async function ensureParralCuerpo(): Promise<void> {
       }
     }
 
+    const merged = await mergeDuplicateCuerpos(prisma);
     const usersCreated = await ensureParralPilotUsers(prisma, cuerpo.id);
 
-    if (created > 0 || repaired > 0 || usersCreated > 0) {
+    if (created > 0 || repaired > 0 || usersCreated > 0 || merged > 0) {
       console.log(
-        `[bootstrap] Parral: ${created} compañía(s) nuevas, ${repaired} sala(s) reparadas, ${usersCreated} usuario(s) piloto`,
+        `[bootstrap] Parral: ${created} compañía(s) nuevas, ${repaired} sala(s) reparadas, ${usersCreated} usuario(s) piloto, ${merged} duplicado(s) unidos`,
       );
     } else {
       console.log('[bootstrap] Parral: Cuerpo + 6 compañías y usuarios piloto ya presentes');

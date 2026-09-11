@@ -999,9 +999,9 @@ async function main() {
   // ─── Comunicados ──────────────────────────────────────────────────────────
   await prisma.announcement.createMany({
     data: [
-      { title: 'Dotación del Cuerpo — 6 compañías', content: 'El Cuerpo de Bomberos de Parral cuenta con ~130 voluntarios activos distribuidos en Primera a Sexta Compañía. Administración central: Dieciocho 685.', type: 'OFFICIAL', priority: 'MEDIUM', publishedBy: 'Mario González', companyId: c1.id, targetAudience: 'ALL_PERSONNEL' },
-      { title: 'Renovación cuotas sociales', content: 'Recordatorio: cuota mayo vence el 10. Tesorería central atiende en Dieciocho 685.', type: 'OFFICIAL', priority: 'MEDIUM', publishedBy: 'Sofía Torres', companyId: c1.id },
-      { title: 'Simulacro programado', content: 'Próximo simulacro de evacuación en cuartel central — asistencia obligatoria 1ª a 3ª Compañía.', type: 'ANNOUNCEMENT', priority: 'URGENT', publishedBy: 'Ana Martínez', companyId: c1.id, expiresAt: daysAhead(30) },
+      { title: 'Dotación del Cuerpo — 6 compañías', content: 'El Cuerpo de Bomberos de Parral cuenta con ~130 voluntarios activos distribuidos en Primera a Sexta Compañía. Administración central: Dieciocho 685.', type: 'OFFICIAL', priority: 'MEDIUM', publishedBy: comandante.id, companyId: c1.id, cuerpoId: cuerpo.id, targetAudience: 'ALL_PERSONNEL' },
+      { title: 'Renovación cuotas sociales', content: 'Recordatorio: cuota mayo vence el 10. Tesorería central atiende en Dieciocho 685.', type: 'OFFICIAL', priority: 'MEDIUM', publishedBy: tesorero.id, companyId: c1.id, cuerpoId: cuerpo.id },
+      { title: 'Simulacro programado', content: 'Próximo simulacro de evacuación en cuartel central — asistencia obligatoria 1ª a 3ª Compañía.', type: 'ANNOUNCEMENT', priority: 'URGENT', publishedBy: capitan.id, companyId: c1.id, cuerpoId: cuerpo.id, expiresAt: daysAhead(30), eventDate: daysAhead(14), eventLocation: 'Cuartel central — Dieciocho 685' },
     ],
   });
   console.log('✅ Comunicados');

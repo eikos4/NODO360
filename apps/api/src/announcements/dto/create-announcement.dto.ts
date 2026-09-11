@@ -61,5 +61,9 @@ export class CreateAnnouncementDto {
 
   @IsString()
   @IsOptional()
+  imageUrl?: string;
+
+  @IsString()
+  @IsOptional()
   companyId?: string;
 }

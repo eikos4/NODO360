@@ -6,7 +6,7 @@ import {
   CheckCircle2, Siren, ChevronRight, LayoutDashboard,
   CalendarCheck, FileText, ShoppingCart,
   Wallet, Wrench, FlameKindling, BarChart3,
-  TrendingUp, MapPin, Activity, Bell, BookOpen, ClipboardCheck, Fuel, Rocket,
+  TrendingUp, MapPin, Activity, Bell, BookOpen, ClipboardCheck, Fuel, Rocket, Megaphone,
 } from 'lucide-react';
 import { api } from '../lib/api';
 import { useAuthStore } from '../store/authStore';
@@ -33,6 +33,7 @@ const ROLE_MODULES: Record<string, { label: string; path: string; icon: React.El
     { label: 'Personal', path: '/users', icon: Users, color: 'text-emerald-400', desc: 'Nómina global' },
   ],
   SUPER_ADMIN: [
+    { label: 'Comunicados', path: '/announcements', icon: Megaphone, color: 'text-violet-400', desc: 'Publicar avisos, oficiales y eventos' },
     { label: 'Compañías', path: '/companies', icon: Building2, color: 'text-blue-400', desc: 'Gestionar todas las compañías' },
     { label: 'Usuarios', path: '/users', icon: Users, color: 'text-emerald-400', desc: 'Administrar personal y roles' },
     { label: 'Inventario', path: '/inventory', icon: Package, color: 'text-purple-400', desc: 'Vehículos y equipamiento' },
@@ -46,6 +47,7 @@ const ROLE_MODULES: Record<string, { label: string; path: string; icon: React.El
     { label: 'Alertas', path: '/alerts', icon: Siren, color: 'text-red-400', desc: 'Vencimientos críticos' },
   ],
   COMANDANTE: [
+    { label: 'Comunicados', path: '/announcements', icon: Megaphone, color: 'text-violet-400', desc: 'Publicar avisos, oficiales y eventos' },
     { label: 'Compañías', path: '/companies', icon: Building2, color: 'text-blue-400', desc: 'Vista general de compañías' },
     { label: 'Personal', path: '/users', icon: Users, color: 'text-emerald-400', desc: 'Personal activo' },
     { label: 'Inventario', path: '/inventory', icon: Package, color: 'text-purple-400', desc: 'Vehículos y equipamiento' },
@@ -63,6 +65,7 @@ const ROLE_MODULES: Record<string, { label: string; path: string; icon: React.El
     { label: 'Compras', path: '/purchases', icon: ShoppingCart, color: 'text-orange-400', desc: 'Órdenes de compra' },
   ],
   SECRETARIO: [
+    { label: 'Comunicados', path: '/announcements', icon: Megaphone, color: 'text-violet-400', desc: 'Publicar avisos oficiales y eventos' },
     { label: 'Documentos', path: '/documents', icon: FileText, color: 'text-cyan-400', desc: 'Gestión documental' },
     { label: 'Personal', path: '/users', icon: Users, color: 'text-emerald-400', desc: 'Personal activo' },
     { label: 'Turnos', path: '/shifts', icon: CalendarCheck, color: 'text-indigo-400', desc: 'Guardia y turnos' },
@@ -75,6 +78,7 @@ const ROLE_MODULES: Record<string, { label: string; path: string; icon: React.El
     { label: 'Documentos', path: '/documents', icon: FileText, color: 'text-cyan-400', desc: 'Documentos financieros' },
   ],
   CAPITAN: [
+    { label: 'Comunicados', path: '/announcements', icon: Megaphone, color: 'text-violet-400', desc: 'Publicar avisos y eventos de compañía' },
     { label: 'Emergencias', path: '/incidents', icon: FlameKindling, color: 'text-red-400', desc: 'Registro de incidentes' },
     { label: 'Turnos', path: '/shifts', icon: CalendarCheck, color: 'text-indigo-400', desc: 'Guardia y turnos' },
     { label: 'Bitácora', path: '/guard-log', icon: BookOpen, color: 'text-emerald-400', desc: 'Libro de guardia del día' },

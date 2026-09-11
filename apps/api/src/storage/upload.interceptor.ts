@@ -8,7 +8,7 @@ type UploadKind = 'image' | 'document' | 'audio';
 const FILTERS: Record<UploadKind, RegExp> = {
   image: /\.(jpg|jpeg|png|gif|webp)$/i,
   document: /\.(pdf|doc|docx|xls|xlsx|ppt|pptx|png|jpg|jpeg|gif|zip|txt|csv)$/i,
-  audio: /\.(webm|ogg|mp3|m4a|wav)$/i,
+  audio: /\.(webm|ogg|mp3|m4a|aac|wav)$/i,
 };
 
 const MESSAGES: Record<UploadKind, string> = {

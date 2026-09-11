@@ -17,8 +17,9 @@ model Cuerpo {
   isActive  Boolean       @default(true)
   createdAt DateTime      @default(now())
   updatedAt DateTime      @updatedAt
-  companies Company[]
-  logs      PlatformLog[]
+  companies     Company[]
+  logs          PlatformLog[]
+  announcements Announcement[]
 }
 
 model Company {
@@ -542,9 +543,15 @@ model Announcement {
   isActive       Boolean                    @default(true)
   targetAudience AnnouncementTargetAudience @default(ALL)
   attachments    String[]
+  imageUrl       String?
   companyId      String?
+  cuerpoId       String?
+  cuerpo         Cuerpo?                    @relation(fields: [cuerpoId], references: [id], onDelete: SetNull)
   createdAt      DateTime                   @default(now())
   updatedAt      DateTime                   @updatedAt
+
+  @@index([cuerpoId])
+  @@index([publishedAt])
 }
 
 model Hydrant {

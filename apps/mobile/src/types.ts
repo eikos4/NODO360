@@ -7,6 +7,8 @@ export interface AuthUser {
   email: string;
   role: string;
   companyId: string | null;
+  stationAvailable?: boolean;
+  stationAvailableAt?: string | null;
   company?: { id: string; name: string; number: number; city: string; logoUrl?: string | null } | null;
 }
 
@@ -25,6 +27,7 @@ export interface ActiveIncident {
   dispatchedAt: string;
   emergencyCodeId?: string | null;
   radioMessage?: string;
+  vehicles?: Array<{ patent: string; type?: string | null; brand?: string | null }>;
   dispatchGps: { latitude: number; longitude: number } | null;
   fieldGps: { latitude: number; longitude: number; confirmedAt?: string | null } | null;
   mapLat: number | null;
@@ -46,7 +49,7 @@ export interface EmergencySnapshot {
   snapshotVersion: string;
   serverTime: string;
   company: { id: string; name: string; number: number; city: string; logoUrl?: string | null };
-  user: { id: string; fullName: string; operativeNumber?: number | null };
+  user: { id: string; fullName: string; operativeNumber?: number | null; stationAvailable?: boolean };
   incidents: ActiveIncident[];
   statusLabels: Record<string, string>;
 }
@@ -65,6 +68,7 @@ export interface QueuedResponse {
   id: string;
   incidentId: string;
   status: EmergencyResponseStatus;
+  action?: 'respond' | 'mark-location';
   latitude?: number;
   longitude?: number;
   createdAt: string;

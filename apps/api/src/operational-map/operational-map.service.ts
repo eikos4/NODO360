@@ -10,7 +10,7 @@ const ROLE_LABELS: Record<string, string> = {
   SUPER_ADMIN: 'Super Admin',
   COMANDANTE: 'Comandante',
   CAPITAN: 'Capitán',
-  OPERADOR_CENTRAL: 'Operador Central',
+  OPERADOR_CENTRAL: 'Centralista',
   ENCARGADO_MATERIAL: 'Enc. Material',
   TESORERO: 'Tesorero',
   SECRETARIO: 'Secretario',
