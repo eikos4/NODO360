@@ -31,6 +31,8 @@ import com.getcapacitor.PluginCall;
 import com.getcapacitor.PluginMethod;
 import com.getcapacitor.annotation.CapacitorPlugin;
 
+import java.util.ArrayList;
+import java.util.List;
 import java.util.Locale;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
@@ -222,20 +224,27 @@ public class NativeAlarmPlugin extends Plugin {
 
     private void playToneThenSpeak(String code, String spoken) {
         stopTone();
-        Context context = getContext();
-        int resId = context.getResources().getIdentifier(
-            "tone_" + code.replace('-', '_'),
-            "raw",
-            context.getPackageName()
-        );
-        if (resId == 0) {
+        List<Integer> queue = new ArrayList<>();
+        int ident = rawRes("tone_nodo360");
+        if (ident != 0) queue.add(ident);
+        int tone = rawRes("tone_" + code.replace('-', '_'));
+        if (tone != 0) queue.add(tone);
+        if (queue.isEmpty()) {
             scheduleSpeech(spoken, 800);
             return;
         }
+        playQueue(queue, 0, spoken);
+    }
+
+    private void playQueue(List<Integer> queue, int index, String spoken) {
+        if (index >= queue.size()) {
+            scheduleSpeech(spoken, 250);
+            return;
+        }
         try {
-            player = MediaPlayer.create(context, resId);
+            player = MediaPlayer.create(getContext(), queue.get(index));
             if (player == null) {
-                scheduleSpeech(spoken, 800);
+                playQueue(queue, index + 1, spoken);
                 return;
             }
             player.setAudioAttributes(new AudioAttributes.Builder()
@@ -245,12 +254,16 @@ public class NativeAlarmPlugin extends Plugin {
             player.setVolume(1f, 1f);
             player.setOnCompletionListener(mp -> {
                 stopTone();
-                scheduleSpeech(spoken, 250);
+                playQueue(queue, index + 1, spoken);
             });
             player.start();
         } catch (Exception error) {
             scheduleSpeech(spoken, 800);
         }
+    }
+
+    private int rawRes(String name) {
+        return getContext().getResources().getIdentifier(name, "raw", getContext().getPackageName());
     }
 
     private void scheduleSpeech(String spoken, int delayMs) {

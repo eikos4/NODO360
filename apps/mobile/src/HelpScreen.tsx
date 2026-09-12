@@ -87,7 +87,7 @@ export function HelpScreen({ onBack }: { onBack: () => void }) {
 
       <section className="help-kodesk">
         <small>Plataforma creada por</small>
-        <b>Kodesk</b>
+        <b>kodesk.cl</b>
         <p>
           Nodo360 es un desarrollo de <a href={KODESK_WEB} target="_blank" rel="noopener noreferrer">www.kodesk.cl</a>.
           Tecnología para Cuerpos de Bomberos de Chile.

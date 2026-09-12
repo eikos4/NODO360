@@ -20,7 +20,7 @@ export function usePublicDispatchAlarm(
   emergencies: AlarmEmergency[],
   options: { enabled: boolean; muted?: boolean },
 ) {
-  const { playSiren, playEmergencySound } = useDispatchAudio(loadDispatchSoundMode());
+  const { playBrandIdent, playSiren, playEmergencySound } = useDispatchAudio(loadDispatchSoundMode());
   // Use Elvira voice
   const { speak } = useDispatchTTS({ voiceId: 'elvira', ratePercent: 5 });
   
@@ -33,6 +33,7 @@ export function usePublicDispatchAlarm(
     playingRef.current = true;
     try {
       const codeId = emergency.emergencyCodeId ?? '10-1';
+      await playBrandIdent();
       await playEmergencySound(codeId);
       await delay(250);
       await playSiren(3000);
@@ -45,7 +46,7 @@ export function usePublicDispatchAlarm(
     } finally {
       playingRef.current = false;
     }
-  }, [options.enabled, options.muted, playEmergencySound, playSiren, speak]);
+  }, [options.enabled, options.muted, playBrandIdent, playEmergencySound, playSiren, speak]);
 
   useEffect(() => {
     if (!options.enabled || options.muted) return;

@@ -2,6 +2,7 @@ import { useCallback, useRef } from 'react';
 import {
   emergencySoundFileUrl,
   dispatchSirenFileUrl,
+  nodo360IdentFileUrl,
   getEmergencySoundPattern,
   hasEmergencyAudioFile,
   loadDispatchSoundMode,
@@ -57,6 +58,10 @@ export function useDispatchAudio(soundMode: DispatchSoundMode = loadDispatchSoun
     }
     if (ctxRef.current.state === 'suspended') void ctxRef.current.resume();
     return ctxRef.current;
+  }, []);
+
+  const playBrandIdent = useCallback(async () => {
+    await playSoundFile(nodo360IdentFileUrl());
   }, []);
 
   const playSiren = useCallback(async (_durationMs = 3000) => {
@@ -126,5 +131,5 @@ export function useDispatchAudio(soundMode: DispatchSoundMode = loadDispatchSoun
     await new Promise((r) => setTimeout(r, syntheticDurationMs(code)));
   }, [soundMode, playSyntheticPattern]);
 
-  return { playSiren, playBeep, playEmergencySound, playEmergencyKeyTone, playSyntheticPattern };
+  return { playBrandIdent, playSiren, playBeep, playEmergencySound, playEmergencyKeyTone, playSyntheticPattern };
 }

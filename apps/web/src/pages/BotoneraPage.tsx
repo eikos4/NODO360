@@ -40,6 +40,7 @@ import {
   saveDispatchSoundMode,
   EMERGENCY_AUDIO_FILES,
   DISPATCH_SIREN_FILE,
+  NODO360_IDENT_FILE,
   listBotoneraAudioEntries,
   hasEmergencyAudioFile,
   type DispatchSoundMode,
@@ -218,7 +219,7 @@ export default function BotoneraPage() {
   const logout = useAuthStore(s => s.logout);
   const { tokens: bt, toggleTheme, isDark } = useBotoneraTheme();
   const [soundMode, setSoundMode] = useState<DispatchSoundMode>(() => loadDispatchSoundMode());
-  const { playSiren, playBeep, playEmergencySound, playEmergencyKeyTone } = useDispatchAudio(soundMode);
+  const { playBrandIdent, playSiren, playBeep, playEmergencySound, playEmergencyKeyTone } = useDispatchAudio(soundMode);
   const [ttsVoiceId, setTtsVoiceId] = useState<DispatchTtsVoiceId>(() => loadDispatchTtsSettings().voiceId);
   const [ttsRate, setTtsRate] = useState(() => loadDispatchTtsSettings().ratePercent);
   const [previewingVoice, setPreviewingVoice] = useState(false);
@@ -609,8 +610,9 @@ export default function BotoneraPage() {
         return;
       }
 
-      /* 1 — Tono MP3 de la clave (public/Audio/) */
+      /* 1 — Ident Nodo360 + tono MP3 de la clave */
       if (!muted) {
+        await playBrandIdent();
         if (!skipKeyTone) await playEmergencyKeyTone(typeId);
         skipKeyTone = false;
       }
@@ -633,7 +635,7 @@ export default function BotoneraPage() {
 
     doDispatch(repeatCount);
   }, [
-    selectedType, address, selectedCia, getVehicleIdsForDispatch, repeatCount, muted, playEmergencyKeyTone, playSiren, sirenDuration,
+    selectedType, address, selectedCia, getVehicleIdsForDispatch, repeatCount, muted, playBrandIdent, playEmergencyKeyTone, playSiren, sirenDuration,
     voiceEnabled, speak, vehicles, selectedParticipants, users, company, notes, latitude,
     longitude, persistDispatch, qc, dispatchConfig,
   ]);
@@ -1035,6 +1037,18 @@ export default function BotoneraPage() {
             </div>
 
             <div className="space-y-3 max-h-72 overflow-y-auto scrollbar-thin pr-1">
+              <div>
+                <p className="text-[10px] font-bold text-slate-500 uppercase mb-1.5">Ident Nodo360 (antes de la 10-X)</p>
+                <button
+                  type="button"
+                  onClick={() => { if (!muted) void playBrandIdent(); }}
+                  className="w-full flex items-center gap-2 p-2.5 rounded-lg border border-emerald-800/50 bg-emerald-950/30 hover:border-emerald-600/50 text-left"
+                >
+                  <Volume2 className="w-4 h-4 text-emerald-400 shrink-0" />
+                  <span className="text-xs text-emerald-200 font-mono truncate">{NODO360_IDENT_FILE}</span>
+                </button>
+              </div>
+
               <div>
                 <p className="text-[10px] font-bold text-slate-500 uppercase mb-1.5">Sirena de despacho</p>
                 <button

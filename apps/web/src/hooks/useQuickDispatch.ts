@@ -67,7 +67,7 @@ export function useQuickDispatch() {
   const qc = useQueryClient();
   const user = useAuthStore((s) => s.user);
   const [soundMode] = useState<DispatchSoundMode>(() => loadDispatchSoundMode());
-  const { playSiren, playBeep, playEmergencySound, playEmergencyKeyTone } = useDispatchAudio(soundMode);
+  const { playBrandIdent, playSiren, playBeep, playEmergencySound, playEmergencyKeyTone } = useDispatchAudio(soundMode);
   const ttsSettings = loadDispatchTtsSettings();
   const { speak, stop } = useDispatchTTS({ voiceId: ttsSettings.voiceId, ratePercent: ttsSettings.ratePercent });
 
@@ -346,7 +346,10 @@ export function useQuickDispatch() {
         vehicles as { id: string; patent: string; type?: string }[],
       );
 
-      if (!muted && !opts?.keyToneAlreadyPlayed) await playEmergencyKeyTone(typeId);
+      if (!muted) {
+        await playBrandIdent();
+        if (!opts?.keyToneAlreadyPlayed) await playEmergencyKeyTone(typeId);
+      }
       await new Promise((r) => setTimeout(r, 120));
       if (!muted) await playSiren(1800);
       if (voiceEnabled && radioMsg) {
@@ -377,6 +380,7 @@ export function useQuickDispatch() {
       selectedCia,
       getVehicleIdsForDispatch,
       muted,
+      playBrandIdent,
       playEmergencyKeyTone,
       playEmergencySound,
       playSiren,

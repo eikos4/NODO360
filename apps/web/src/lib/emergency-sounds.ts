@@ -176,10 +176,17 @@ export const EMERGENCY_AUDIO_FILES: Record<string, { file: string; label: string
   '10-12': { file: 'Llamado de comandancia 001.mp3', label: 'Apoyo externo' },
 };
 
+/** Ident de marca — suena antes de la clave 10-X en despacho y alarmas */
+export const NODO360_IDENT_FILE = 'nodo.mp3';
+
 /** Sirena entre tono de clave y mensaje de voz */
 export const DISPATCH_SIREN_FILE = 'Central A 04.mp3';
 
 const AUDIO_BASE = '/Audio';
+
+export function nodo360IdentFileUrl(): string {
+  return `${AUDIO_BASE}/${encodeURIComponent(NODO360_IDENT_FILE)}`;
+}
 
 export function dispatchSirenFileUrl(): string {
   return `${AUDIO_BASE}/${encodeURIComponent(DISPATCH_SIREN_FILE)}`;
