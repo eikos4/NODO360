@@ -172,7 +172,7 @@ export const EMERGENCY_AUDIO_FILES: Record<string, { file: string; label: string
   '10-8': { file: '10_8.mp3', label: 'Otros' },
   '10-9': { file: '10_9.mp3', label: 'Falsa alarma' },
   '10-10': { file: 'Alarma general 001.mp3', label: 'Apoyo cuerpos' },
-  '10-11': { file: 'Alarma de incendio 0001.mp3', label: 'Derrumbe' },
+  '10-11': { file: 'tone_10_11.mp3', label: 'Derrumbe' },
   '10-12': { file: 'Llamado de comandancia 001.mp3', label: 'Apoyo externo' },
 };
 
