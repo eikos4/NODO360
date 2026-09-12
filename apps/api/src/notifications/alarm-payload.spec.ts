@@ -18,6 +18,14 @@ describe('alarm payload mapping', () => {
     expect(resolveAlarmTone('sin código')).toMatchObject({ code: '10-0' });
   });
 
+  it('maps a Nodo360 preaviso to the brand ident channel', () => {
+    expect(resolveAlarmTone('NODO360 · Atención', 'STANDBY', 'PREAVISO')).toEqual({
+      code: 'NODO',
+      channelId: 'nodo360_alarm_nodo360',
+      sound: 'tone_nodo360',
+    });
+  });
+
   it('only emits an APNs critical sound payload when explicitly enabled', () => {
     const enabled = { get: vi.fn().mockReturnValue('true') };
     const disabled = { get: vi.fn().mockReturnValue('false') };

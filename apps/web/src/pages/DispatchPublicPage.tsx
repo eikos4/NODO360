@@ -145,6 +145,13 @@ export type PublicCentral = {
   };
   recentEmergencies: PublicEmergency[];
   emergencyStats: { active: number; total: number };
+  standby?: {
+    id: string;
+    companyId: string;
+    companyLabel: string;
+    message: string;
+    at: string;
+  } | null;
 };
 
 const apiBase = import.meta.env.VITE_API_URL?.replace(/\/$/, '') || '/api';
@@ -300,10 +307,11 @@ export default function DispatchPublicPage() {
 
   const onEmergency = !!visibleActiveEmergency;
 
-  const { replay, speak } = usePublicDispatchAlarm(activeEmergencies, {
+  const { replay, speak, playStandbyAlert } = usePublicDispatchAlarm(activeEmergencies, {
     enabled: audioEnabled,
     muted: audioMuted,
   });
+  const lastStandbyIdRef = useRef<string | null>(null);
 
   const load = useCallback(async () => {
     if (!slug) return;
@@ -401,11 +409,11 @@ export default function DispatchPublicPage() {
 
   useEffect(() => {
     load();
-    const urgent = onEmergency || (data?.emergencyStats?.active ?? 0) > 0;
+    const urgent = onEmergency || (data?.emergencyStats?.active ?? 0) > 0 || Boolean(data?.standby?.id);
     const intervalMs = urgent ? PUBLIC_POLL_MS_URGENT : PUBLIC_POLL_MS_IDLE;
     const id = setInterval(load, intervalMs);
     return () => clearInterval(id);
-  }, [load, onEmergency, data?.emergencyStats?.active]);
+  }, [load, onEmergency, data?.emergencyStats?.active, data?.standby?.id]);
 
   useEffect(() => {
     const refresh = () => { void load(); };
@@ -437,9 +445,23 @@ export default function DispatchPublicPage() {
           icon: 'ðŸ“', 
           duration: 6000 
         });
-      }
+      },
+      (event) => {
+        if (lastStandbyIdRef.current === event.standbyId) return;
+        lastStandbyIdRef.current = event.standbyId;
+        toast(event.message, { duration: 8000, icon: '📡' });
+        void playStandbyAlert(event.message);
+      },
     );
-  }, [data?.id, load, audioEnabled, audioMuted, speak]);
+  }, [data?.id, load, audioEnabled, audioMuted, speak, playStandbyAlert]);
+
+  useEffect(() => {
+    const standby = data?.standby;
+    if (!standby?.id || lastStandbyIdRef.current === standby.id) return;
+    lastStandbyIdRef.current = standby.id;
+    toast(standby.message, { duration: 8000, icon: '📡' });
+    void playStandbyAlert(standby.message);
+  }, [data?.standby, playStandbyAlert]);
 
   const handleBitacoraOmit = (emergency: PublicEmergency) => {
     const next = addPendingBitacora(emergency.id);
@@ -703,6 +725,19 @@ export default function DispatchPublicPage() {
               <Volume2 className="w-4 h-4" />
               Activar avisos de alarma
             </button>
+          </div>
+        </div>
+      )}
+
+      {data?.standby && (
+        <div className="fixed top-0 inset-x-0 z-[90] px-3 pt-3 pointer-events-none">
+          <div className="max-w-3xl mx-auto pointer-events-auto rounded-2xl border-2 border-emerald-400/60 bg-emerald-950/95 text-emerald-50 shadow-2xl px-4 py-3 flex items-start gap-3">
+            <Radio className="w-6 h-6 text-emerald-300 shrink-0 mt-0.5" />
+            <div>
+              <p className="text-[10px] font-black uppercase tracking-[0.18em] text-emerald-300">Aviso Nodo360 · preaviso</p>
+              <p className="text-sm font-semibold leading-snug mt-0.5">{data.standby.message}</p>
+              <p className="text-[11px] text-emerald-200/80 mt-1">No es un despacho. Esperen la clave 10-X.</p>
+            </div>
           </div>
         </div>
       )}

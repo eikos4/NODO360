@@ -6,6 +6,7 @@ import {
 } from '@nestjs/common';
 import { EquipmentStatus, FleetLogType, DispatchSource, IncidentStatus } from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
+import { StandbyAlertService } from './standby-alert.service';
 import { UpdateDispatchCentralDto } from './dto/update-dispatch-central.dto';
 
 export type DispatchPublicStatus = 'DISPONIBLE' | 'NO_DISPONIBLE' | 'OCULTA';
@@ -51,7 +52,10 @@ function slugify(text: string) {
 
 @Injectable()
 export class DispatchCentralService {
-  constructor(private prisma: PrismaService) {}
+  constructor(
+    private prisma: PrismaService,
+    private standbyAlerts: StandbyAlertService,
+  ) {}
 
   private mapPublicStatus(
     publicEnabled: boolean,
@@ -540,7 +544,12 @@ export class DispatchCentralService {
         active: recentEmergencies.filter((e) => e.status === 'ACTIVA').length,
         total: recentEmergencies.length,
       },
+      standby: this.standbyAlerts.peek(company.id),
     };
+  }
+
+  triggerStandby(companyId: string, message?: string) {
+    return this.standbyAlerts.trigger(companyId, message);
   }
 
   async toggleMaquinista(

@@ -25,7 +25,17 @@ type NewDispatchHandler = (incident: {
   emergencyCodeId?: string | null;
 }) => void;
 
-export function useEmergencySync(enabled: boolean, onNewDispatch?: NewDispatchHandler) {
+type StandbyHandler = (alert: {
+  id: string;
+  companyLabel: string;
+  message: string;
+}) => void;
+
+export function useEmergencySync(
+  enabled: boolean,
+  onNewDispatch?: NewDispatchHandler,
+  onStandby?: StandbyHandler,
+) {
   const [snapshot, setSnapshot] = useState<EmergencySnapshot | null>(null);
   const [history, setHistory] = useState<AlarmHistoryItem[]>([]);
   const [connection, setConnection] = useState<ConnectionState>(
@@ -39,6 +49,8 @@ export function useEmergencySync(enabled: boolean, onNewDispatch?: NewDispatchHa
   const knownIdsRef = useRef(new Set<string>());
   const onNewDispatchRef = useRef(onNewDispatch);
   onNewDispatchRef.current = onNewDispatch;
+  const onStandbyRef = useRef(onStandby);
+  onStandbyRef.current = onStandby;
 
   const loadLocal = useCallback(async () => {
     const [cached, cachedHistory, queue] = await Promise.all([
@@ -236,6 +248,17 @@ export function useEmergencySync(enabled: boolean, onNewDispatch?: NewDispatchHa
       });
       socketRef.current = socket;
       const onEvent = (event: EmergencyEventEnvelope) => {
+        if (event.event === 'emergency.standby.v1') {
+          const data = (event.data ?? {}) as { id?: string; companyLabel?: string; message?: string };
+          if (data.id && data.message) {
+            onStandbyRef.current?.({
+              id: data.id,
+              companyLabel: data.companyLabel || '',
+              message: data.message,
+            });
+          }
+          return;
+        }
         if (event.event === 'emergency.dispatch.created.v1') {
           const incident = (event.data as { incident?: Record<string, unknown> } | undefined)?.incident;
           const payload = {
@@ -259,6 +282,7 @@ export function useEmergencySync(enabled: boolean, onNewDispatch?: NewDispatchHa
         'emergency.incident.updated.v1',
         'emergency.incident.cancelled.v1',
         'emergency.incident.closed.v1',
+        'emergency.standby.v1',
       ].forEach((name) => socket.on(name, onEvent));
       socket.on('connect_error', () => setLastError('Tiempo real interrumpido; polling activo.'));
     });

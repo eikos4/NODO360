@@ -16,7 +16,16 @@ export type LocationUpdateEvent = {
   at: number;
 };
 
-export type LiveSyncMessage = DispatchLiveEvent | LocationUpdateEvent;
+export type StandbyLiveEvent = {
+  type: 'standby';
+  companyIds: string[];
+  standbyId: string;
+  companyLabel: string;
+  message: string;
+  at: number;
+};
+
+export type LiveSyncMessage = DispatchLiveEvent | LocationUpdateEvent | StandbyLiveEvent;
 
 const CHANNEL = 'nodo360-dispatch-live';
 const STORAGE_KEY = 'nodo360_last_dispatch';
@@ -77,11 +86,37 @@ export function companyIdsFromDispatchResponse(data: {
   return [...ids];
 }
 
+export function notifyStandbyLive(payload: Omit<StandbyLiveEvent, 'type' | 'at'>) {
+  const event: StandbyLiveEvent = {
+    type: 'standby',
+    companyIds: payload.companyIds,
+    standbyId: payload.standbyId,
+    companyLabel: payload.companyLabel,
+    message: payload.message,
+    at: Date.now(),
+  };
+
+  try {
+    const bc = new BroadcastChannel(CHANNEL);
+    bc.postMessage(event);
+    bc.close();
+  } catch {
+    /* BroadcastChannel no disponible */
+  }
+
+  try {
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(event));
+  } catch {
+    /* storage lleno / privado */
+  }
+}
+
 export function subscribeDispatchLive(
   companyId: string | undefined,
   onRefresh: () => void,
   onDispatch?: (event: DispatchLiveEvent) => void,
   onLocationUpdate?: (event: LocationUpdateEvent) => void,
+  onStandby?: (event: StandbyLiveEvent) => void,
 ): () => void {
   if (!companyId) return () => {};
 
@@ -98,6 +133,11 @@ export function subscribeDispatchLive(
     } else if (data.type === 'location_update') {
       onLocationUpdate?.(data);
       onRefresh();
+    } else if (data.type === 'standby') {
+      if (data.companyIds.includes(companyId)) {
+        onStandby?.(data);
+        onRefresh();
+      }
     }
   };
 

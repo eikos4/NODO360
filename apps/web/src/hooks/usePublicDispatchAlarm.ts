@@ -70,5 +70,19 @@ export function usePublicDispatchAlarm(
     void playAlarmSequence(emergency);
   }, [playAlarmSequence]);
 
-  return { replay, speak };
+  const playStandbyAlert = useCallback(async (message: string) => {
+    if (playingRef.current || options.muted || !options.enabled) return;
+    playingRef.current = true;
+    try {
+      await playBrandIdent();
+      await delay(200);
+      await new Promise<void>((resolve) => {
+        speak(message, resolve);
+      });
+    } finally {
+      playingRef.current = false;
+    }
+  }, [options.enabled, options.muted, playBrandIdent, speak]);
+
+  return { replay, speak, playStandbyAlert };
 }

@@ -7,6 +7,7 @@ export const EMERGENCY_EVENT_NAMES = {
   incidentUpdated: 'emergency.incident.updated.v1',
   incidentCancelled: 'emergency.incident.cancelled.v1',
   incidentClosed: 'emergency.incident.closed.v1',
+  standbyAlerted: 'emergency.standby.v1',
 } as const;
 
 export type EmergencyEventName =

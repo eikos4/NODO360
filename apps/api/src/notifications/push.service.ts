@@ -210,4 +210,102 @@ export class PushService {
     return { sent };
   }
 
+  async notifyStandby(payload: {
+    companyIds: string[];
+    companyLabel: string;
+    message: string;
+    standbyId: string;
+  }) {
+    const companyIds = [...new Set(payload.companyIds.filter(Boolean))];
+    if (!companyIds.length) return { sent: 0 };
+
+    const devices = await this.prisma.devicePushToken.findMany({
+      where: {
+        user: {
+          isActive: true,
+          companyId: { in: companyIds },
+        },
+      },
+      select: { token: true },
+    });
+
+    if (!devices.length) {
+      this.logger.log(`Preaviso ${payload.companyLabel}: 0 tokens registrados`);
+      return { sent: 0 };
+    }
+
+    if (!this.ready || !this.messaging) {
+      this.logger.warn(
+        `Preaviso ${payload.companyLabel}: ${devices.length} teléfonos listos, pero FCM no está configurado`,
+      );
+      return { sent: 0 };
+    }
+
+    const title = 'NODO360 · Atención';
+    const body = payload.message;
+    const tone = resolveAlarmTone('NODO', 'STANDBY', 'PREAVISO');
+    const tokens = devices.map((d) => d.token);
+    const stale: string[] = [];
+    let sent = 0;
+
+    for (let i = 0; i < tokens.length; i += 500) {
+      const chunk = tokens.slice(i, i + 500);
+      const res = await this.messaging.sendEachForMulticast({
+        tokens: chunk,
+        notification: { title, body },
+        data: {
+          kind: 'STANDBY',
+          code: 'NODO',
+          type: 'PREAVISO',
+          standbyId: payload.standbyId,
+          companyLabel: payload.companyLabel,
+          address: payload.companyLabel,
+          url: '/emergencia-respuesta',
+        },
+        android: {
+          priority: 'high',
+          notification: {
+            channelId: tone.channelId,
+            sound: tone.sound,
+            priority: 'max',
+          },
+        },
+        apns: {
+          headers: { 'apns-priority': '10', 'apns-push-type': 'alert' },
+          payload: {
+            aps: {
+              sound: resolveApnsSound(tone.sound, this.config),
+              alert: { title, body },
+              contentAvailable: true,
+              category: 'NODO360_EMERGENCY',
+            },
+          },
+        },
+        webpush: {
+          notification: { title, body, requireInteraction: true },
+          fcmOptions: { link: '/emergencia-respuesta' },
+        },
+      });
+      sent += res.successCount;
+      res.responses.forEach((r, idx) => {
+        if (r.error) {
+          const code = r.error.code ?? '';
+          if (
+            code.includes('registration-token-not-registered') ||
+            code.includes('invalid-registration-token')
+          ) {
+            stale.push(chunk[idx]);
+          }
+        }
+      });
+    }
+
+    if (stale.length) {
+      await this.prisma.devicePushToken.deleteMany({ where: { token: { in: stale } } });
+    }
+
+    this.logger.log(`Preaviso ${payload.companyLabel}: push ${sent}/${tokens.length}`);
+    return { sent };
+  }
+
 }

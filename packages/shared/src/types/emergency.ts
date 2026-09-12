@@ -14,6 +14,7 @@ export const EMERGENCY_EVENT_NAMES = [
   'emergency.incident.updated.v1',
   'emergency.incident.cancelled.v1',
   'emergency.incident.closed.v1',
+  'emergency.standby.v1',
 ] as const;
 
 export type EmergencyEventName = (typeof EMERGENCY_EVENT_NAMES)[number];

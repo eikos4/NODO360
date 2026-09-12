@@ -44,7 +44,7 @@ public class NativeAlarmPlugin extends Plugin {
 
     private static final String[] CODES = {
         "10-0", "10-1", "10-2", "10-3", "10-4", "10-5", "10-6",
-        "10-7", "10-8", "10-9", "10-10", "10-11", "10-12"
+        "10-7", "10-8", "10-9", "10-10", "10-11", "10-12", "NODO"
     };
 
     private TextToSpeech tts;
@@ -227,8 +227,10 @@ public class NativeAlarmPlugin extends Plugin {
         List<Integer> queue = new ArrayList<>();
         int ident = rawRes("tone_nodo360");
         if (ident != 0) queue.add(ident);
-        int tone = rawRes("tone_" + code.replace('-', '_'));
-        if (tone != 0) queue.add(tone);
+        if (!"NODO".equals(code)) {
+            int tone = rawRes("tone_" + code.replace('-', '_'));
+            if (tone != 0) queue.add(tone);
+        }
         if (queue.isEmpty()) {
             scheduleSpeech(spoken, 800);
             return;
@@ -321,10 +323,14 @@ public class NativeAlarmPlugin extends Plugin {
         for (String code : CODES) {
             NotificationChannel channel = new NotificationChannel(
                 channelId(code),
-                "Alarma " + code,
+                "NODO".equals(code) ? "Aviso Nodo360" : "Alarma " + code,
                 NotificationManager.IMPORTANCE_HIGH
             );
-            channel.setDescription("Tono operativo " + code + " de Nodo360");
+            channel.setDescription(
+                "NODO".equals(code)
+                    ? "Ident Nodo360 — preaviso extraordinario"
+                    : "Tono operativo " + code + " de Nodo360"
+            );
             channel.setSound(soundUri(code), attributes);
             channel.enableVibration(true);
             channel.setVibrationPattern(VIBRATION);
@@ -344,16 +350,21 @@ public class NativeAlarmPlugin extends Plugin {
     }
 
     private String normalizeCode(String value) {
-        Matcher matcher = CODE_PATTERN.matcher(value == null ? "" : value);
+        String raw = value == null ? "" : value;
+        if (raw.toUpperCase(Locale.ROOT).matches(".*(NODO|STANDBY|PREAVISO).*")) {
+            return "NODO";
+        }
+        Matcher matcher = CODE_PATTERN.matcher(raw);
         return matcher.find() ? "10-" + matcher.group(1) : "10-0";
     }
 
     private String channelId(String code) {
+        if ("NODO".equals(code)) return "nodo360_alarm_nodo360";
         return "nodo360_alarm_" + code.replace('-', '_');
     }
 
     private Uri soundUri(String code) {
-        String name = "tone_" + code.replace('-', '_');
+        String name = "NODO".equals(code) ? "tone_nodo360" : "tone_" + code.replace('-', '_');
         return Uri.parse("android.resource://" + getContext().getPackageName() + "/raw/" + name);
     }
 }

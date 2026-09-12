@@ -6,7 +6,7 @@ import {
   MapPin, Building2, Square, Settings,
   CheckCircle2, X, Crosshair, ExternalLink, BookOpen,
   Globe, Copy, UserX, Star, Search, ChevronDown, ChevronUp,
-  Clock, Keyboard, Loader2, Users, LogOut, Menu, LayoutGrid, Sun, Moon, MessageCircle, GraduationCap,
+  Clock, Keyboard, Loader2, Users, LogOut, Menu, LayoutGrid, Sun, Moon, MessageCircle, GraduationCap, Radio,
 } from 'lucide-react';
 import { api } from '../lib/api';
 import toast from 'react-hot-toast';
@@ -55,6 +55,7 @@ import {
 import {
   companyIdsFromDispatchResponse,
   notifyDispatchLive,
+  notifyStandbyLive,
 } from '../lib/dispatch-live-sync';
 import { useBotoneraTheme } from '../hooks/useBotoneraTheme';
 import type { BotoneraThemeTokens } from '../lib/botonera-theme';
@@ -257,6 +258,7 @@ export default function BotoneraPage() {
   };
   const [pendingDoubleDispatch, setPendingDoubleDispatch] = useState<{ companyName: string; onConfirm: () => void } | null>(null);
   const [muted, setMuted] = useState(false);
+  const [standbySending, setStandbySending] = useState(false);
   const [dispatching, setDispatching] = useState(false);
   const [lastDispatch, setLastDispatch] = useState<any>(null);
   const [locationPinPhone, setLocationPinPhone] = useState(() => localStorage.getItem('nodo360_location_pin_phone') ?? '');
@@ -731,6 +733,45 @@ export default function BotoneraPage() {
     setTtsRate(rate);
     saveDispatchTtsSettings(ttsVoiceId, rate);
   };
+
+  const handleStandbyAlert = useCallback(async () => {
+    if (!selectedCia || !company) {
+      toast.error('Selecciona la compañía que vas a preavisar');
+      return;
+    }
+    const label = `${company.number}ª ${company.name}`;
+    const ok = window.confirm(
+      `Aviso Nodo360 a ${label}.\n\nVa a sonar el ident en los teléfonos de esa compañía y en su sala de radio.\nNo se crea emergencia ni se despacha ningún carro.`,
+    );
+    if (!ok) return;
+    setStandbySending(true);
+    try {
+      const { data } = await api.post<{
+        id: string;
+        companyId: string;
+        companyLabel: string;
+        message: string;
+        phones: number;
+      }>(`/dispatch/central/${selectedCia}/standby`);
+      notifyStandbyLive({
+        companyIds: [data.companyId],
+        standbyId: data.id,
+        companyLabel: data.companyLabel,
+        message: data.message,
+      });
+      if (!muted) await playBrandIdent();
+      toast.success(
+        data.phones > 0
+          ? `Preaviso enviado · ${data.phones} teléfono(s)`
+          : 'Preaviso en sala. No hay teléfonos registrados en esta compañía.',
+      );
+    } catch (error) {
+      const axiosError = error as { response?: { data?: { message?: string } } };
+      toast.error(axiosError.response?.data?.message ?? 'No se pudo enviar el aviso Nodo360');
+    } finally {
+      setStandbySending(false);
+    }
+  }, [selectedCia, company, muted, playBrandIdent]);
 
   const canDispatch = !!(
     selectedType
@@ -1571,6 +1612,19 @@ export default function BotoneraPage() {
                 ))}
               </div>
             </div>
+            <button
+              type="button"
+              onClick={() => void handleStandbyAlert()}
+              disabled={!selectedCia || standbySending || dispatching}
+              className="w-full flex items-center justify-center gap-2 px-3 py-3 rounded-xl border-2 border-emerald-500/50 bg-emerald-950/40 text-emerald-200 hover:bg-emerald-900/50 hover:border-emerald-400 disabled:opacity-40 font-bold text-xs uppercase tracking-wide min-h-[48px]"
+              title="Solo ident Nodo360 en teléfonos y sala. No despacha emergencia."
+            >
+              <Radio className="w-4 h-4 text-emerald-400" />
+              {standbySending ? 'Enviando aviso…' : 'Aviso Nodo360 · preaviso extraordinario'}
+            </button>
+            <p className={`text-[10px] leading-snug ${bt.hint}`}>
+              Para emergencias grandes: avisa a la compañía elegida por teléfono y sala de radio. No crea 10-X.
+            </p>
           </div>
           {activeMainWithSubs?.subdivisions && (
             <div className={`rounded-xl border p-3 space-y-2 ${bt.subPanel}`}>

@@ -14,7 +14,7 @@ import { localStore } from './lib/localStore';
 import { clearSessionToken, getSessionToken, setSessionToken } from './platform/session';
 import { configureNativeAlarms, NativeAlarm, type AlarmDiagnostics } from './platform/nativeAlarm';
 import { useEmergencySync } from './hooks/useEmergencySync';
-import { buildAlarmSpeech, playEmergencyAlarm } from './lib/alarmAnnounce';
+import { buildAlarmSpeech, isStandbyAlarm, playEmergencyAlarm } from './lib/alarmAnnounce';
 import { estimateEtaMinutes, getCurrentCoords, haversineKm } from './lib/geo';
 import { disconnectRadioSocket } from './lib/radio';
 import { HelmetIcon } from './HelmetIcon';
@@ -545,7 +545,20 @@ export default function App() {
     if (incident.id) setSelectedId(incident.id);
     setScreen('alarms');
   }, []);
-  const sync = useEmergencySync(Boolean(user && activated), announceDispatch);
+  const announceStandby = useCallback((alert: { id: string; companyLabel: string; message: string }) => {
+    void playEmergencyAlarm({
+      id: `standby:${alert.id}`,
+      kind: 'STANDBY',
+      code: 'NODO',
+      type: 'PREAVISO',
+      title: 'NODO360 · Atención',
+      body: alert.message,
+      radioMessage: alert.message,
+      address: alert.companyLabel,
+    });
+    setNotice(alert.message);
+  }, []);
+  const sync = useEmergencySync(Boolean(user && activated), announceDispatch, announceStandby);
   const markNotification = sync.markNotification;
 
   useEffect(() => {
@@ -604,15 +617,20 @@ export default function App() {
       listeners.push(await FirebaseMessaging.addListener('notificationReceived', ({ notification }) => {
         const data = (notification.data ?? {}) as Record<string, string>;
         void playEmergencyAlarm({
-          id: data.incidentId || data.notificationId,
+          id: data.standbyId || data.incidentId || data.notificationId,
+          kind: data.kind,
           emergencyCodeId: data.emergencyCodeId,
           code: data.code || data.type,
           type: data.type,
-          address: data.address,
+          address: data.address || data.companyLabel,
           radioMessage: data.radioMessage || notification.body,
           title: notification.title,
           body: notification.body,
         });
+        if (isStandbyAlarm({ kind: data.kind, code: data.code, type: data.type, title: notification.title, body: notification.body })) {
+          setNotice(notification.body || 'Aviso Nodo360: se viene una emergencia.');
+          return;
+        }
         if (data.incidentId) setSelectedId(data.incidentId);
         setScreen('alarms');
       }));

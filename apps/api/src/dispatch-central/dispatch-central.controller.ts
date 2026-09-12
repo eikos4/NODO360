@@ -123,4 +123,14 @@ export class DispatchCentralController {
   ensureSlug(@Param('companyId') companyId: string) {
     return this.service.ensureSlug(companyId);
   }
+
+  @Post('central/:companyId/standby')
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles(...DISPATCH_ROLES)
+  triggerStandby(
+    @Param('companyId') companyId: string,
+    @Body() body: { message?: string },
+  ) {
+    return this.service.triggerStandby(companyId, body?.message);
+  }
 }

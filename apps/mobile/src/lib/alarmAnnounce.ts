@@ -31,10 +31,17 @@ export type AlarmAnnounceInput = {
   emergencyCodeId?: string | null;
   title?: string;
   body?: string;
+  kind?: string;
 };
+
+export function isStandbyAlarm(input: Pick<AlarmAnnounceInput, 'kind' | 'code' | 'type' | 'title' | 'body'>) {
+  const text = [input.kind, input.code, input.type, input.title, input.body].filter(Boolean).join(' ');
+  return /\b(NODO|STANDBY|PREAVISO)\b/i.test(text);
+}
 
 export function normalizeAlarmCode(...values: Array<string | null | undefined>) {
   const text = values.filter(Boolean).join(' ');
+  if (/\b(NODO|STANDBY|PREAVISO)\b/i.test(text)) return 'NODO';
   const match = text.match(/\b10[-_ ]?(1[0-2]|\d)\b/i);
   return `10-${match?.[1] ?? '0'}`;
 }
@@ -50,6 +57,17 @@ export function alarmLabel(code: string, type?: string) {
 }
 
 export function buildAlarmSpeech(input: AlarmAnnounceInput) {
+  if (isStandbyAlarm(input)) {
+    const spoken = input.radioMessage?.trim()
+      || input.body?.trim()
+      || 'Atención. Nodo 360. Se viene una emergencia. Estén atentos.';
+    return {
+      code: 'NODO',
+      title: input.title || 'NODO360 · Atención',
+      body: input.body || spoken,
+      spoken,
+    };
+  }
   const code = normalizeAlarmCode(input.emergencyCodeId, input.code, input.type, input.title);
   const label = alarmLabel(code, input.type);
   const address = input.address?.trim();
