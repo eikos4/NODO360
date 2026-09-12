@@ -163,8 +163,9 @@ svg { width: 1.2em; height: 1.2em; flex: none; }
   display: grid;
   place-items: center;
   color: white;
-  background: linear-gradient(135deg, #dc2626, #ea580c);
-  box-shadow: 0 12px 28px #dc262640;
+  background: linear-gradient(160deg, #1A4068, #0A1A2E);
+  box-shadow: 0 12px 28px #0A1A2E66;
+  color: #F0C85A;
 }
 .splash-mark svg, .splash svg { width: 30px; height: 30px; }
 .splash b { font-size: 22px; letter-spacing: .12em; }
@@ -246,8 +247,9 @@ svg { width: 1.2em; height: 1.2em; flex: none; }
   display: grid;
   place-items: center;
   color: white;
-  background: linear-gradient(135deg, #dc2626, #ea580c);
-  box-shadow: 0 10px 22px #dc262640;
+  background: linear-gradient(160deg, #1A4068, #0A1A2E);
+  box-shadow: 0 10px 22px #0A1A2E55;
+  color: #F0C85A;
 }
 .brand-mark svg { width: 26px; height: 26px; }
 .brand-name { margin: 0; font-size: 18px; font-weight: 900; letter-spacing: .08em; }
@@ -551,6 +553,96 @@ header small { color: var(--muted); font-size: 10px; margin-top: 4px; }
 .profile-op em.go, .profile-op em.scene { background: #16a34a18; color: #15803d; }
 .profile-op em.no { background: #dc262618; color: #b91c1c; }
 .profile-op em.hold { background: #f59e0b18; color: #b45309; }
+.help-menu {
+  width: 100%;
+  display: grid;
+  grid-template-columns: 40px 1fr 18px;
+  align-items: center;
+  gap: 12px;
+  text-align: left;
+  padding: 14px;
+  border-radius: 19px;
+  border: 1px solid var(--line);
+  background: var(--panel);
+  color: var(--text);
+}
+.help-menu-icon {
+  width: 40px;
+  height: 40px;
+  border-radius: 12px;
+  display: grid;
+  place-items: center;
+  background: #16a34a18;
+  color: #16a34a;
+}
+[data-theme="nodo"] .help-menu-icon { background: #052e16; color: #4ade80; }
+.help-menu span { min-width: 0; display: grid; gap: 2px; }
+.help-menu b { font-size: 15px; }
+.help-menu small { color: var(--muted); font-size: 11px; font-weight: 700; line-height: 1.35; }
+.help-menu > svg { width: 18px; height: 18px; color: var(--muted); }
+.help-screen { display: grid; gap: 12px; }
+.help-hero {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 16px;
+  border-radius: 20px;
+  border: 1px solid #16a34a44;
+  background: #16a34a10;
+}
+.help-hero > svg { width: 28px; height: 28px; color: #16a34a; flex: none; }
+[data-theme="nodo"] .help-hero { background: #052e16; border-color: #166534; }
+[data-theme="nodo"] .help-hero > svg { color: #4ade80; }
+.help-hero div { display: grid; gap: 2px; min-width: 0; }
+.help-hero small { color: var(--muted); font-size: 10px; font-weight: 900; letter-spacing: .1em; text-transform: uppercase; }
+.help-hero b { font-size: 18px; line-height: 1.15; }
+.help-hero em { font-style: normal; color: var(--muted); font-size: 12px; font-weight: 700; }
+.help-card {
+  padding: 16px;
+  border-radius: 19px;
+  border: 1px solid var(--line);
+  background: var(--panel);
+}
+.help-card h2 {
+  margin: 0 0 8px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 15px;
+}
+.help-card h2 svg { width: 18px; height: 18px; color: #16a34a; }
+.help-card p { margin: 0 0 10px; color: var(--muted); font-size: 13px; line-height: 1.5; }
+.help-card ul, .help-card ol { margin: 0; padding: 0; display: grid; gap: 8px; }
+.help-card li { list-style: none; font-size: 13px; font-weight: 650; line-height: 1.45; }
+.help-card ol li { display: flex; align-items: flex-start; gap: 8px; }
+.help-card ol svg { width: 16px; height: 16px; color: #dc2626; flex: none; margin-top: 2px; }
+.help-note { margin: 12px 0 0 !important; font-size: 12px !important; }
+.help-kodesk {
+  padding: 18px;
+  border-radius: 19px;
+  border: 1px solid var(--line);
+  background: var(--panel);
+  text-align: center;
+}
+.help-kodesk small { color: var(--muted); font-size: 10px; font-weight: 900; letter-spacing: .12em; text-transform: uppercase; }
+.help-kodesk b { display: block; margin: 6px 0 8px; font-size: 22px; }
+.help-kodesk p { margin: 0 0 12px; color: var(--muted); font-size: 13px; line-height: 1.5; }
+.help-kodesk a { color: #16a34a; font-weight: 800; }
+.help-kodesk-links { display: flex; flex-wrap: wrap; justify-content: center; gap: 10px; }
+.help-kodesk-links a {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 12px;
+  border-radius: 99px;
+  border: 1px solid var(--btn-soft-border);
+  background: var(--btn-soft-bg);
+  color: var(--btn-soft-text);
+  font-size: 12px;
+  text-decoration: none;
+}
+.help-kodesk-links svg { width: 14px; height: 14px; }
+
 .alarm-settings { display: grid; gap: 12px; }
 .settings-card { padding: 18px; border: 1px solid var(--line); border-radius: 19px; background: var(--panel); }
 .settings-card h2, .settings-card h3 { margin: 0 0 6px; }
@@ -568,6 +660,8 @@ header small { color: var(--muted); font-size: 10px; margin-top: 4px; }
 
 nav { position: fixed; z-index: 20; bottom: 0; left: 0; right: 0; min-height: calc(67px + env(safe-area-inset-bottom)); padding-bottom: env(safe-area-inset-bottom); display: grid; grid-template-columns: repeat(3, 1fr); background: var(--nav); backdrop-filter: blur(15px); border-top: 1px solid var(--line); }
 nav.nav-4 { grid-template-columns: repeat(4, 1fr); }
+nav.nav-5 { grid-template-columns: repeat(5, 1fr); }
+nav.nav-5 button { font-size: 10px; }
 
 .announce-list { display: grid; gap: 10px; }
 .announce-head { display: flex; align-items: center; gap: 12px; padding: 14px; border-radius: 19px; border: 1px solid #7c3aed44; background: #7c3aed10; }

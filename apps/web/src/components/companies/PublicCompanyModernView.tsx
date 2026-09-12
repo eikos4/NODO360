@@ -1,11 +1,68 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { 
   Users, UserCog, Truck, Siren, Search, Filter, CheckCircle2, XCircle, 
-  ChevronRight, Calendar, Clock, MapPin, Plus, Loader2, Shield
+  ChevronRight, Calendar, Clock, MapPin, Plus, Loader2, Shield, X, Moon,
 } from 'lucide-react';
 import { PublicCentral, RosterMember, MaquinistaMember, FleetVehicle } from '../../pages/DispatchPublicPage';
 import { PublicEmergency } from '../dispatch/DispatchEmergenciesPanel';
 import RoleBadge from '../RoleBadge';
+import PublicOsmMap, { PARRAL_CENTER } from '../map/PublicOsmMap';
+
+type NoveltyTone = 'red' | 'amber' | 'blue';
+
+type Novelty = {
+  id: string;
+  title: string;
+  when: string;
+  datetime: string;
+  category: string;
+  tone: NoveltyTone;
+  summary: string;
+  body: string;
+  place?: string;
+};
+
+const NOVELTY_TONE: Record<NoveltyTone, { icon: string; badge: string; iconBg: string }> = {
+  red: { icon: 'text-red-500', badge: 'bg-red-50 text-red-600 border-red-200', iconBg: 'bg-red-100' },
+  amber: { icon: 'text-amber-500', badge: 'bg-amber-50 text-amber-600 border-amber-200', iconBg: 'bg-amber-100' },
+  blue: { icon: 'text-blue-500', badge: 'bg-blue-50 text-blue-600 border-blue-200', iconBg: 'bg-blue-100' },
+};
+
+const NOVEDADES: Novelty[] = [
+  {
+    id: 'rit',
+    title: 'Entrenamiento RIT',
+    when: 'Ayer',
+    datetime: 'Sábado 25 de mayo a las 09:00 hrs.',
+    category: 'Entrenamiento',
+    tone: 'red',
+    summary: 'Sábado 25 de mayo a las 09:00 hrs.',
+    place: 'Cuartel · patio de maniobras',
+    body: 'Instrucción de Rapid Intervention Team para toda la compañía. Asistencia obligatoria de la guardia de sábado. Equipo de intervención y ERA listos a las 08:45. Al término se revisa material y se deja constancia en bitácora.',
+  },
+  {
+    id: 'b1',
+    title: 'Mantención preventiva Carro B-1',
+    when: 'Ayer',
+    datetime: 'Viernes 24 de mayo desde las 08:30 hrs.',
+    category: 'Mantención',
+    tone: 'amber',
+    summary: 'Viernes 24 de mayo desde las 08:30 hrs.',
+    place: 'Sala de máquinas',
+    body: 'Revisión de bomba, niveles y alumbrado del B-1. El carro queda fuera de primera respuesta mientras dure el servicio. Cualquier despacho se cubre con el carro de reserva. Encargado de material informa el alta al capitán.',
+  },
+  {
+    id: 'guardia',
+    title: 'Guardia nocturna',
+    when: 'Ayer',
+    datetime: 'Turno desde el 24/05 20:00 al 25/05 08:00.',
+    category: 'Guardia',
+    tone: 'blue',
+    summary: 'Turno desde el 24/05 20:00 al 25/05 08:00.',
+    place: 'Cuartel',
+    body: 'Dotación de guardia nocturna confirmada. Central operativa y radio en escucha. Quienes no estén de turno quedan en alerta domiciliaria. Novedades del turno se registran en el libro de guardia al relevo de las 08:00.',
+  },
+];
 
 interface Props {
   data: PublicCentral;
@@ -14,9 +71,11 @@ interface Props {
   onToggleByNumber?: (markAvailableOrNum?: boolean | number, explicitNum?: number) => void;
   togglingId?: string | null;
   onEmergency?: boolean;
+  padActive?: boolean;
+  night?: boolean;
 }
 
-function LiveClock() {
+function LiveClock({ night }: { night?: boolean }) {
   const [now, setNow] = useState(new Date());
   useEffect(() => {
     const id = setInterval(() => setNow(new Date()), 1000);
@@ -25,7 +84,7 @@ function LiveClock() {
   
   return (
     <div className="text-right">
-      <p className="text-2xl font-bold font-mono tracking-wider text-slate-800">
+      <p className={`text-2xl font-bold font-mono tracking-wider ${night ? 'text-amber-100 drop-shadow-[0_0_16px_rgba(245,176,66,0.4)]' : 'text-slate-800'}`}>
         {now.toLocaleTimeString('es-CL', { hour: '2-digit', minute: '2-digit', second: '2-digit' })} <span className="text-sm font-semibold uppercase">{now.getHours() >= 12 ? 'p. m.' : 'a. m.'}</span>
       </p>
       <p className="text-xs text-slate-500 font-medium capitalize flex items-center justify-end gap-1.5 mt-0.5">
@@ -54,11 +113,20 @@ function StatCard({ icon: Icon, value, label, subtext, colorClass, isAlert = fal
   );
 }
 
-export default function PublicCompanyModernView({ data, onToggleMember, onToggleMaquinista, onToggleByNumber, togglingId, onEmergency }: Props) {
+export default function PublicCompanyModernView({ data, onToggleMember, onToggleMaquinista, onToggleByNumber, togglingId, onEmergency, padActive, night }: Props) {
   const [search, setSearch] = useState('');
-  const [filterState, setFilterState] = useState<'all' | 'available' | 'unavailable'>('all');
+  const [filterState, setFilterState] = useState<'all' | 'available' | 'unavailable'>('available');
   const [globalSearchResult, setGlobalSearchResult] = useState<any>(null);
   const [isSearchingGlobal, setIsSearchingGlobal] = useState(false);
+  const [noveltyOpen, setNoveltyOpen] = useState<Novelty | 'all' | null>(null);
+  const searchRef = useRef<HTMLInputElement>(null);
+
+  useEffect(() => {
+    if (!padActive) return;
+    searchRef.current?.focus();
+    const t = window.setTimeout(() => searchRef.current?.focus(), 80);
+    return () => window.clearTimeout(t);
+  }, [padActive]);
 
   const apiBase = import.meta.env.VITE_API_URL?.replace(/\/$/, '') || '/api';
 
@@ -98,7 +166,7 @@ export default function PublicCompanyModernView({ data, onToggleMember, onToggle
     const q = search.toLowerCase();
     const matchesSearch = m.fullName.toLowerCase().includes(q) || m.operativeNumber?.toString() === q;
     if (!matchesSearch) return false;
-    
+    if (q) return true;
     if (filterState === 'available') return m.stationAvailable;
     if (filterState === 'unavailable') return !m.stationAvailable;
     return true;
@@ -111,7 +179,7 @@ export default function PublicCompanyModernView({ data, onToggleMember, onToggle
   });
 
   return (
-    <div className="flex-1 min-h-0 overflow-hidden bg-slate-50 text-slate-800 font-sans p-4 flex flex-col gap-4">
+    <div className={`flex-1 min-h-0 overflow-hidden font-sans p-4 flex flex-col gap-4 relative z-10 ${night ? 'bg-transparent text-[#f4e8d0]' : 'bg-slate-50 text-slate-800'}`}>
       
       {/* HEADER */}
       <header className="flex flex-wrap items-center justify-between gap-4 bg-white p-4 lg:px-6 border-b border-slate-200/60 rounded-2xl shadow-sm relative z-10">
@@ -136,7 +204,14 @@ export default function PublicCompanyModernView({ data, onToggleMember, onToggle
             </div>
           </div>
         </div>
-        <LiveClock />
+        <div className="flex flex-col items-end gap-1.5">
+          {night && (
+            <span className="inline-flex items-center gap-1.5 text-[10px] font-black uppercase tracking-[0.18em] text-amber-300/90">
+              <Moon className="w-3 h-3" /> Guardia nocturna
+            </span>
+          )}
+          <LiveClock night={night} />
+        </div>
       </header>
 
       {/* TOP ROW: STATS & QR */}
@@ -180,6 +255,8 @@ export default function PublicCompanyModernView({ data, onToggleMember, onToggle
             <div className="flex-1 bg-white border border-slate-200 rounded-xl p-1.5 flex items-center shadow-sm">
               <Search className="w-5 h-5 text-slate-400 mx-3 shrink-0" />
               <input 
+                ref={searchRef}
+                data-station-pad
                 value={search} onChange={e => setSearch(e.target.value)}
                 onKeyDown={e => {
                   if (e.key === 'Enter' && search.trim() && !isNaN(Number(search))) {
@@ -256,8 +333,8 @@ export default function PublicCompanyModernView({ data, onToggleMember, onToggle
                       )}
                     </div>
                     <p className="text-xs font-bold text-slate-800 leading-tight line-clamp-1">{m.firstName} {m.lastName}</p>
-                    <div className="mt-1 scale-90 origin-top">
-                      <RoleBadge role={m.role} size="xs" />
+                    <div className="mt-1">
+                      <RoleBadge role={m.role} size="sm" contrast />
                     </div>
                     <div className="flex items-center gap-1 mt-2">
                       <span className={`w-1.5 h-1.5 rounded-full ${isAvail ? 'bg-emerald-500' : 'bg-slate-400'}`} />
@@ -425,14 +502,22 @@ export default function PublicCompanyModernView({ data, onToggleMember, onToggle
               <button className="text-xs font-bold text-blue-600 hover:underline">Ver todas</button>
             </div>
             
-            <div className="w-full h-32 bg-slate-100 rounded-xl mb-4 overflow-hidden relative border border-slate-200">
-               {/* Map placeholder */}
-               <div className="absolute inset-0 bg-[url('https://api.maptiler.com/maps/streets-v2/static/auto/600x400.png?key=YQ47V0z8gGMB6b1T3i9k')] bg-cover bg-center opacity-60" />
-               <div className="absolute inset-0 flex items-center justify-center">
-                 <div className="w-10 h-10 bg-red-600 rounded-full flex items-center justify-center text-white shadow-lg border-2 border-white animate-bounce">
-                   <Siren className="w-5 h-5" />
-                 </div>
-               </div>
+            <div className="w-full h-40 rounded-xl mb-4 overflow-hidden relative border border-slate-200">
+              <PublicOsmMap
+                theme={night ? 'dark' : 'light'}
+                center={PARRAL_CENTER}
+                zoom={14}
+                markers={data.recentEmergencies
+                  .filter((e) => e.latitude && e.longitude)
+                  .map((e) => ({
+                    id: e.id,
+                    lat: e.latitude,
+                    lng: e.longitude,
+                    active: !e.closedAt,
+                    label: `<strong>${e.type}</strong><br/>${e.address || ''}`,
+                  }))}
+                className="h-full w-full"
+              />
             </div>
 
             <div className="flex-1 overflow-y-auto scrollbar-thin scrollbar-thumb-slate-200 pr-2 space-y-4">
@@ -476,64 +561,124 @@ export default function PublicCompanyModernView({ data, onToggleMember, onToggle
             </button>
           </div>
 
-          {/* NOVEDADES Y ANUNCIOS (MOCK) */}
           <div className="bg-white rounded-2xl border border-slate-100 shadow-sm p-5 flex flex-col flex-1">
             <div className="flex items-center justify-between mb-4">
-              <div className="flex items-center gap-2">
+              <button type="button" className="flex items-center gap-2 text-left" onClick={() => setNoveltyOpen('all')}>
                 <Calendar className="w-4 h-4 text-red-500" />
                 <h2 className="text-sm font-black uppercase text-slate-800">Novedades y anuncios</h2>
-              </div>
-              <button className="text-xs font-bold text-blue-600 hover:underline flex items-center gap-1">Ver todas <ChevronRight className="w-3 h-3" /></button>
+              </button>
+              <button type="button" onClick={() => setNoveltyOpen('all')} className="text-xs font-bold text-blue-600 hover:underline flex items-center gap-1">
+                Ver todas <ChevronRight className="w-3 h-3" />
+              </button>
             </div>
             
             <div className="space-y-4">
-              <div className="flex gap-3 items-start">
-                <div className="w-8 h-8 rounded-full bg-red-100 flex items-center justify-center shrink-0 text-red-500">
-                  <Siren className="w-4 h-4" />
-                </div>
-                <div className="flex-1">
-                  <div className="flex justify-between items-start">
-                    <p className="text-xs font-bold text-slate-800 leading-tight">Entrenamiento RIT</p>
-                    <span className="text-[9px] text-slate-400">Ayer</span>
-                  </div>
-                  <p className="text-[10px] text-slate-500 mt-0.5 mb-1.5">Sábado 25 de mayo a las 09:00 hrs.</p>
-                  <span className="text-[8px] font-black uppercase bg-red-50 text-red-600 border border-red-200 px-2 py-0.5 rounded-full">Entrenamiento</span>
-                </div>
-              </div>
-
-              <div className="flex gap-3 items-start">
-                <div className="w-8 h-8 rounded-full bg-amber-100 flex items-center justify-center shrink-0 text-amber-500">
-                  <Truck className="w-4 h-4" />
-                </div>
-                <div className="flex-1">
-                  <div className="flex justify-between items-start">
-                    <p className="text-xs font-bold text-slate-800 leading-tight">Mantención preventiva Carro B-1</p>
-                    <span className="text-[9px] text-slate-400">Ayer</span>
-                  </div>
-                  <p className="text-[10px] text-slate-500 mt-0.5 mb-1.5">Viernes 24 de mayo desde las 08:30 hrs.</p>
-                  <span className="text-[8px] font-black uppercase bg-amber-50 text-amber-600 border border-amber-200 px-2 py-0.5 rounded-full">Mantención</span>
-                </div>
-              </div>
-
-              <div className="flex gap-3 items-start">
-                <div className="w-8 h-8 rounded-full bg-blue-100 flex items-center justify-center shrink-0 text-blue-500">
-                  <Clock className="w-4 h-4" />
-                </div>
-                <div className="flex-1">
-                  <div className="flex justify-between items-start">
-                    <p className="text-xs font-bold text-slate-800 leading-tight">Guardia nocturna</p>
-                    <span className="text-[9px] text-slate-400">Ayer</span>
-                  </div>
-                  <p className="text-[10px] text-slate-500 mt-0.5 mb-1.5">Turno desde el 24/05 20:00 al 25/05 08:00.</p>
-                  <span className="text-[8px] font-black uppercase bg-blue-50 text-blue-600 border border-blue-200 px-2 py-0.5 rounded-full">Guardia</span>
-                </div>
-              </div>
+              {NOVEDADES.map((item) => {
+                const tone = NOVELTY_TONE[item.tone];
+                const Icon = item.tone === 'red' ? Siren : item.tone === 'amber' ? Truck : Clock;
+                return (
+                  <button
+                    key={item.id}
+                    type="button"
+                    onClick={() => setNoveltyOpen(item)}
+                    className="w-full flex gap-3 items-start text-left rounded-xl p-1 -mx-1 hover:bg-slate-50 transition-colors"
+                  >
+                    <div className={`w-8 h-8 rounded-full flex items-center justify-center shrink-0 ${tone.iconBg} ${tone.icon}`}>
+                      <Icon className="w-4 h-4" />
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <div className="flex justify-between items-start gap-2">
+                        <p className="text-xs font-bold text-slate-800 leading-tight">{item.title}</p>
+                        <span className="text-[9px] text-slate-400 shrink-0">{item.when}</span>
+                      </div>
+                      <p className="text-[10px] text-slate-500 mt-0.5 mb-1.5">{item.summary}</p>
+                      <span className={`text-[8px] font-black uppercase border px-2 py-0.5 rounded-full ${tone.badge}`}>{item.category}</span>
+                    </div>
+                  </button>
+                );
+              })}
             </div>
           </div>
           
         </div>
       </div>
       
+      {noveltyOpen && (
+        <div
+          className="fixed inset-0 z-[80] flex items-center justify-center p-4 bg-slate-900/50 backdrop-blur-[2px]"
+          onClick={() => setNoveltyOpen(null)}
+        >
+          <div
+            role="dialog"
+            aria-modal="true"
+            className="w-full max-w-lg bg-white rounded-2xl shadow-2xl border border-slate-200 overflow-hidden"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="flex items-center justify-between px-5 py-4 border-b border-slate-100">
+              <div className="flex items-center gap-2">
+                <Calendar className="w-4 h-4 text-red-500" />
+                <h3 className="text-sm font-black uppercase text-slate-800">
+                  {noveltyOpen === 'all' ? 'Novedades y anuncios' : 'Novedad'}
+                </h3>
+              </div>
+              <button type="button" onClick={() => setNoveltyOpen(null)} className="p-1.5 rounded-lg hover:bg-slate-100 text-slate-500" aria-label="Cerrar">
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+
+            {noveltyOpen === 'all' ? (
+              <div className="p-3 max-h-[70vh] overflow-y-auto space-y-2">
+                {NOVEDADES.map((item) => {
+                  const tone = NOVELTY_TONE[item.tone];
+                  const Icon = item.tone === 'red' ? Siren : item.tone === 'amber' ? Truck : Clock;
+                  return (
+                    <button
+                      key={item.id}
+                      type="button"
+                      onClick={() => setNoveltyOpen(item)}
+                      className="w-full flex gap-3 items-start text-left rounded-xl p-3 hover:bg-slate-50 border border-slate-100"
+                    >
+                      <div className={`w-9 h-9 rounded-full flex items-center justify-center shrink-0 ${tone.iconBg} ${tone.icon}`}>
+                        <Icon className="w-4 h-4" />
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <div className="flex justify-between gap-2">
+                          <p className="text-sm font-bold text-slate-800">{item.title}</p>
+                          <span className="text-[10px] text-slate-400">{item.when}</span>
+                        </div>
+                        <p className="text-xs text-slate-500 mt-0.5">{item.summary}</p>
+                        <span className={`inline-block mt-2 text-[9px] font-black uppercase border px-2 py-0.5 rounded-full ${tone.badge}`}>{item.category}</span>
+                      </div>
+                    </button>
+                  );
+                })}
+              </div>
+            ) : (
+              <div className="p-5 space-y-3">
+                <span className={`inline-flex text-[10px] font-black uppercase border px-2.5 py-1 rounded-full ${NOVELTY_TONE[noveltyOpen.tone].badge}`}>
+                  {noveltyOpen.category}
+                </span>
+                <h4 className="text-lg font-black text-slate-900 leading-snug">{noveltyOpen.title}</h4>
+                <div className="flex flex-wrap gap-3 text-xs text-slate-600">
+                  <span className="inline-flex items-center gap-1.5"><Clock className="w-3.5 h-3.5 text-slate-400" />{noveltyOpen.datetime}</span>
+                  {noveltyOpen.place && (
+                    <span className="inline-flex items-center gap-1.5"><MapPin className="w-3.5 h-3.5 text-slate-400" />{noveltyOpen.place}</span>
+                  )}
+                </div>
+                <p className="text-sm text-slate-700 leading-relaxed">{noveltyOpen.body}</p>
+                <button
+                  type="button"
+                  onClick={() => setNoveltyOpen(null)}
+                  className="w-full mt-2 py-2.5 rounded-xl bg-slate-900 text-white text-sm font-bold hover:bg-slate-800"
+                >
+                  Cerrar
+                </button>
+              </div>
+            )}
+          </div>
+        </div>
+      )}
+
       {/* FOOTER */}
       <footer className="shrink-0 text-center text-[10px] font-medium text-slate-400 pt-3 border-t border-slate-200 flex items-center justify-between">
         <div className="flex items-center gap-2">

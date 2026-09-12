@@ -96,6 +96,8 @@ export function ProfileScreen({ children }: { children?: ReactNode }) {
         </div>
       </article>
 
+      {children}
+
       {person && (
         <div className="profile-facts">
           <p><Building2 /><span>{person.company?.number ? `${person.company.number}ª · ` : ''}{person.company?.name || person.company?.city || 'Sin compañía'}</span></p>
@@ -138,8 +140,6 @@ export function ProfileScreen({ children }: { children?: ReactNode }) {
           <p className="empty">{data ? 'Aún no registrás respuestas a emergencias.' : 'Cargando historial…'}</p>
         )}
       </div>
-
-      {children}
     </section>
   );
 }

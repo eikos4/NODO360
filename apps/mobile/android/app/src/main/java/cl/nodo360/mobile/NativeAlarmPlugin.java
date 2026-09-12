@@ -9,9 +9,16 @@ import android.content.Context;
 import android.content.Intent;
 import android.content.pm.PackageManager;
 import android.media.AudioAttributes;
+import android.media.MediaPlayer;
 import android.net.Uri;
 import android.os.Build;
+import android.os.Handler;
+import android.os.Looper;
+import android.os.VibrationEffect;
+import android.os.Vibrator;
+import android.os.VibratorManager;
 import android.provider.Settings;
+import android.speech.tts.TextToSpeech;
 
 import androidx.core.app.NotificationCompat;
 import androidx.core.app.NotificationManagerCompat;
@@ -24,6 +31,7 @@ import com.getcapacitor.PluginCall;
 import com.getcapacitor.PluginMethod;
 import com.getcapacitor.annotation.CapacitorPlugin;
 
+import java.util.Locale;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
@@ -36,6 +44,42 @@ public class NativeAlarmPlugin extends Plugin {
         "10-0", "10-1", "10-2", "10-3", "10-4", "10-5", "10-6",
         "10-7", "10-8", "10-9", "10-10", "10-11", "10-12"
     };
+
+    private TextToSpeech tts;
+    private boolean ttsReady = false;
+    private String pendingSpeech;
+    private MediaPlayer player;
+    private final Handler mainHandler = new Handler(Looper.getMainLooper());
+
+    @Override
+    public void load() {
+        super.load();
+        tts = new TextToSpeech(getContext(), status -> {
+            if (status != TextToSpeech.SUCCESS || tts == null) return;
+            int lang = tts.setLanguage(new Locale("es", "CL"));
+            if (lang == TextToSpeech.LANG_MISSING_DATA || lang == TextToSpeech.LANG_NOT_SUPPORTED) {
+                tts.setLanguage(new Locale("es", "ES"));
+            }
+            tts.setSpeechRate(0.92f);
+            ttsReady = true;
+            if (pendingSpeech != null) {
+                speakNow(pendingSpeech);
+                pendingSpeech = null;
+            }
+        });
+    }
+
+    @Override
+    protected void handleOnDestroy() {
+        mainHandler.removeCallbacksAndMessages(null);
+        stopTone();
+        if (tts != null) {
+            tts.stop();
+            tts.shutdown();
+            tts = null;
+        }
+        super.handleOnDestroy();
+    }
 
     @PluginMethod
     public void configure(PluginCall call) {
@@ -129,6 +173,8 @@ public class NativeAlarmPlugin extends Plugin {
         createChannels();
         String code = normalizeCode(call.getString("code", "10-0"));
         String channelId = channelId(code);
+        String spoken = call.getString("spoken");
+        int notifyId = call.getInt("notificationId", 10360);
         Context context = getContext();
         Intent launch = context.getPackageManager().getLaunchIntentForPackage(context.getPackageName());
         if (launch == null) {
@@ -138,12 +184,11 @@ public class NativeAlarmPlugin extends Plugin {
         launch.setFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_CLEAR_TOP);
         PendingIntent pendingIntent = PendingIntent.getActivity(
             context,
-            360,
+            notifyId,
             launch,
             PendingIntent.FLAG_UPDATE_CURRENT | PendingIntent.FLAG_IMMUTABLE
         );
 
-        Uri sound = soundUri(code);
         NotificationCompat.Builder builder = new NotificationCompat.Builder(context, channelId)
             .setSmallIcon(android.R.drawable.ic_dialog_alert)
             .setContentTitle(call.getString("title", "PRUEBA ALARMA " + code))
@@ -151,8 +196,7 @@ public class NativeAlarmPlugin extends Plugin {
             .setCategory(NotificationCompat.CATEGORY_ALARM)
             .setPriority(NotificationCompat.PRIORITY_MAX)
             .setVisibility(NotificationCompat.VISIBILITY_PUBLIC)
-            .setVibrate(VIBRATION)
-            .setSound(sound)
+            .setSilent(true)
             .setAutoCancel(true)
             .setContentIntent(pendingIntent);
 
@@ -163,7 +207,9 @@ public class NativeAlarmPlugin extends Plugin {
             builder.setFullScreenIntent(pendingIntent, true);
         }
         try {
-            NotificationManagerCompat.from(context).notify(10360, builder.build());
+            NotificationManagerCompat.from(context).notify(notifyId, builder.build());
+            vibrate(context);
+            playToneThenSpeak(code, spoken);
             JSObject result = new JSObject();
             result.put("code", code);
             result.put("channelId", channelId);
@@ -172,6 +218,81 @@ public class NativeAlarmPlugin extends Plugin {
         } catch (SecurityException error) {
             call.reject("Notificaciones no autorizadas", error);
         }
+    }
+
+    private void playToneThenSpeak(String code, String spoken) {
+        stopTone();
+        Context context = getContext();
+        int resId = context.getResources().getIdentifier(
+            "tone_" + code.replace('-', '_'),
+            "raw",
+            context.getPackageName()
+        );
+        if (resId == 0) {
+            scheduleSpeech(spoken, 800);
+            return;
+        }
+        try {
+            player = MediaPlayer.create(context, resId);
+            if (player == null) {
+                scheduleSpeech(spoken, 800);
+                return;
+            }
+            player.setAudioAttributes(new AudioAttributes.Builder()
+                .setUsage(AudioAttributes.USAGE_ALARM)
+                .setContentType(AudioAttributes.CONTENT_TYPE_SONIFICATION)
+                .build());
+            player.setVolume(1f, 1f);
+            player.setOnCompletionListener(mp -> {
+                stopTone();
+                scheduleSpeech(spoken, 250);
+            });
+            player.start();
+        } catch (Exception error) {
+            scheduleSpeech(spoken, 800);
+        }
+    }
+
+    private void scheduleSpeech(String spoken, int delayMs) {
+        if (spoken == null || spoken.trim().isEmpty()) return;
+        mainHandler.postDelayed(() -> speakNow(spoken), delayMs);
+    }
+
+    private void speakNow(String text) {
+        if (!ttsReady || tts == null) {
+            pendingSpeech = text;
+            return;
+        }
+        tts.speak(text, TextToSpeech.QUEUE_FLUSH, null, "nodo360-alarm");
+    }
+
+    private void stopTone() {
+        if (player == null) return;
+        try {
+            if (player.isPlaying()) player.stop();
+        } catch (Exception ignored) { /* already released */ }
+        player.release();
+        player = null;
+    }
+
+    private void vibrate(Context context) {
+        try {
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+                VibratorManager manager =
+                    (VibratorManager) context.getSystemService(Context.VIBRATOR_MANAGER_SERVICE);
+                manager.getDefaultVibrator().vibrate(
+                    VibrationEffect.createWaveform(VIBRATION, -1)
+                );
+                return;
+            }
+            Vibrator vibrator = (Vibrator) context.getSystemService(Context.VIBRATOR_SERVICE);
+            if (vibrator == null) return;
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+                vibrator.vibrate(VibrationEffect.createWaveform(VIBRATION, -1));
+            } else {
+                vibrator.vibrate(VIBRATION, -1);
+            }
+        } catch (Exception ignored) { /* fabricante sin vibrador */ }
     }
 
     private void createChannels() {

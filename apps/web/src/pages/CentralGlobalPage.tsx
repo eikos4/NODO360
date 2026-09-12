@@ -30,6 +30,7 @@ export default function CentralGlobalPage() {
   
   const [selectedCompanyId, setSelectedCompanyId] = useState<string>('ALL');
   const [memberSearch, setMemberSearch] = useState('');
+  const [memberAvailFilter, setMemberAvailFilter] = useState<'available' | 'all'>('available');
   const [vehicleFilter, setVehicleFilter] = useState<'ALL'|'DISP'|'CAMINO'|'FUERA'>('ALL');
 
   const load = async () => {
@@ -141,6 +142,8 @@ export default function CentralGlobalPage() {
         x.fullName.toLowerCase().includes(q) || 
         String(x.operativeNumber).includes(q)
       );
+    } else if (memberAvailFilter === 'available') {
+      m = m.filter((x: any) => x.stationAvailable);
     }
     // Ordenar disponibles primero, luego en emergencia, luego no disponibles
     return m.sort((a:any, b:any) => {
@@ -148,7 +151,7 @@ export default function CentralGlobalPage() {
       if (!a.stationAvailable && b.stationAvailable) return 1;
       return 0;
     });
-  }, [allMembers, selectedCompanyId, memberSearch, data]);
+  }, [allMembers, selectedCompanyId, memberSearch, memberAvailFilter, data]);
 
   // Consolidar carros
   const allVehicles = useMemo(() => {
@@ -357,6 +360,22 @@ export default function CentralGlobalPage() {
                     placeholder="Buscar por N° o nombre..."
                     className="w-full bg-slate-100 dark:bg-[#1e293b] border border-slate-300 dark:border-slate-700 text-slate-900 dark:text-white text-xs rounded-lg pl-9 pr-3 py-2 focus:outline-none focus:border-blue-500"
                   />
+                </div>
+                <div className="flex rounded-lg border border-slate-300 dark:border-slate-700 overflow-hidden">
+                  <button
+                    type="button"
+                    onClick={() => setMemberAvailFilter('available')}
+                    className={`px-3 py-2 text-[10px] font-bold uppercase ${memberAvailFilter === 'available' ? 'bg-emerald-600 text-white' : 'bg-slate-100 dark:bg-[#1e293b] text-slate-600 dark:text-slate-400'}`}
+                  >
+                    Disponibles
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setMemberAvailFilter('all')}
+                    className={`px-3 py-2 text-[10px] font-bold uppercase ${memberAvailFilter === 'all' ? 'bg-slate-600 text-white' : 'bg-slate-100 dark:bg-[#1e293b] text-slate-600 dark:text-slate-400'}`}
+                  >
+                    Todos
+                  </button>
                 </div>
                 <select 
                   value={selectedCompanyId} 

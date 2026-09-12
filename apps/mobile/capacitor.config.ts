@@ -7,6 +7,7 @@ const config: CapacitorConfig = {
   backgroundColor: '#071019',
   android: { allowMixedContent: false },
   plugins: {
+    CapacitorHttp: { enabled: true },
     FirebaseMessaging: {
       presentationOptions: ['badge', 'sound', 'alert'],
     },

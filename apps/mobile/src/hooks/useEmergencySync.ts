@@ -13,10 +13,19 @@ import type {
 } from '../types';
 
 const POLL_ACTIVE_MS = 12_000;
-const POLL_IDLE_MS = 45_000;
+const POLL_IDLE_MS = 15_000;
 const socketOrigin = API_URL.replace(/\/api\/?$/, '') || window.location.origin;
 
-export function useEmergencySync(enabled: boolean) {
+type NewDispatchHandler = (incident: {
+  id?: string;
+  code?: string;
+  type?: string;
+  address?: string;
+  radioMessage?: string;
+  emergencyCodeId?: string | null;
+}) => void;
+
+export function useEmergencySync(enabled: boolean, onNewDispatch?: NewDispatchHandler) {
   const [snapshot, setSnapshot] = useState<EmergencySnapshot | null>(null);
   const [history, setHistory] = useState<AlarmHistoryItem[]>([]);
   const [connection, setConnection] = useState<ConnectionState>(
@@ -26,6 +35,10 @@ export function useEmergencySync(enabled: boolean) {
   const [lastError, setLastError] = useState<string | null>(null);
   const socketRef = useRef<Socket | null>(null);
   const refreshingRef = useRef(false);
+  const primedRef = useRef(false);
+  const knownIdsRef = useRef(new Set<string>());
+  const onNewDispatchRef = useRef(onNewDispatch);
+  onNewDispatchRef.current = onNewDispatch;
 
   const loadLocal = useCallback(async () => {
     const [cached, cachedHistory, queue] = await Promise.all([
@@ -36,6 +49,7 @@ export function useEmergencySync(enabled: boolean) {
     setSnapshot(cached);
     setHistory(cachedHistory);
     setPendingCount(queue.length);
+    cached?.incidents.forEach((incident) => knownIdsRef.current.add(incident.id));
   }, []);
 
   const refresh = useCallback(async () => {
@@ -47,6 +61,13 @@ export function useEmergencySync(enabled: boolean) {
         api.get<EmergencySnapshot>('/emergency-response/snapshot'),
         api.get<AlarmHistoryItem[]>('/notifications/mine?take=12'),
       ]);
+      for (const incident of next.incidents) {
+        if (primedRef.current && !knownIdsRef.current.has(incident.id)) {
+          onNewDispatchRef.current?.(incident);
+        }
+        knownIdsRef.current.add(incident.id);
+      }
+      primedRef.current = true;
       setSnapshot(next);
       setHistory(notifications);
       await Promise.all([localStore.setSnapshot(next), localStore.setHistory(notifications)]);
@@ -183,6 +204,14 @@ export function useEmergencySync(enabled: boolean) {
     window.addEventListener('online', online);
     window.addEventListener('offline', offline);
 
+    return () => {
+      window.removeEventListener('online', online);
+      window.removeEventListener('offline', offline);
+    };
+  }, [enabled, flushQueue, loadLocal, refresh]);
+
+  useEffect(() => {
+    if (!enabled) return;
     let timer: number;
     const schedulePoll = () => {
       window.clearTimeout(timer);
@@ -192,16 +221,37 @@ export function useEmergencySync(enabled: boolean) {
       }, snapshot?.incidents.length ? POLL_ACTIVE_MS : POLL_IDLE_MS);
     };
     schedulePoll();
+    return () => window.clearTimeout(timer);
+  }, [enabled, refresh, snapshot?.incidents.length]);
 
+  useEffect(() => {
+    if (!enabled) return;
+    let cancelled = false;
     void getSessionToken().then((token) => {
-      if (!token) return;
+      if (!token || cancelled) return;
       const socket = io(`${socketOrigin}/emergencies`, {
         auth: { token },
         transports: ['websocket', 'polling'],
         reconnection: true,
       });
       socketRef.current = socket;
-      const onEvent = (_event: EmergencyEventEnvelope) => void refresh();
+      const onEvent = (event: EmergencyEventEnvelope) => {
+        if (event.event === 'emergency.dispatch.created.v1') {
+          const incident = (event.data as { incident?: Record<string, unknown> } | undefined)?.incident;
+          const payload = {
+            id: (incident?.id as string | undefined) || event.incidentId,
+            code: incident?.code as string | undefined,
+            type: incident?.type as string | undefined,
+            address: incident?.address as string | undefined,
+            radioMessage: incident?.radioMessage as string | undefined,
+            emergencyCodeId: (incident?.emergencyCodeId as string | undefined) || (incident?.type as string | undefined),
+          };
+          if (payload.id) knownIdsRef.current.add(payload.id);
+          primedRef.current = true;
+          onNewDispatchRef.current?.(payload);
+        }
+        void refresh();
+      };
       [
         'emergency.dispatch.created.v1',
         'emergency.response.updated.v1',
@@ -214,13 +264,11 @@ export function useEmergencySync(enabled: boolean) {
     });
 
     return () => {
-      window.clearTimeout(timer);
-      window.removeEventListener('online', online);
-      window.removeEventListener('offline', offline);
+      cancelled = true;
       socketRef.current?.disconnect();
       socketRef.current = null;
     };
-  }, [enabled, flushQueue, loadLocal, refresh, snapshot?.incidents.length]);
+  }, [enabled, refresh]);
 
   return {
     snapshot,

@@ -1,7 +1,7 @@
-import { useEffect, useState } from 'react';
-import { Map, AdvancedMarker, InfoWindow, useMap, Pin, useAdvancedMarkerRef } from '@vis.gl/react-google-maps';
+import { useState } from 'react';
 import { Siren, MapPin, Clock, Radio, BookOpen, CheckCircle2, AlertTriangle, Navigation } from 'lucide-react';
 import EmergencyLocationUpdater from './EmergencyLocationUpdater';
+import PublicOsmMap, { PARRAL_CENTER } from '../map/PublicOsmMap';
 
 export type PublicEmergency = {
   id: string;
@@ -31,68 +31,6 @@ export type PublicEmergency = {
   dispatchCompanyNumber?: number | null;
   participants?: any[];
 };
-
-function FitEmergencies({ points }: { points: [number, number][] }) {
-  const map = useMap();
-  useEffect(() => {
-    if (!map || points.length === 0) return;
-    if (points.length === 1) {
-      map.setCenter({ lat: points[0][0], lng: points[0][1] });
-      map.setZoom(14);
-      return;
-    }
-    const bounds = new google.maps.LatLngBounds();
-    points.forEach(p => bounds.extend({ lat: p[0], lng: p[1] }));
-    map.fitBounds(bounds, { bottom: 24, left: 24, right: 24, top: 24 });
-  }, [map, points]);
-  return null;
-}
-
-function EmergencyMarker({
-  emergency,
-  isSelected,
-  onSelect,
-  onClose,
-  needsBitacora,
-}: {
-  emergency: PublicEmergency;
-  isSelected: boolean;
-  onSelect: () => void;
-  onClose: () => void;
-  needsBitacora: boolean;
-}) {
-  const [markerRef, marker] = useAdvancedMarkerRef();
-
-  return (
-    <>
-      <AdvancedMarker
-        ref={markerRef}
-        position={{ lat: emergency.latitude!, lng: emergency.longitude! }}
-        onClick={onSelect}
-      >
-        <Pin background={emergency.status === 'ACTIVA' ? '#ef4444' : '#64748b'} borderColor="white" glyphColor="transparent" scale={0.8} />
-      </AdvancedMarker>
-      {isSelected && (
-        <InfoWindow
-          anchor={marker}
-          onCloseClick={onClose}
-          pixelOffset={[0, -10]}
-        >
-          <div className="text-slate-900 text-xs space-y-1 min-w-[160px]">
-            <p className="font-bold">{emergency.type}</p>
-            <p>{emergency.address}</p>
-            <p className="text-slate-600">Alarma: {emergency.alarmBy}</p>
-            {needsBitacora && <p className="text-amber-600 font-semibold">Bitácora pendiente</p>}
-          </div>
-        </InfoWindow>
-      )}
-    </>
-  );
-}
-
-const IncidentIcon = ({ active }: { active: boolean }) => (
-  <div style={{ background: active ? '#ef4444' : '#64748b', width: 14, height: 14, borderRadius: '50%', border: '3px solid white', boxShadow: '0 2px 8px rgba(0,0,0,.4)' }}></div>
-);
 
 function formatWhen(iso: string) {
   return new Date(iso).toLocaleString('es-CL', {
@@ -154,10 +92,16 @@ export default function DispatchEmergenciesPanel({
   theme = 'dark',
 }: Props) {
   const s = PANEL_STYLES[theme];
-  const points: [number, number][] = emergencies
+  const mapMarkers = emergencies
     .filter((e) => e.hasCoordinates !== false && e.latitude && e.longitude)
-    .map((e) => [e.latitude, e.longitude]);
-  const center: [number, number] = companyCenter ?? points[0] ?? [-33.0472, -71.6127];
+    .map((e) => ({
+      id: e.id,
+      lat: e.latitude,
+      lng: e.longitude,
+      active: e.status === 'ACTIVA',
+      label: `<strong>${e.type}</strong><br/>${e.address ?? ''}`,
+    }));
+  const center: [number, number] = companyCenter ?? (mapMarkers[0] ? [mapMarkers[0].lat, mapMarkers[0].lng] : PARRAL_CENTER);
 
   const pendingCount = emergencies.filter(
     (e) => !e.hasBitacora && (e.status === 'CERRADA' || pendingBitacoraIds.includes(e.id)),
@@ -166,8 +110,6 @@ export default function DispatchEmergenciesPanel({
   const needsBitacora = (e: PublicEmergency) =>
     !e.hasBitacora && (e.status === 'CERRADA' || pendingBitacoraIds.includes(e.id));
 
-  const [selectedEmergencyId, setSelectedEmergencyId] = useState<string | null>(null);
-  const selectedEmergency = selectedEmergencyId ? emergencies.find(e => e.id === selectedEmergencyId) : null;
   const [editingLocationId, setEditingLocationId] = useState<string | null>(null);
 
   return (
@@ -187,34 +129,13 @@ export default function DispatchEmergenciesPanel({
       </div>
 
       <div className={`h-48 sm:h-56 border-b relative z-0 ${s.mapBorder}`}>
-        {emergencies.length === 0 ? (
-          <div className={`h-full flex items-center justify-center text-xs px-4 text-center ${s.empty}`}>
-            Sin emergencias georreferenciadas recientes
-          </div>
-        ) : (
-          <Map
-            defaultCenter={{ lat: center[0], lng: center[1] }}
-            defaultZoom={13}
-            className="h-full w-full"
-            style={{ height: '100%', width: '100%', background: theme === 'dark' ? '#0f172a' : '#e2e8f0' }}
-            disableDefaultUI
-            mapId="dispatch-emergencies-panel-map"
-          >
-            <FitEmergencies points={points} />
-            {emergencies.map((e) => (
-              e.hasCoordinates === false || !e.latitude || !e.longitude ? null : (
-                <EmergencyMarker
-                  key={e.id}
-                  emergency={e}
-                  isSelected={selectedEmergencyId === e.id}
-                  onSelect={() => setSelectedEmergencyId(e.id)}
-                  onClose={() => setSelectedEmergencyId(null)}
-                  needsBitacora={needsBitacora(e)}
-                />
-              )
-            ))}
-          </Map>
-        )}
+        <PublicOsmMap
+          theme={theme}
+          center={center}
+          zoom={14}
+          markers={mapMarkers}
+          className="h-full w-full"
+        />
       </div>
 
       <div className={`flex-1 overflow-y-auto max-h-64 sm:max-h-80 divide-y ${s.divide}`}>

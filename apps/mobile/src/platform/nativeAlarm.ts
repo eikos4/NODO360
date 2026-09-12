@@ -30,7 +30,13 @@ interface NativeAlarmPlugin {
   openNotificationSettings(): Promise<void>;
   openFullScreenSettings(): Promise<void>;
   openBatterySettings(): Promise<void>;
-  testAlarm(options: { code: string; title?: string; body?: string }): Promise<{
+  testAlarm(options: {
+    code: string;
+    title?: string;
+    body?: string;
+    spoken?: string;
+    notificationId?: number;
+  }): Promise<{
     code: string;
     channelId?: string;
     fullScreenRequested?: boolean;

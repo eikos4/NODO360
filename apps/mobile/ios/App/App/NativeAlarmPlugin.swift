@@ -1,3 +1,4 @@
+import AVFoundation
 import Capacitor
 import UIKit
 import UserNotifications
@@ -68,6 +69,15 @@ public class NativeAlarmPlugin: CAPPlugin, CAPBridgedPlugin {
             content: content,
             trigger: UNTimeIntervalNotificationTrigger(timeInterval: 1, repeats: false)
         )
+        if let spoken = call.getString("spoken"), !spoken.isEmpty {
+            DispatchQueue.main.asyncAfter(deadline: .now() + 2.2) {
+                let utterance = AVSpeechUtterance(string: spoken)
+                utterance.voice = AVSpeechSynthesisVoice(language: "es-CL")
+                    ?? AVSpeechSynthesisVoice(language: "es-ES")
+                utterance.rate = AVSpeechUtteranceDefaultSpeechRate * 0.92
+                self.synthesizer.speak(utterance)
+            }
+        }
         UNUserNotificationCenter.current().add(request) { error in
             if let error {
                 call.reject("No se pudo programar la prueba: \(error.localizedDescription)")
@@ -108,6 +118,8 @@ public class NativeAlarmPlugin: CAPPlugin, CAPBridgedPlugin {
             ])
         }
     }
+
+    private let synthesizer = AVSpeechSynthesizer()
 
     static func registerCategories() {
         let open = UNNotificationAction(

@@ -284,3 +284,97 @@ html:not(.dark) .leaflet-popup-tip {
     transform: translateY(0);
   }
 }
+
+/* ── Sala de máquinas · Guardia nocturna ── */
+.sala-night-stars {
+  position: absolute;
+  inset: 0;
+  background-image:
+    radial-gradient(1.2px 1.2px at 8% 14%, rgba(255, 236, 200, 0.75), transparent),
+    radial-gradient(1px 1px at 22% 28%, rgba(255, 236, 200, 0.4), transparent),
+    radial-gradient(1.4px 1.4px at 41% 12%, rgba(255, 220, 160, 0.65), transparent),
+    radial-gradient(1px 1px at 63% 22%, rgba(255, 236, 200, 0.35), transparent),
+    radial-gradient(1.2px 1.2px at 78% 9%, rgba(255, 236, 200, 0.7), transparent),
+    radial-gradient(1px 1px at 91% 31%, rgba(255, 220, 160, 0.4), transparent),
+    radial-gradient(1px 1px at 15% 62%, rgba(255, 236, 200, 0.3), transparent),
+    radial-gradient(1.3px 1.3px at 34% 78%, rgba(255, 236, 200, 0.45), transparent),
+    radial-gradient(1px 1px at 56% 68%, rgba(255, 220, 160, 0.35), transparent),
+    radial-gradient(1.2px 1.2px at 84% 74%, rgba(255, 236, 200, 0.5), transparent);
+  animation: sala-twinkle 7s ease-in-out infinite alternate;
+}
+
+.sala-night-lamp {
+  position: absolute;
+  top: -18%;
+  left: 8%;
+  width: 58%;
+  height: 52%;
+  background: radial-gradient(ellipse at center, rgba(245, 176, 66, 0.2), transparent 68%);
+}
+
+.sala-night-vignette {
+  position: absolute;
+  inset: 0;
+  background: radial-gradient(ellipse at center, transparent 45%, rgba(0, 0, 0, 0.45) 100%);
+}
+
+@keyframes sala-twinkle {
+  from { opacity: 0.55; }
+  to { opacity: 1; }
+}
+
+.sala-guardia .bg-white {
+  background-color: rgba(22, 16, 28, 0.9) !important;
+}
+.sala-guardia .bg-slate-50 {
+  background-color: transparent !important;
+}
+.sala-guardia .bg-slate-100 {
+  background-color: rgba(16, 12, 20, 0.85) !important;
+}
+.sala-guardia .text-slate-800,
+.sala-guardia .text-slate-900,
+.sala-guardia .text-slate-700 {
+  color: #f4e8d0 !important;
+}
+.sala-guardia .text-slate-500,
+.sala-guardia .text-slate-400,
+.sala-guardia .text-slate-600 {
+  color: rgba(244, 232, 208, 0.5) !important;
+}
+.sala-guardia .border-slate-100,
+.sala-guardia .border-slate-200,
+.sala-guardia .border-slate-200\/60 {
+  border-color: rgba(245, 185, 66, 0.14) !important;
+}
+.sala-guardia .bg-emerald-100 {
+  background-color: rgba(16, 185, 129, 0.16) !important;
+}
+.sala-guardia .bg-red-100 {
+  background-color: rgba(239, 68, 68, 0.16) !important;
+}
+.sala-guardia .bg-emerald-50 {
+  background-color: rgba(16, 185, 129, 0.1) !important;
+}
+.sala-guardia .bg-red-50 {
+  background-color: rgba(239, 68, 68, 0.1) !important;
+}
+.sala-guardia input,
+.sala-guardia textarea {
+  color: #f4e8d0;
+}
+.sala-guardia input::placeholder {
+  color: rgba(244, 232, 208, 0.35);
+}
+
+.public-osm-pin {
+  background: transparent !important;
+  border: none !important;
+}
+.leaflet-container {
+  font-family: inherit;
+  background: #e2e8f0;
+}
+.sala-guardia .leaflet-container {
+  background: #08060c;
+}

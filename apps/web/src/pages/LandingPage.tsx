@@ -4,7 +4,7 @@ import {
   Flame, Play, ChevronRight, Siren, Radio, Map,
   CheckCircle2, Users, BellRing, MapPin, Activity, 
   ShieldAlert, Building2, Smartphone, DollarSign, Calendar,
-  BarChart3, FileText, Clock
+  BarChart3, FileText, Clock, Truck, Navigation,
 } from 'lucide-react';
 import { useAuthStore } from '../store/authStore';
 import { useAuthHydrated } from '../hooks/useAuthHydrated';
@@ -39,6 +39,7 @@ export default function LandingPage() {
       <FeaturesSection />
       <ModulesShowcaseSection />
       <MobileAndGridSection />
+      <CarrosAndroidSection />
       <TimelineSection />
       <PricingAndAnalyticsSection />
       <FooterSection />
@@ -63,6 +64,7 @@ function NavBar() {
           <a href="#inicio" className="text-white">Inicio</a>
           <a href="#plataforma" className="hover:text-white transition-colors">Plataforma <ChevronRight className="inline w-3 h-3 rotate-90 opacity-50"/></a>
           <a href="#modulos" className="hover:text-white transition-colors">Módulos <ChevronRight className="inline w-3 h-3 rotate-90 opacity-50"/></a>
+          <a href="#carros" className="hover:text-white transition-colors">Carros</a>
           <a href="#demo" className="hover:text-white transition-colors">Demo</a>
           <a href="#planes" className="hover:text-white transition-colors">Planes</a>
           <a href="#contacto" className="hover:text-white transition-colors">Contacto</a>
@@ -526,6 +528,128 @@ function MobileAndGridSection() {
                 </div>
               </div>
             </div>
+          </div>
+        </div>
+      </div>
+    </section>
+  );
+}
+
+function CarrosAndroidSection() {
+  return (
+    <section id="carros" className="relative bg-[#06090e] py-20 border-t border-white/5 overflow-hidden">
+      <div className="absolute inset-0 pointer-events-none">
+        <div className="absolute -top-24 right-0 w-[480px] h-[480px] rounded-full bg-emerald-500/10 blur-3xl" />
+        <div className="absolute bottom-0 left-0 w-[320px] h-[320px] rounded-full bg-red-600/10 blur-3xl" />
+      </div>
+
+      <div className="relative max-w-7xl mx-auto px-4 sm:px-6">
+        <div className="grid lg:grid-cols-2 gap-14 items-center">
+          <div>
+            <p className="text-[11px] font-bold tracking-[0.22em] uppercase text-emerald-400 mb-4">
+              En el material mayor
+            </p>
+            <h2 className="text-4xl md:text-5xl font-black text-white leading-[1.1] tracking-tight">
+              NODO <span className="text-emerald-400">360</span>
+              <span className="block text-white">para carros</span>
+            </h2>
+            <p className="mt-5 text-lg text-slate-300 font-light leading-relaxed max-w-xl">
+              Una plataforma para <span className="text-white font-semibold">Android</span>.
+              Pensada para el <span className="text-white font-semibold">carro</span>.
+              Para mostrar la emergencia de <span className="text-emerald-400 font-bold">TC</span> frente a toda la tripulación.
+            </p>
+
+            <ul className="mt-8 space-y-3 text-sm text-slate-300">
+              <li className="flex items-start gap-3">
+                <CheckCircle2 className="w-5 h-5 text-emerald-400 shrink-0 mt-0.5" />
+                Tablet Android en cabina: la alarma aparece en el carro, no solo en el celular.
+              </li>
+              <li className="flex items-start gap-3">
+                <CheckCircle2 className="w-5 h-5 text-emerald-400 shrink-0 mt-0.5" />
+                Emergencia de TC con clave, dirección y mapa en pantalla grande.
+              </li>
+              <li className="flex items-start gap-3">
+                <CheckCircle2 className="w-5 h-5 text-emerald-400 shrink-0 mt-0.5" />
+                La tripulación ve el despacho mientras sale: tipo, punto y recursos asignados.
+              </li>
+            </ul>
+
+            <div className="mt-8 flex flex-wrap gap-3">
+              <span className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full border border-emerald-500/30 bg-emerald-500/10 text-emerald-300 text-xs font-bold">
+                <Smartphone className="w-3.5 h-3.5" /> Android
+              </span>
+              <span className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full border border-white/10 bg-white/5 text-slate-200 text-xs font-bold">
+                <Truck className="w-3.5 h-3.5 text-emerald-400" /> Carros
+              </span>
+              <span className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full border border-white/10 bg-white/5 text-slate-200 text-xs font-bold">
+                <Siren className="w-3.5 h-3.5 text-red-400" /> Emergencia TC
+              </span>
+            </div>
+          </div>
+
+          <div className="relative">
+            <div className="absolute -inset-4 rounded-[2rem] bg-emerald-500/10 blur-2xl" />
+            <div className="relative mx-auto max-w-[520px] rounded-[1.6rem] border-4 border-slate-800 bg-[#0b1220] shadow-2xl shadow-black/50 overflow-hidden">
+              <div className="flex items-center justify-between px-4 py-2.5 border-b border-white/5 bg-slate-950">
+                <div className="flex items-baseline gap-1">
+                  <span className="text-white text-sm font-black tracking-tight">NODO</span>
+                  <span className="text-emerald-400 text-sm font-black tracking-tight">360</span>
+                </div>
+                <span className="text-[10px] font-bold uppercase tracking-widest text-emerald-400">Android · Carro</span>
+              </div>
+
+              <div className="p-4 space-y-3">
+                <div className="rounded-xl border border-red-500/40 bg-red-950/40 px-4 py-3 flex items-center gap-3">
+                  <div className="w-11 h-11 rounded-xl bg-red-600 flex items-center justify-center shrink-0">
+                    <Siren className="w-5 h-5 text-white" />
+                  </div>
+                  <div className="min-w-0">
+                    <p className="text-[10px] font-black uppercase tracking-widest text-red-300">Emergencia activa</p>
+                    <p className="text-xl font-black text-white leading-none mt-0.5">TC</p>
+                    <p className="text-xs text-slate-300 mt-1">Accidente de tránsito</p>
+                  </div>
+                  <span className="ml-auto text-[10px] font-black uppercase px-2 py-1 rounded-full bg-red-600 text-white animate-pulse">
+                    En curso
+                  </span>
+                </div>
+
+                <div className="rounded-xl border border-white/10 bg-slate-900/70 p-3">
+                  <p className="text-[10px] font-bold uppercase tracking-widest text-slate-500 mb-1">Ubicación</p>
+                  <p className="text-sm font-bold text-white flex items-center gap-2">
+                    <MapPin className="w-4 h-4 text-emerald-400 shrink-0" />
+                    Ruta 5 Sur · km 342, Parral
+                  </p>
+                </div>
+
+                <div className="h-36 rounded-xl border border-white/10 bg-slate-800/60 relative overflow-hidden flex items-center justify-center">
+                  <Map className="w-14 h-14 text-slate-700" />
+                  <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2">
+                    <div className="w-3 h-3 rounded-full bg-red-500 animate-ping" />
+                    <div className="absolute inset-0 w-3 h-3 rounded-full bg-red-500" />
+                  </div>
+                  <div className="absolute top-2 left-2 text-[10px] font-bold text-white bg-black/50 px-2 py-1 rounded">
+                    Mapa TC
+                  </div>
+                  <div className="absolute bottom-2 right-2 inline-flex items-center gap-1 text-[10px] font-bold text-emerald-300 bg-black/50 px-2 py-1 rounded">
+                    <Navigation className="w-3 h-3" /> En ruta
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-2 gap-2">
+                  <div className="rounded-lg border border-emerald-500/25 bg-emerald-500/10 px-3 py-2">
+                    <p className="text-[9px] uppercase text-slate-400 font-bold">Unidad</p>
+                    <p className="text-sm font-black text-white">B-1</p>
+                  </div>
+                  <div className="rounded-lg border border-white/10 bg-white/5 px-3 py-2">
+                    <p className="text-[9px] uppercase text-slate-400 font-bold">Estado</p>
+                    <p className="text-sm font-black text-emerald-400">Despachado</p>
+                  </div>
+                </div>
+              </div>
+            </div>
+            <p className="relative mt-4 text-center text-[11px] text-slate-500">
+              Pantalla de cabina · la emergencia de TC se ve en el carro
+            </p>
           </div>
         </div>
       </div>

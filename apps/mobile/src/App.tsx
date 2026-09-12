@@ -4,25 +4,28 @@ import { FirebaseMessaging } from '@capacitor-firebase/messaging';
 import { Capacitor } from '@capacitor/core';
 import { Geolocation } from '@capacitor/geolocation';
 import {
-  AlertTriangle, BatteryCharging, BellRing, Building2, Check, ChevronRight, Clock3, Crosshair, Eye, EyeOff, Flame,
-  History, Loader2, LogOut, MapPin, Megaphone, Moon, Navigation, Radio, RefreshCw, ShieldCheck, Siren,
+  AlertTriangle, BatteryCharging, BellRing, Building2, Check, ChevronRight, Clock3, Crosshair, Eye, EyeOff,
+  HelpCircle, History, Loader2, MapPin, Megaphone, Moon, Navigation, Radio, RefreshCw, ShieldCheck, Siren,
   Sun, Truck, UserRound, Users, Volume2, Wifi, WifiOff, X,
 } from 'lucide-react';
 import type { EmergencyResponseStatus } from '@nodo360/shared';
-import { api } from './lib/api';
+import { api, errorMessage } from './lib/api';
 import { localStore } from './lib/localStore';
 import { clearSessionToken, getSessionToken, setSessionToken } from './platform/session';
 import { configureNativeAlarms, NativeAlarm, type AlarmDiagnostics } from './platform/nativeAlarm';
 import { useEmergencySync } from './hooks/useEmergencySync';
+import { buildAlarmSpeech, playEmergencyAlarm } from './lib/alarmAnnounce';
 import { estimateEtaMinutes, getCurrentCoords, haversineKm } from './lib/geo';
 import { disconnectRadioSocket } from './lib/radio';
+import { HelmetIcon } from './HelmetIcon';
 import { RadioScreen } from './RadioScreen';
 import { AnnouncementsScreen } from './AnnouncementsScreen';
 import { ProfileScreen } from './ProfileScreen';
+import { HelpMenuButton, HelpScreen } from './HelpScreen';
 import { useAppTheme } from './theme';
 import type { ActiveIncident, AuthUser } from './types';
 
-type Screen = 'alarms' | 'radio' | 'history' | 'settings' | 'announcements';
+type Screen = 'alarms' | 'radio' | 'history' | 'settings' | 'announcements' | 'help';
 
 function ThemeToggle({ compact = false }: { compact?: boolean }) {
   const { theme, toggleTheme } = useAppTheme();
@@ -53,8 +56,8 @@ function Login({ onLogin }: { onLogin: (user: AuthUser) => void }) {
       });
       await setSessionToken(data.accessToken);
       onLogin(data.user);
-    } catch {
-      setError('Acceso denegado');
+    } catch (error) {
+      setError(errorMessage(error));
     } finally {
       setBusy(false);
     }
@@ -66,7 +69,7 @@ function Login({ onLogin }: { onLogin: (user: AuthUser) => void }) {
 
       <section className="auth-card">
         <div className="auth-brand">
-          <div className="brand-mark"><Flame size={28} /></div>
+          <div className="brand-mark"><HelmetIcon size={28} /></div>
           <div>
             <p className="brand-name">NODO360</p>
             <p className="brand-sub">Bomberos de Chile</p>
@@ -112,7 +115,7 @@ function Login({ onLogin }: { onLogin: (user: AuthUser) => void }) {
           </label>
           {error && <p className="form-error">{error}</p>}
           <button className="primary" disabled={busy}>
-            {busy ? <><Loader2 className="spin" size={18} /> Ingresando…</> : <><Flame size={18} /> Ingresar</>}
+            {busy ? <><Loader2 className="spin" size={18} /> Ingresando…</> : <><HelmetIcon size={18} /> Ingresar</>}
           </button>
         </form>
 
@@ -192,7 +195,7 @@ function RadioAvailability({
         </span>
       </div>
       <button type="button" disabled={busy} onClick={() => void onToggle(!available)}>
-        {busy ? <Loader2 className="spin" /> : available ? 'Salir' : 'Estoy disponible'}
+        {busy ? <Loader2 className="spin" /> : available ? 'No disponible' : 'Estoy disponible'}
       </button>
     </section>
   );
@@ -208,7 +211,7 @@ function ConnectionPill({ state, pending }: { state: 'online' | 'offline' | 'syn
   );
 }
 
-function AlarmSettings() {
+function AlarmSettings({ onOpenHelp }: { onOpenHelp: () => void }) {
   const [diagnostics, setDiagnostics] = useState<AlarmDiagnostics | null>(null);
   const [code, setCode] = useState('10-0');
   const [message, setMessage] = useState('');
@@ -239,11 +242,22 @@ function AlarmSettings() {
 
   const test = async () => {
     try {
-      const result = await NativeAlarm.testAlarm({ code });
+      const speech = buildAlarmSpeech({
+        id: `test:${code}:${Date.now()}`,
+        code,
+        title: `PRUEBA ALARMA ${code}`,
+        body: 'Prueba local de tono y voz Nodo360',
+      });
+      const result = await NativeAlarm.testAlarm({
+        code: speech.code,
+        title: speech.title,
+        body: speech.body,
+        spoken: speech.spoken,
+      });
       setMessage(
         result.fullScreenRequested === false
           ? 'Prueba enviada sin pantalla completa: Android no la autorizó.'
-          : 'Prueba local programada.',
+          : 'Prueba: tono y voz programados.',
       );
     } catch {
       setMessage('No se pudo emitir la prueba. Revisa el permiso de notificaciones.');
@@ -251,7 +265,12 @@ function AlarmSettings() {
   };
 
   if (!native) {
-    return <section className="settings-card"><h2>Alertas del dispositivo</h2><p>El diagnóstico nativo está disponible en Android/iOS.</p></section>;
+    return (
+      <section className="alarm-settings">
+        <section className="settings-card"><h2>Alertas del dispositivo</h2><p>El diagnóstico nativo está disponible en Android/iOS.</p></section>
+        <HelpMenuButton onOpen={onOpenHelp} />
+      </section>
+    );
   }
 
   const channelsReady = diagnostics?.channels?.filter((item) =>
@@ -287,7 +306,7 @@ function AlarmSettings() {
       </div>
       <div className="settings-card">
         <h3>Prueba local</h3>
-        <p>Comprueba el canal y tono sin crear una emergencia real.</p>
+        <p>Comprueba el tono 10-X y que el teléfono anuncie el tipo de alarma.</p>
         <div className="test-row">
           <select value={code} onChange={(event) => setCode(event.target.value)}>
             {Array.from({ length: 13 }, (_, index) => <option key={index} value={`10-${index}`}>10-{index}</option>)}
@@ -296,6 +315,7 @@ function AlarmSettings() {
         </div>
         {message && <p className="settings-message">{message}</p>}
       </div>
+      <HelpMenuButton onOpen={onOpenHelp} />
       <p className="settings-limit">
         Android puede bloquear pantalla completa, audio o ejecución en segundo plano según versión, política de Play y fabricante.
         iOS solo omite silencio con el entitlement Critical Alerts aprobado por Apple.
@@ -502,6 +522,10 @@ export default function App() {
   const [booting, setBooting] = useState(true);
   const [activated, setActivated] = useState(false);
   const [screen, setScreen] = useState<Screen>('alarms');
+  const [settingsHelp, setSettingsHelp] = useState(false);
+  useEffect(() => {
+    if (screen !== 'settings') setSettingsHelp(false);
+  }, [screen]);
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [responding, setResponding] = useState(false);
   const [myStatus, setMyStatus] = useState<EmergencyResponseStatus | null>(null);
@@ -509,7 +533,19 @@ export default function App() {
   const [stationAvailable, setStationAvailable] = useState(false);
   const [notice, setNotice] = useState('');
   const [announceCount, setAnnounceCount] = useState(0);
-  const sync = useEmergencySync(Boolean(user && activated));
+  const announceDispatch = useCallback((incident: {
+    id?: string;
+    code?: string;
+    type?: string;
+    address?: string;
+    radioMessage?: string;
+    emergencyCodeId?: string | null;
+  }) => {
+    void playEmergencyAlarm(incident);
+    if (incident.id) setSelectedId(incident.id);
+    setScreen('alarms');
+  }, []);
+  const sync = useEmergencySync(Boolean(user && activated), announceDispatch);
   const markNotification = sync.markNotification;
 
   useEffect(() => {
@@ -566,13 +602,19 @@ export default function App() {
         openAlarmLink(data.url || `nodo360://emergency/${data.incidentId || ''}`, data.notificationId);
       }));
       listeners.push(await FirebaseMessaging.addListener('notificationReceived', ({ notification }) => {
-        if (Capacitor.getPlatform() !== 'android') return;
         const data = (notification.data ?? {}) as Record<string, string>;
-        void NativeAlarm.testAlarm({
-          code: data.emergencyCodeId || data.type || data.code || notification.title || '10-0',
+        void playEmergencyAlarm({
+          id: data.incidentId || data.notificationId,
+          emergencyCodeId: data.emergencyCodeId,
+          code: data.code || data.type,
+          type: data.type,
+          address: data.address,
+          radioMessage: data.radioMessage || notification.body,
           title: notification.title,
           body: notification.body,
         });
+        if (data.incidentId) setSelectedId(data.incidentId);
+        setScreen('alarms');
       }));
       if (!disposed && Capacitor.isNativePlatform()) {
         const { token } = await FirebaseMessaging.getToken();
@@ -654,14 +696,6 @@ export default function App() {
     }
   };
 
-  const logout = async () => {
-    disconnectRadioSocket();
-    await clearSessionToken();
-    await localStore.clearUserData();
-    setUser(null);
-    setActivated(false);
-  };
-
   const flash = useCallback((message: string) => {
     setNotice(message);
     window.setTimeout(() => setNotice(''), 3500);
@@ -670,7 +704,7 @@ export default function App() {
   if (booting) {
     return (
       <main className={`splash ${theme}`}>
-        <span className="splash-mark"><Flame /></span>
+        <span className="splash-mark"><HelmetIcon /></span>
         <b>NODO360</b>
       </main>
     );
@@ -682,7 +716,7 @@ export default function App() {
     <div className={`app ${theme}`}>
       <header>
         <div>
-          <Flame />
+          <HelmetIcon />
           <span>
             <b>Nodo360</b>
             <small>
@@ -702,18 +736,23 @@ export default function App() {
           <Megaphone />
           {announceCount > 0 && <i />}
         </button>
-        <button className="icon-button" onClick={logout} aria-label="Cerrar sesión"><LogOut /></button>
       </header>
       {notice && <div className="toast"><Check /> {notice}</div>}
       {sync.lastError && <div className="warning"><AlertTriangle /> {sync.lastError}</div>}
       <main className="content">
-        {screen !== 'history' && screen !== 'radio' && screen !== 'announcements' && screen !== 'settings' && (
+        {screen !== 'history' && screen !== 'radio' && screen !== 'announcements' && screen !== 'settings' && screen !== 'help' && (
           <RadioAvailability available={stationAvailable} busy={stationBusy} onToggle={toggleStation} />
         )}
-        {screen === 'settings' ? (
-          <ProfileScreen>
-            <AlarmSettings />
-          </ProfileScreen>
+        {screen === 'help' ? (
+          <HelpScreen onBack={() => setScreen('settings')} />
+        ) : screen === 'settings' ? (
+          settingsHelp ? (
+            <HelpScreen onBack={() => setSettingsHelp(false)} />
+          ) : (
+            <ProfileScreen>
+              <AlarmSettings onOpenHelp={() => setSettingsHelp(true)} />
+            </ProfileScreen>
+          )
         ) : screen === 'radio' ? (
           <RadioScreen
             user={user}
@@ -750,11 +789,12 @@ export default function App() {
           <section className="standby"><span><Radio /></span><h2>Sin alarmas activas</h2><p>El dispositivo está conectado y atento a nuevos despachos.</p><button onClick={() => void sync.refresh()}><RefreshCw /> Actualizar</button></section>
         )}
       </main>
-      <nav className="nav-4">
+      <nav className="nav-5">
         <button className={screen === 'alarms' ? 'active' : ''} onClick={() => setScreen('alarms')}><Siren />Alarmas{incidents.length > 0 && <i>{incidents.length}</i>}</button>
         <button className={screen === 'radio' ? 'active' : ''} onClick={() => setScreen('radio')}><Radio />Radio{incidents.length > 0 && <i className="radio-live-dot" />}</button>
         <button className={screen === 'history' ? 'active' : ''} onClick={() => setScreen('history')}><History />Historial</button>
-        <button className={screen === 'settings' ? 'active' : ''} onClick={() => setScreen('settings')}><UserRound />Perfil</button>
+        <button className={screen === 'settings' ? 'active' : ''} onClick={() => { setSettingsHelp(false); setScreen('settings'); }}><UserRound />Perfil</button>
+        <button className={screen === 'help' || settingsHelp ? 'active' : ''} onClick={() => { setSettingsHelp(false); setScreen('help'); }}><HelpCircle />Ayuda</button>
       </nav>
     </div>
   );

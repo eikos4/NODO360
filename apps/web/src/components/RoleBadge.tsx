@@ -5,6 +5,8 @@ type Props = {
   size?: 'xs' | 'sm' | 'md';
   showLabel?: boolean;
   className?: string;
+  /** En sala pública: degradado del cargo y letras blancas. */
+  contrast?: boolean;
 };
 
 const SIZE = {
@@ -14,18 +16,22 @@ const SIZE = {
 };
 
 /** Icono + etiqueta del tipo de bombero / rol (sala de máquinas, personal, etc.) */
-export default function RoleBadge({ role, size = 'sm', showLabel = true, className = '' }: Props) {
+export default function RoleBadge({ role, size = 'sm', showLabel = true, className = '', contrast = false }: Props) {
   const meta = roleInfo(role);
   const Icon = meta.icon;
   const s = SIZE[size];
 
   return (
     <span
-      className={`inline-flex items-center ${s.wrap} ${s.pill} rounded-lg border font-semibold ${meta.badge} ${className}`}
+      className={`inline-flex items-center ${s.wrap} ${s.pill} rounded-lg border font-semibold ${
+        contrast
+          ? `bg-gradient-to-r ${meta.color} border-transparent !text-white shadow-sm`
+          : meta.badge
+      } ${className}`}
       title={meta.label}
     >
-      <Icon className={`${s.icon} shrink-0 ${meta.iconClass}`} />
-      {showLabel && <span className="truncate">{meta.short}</span>}
+      <Icon className={`${s.icon} shrink-0 ${contrast ? 'text-white' : meta.iconClass}`} />
+      {showLabel && <span className={`truncate ${contrast ? '!text-white' : ''}`}>{meta.short}</span>}
     </span>
   );
 }

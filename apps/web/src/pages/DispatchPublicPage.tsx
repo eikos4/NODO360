@@ -1,9 +1,9 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+﻿import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import {
   Siren, ShieldAlert, Users, CheckCircle2, UserX, RefreshCw, Truck, Fuel, Star,
   Search, SlidersHorizontal, Clock, Calendar, Radio, ChevronDown, ChevronUp, Volume2, Hash,
-  Sun, Moon,
+  Sun, Moon, Maximize2, Minimize2,
 } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { api } from '../lib/api';
@@ -21,7 +21,9 @@ import {
   subscribeDispatchLive,
 } from '../lib/dispatch-live-sync';
 import { useDispatchPublicTheme } from '../hooks/useDispatchPublicTheme';
-import type { DispatchPublicThemeTokens } from '../lib/dispatch-public-theme';
+import { useSalaNightMode } from '../hooks/useSalaNightMode';
+import { SALA_NIGHT_THEME, type DispatchPublicThemeTokens } from '../lib/dispatch-public-theme';
+import SalaNightAtmosphere from '../components/companies/SalaNightAtmosphere';
 
 const DISMISSED_KEY = 'nodo360_public_emergency_dismissed';
 const AUDIO_KEY = 'nodo360_public_audio_enabled';
@@ -199,7 +201,6 @@ function CardPhoto({
         <FirefighterPlaceholder available={available} className="w-full h-full" />
       )}
 
-      {/* N° operativo sobre la foto */}
       {operativeNumber != null ? (
         <div className="absolute inset-x-0 bottom-0 z-10 pointer-events-none">
           <div className="bg-gradient-to-t from-black/95 via-black/70 to-transparent pt-10 pb-2 px-2 flex items-end justify-center">
@@ -222,7 +223,9 @@ function CardPhoto({
 
 export default function DispatchPublicPage() {
   const { slug } = useParams<{ slug: string }>();
-  const { tokens: th, toggleTheme, isDark } = useDispatchPublicTheme();
+  const { tokens: dayTokens, isDark } = useDispatchPublicTheme();
+  const { night, pref, cycle: cycleNight, label: nightLabel } = useSalaNightMode();
+  const th = night ? SALA_NIGHT_THEME : dayTokens;
   const [data, setData] = useState<PublicCentral | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
@@ -237,11 +240,28 @@ export default function DispatchPublicPage() {
     localStorage.setItem('public_view_layout', next);
   };
 
+  const [isFullscreen, setIsFullscreen] = useState(false);
+
+  useEffect(() => {
+    const onFs = () => setIsFullscreen(Boolean(document.fullscreenElement));
+    document.addEventListener('fullscreenchange', onFs);
+    return () => document.removeEventListener('fullscreenchange', onFs);
+  }, []);
+
+  const toggleFullscreen = () => {
+    if (document.fullscreenElement) {
+      void document.exitFullscreen();
+      return;
+    }
+    void document.documentElement.requestFullscreen();
+  };
+
   const [togglingId, setTogglingId] = useState<string | null>(null);
   const [maquinistaBusyId, setMaquinistaBusyId] = useState<string | null>(null);
   const [search, setSearch] = useState('');
   const [operativeQuick, setOperativeQuick] = useState('');
   const [roleFilter, setRoleFilter] = useState('');
+  const [availFilter, setAvailFilter] = useState<'available' | 'all'>('available');
   const [showFleet, setShowFleet] = useState(false);
   const [dismissedIds, setDismissedIds] = useState<string[]>(() => loadDismissed());
   const [audioEnabled, setAudioEnabled] = useState(() => sessionStorage.getItem(AUDIO_KEY) === '1');
@@ -254,6 +274,9 @@ export default function DispatchPublicPage() {
   const [highlightEmergencyId, setHighlightEmergencyId] = useState<string | null>(null);
   const [locationOverrides, setLocationOverrides] = useState<Record<string, { address: string; lat: number; lng: number }>>({});
   const emergenciesPanelRef = useRef<HTMLDivElement>(null);
+  const operativeInputRef = useRef<HTMLInputElement>(null);
+  const operativeQuickRef = useRef(operativeQuick);
+  operativeQuickRef.current = operativeQuick;
 
   const publicUrl = typeof window !== 'undefined' ? window.location.href : '';
 
@@ -411,7 +434,7 @@ export default function DispatchPublicPage() {
           [event.incidentId]: { address: event.newAddress, lat: event.latitude, lng: event.longitude }
         }));
         toast.success(`Ubicación actualizada: ${event.newAddress}`, { 
-          icon: '📍', 
+          icon: 'ðŸ“', 
           duration: 6000 
         });
       }
@@ -423,7 +446,7 @@ export default function DispatchPublicPage() {
     setPendingBitacoraIds(next);
     setBitacoraEmergency(null);
     toast('Bitácora pendiente — complétala en Últimas emergencias', {
-      icon: '📋',
+      icon: 'ðŸ“‹',
       duration: 4500,
     });
     scrollToEmergenciesPanel(emergency.id);
@@ -498,8 +521,71 @@ export default function DispatchPublicPage() {
       toast.error(e instanceof Error ? e.message : 'Error al marcar por N° operativo');
     } finally {
       setTogglingId(null);
+      if (document.fullscreenElement) {
+        requestAnimationFrame(() => {
+          (operativeInputRef.current ?? document.querySelector<HTMLInputElement>('[data-station-pad]'))?.focus();
+        });
+      }
     }
   };
+
+  const toggleByNumberRef = useRef(toggleByOperativeNumber);
+  toggleByNumberRef.current = toggleByOperativeNumber;
+
+  useEffect(() => {
+    if (!isFullscreen) return;
+    const focusPad = () => {
+      (operativeInputRef.current ?? document.querySelector<HTMLInputElement>('[data-station-pad]'))?.focus();
+    };
+    focusPad();
+    const retry = window.setTimeout(focusPad, 80);
+
+    const onKey = (e: KeyboardEvent) => {
+      if (e.ctrlKey || e.metaKey || e.altKey) return;
+      const fromNumpad = e.code.startsWith('Numpad');
+      const el = e.target instanceof HTMLElement ? e.target : null;
+      const onPad = el === operativeInputRef.current;
+      const inField = !!el && (
+        el.tagName === 'INPUT' || el.tagName === 'TEXTAREA' || el.tagName === 'SELECT' || el.isContentEditable
+      );
+
+      if (onPad) {
+        if (e.key === 'Enter') {
+          e.preventDefault();
+          const num = parseInt(operativeQuickRef.current, 10);
+          if (num) void toggleByNumberRef.current(undefined, num);
+        }
+        return;
+      }
+
+      if (inField && !fromNumpad) return;
+
+      if (/^[0-9]$/.test(e.key)) {
+        e.preventDefault();
+        e.stopPropagation();
+        setOperativeQuick((prev) => (prev + e.key).replace(/\D/g, '').slice(0, 3));
+        return;
+      }
+      if (e.key === 'Enter') {
+        e.preventDefault();
+        e.stopPropagation();
+        const num = parseInt(operativeQuickRef.current, 10);
+        if (num) void toggleByNumberRef.current(undefined, num);
+        return;
+      }
+      if (e.key === 'Backspace') {
+        e.preventDefault();
+        e.stopPropagation();
+        setOperativeQuick((prev) => prev.slice(0, -1));
+      }
+    };
+
+    window.addEventListener('keydown', onKey, true);
+    return () => {
+      window.clearTimeout(retry);
+      window.removeEventListener('keydown', onKey, true);
+    };
+  }, [isFullscreen]);
 
   const patchMaquinista = async (
     member: MaquinistaMember,
@@ -553,9 +639,10 @@ export default function DispatchPublicPage() {
         || m.roleLabel.toLowerCase().includes(q)
         || opStr.includes(q);
       const matchR = !roleFilter || m.role === roleFilter;
-      return matchQ && matchR;
+      const matchA = q || availFilter === 'all' || m.stationAvailable;
+      return matchQ && matchR && matchA;
     });
-  }, [data, search, roleFilter]);
+  }, [data, search, roleFilter, availFilter]);
 
   const roleOptions = useMemo(() => {
     if (!data) return [];
@@ -592,10 +679,15 @@ export default function DispatchPublicPage() {
 
   const { roster, maquinistas, fleet, emergencyStats } = data;
   const hqImage = data.headquartersImageUrl || DEFAULT_HQ;
-  const qrUrl = `https://api.qrserver.com/v1/create-qr-code/?size=100x100&data=${encodeURIComponent(publicUrl)}&bgcolor=${th.qrBg}&color=${isDark ? 'ffffff' : '0f172a'}`;
+  const darkChrome = night || isDark;
+  const qrUrl = `https://api.qrserver.com/v1/create-qr-code/?size=100x100&data=${encodeURIComponent(publicUrl)}&bgcolor=${th.qrBg}&color=${darkChrome ? 'ffffff' : '0f172a'}`;
+  const floatBtn = night
+    ? 'bg-[#16101c]/90 border border-amber-500/30 text-amber-100 shadow-xl shadow-amber-950/40'
+    : 'bg-white border border-slate-200 text-slate-800 shadow-xl';
 
   return (
-    <div className={`h-screen overflow-hidden flex flex-col transition-colors ${onEmergency ? th.pageEmergency : th.page}`}>
+    <div className={`h-screen overflow-hidden flex flex-col transition-colors relative ${night ? 'sala-guardia' : ''} ${onEmergency ? th.pageEmergency : th.page}`}>
+      {night && <SalaNightAtmosphere />}
       {/* Audio + alarma activa */}
       {!audioEnabled && (
         <div className="bg-amber-950/90 border-b border-amber-600/40 px-4 py-3">
@@ -628,7 +720,6 @@ export default function DispatchPublicPage() {
         onClose={handleCelebrationClose}
         companyName={`${data.number}ª Compañía ${data.name}`}
       />
-
       <EmergencyBitacoraFinalizeModal
         open={showBitacoraModal}
         slug={slug ?? ''}
@@ -639,14 +730,40 @@ export default function DispatchPublicPage() {
         onSaved={handleBitacoraSaved}
       />
 
-      <button
-        onClick={toggleLayout}
-        className="fixed bottom-6 right-6 z-[100] bg-white border border-slate-200 text-slate-800 shadow-xl px-4 py-2.5 rounded-full flex items-center gap-2 hover:bg-slate-50 hover:scale-105 transition-all text-sm font-bold"
-        title="Cambiar Diseño"
-      >
-        <SlidersHorizontal className="w-4 h-4 text-blue-600" />
-        Diseño {layout === 'classic' ? 'Moderno' : 'Clásico'}
-      </button>
+      <div className="fixed bottom-6 right-6 z-[100] flex items-center gap-2">
+        <button
+          type="button"
+          onClick={cycleNight}
+          className={`${floatBtn} p-3 rounded-full hover:scale-105 transition-all relative`}
+          title={nightLabel}
+          aria-label={nightLabel}
+        >
+          {night ? <Sun className={`w-5 h-5 ${night ? 'text-amber-300' : 'text-slate-800'}`} /> : <Moon className="w-5 h-5 text-indigo-600" />}
+          {pref === 'auto' && (
+            <span className="absolute -top-1 -right-1 text-[8px] font-black uppercase tracking-wide bg-amber-400 text-amber-950 px-1 rounded">
+              Auto
+            </span>
+          )}
+        </button>
+        <button
+          type="button"
+          onClick={toggleFullscreen}
+          className={`${floatBtn} p-3 rounded-full hover:scale-105 transition-all`}
+          title={isFullscreen ? 'Salir de pantalla completa' : 'Pantalla completa'}
+          aria-label={isFullscreen ? 'Salir de pantalla completa' : 'Pantalla completa'}
+        >
+          {isFullscreen ? <Minimize2 className={`w-5 h-5 ${night ? 'text-amber-100' : 'text-slate-800'}`} /> : <Maximize2 className={`w-5 h-5 ${night ? 'text-amber-100' : 'text-slate-800'}`} />}
+        </button>
+        <button
+          type="button"
+          onClick={toggleLayout}
+          className={`${floatBtn} p-3 rounded-full hover:scale-105 transition-all`}
+          title="Cambiar diseño"
+          aria-label="Cambiar diseño"
+        >
+          <SlidersHorizontal className={`w-4 h-4 ${night ? 'text-amber-300' : 'text-blue-600'}`} />
+        </button>
+      </div>
 
       {/* RENDERIZADO CONDICIONAL DE VISTAS */}
       {layout === 'modern' ? (
@@ -657,6 +774,8 @@ export default function DispatchPublicPage() {
           onToggleByNumber={toggleByOperativeNumber}
           togglingId={togglingId}
           onEmergency={onEmergency}
+          padActive={isFullscreen}
+          night={night}
         />
       ) : (
         <>
@@ -688,17 +807,14 @@ export default function DispatchPublicPage() {
               <p className={`text-[10px] uppercase tracking-widest font-semibold ${th.companyLabel}`}>{data.number}ª Compañía</p>
               <h1 className={`text-lg sm:text-2xl font-bold leading-tight ${th.title}`}>{data.name}</h1>
               <p className={`text-sm ${th.subtitle}`}>Sala de Máquinas</p>
+              {night && (
+                <p className="mt-1 inline-flex items-center gap-1.5 text-[10px] font-black uppercase tracking-[0.18em] text-amber-300/90">
+                  <Moon className="w-3 h-3" /> Guardia nocturna
+                </p>
+              )}
             </div>
           </div>
           <div className="flex flex-col items-end gap-1.5 self-end sm:self-auto">
-            <button
-              type="button"
-              onClick={toggleTheme}
-              className={`p-1.5 rounded-lg border transition-colors ${th.btnGhost}`}
-              title={isDark ? 'Modo claro' : 'Modo oscuro'}
-            >
-              {isDark ? <Sun className="w-3.5 h-3.5" /> : <Moon className="w-3.5 h-3.5" />}
-            </button>
             <LiveClock th={th} />
           </div>
         </div>
@@ -718,7 +834,6 @@ export default function DispatchPublicPage() {
       </header>
 
       <main className="max-w-[1600px] w-full mx-auto px-4 sm:px-6 py-5 flex-1 min-h-0 overflow-y-auto scrollbar-thin scrollbar-thumb-slate-700 space-y-5">
-        {/* Barra disponibilidad + estado */}
         <div className="grid lg:grid-cols-2 gap-4">
           <div className={`${th.card} rounded-2xl p-4 sm:p-5 flex gap-4 items-center`}>
             <div className="flex-1 min-w-0">
@@ -732,7 +847,7 @@ export default function DispatchPublicPage() {
               </p>
             </div>
             <div className="flex flex-col items-center gap-2 shrink-0">
-              <img src={qrUrl} alt="QR sala de máquinas" className={`w-20 h-20 sm:w-24 sm:h-24 rounded-lg border ${isDark ? 'border-slate-600 bg-[#0a1628]' : 'border-slate-300 bg-white'}`} />
+              <img src={qrUrl} alt="QR sala de máquinas" className={`w-20 h-20 sm:w-24 sm:h-24 rounded-lg border ${darkChrome ? 'border-amber-500/25 bg-[#100c14]' : 'border-slate-300 bg-white'}`} />
               <Link
                 to={`/cuartel/${data.slug}`}
                 className="flex items-center gap-1 px-3 py-1.5 rounded-lg bg-red-600/90 hover:bg-red-500 text-white text-[11px] font-bold transition-colors whitespace-nowrap"
@@ -764,16 +879,17 @@ export default function DispatchPublicPage() {
           </div>
         </div>
 
-        {/* Búsqueda + N° operativo rápido */}
         <div className="space-y-3">
           <div className={`rounded-2xl border p-4 ${th.operativePanel}`}>
-            <p className={`text-xs font-bold mb-3 flex items-center gap-2 ${isDark ? 'text-amber-200' : 'text-amber-900'}`}>
+            <p className={`text-xs font-bold mb-3 flex items-center gap-2 ${darkChrome ? 'text-amber-200' : 'text-amber-900'}`}>
               <Hash className="w-4 h-4" />
               Marcar disponibilidad por N° operativo
             </p>
             <div className="flex flex-col sm:flex-row gap-2">
               <div className="relative flex-1 max-w-[140px]">
                 <input
+                  ref={operativeInputRef}
+                  data-station-pad
                   type="text"
                   inputMode="numeric"
                   maxLength={3}
@@ -824,6 +940,26 @@ export default function DispatchPublicPage() {
                 className={`w-full border rounded-xl pl-10 pr-4 py-2.5 text-sm focus:outline-none ${th.input}`}
               />
             </div>
+          <div className="flex rounded-xl border overflow-hidden shrink-0">
+            <button
+              type="button"
+              onClick={() => setAvailFilter('available')}
+              className={`px-4 py-2.5 text-sm font-bold transition-colors ${
+                availFilter === 'available' ? 'bg-emerald-600 text-white' : th.filterBtn
+              }`}
+            >
+              Disponibles
+            </button>
+            <button
+              type="button"
+              onClick={() => setAvailFilter('all')}
+              className={`px-4 py-2.5 text-sm font-bold transition-colors ${
+                availFilter === 'all' ? 'bg-slate-600 text-white' : th.filterBtn
+              }`}
+            >
+              Todos
+            </button>
+          </div>
           <div className="relative sm:w-48">
             <SlidersHorizontal className={`absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 ${th.cardMuted}`} />
             <select
@@ -843,13 +979,12 @@ export default function DispatchPublicPage() {
               onClick={() => { setSearch(''); setRoleFilter(''); }}
               className={`px-4 py-2.5 rounded-xl border text-sm ${th.filterBtn}`}
             >
-              Ver todos
+              Limpiar
             </button>
           )}
           </div>
         </div>
 
-        {/* Principal: bomberos + mapa */}
         <div className="grid lg:grid-cols-3 gap-5 items-start">
           <div className="lg:col-span-2 space-y-3">
             <h2 className={`text-base font-bold flex items-center gap-2 ${th.sectionTitle}`}>
@@ -908,7 +1043,7 @@ export default function DispatchPublicPage() {
                       <div>
                         <p className={`font-bold text-sm truncate ${th.memberName}`}>{m.firstName} {m.lastName}</p>
                         <div className="mt-1">
-                          <RoleBadge role={m.role} size="xs" />
+                          <RoleBadge role={m.role} size="xs" contrast />
                         </div>
                       </div>
                       <span className={`mt-auto w-full text-center text-xs font-bold py-2 rounded-lg ${
@@ -934,12 +1069,11 @@ export default function DispatchPublicPage() {
               pendingBitacoraIds={pendingBitacoraIds}
               highlightEmergencyId={highlightEmergencyId}
               onCompleteBitacora={openBitacoraForEmergency}
-              theme={isDark ? 'dark' : 'light'}
+              theme={darkChrome ? 'dark' : 'light'}
             />
           </div>
         </div>
 
-        {/* Maquinistas — habilitación y cargo */}
         {maquinistas.members.length > 0 && (
           <section className="space-y-4">
             <div className="flex flex-wrap items-center justify-between gap-2">
@@ -955,7 +1089,6 @@ export default function DispatchPublicPage() {
               </p>
             </div>
 
-            {/* Maquinista a cargo */}
             <div className={`rounded-2xl border-2 p-4 sm:p-5 ${
               maquinistas.principal?.maquinistaAvailable
                 ? th.maquinistaPanel
@@ -1071,7 +1204,6 @@ export default function DispatchPublicPage() {
           </section>
         )}
 
-        {/* Secundario: flota */}
         <div className="space-y-3">
           <CollapsibleSection
             title="Material mayor"
@@ -1123,7 +1255,7 @@ export default function DispatchPublicPage() {
           </p>
         </div>
       </footer>
-      </>
+        </>
       )}
     </div>
   );
