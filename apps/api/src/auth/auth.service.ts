@@ -58,6 +58,8 @@ export class AuthService {
         isActive: user.isActive,
         stationAvailable: user.stationAvailable ?? false,
         stationAvailableAt: user.stationAvailableAt ?? null,
+        isMaquinista: user.isMaquinista ?? false,
+        maquinistaAvailable: user.maquinistaAvailable ?? false,
         company,
       },
     };

@@ -4,7 +4,7 @@ import {
   Plus, Users, Shield, Building2, Pencil, UserX, Trash2,
   Mail, CreditCard, Lock, X, CheckCircle2, Phone,
   ChevronRight, Search, SlidersHorizontal, FileDown, Camera, Hash,
-  Siren, Moon, Zap, Medal, Trophy
+  Siren, Moon, Zap, Medal, Trophy, Truck
 } from 'lucide-react';
 import { api } from '../lib/api';
 import toast from 'react-hot-toast';
@@ -31,10 +31,11 @@ interface UserFormData {
   rut: string; firstName: string; lastName: string;
   email: string; password: string; phone: string; roles: string[]; companyId: string; photoUrl: string;
   operativeNumber: string;
+  isMaquinista: boolean;
 }
 const EMPTY_FORM: UserFormData = {
   rut: '', firstName: '', lastName: '', email: '', password: '', phone: '', roles: ['BOMBERO'],
-  companyId: '', photoUrl: '', operativeNumber: '',
+  companyId: '', photoUrl: '', operativeNumber: '', isMaquinista: false,
 };
 
 export default function UsersPage() {
@@ -114,6 +115,7 @@ export default function UsersPage() {
       roles: form.roles,
       companyId: form.companyId || null,
       photoUrl: form.photoUrl || undefined,
+      isMaquinista: form.isMaquinista,
     };
     if (!editing) payload.password = form.password;
     else if (form.password) payload.password = form.password;
@@ -147,6 +149,7 @@ export default function UsersPage() {
       rut: u.rut, firstName: u.firstName, lastName: u.lastName, email: u.email,
       password: '', phone: u.phone ?? '', roles: userRoles(u), companyId: u.companyId ?? '', photoUrl: u.photoUrl ?? '',
       operativeNumber: u.operativeNumber != null ? String(u.operativeNumber) : '',
+      isMaquinista: Boolean(u.isMaquinista),
     });
     setShowForm(true);
     window.scrollTo({ top: 0, behavior: 'smooth' });
@@ -369,6 +372,33 @@ export default function UsersPage() {
               </p>
             </div>
 
+            <div className="sm:col-span-2 lg:col-span-3">
+              <label
+                className={`flex items-start gap-3 rounded-xl border px-3 py-3 cursor-pointer transition-colors ${
+                  form.isMaquinista
+                    ? 'border-sky-500/50 bg-sky-600/10'
+                    : 'border-slate-800 bg-slate-800/60 hover:border-slate-600'
+                }`}
+              >
+                <input
+                  type="checkbox"
+                  checked={form.isMaquinista}
+                  onChange={() => setForm((f) => ({ ...f, isMaquinista: !f.isMaquinista }))}
+                  className="mt-0.5 rounded border-slate-600 bg-slate-900 text-sky-500 focus:ring-sky-500/40"
+                />
+                <span>
+                  <span className="flex items-center gap-1.5 text-xs font-semibold text-slate-100">
+                    <Truck className="w-3.5 h-3.5 text-sky-400" />
+                    También es maquinista
+                  </span>
+                  <span className="block text-[11px] text-slate-500 mt-0.5">
+                    Conserva su cargo (bombero, capitán, etc.) y aparece abajo en la sala de máquinas.
+                    La disponibilidad se marca aparte, en la sala o en el celular.
+                  </span>
+                </span>
+              </label>
+            </div>
+
             </div>
 
             <div className="flex gap-3 pt-2">
@@ -535,6 +565,9 @@ export default function UsersPage() {
                 { icon: Phone, label: 'Teléfono', value: selected.phone || 'Sin teléfono' },
                 { icon: Building2, label: 'Compañía', value: selected.company ? `Cía. ${selected.company.number} — ${selected.company.name}` : 'Sin compañía asignada' },
                 { icon: Shield, label: 'Roles', value: userRoles(selected).map((role) => roleInfo(role).label).join(' · ') },
+                { icon: Truck, label: 'Maquinista', value: selected.isMaquinista
+                  ? (selected.maquinistaAvailable ? 'Calificado · disponible en sala' : 'Calificado · no habilitado ahora')
+                  : 'No calificado' },
                 ...(selected.operativeNumber != null
                   ? [{ icon: Hash, label: 'N° operativo', value: String(selected.operativeNumber) }]
                   : []),
@@ -630,6 +663,13 @@ function UserCard({ u, onSelect, onEdit, onDelete }: { u: any; onSelect: (u: any
           {userRoles(u).slice(0, 3).map((role) => <RoleBadge key={role} role={role} size="xs" />)}
           {userRoles(u).length > 3 && (
             <span className="text-[9px] text-slate-500 font-semibold">+{userRoles(u).length - 3}</span>
+          )}
+          {u.isMaquinista && (
+            <span className={`text-[9px] font-bold uppercase px-1.5 py-0.5 rounded-md ${
+              u.maquinistaAvailable ? 'bg-sky-500/20 text-sky-300' : 'bg-slate-800 text-slate-400'
+            }`}>
+              Maq.
+            </span>
           )}
         </div>
         <ChevronRight className="w-3.5 h-3.5 text-slate-600 group-hover:text-slate-400 transition-colors" />

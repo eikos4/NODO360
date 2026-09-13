@@ -400,6 +400,11 @@ header small { color: var(--muted); font-size: 10px; margin-top: 4px; }
 [data-theme="nodo"] .radio-avail.on { border-color: #166534; background: #14532d; }
 .radio-avail.on svg { color: var(--green); }
 .radio-avail.on button { background: var(--btn-soft-bg); color: var(--btn-soft-text); border: 1px solid var(--btn-soft-border); }
+.radio-avail.maq button { background: #0369a1; }
+.radio-avail.maq.on { border-color: #7dd3fc; background: #e0f2fe; }
+[data-theme="nodo"] .radio-avail.maq.on { border-color: #075985; background: #0c4a6e; }
+.radio-avail.maq.on svg { color: #0284c7; }
+[data-theme="nodo"] .radio-avail.maq.on svg { color: #7dd3fc; }
 
 .incident { display: grid; gap: 12px; }
 .alarm-card, .response-panel, .stats, .map-card, .team-card, .trip-card { background: var(--panel); border: 1px solid var(--line); border-radius: 19px; overflow: hidden; }

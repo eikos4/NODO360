@@ -3,6 +3,7 @@ import {
   ArrayMaxSize,
   ArrayMinSize,
   IsArray,
+  IsBoolean,
   IsEmail,
   IsInt,
   IsNotEmpty,
@@ -56,6 +57,10 @@ export class ImportUserRowDto {
   @IsString()
   @MinLength(6)
   password?: string;
+
+  @IsOptional()
+  @IsBoolean()
+  isMaquinista?: boolean;
 }
 
 export class ImportUsersDto {

@@ -11,6 +11,8 @@ const user = {
   photoUrl: null,
   operativeNumber: 7,
   stationAvailable: true,
+  isMaquinista: false,
+  maquinistaAvailable: false,
   isActive: true,
   company: { isActive: true },
 };

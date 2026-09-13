@@ -8,9 +8,10 @@ export type RosterRow = {
   role: string;
   companyNumber?: number;
   operativeNumber?: number;
+  isMaquinista?: boolean;
 };
 
-const HEADER_ALIASES: Record<string, keyof RosterRow | 'companyRaw' | 'operativeRaw'> = {
+const HEADER_ALIASES: Record<string, keyof RosterRow | 'companyRaw' | 'operativeRaw' | 'maquinistaRaw'> = {
   rut: 'rut',
   nombres: 'firstName',
   nombre: 'firstName',
@@ -39,6 +40,9 @@ const HEADER_ALIASES: Record<string, keyof RosterRow | 'companyRaw' | 'operative
   n_operativo: 'operativeRaw',
   operativo: 'operativeRaw',
   numero_operativo: 'operativeRaw',
+  maquinista: 'maquinistaRaw',
+  es_maquinista: 'maquinistaRaw',
+  is_maquinista: 'maquinistaRaw',
 };
 
 function normalizeHeader(value: string) {
@@ -74,6 +78,10 @@ export function splitCsvLine(line: string): string[] {
   return out;
 }
 
+function parseYes(raw?: string) {
+  return /^(si|sí|yes|true|1|maq|maquinista)$/i.test((raw ?? '').trim());
+}
+
 function parseCompanyNumber(raw?: string) {
   const value = (raw ?? '').trim();
   if (!value || /sin\s*compa/i.test(value)) return undefined;
@@ -100,7 +108,7 @@ function slugEmailPart(value: string) {
     .replace(/^\.|\.$/g, '');
 }
 
-function toRow(values: Partial<RosterRow> & { companyRaw?: string; operativeRaw?: string }): RosterRow | null {
+function toRow(values: Partial<RosterRow> & { companyRaw?: string; operativeRaw?: string; maquinistaRaw?: string }): RosterRow | null {
   const rut = values.rut?.trim() ?? '';
   const firstName = values.firstName?.trim() ?? '';
   const lastName = values.lastName?.trim() ?? '';
@@ -119,6 +127,7 @@ function toRow(values: Partial<RosterRow> & { companyRaw?: string; operativeRaw?
     role: values.role?.trim() || 'BOMBERO',
     companyNumber: values.companyNumber ?? parseCompanyNumber(values.companyRaw),
     operativeNumber,
+    isMaquinista: values.isMaquinista === true || parseYes(values.maquinistaRaw) || undefined,
   };
 }
 

@@ -404,6 +404,7 @@ export class OnboardingService {
           roles,
           companyId: company?.id,
           operativeNumber: row.operativeNumber,
+          isMaquinista: row.isMaquinista === true,
           passwordHash: await bcrypt.hash(row.password || password, 10),
           isActive: true,
         },

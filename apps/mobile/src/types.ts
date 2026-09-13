@@ -11,6 +11,8 @@ export interface AuthUser {
   companyId: string | null;
   stationAvailable?: boolean;
   stationAvailableAt?: string | null;
+  isMaquinista?: boolean;
+  maquinistaAvailable?: boolean;
   company?: { id: string; name: string; number: number; city: string; logoUrl?: string | null } | null;
 }
 
@@ -51,7 +53,14 @@ export interface EmergencySnapshot {
   snapshotVersion: string;
   serverTime: string;
   company: { id: string; name: string; number: number; city: string; logoUrl?: string | null };
-  user: { id: string; fullName: string; operativeNumber?: number | null; stationAvailable?: boolean };
+  user: {
+    id: string;
+    fullName: string;
+    operativeNumber?: number | null;
+    stationAvailable?: boolean;
+    isMaquinista?: boolean;
+    maquinistaAvailable?: boolean;
+  };
   incidents: ActiveIncident[];
   statusLabels: Record<string, string>;
 }

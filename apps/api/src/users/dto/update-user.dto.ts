@@ -1,4 +1,4 @@
-import { IsArray, IsEmail, IsEnum, IsInt, IsOptional, IsString, Max, MaxLength, Min, MinLength } from 'class-validator';
+import { IsArray, IsBoolean, IsEmail, IsEnum, IsInt, IsOptional, IsString, Max, MaxLength, Min, MinLength } from 'class-validator';
 import { Role } from './create-user.dto';
 
 export class UpdateUserDto {
@@ -15,4 +15,5 @@ export class UpdateUserDto {
   /** null para quitar el número */
   @IsOptional()
   operativeNumber?: number | null;
+  @IsOptional() @IsBoolean() isMaquinista?: boolean;
 }

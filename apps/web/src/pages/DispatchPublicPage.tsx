@@ -96,6 +96,8 @@ export type RosterMember = {
   companyId?: string | null;
   supportCompanyId?: string | null;
   supportCompanyName?: string | null;
+  isMaquinista?: boolean;
+  maquinistaAvailable?: boolean;
 };
 
 export type MaquinistaMember = {
@@ -658,6 +660,27 @@ export default function DispatchPublicPage() {
     );
   };
 
+  const markRosterAsMaquinista = (member: RosterMember) => {
+    const next = !member.maquinistaAvailable;
+    patchMaquinista(
+      {
+        id: member.id,
+        firstName: member.firstName,
+        lastName: member.lastName,
+        fullName: member.fullName,
+        role: member.role,
+        roleLabel: member.roleLabel,
+        photoUrl: member.photoUrl,
+        maquinistaAvailable: Boolean(member.maquinistaAvailable),
+        maquinistaPrincipal: false,
+      },
+      { available: next },
+      next
+        ? `${member.firstName} aparece como maquinista disponible`
+        : `${member.firstName} ya no está habilitado como maquinista`,
+    );
+  };
+
   const filteredMembers = useMemo(() => {
     if (!data) return [];
     const q = search.trim().toLowerCase();
@@ -1084,13 +1107,12 @@ export default function DispatchPublicPage() {
                 const on = m.stationAvailable;
                 const busy = togglingId === m.id;
                 const enServicio = onEmergency;
+                const maqOn = Boolean(m.maquinistaAvailable);
+                const maqBusy = maquinistaBusyId === m.id;
                 return (
-                  <button
+                  <div
                     key={m.id}
-                    type="button"
-                    disabled={busy}
-                    onClick={() => toggleMember(m)}
-                    className={`text-left rounded-2xl border overflow-hidden transition-all active:scale-[0.98] flex flex-col relative ${
+                    className={`rounded-2xl border overflow-hidden flex flex-col relative ${
                       enServicio
                         ? th.memberEmergency
                         : on
@@ -1098,6 +1120,12 @@ export default function DispatchPublicPage() {
                           : th.memberUnavailable
                     } ${busy ? 'opacity-60' : ''}`}
                   >
+                    <button
+                      type="button"
+                      disabled={busy}
+                      onClick={() => toggleMember(m)}
+                      className="text-left flex flex-col flex-1 active:scale-[0.98] transition-all"
+                    >
                     {enServicio && (
                       <div className="absolute inset-x-0 top-0 z-20 bg-red-600/90 text-white text-[9px] font-black uppercase tracking-wider text-center py-1">
                         En emergencia
@@ -1122,8 +1150,15 @@ export default function DispatchPublicPage() {
                     <div className="p-3 flex-1 flex flex-col gap-2">
                       <div>
                         <p className={`font-bold text-sm truncate ${th.memberName}`}>{m.firstName} {m.lastName}</p>
-                        <div className="mt-1">
+                        <div className="mt-1 flex flex-wrap items-center gap-1">
                           <RoleBadge role={m.role} size="xs" contrast />
+                          {m.isMaquinista && (
+                            <span className={`text-[9px] font-bold uppercase px-1.5 py-0.5 rounded-md ${
+                              maqOn ? 'bg-sky-500 text-sky-950' : 'bg-slate-600 text-slate-200'
+                            }`}>
+                              Maq.
+                            </span>
+                          )}
                         </div>
                       </div>
                       <span className={`mt-auto w-full text-center text-xs font-bold py-2 rounded-lg ${
@@ -1132,7 +1167,23 @@ export default function DispatchPublicPage() {
                         {on ? 'Estoy disponible' : 'Marcar disponible'}
                       </span>
                     </div>
-                  </button>
+                    </button>
+                    <div className="px-3 pb-3">
+                      <button
+                        type="button"
+                        disabled={maqBusy || !!maquinistaBusyId}
+                        onClick={() => markRosterAsMaquinista(m)}
+                        className={`w-full text-center text-[11px] font-bold py-2 rounded-lg border flex items-center justify-center gap-1 ${
+                          maqOn
+                            ? 'bg-sky-600/20 text-sky-300 border-sky-500/40'
+                            : 'bg-slate-800/80 text-slate-300 border-slate-700'
+                        }`}
+                      >
+                        <Truck className="w-3 h-3" />
+                        {maqOn ? 'Maq. disponible' : m.isMaquinista ? 'Habilitar maquinista' : 'También maquinista'}
+                      </button>
+                    </div>
+                  </div>
                 );
               })}
             </div>
@@ -1154,8 +1205,7 @@ export default function DispatchPublicPage() {
           </div>
         </div>
 
-        {maquinistas.members.length > 0 && (
-          <section className="space-y-4">
+        <section className="space-y-4">
             <div className="flex flex-wrap items-center justify-between gap-2">
               <h2 className={`text-base font-bold flex items-center gap-2 ${th.sectionTitle}`}>
                 <Truck className="w-5 h-5 text-sky-400" />
@@ -1165,7 +1215,7 @@ export default function DispatchPublicPage() {
                 </span>
               </h2>
               <p className={`text-[11px] ${th.cardMuted}`}>
-                Marca disponibilidad como maquinista · luego puedes tomar el cargo
+                Un bombero también puede ser maquinista. Tocá «También maquinista» en su ficha o habilitá acá abajo.
               </p>
             </div>
 
@@ -1208,6 +1258,13 @@ export default function DispatchPublicPage() {
                 </p>
               )}
             </div>
+
+            {maquinistas.members.length === 0 && (
+              <p className={`text-center py-8 rounded-2xl border text-sm ${th.emptyState}`}>
+                Nadie está calificado como maquinista. En Personal marcá «También es maquinista»,
+                o tocá ese botón en la ficha de la dotación para que aparezca acá disponible.
+              </p>
+            )}
 
             <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-3 sm:gap-4">
               {maquinistas.members.map((m) => {
@@ -1282,7 +1339,6 @@ export default function DispatchPublicPage() {
               })}
             </div>
           </section>
-        )}
 
         <section className={`${th.card} rounded-2xl p-4 sm:p-5`}>
           <div className="flex items-center gap-2 mb-4">

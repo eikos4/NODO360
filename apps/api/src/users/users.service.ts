@@ -21,6 +21,9 @@ const USER_SELECT = {
   isActive: true,
   photoUrl: true,
   operativeNumber: true,
+  isMaquinista: true,
+  maquinistaAvailable: true,
+  maquinistaPrincipal: true,
   stationAvailable: true,
   stationAvailableAt: true,
   createdAt: true,
@@ -145,7 +148,7 @@ export class UsersService {
 
   async update(id: string, dto: UpdateUserDto) {
     const current = await this.findById(id);
-    const { password, operativeNumber, role, roles, phone, companyId, ...rest } = dto;
+    const { password, operativeNumber, role, roles, phone, companyId, isMaquinista, ...rest } = dto;
     const data: Record<string, unknown> = { ...rest };
     if (companyId !== undefined) {
       data.companyId = companyId || null;
@@ -172,6 +175,13 @@ export class UsersService {
     }
     if (password) {
       data.passwordHash = await bcrypt.hash(password, 10);
+    }
+    if (isMaquinista !== undefined) {
+      data.isMaquinista = isMaquinista;
+      if (!isMaquinista) {
+        data.maquinistaAvailable = false;
+        data.maquinistaPrincipal = false;
+      }
     }
 
     const nextCompanyId = (companyId !== undefined ? companyId || null : current.companyId) as string | null;

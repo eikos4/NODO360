@@ -1,4 +1,4 @@
-import { IsArray, IsEmail, IsEnum, IsInt, IsNotEmpty, IsOptional, IsString, Max, MaxLength, Min, MinLength } from 'class-validator';
+import { IsArray, IsBoolean, IsEmail, IsEnum, IsInt, IsNotEmpty, IsOptional, IsString, Max, MaxLength, Min, MinLength } from 'class-validator';
 
 export enum Role {
   KODESK = 'KODESK',
@@ -28,4 +28,6 @@ export class CreateUserDto {
   @IsOptional() @IsString() companyId?: string | null;
   @IsOptional() @IsString() photoUrl?: string;
   @IsOptional() @IsInt() @Min(1) @Max(999) operativeNumber?: number;
+  /** Calificación: puede manejar material mayor sin cambiar el cargo (bombero, capitán, etc.). */
+  @IsOptional() @IsBoolean() isMaquinista?: boolean;
 }

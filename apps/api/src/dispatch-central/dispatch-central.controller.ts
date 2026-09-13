@@ -79,6 +79,15 @@ export class DispatchCentralController {
     return this.service.toggleMyStationAvailability(req.user.id, dto.available);
   }
 
+  @Patch('me/maquinista')
+  @UseGuards(JwtAuthGuard)
+  toggleMyMaquinista(
+    @Body() dto: ToggleMyAvailabilityDto,
+    @Req() req: { user: { id: string } },
+  ) {
+    return this.service.toggleMyMaquinistaAvailability(req.user.id, dto.available);
+  }
+
   @Get('central/:companyId/roster')
   @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles(...DISPATCH_ROLES)

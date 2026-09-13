@@ -95,6 +95,8 @@ export class EmergencyResponseService {
         photoUrl: true,
         operativeNumber: true,
         stationAvailable: true,
+        isMaquinista: true,
+        maquinistaAvailable: true,
         isActive: true,
         company: { select: { isActive: true } },
       },
@@ -250,6 +252,8 @@ export class EmergencyResponseService {
         operativeNumber: user.operativeNumber,
         photoUrl: user.photoUrl,
         stationAvailable: user.stationAvailable,
+        isMaquinista: user.isMaquinista,
+        maquinistaAvailable: user.maquinistaAvailable,
       },
       incidents: active.map((inc) => ({
         id: inc.id,
@@ -841,6 +845,7 @@ export class EmergencyResponseService {
         operativeNumber: true,
         stationAvailable: true,
         isMaquinista: true,
+        maquinistaAvailable: true,
         createdAt: true,
         company: {
           select: {
@@ -908,6 +913,7 @@ export class EmergencyResponseService {
         operativeNumber: user.operativeNumber,
         stationAvailable: user.stationAvailable,
         isMaquinista: user.isMaquinista,
+        maquinistaAvailable: user.maquinistaAvailable,
         company: user.company,
         cuerpoName: user.company?.cuerpo?.name ?? null,
         memberNumber: user.memberProfile?.memberNumber ?? null,

@@ -88,6 +88,9 @@ export class DispatchCentralService {
     operativeNumber: number | null;
     companyId?: string | null;
     supportCompanyId?: string | null;
+    isMaquinista?: boolean;
+    maquinistaAvailable?: boolean;
+    maquinistaPrincipal?: boolean;
   }) {
     const roles = user.roles?.length ? user.roles : [user.role];
     return {
@@ -105,6 +108,9 @@ export class DispatchCentralService {
       operativeNumber: user.operativeNumber,
       companyId: user.companyId,
       supportCompanyId: user.supportCompanyId,
+      isMaquinista: user.isMaquinista ?? false,
+      maquinistaAvailable: user.maquinistaAvailable ?? false,
+      maquinistaPrincipal: user.maquinistaPrincipal ?? false,
     };
   }
 
@@ -284,6 +290,9 @@ export class DispatchCentralService {
         operativeNumber: true,
         companyId: true,
         supportCompanyId: true,
+        isMaquinista: true,
+        maquinistaAvailable: true,
+        maquinistaPrincipal: true,
         supportCompany: {
           select: { name: true }
         }
@@ -575,11 +584,10 @@ export class DispatchCentralService {
         id: userId,
         companyId: company.id,
         isActive: true,
-        isMaquinista: true,
       },
     });
     if (!user) {
-      throw new NotFoundException('Maquinista no pertenece a esta compañía');
+      throw new NotFoundException('Bombero no pertenece a esta compañía');
     }
 
     if (opts.principal === true) {
@@ -590,6 +598,7 @@ export class DispatchCentralService {
       await this.prisma.user.update({
         where: { id: userId },
         data: {
+          isMaquinista: true,
           maquinistaPrincipal: true,
           maquinistaAvailable: true,
         },
@@ -602,10 +611,16 @@ export class DispatchCentralService {
     }
 
     if (opts.available !== undefined) {
-      const data: { maquinistaAvailable: boolean; maquinistaPrincipal?: boolean } = {
+      const data: {
+        isMaquinista?: boolean;
+        maquinistaAvailable: boolean;
+        maquinistaPrincipal?: boolean;
+      } = {
         maquinistaAvailable: opts.available,
       };
-      if (!opts.available) {
+      if (opts.available) {
+        data.isMaquinista = true;
+      } else {
         data.maquinistaPrincipal = false;
       }
       await this.prisma.user.update({
@@ -686,6 +701,31 @@ export class DispatchCentralService {
       stationAvailableAt: updated.stationAvailableAt,
       company: updated.company,
     };
+  }
+
+  async toggleMyMaquinistaAvailability(userId: string, available: boolean) {
+    const user = await this.prisma.user.findUnique({
+      where: { id: userId },
+      select: { id: true, isActive: true, companyId: true },
+    });
+    if (!user?.isActive) throw new NotFoundException('Usuario no encontrado');
+    if (!user.companyId) {
+      throw new ForbiddenException('Usuario sin compañía asignada');
+    }
+
+    const updated = await this.prisma.user.update({
+      where: { id: userId },
+      data: available
+        ? { isMaquinista: true, maquinistaAvailable: true }
+        : { maquinistaAvailable: false, maquinistaPrincipal: false },
+      select: {
+        isMaquinista: true,
+        maquinistaAvailable: true,
+        maquinistaPrincipal: true,
+      },
+    });
+
+    return updated;
   }
 
   async searchOperativeGlobally(slug: string, operativeNumber: number) {

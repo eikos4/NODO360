@@ -203,6 +203,35 @@ function RadioAvailability({
   );
 }
 
+function MaquinistaAvailability({
+  available,
+  busy,
+  onToggle,
+}: {
+  available: boolean;
+  busy: boolean;
+  onToggle: (next: boolean) => Promise<void>;
+}) {
+  return (
+    <section className={`radio-avail maq ${available ? 'on' : 'off'}`}>
+      <div>
+        <Truck />
+        <span>
+          <b>{available ? 'Maquinista disponible' : 'No habilitado como maquinista'}</b>
+          <small>
+            {available
+              ? 'Figurás abajo en la sala de máquinas'
+              : 'Podés ser bombero y maquinista a la vez'}
+          </small>
+        </span>
+      </div>
+      <button type="button" disabled={busy} onClick={() => void onToggle(!available)}>
+        {busy ? <Loader2 className="spin" /> : available ? 'Salir' : 'Soy maquinista'}
+      </button>
+    </section>
+  );
+}
+
 function ConnectionPill({ state, pending }: { state: 'online' | 'offline' | 'syncing'; pending: number }) {
   return (
     <span className={`connection ${state}`}>
@@ -537,6 +566,8 @@ export default function App() {
   const [myStatus, setMyStatus] = useState<EmergencyResponseStatus | null>(null);
   const [stationBusy, setStationBusy] = useState(false);
   const [stationAvailable, setStationAvailable] = useState(false);
+  const [maqBusy, setMaqBusy] = useState(false);
+  const [maqAvailable, setMaqAvailable] = useState(false);
   const [notice, setNotice] = useState('');
   const [announceCount, setAnnounceCount] = useState(0);
   const announceDispatch = useCallback((incident: {
@@ -574,6 +605,14 @@ export default function App() {
       setStationAvailable(user.stationAvailable);
     }
   }, [sync.snapshot?.user.stationAvailable, user?.stationAvailable]);
+
+  useEffect(() => {
+    if (sync.snapshot?.user.maquinistaAvailable != null) {
+      setMaqAvailable(sync.snapshot.user.maquinistaAvailable);
+    } else if (user?.maquinistaAvailable != null) {
+      setMaqAvailable(user.maquinistaAvailable);
+    }
+  }, [sync.snapshot?.user.maquinistaAvailable, user?.maquinistaAvailable]);
 
   useEffect(() => {
     if (!user || !activated) return;
@@ -720,6 +759,33 @@ export default function App() {
     }
   };
 
+  const toggleMaquinista = async (next: boolean) => {
+    if (!navigator.onLine) {
+      setNotice('Se necesita conexión para avisar a la sala de máquinas');
+      window.setTimeout(() => setNotice(''), 3500);
+      return;
+    }
+    setMaqBusy(true);
+    try {
+      const { data } = await api.patch<{ isMaquinista: boolean; maquinistaAvailable: boolean }>(
+        '/dispatch/me/maquinista',
+        { available: next },
+      );
+      setMaqAvailable(data.maquinistaAvailable);
+      setUser((current) => current
+        ? { ...current, isMaquinista: data.isMaquinista, maquinistaAvailable: data.maquinistaAvailable }
+        : current);
+      setNotice(data.maquinistaAvailable
+        ? 'Ya figurás como maquinista disponible'
+        : 'Saliste de maquinistas disponibles');
+    } catch {
+      setNotice('No se pudo actualizar tu estado de maquinista');
+    } finally {
+      setMaqBusy(false);
+      window.setTimeout(() => setNotice(''), 3500);
+    }
+  };
+
   const flash = useCallback((message: string) => {
     setNotice(message);
     window.setTimeout(() => setNotice(''), 3500);
@@ -747,6 +813,7 @@ export default function App() {
               {sync.snapshot?.user.operativeNumber != null ? `N° ${sync.snapshot.user.operativeNumber}` : sync.snapshot?.user.fullName || user.firstName}
               {user.company?.number ? ` · ${user.company.number}ª` : ''}
               {stationAvailable ? ' · En sala' : ''}
+              {maqAvailable ? ' · Maq.' : ''}
             </small>
           </span>
         </div>
@@ -766,6 +833,7 @@ export default function App() {
       <main className="content">
         {screen !== 'history' && screen !== 'radio' && screen !== 'announcements' && screen !== 'settings' && screen !== 'help' && screen !== 'recap' && (
           <RadioAvailability available={stationAvailable} busy={stationBusy} onToggle={toggleStation} />
+          <MaquinistaAvailability available={maqAvailable} busy={maqBusy} onToggle={toggleMaquinista} />
         )}
         {screen === 'help' ? (
           <HelpScreen onBack={() => setScreen('settings')} />

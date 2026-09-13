@@ -26,6 +26,7 @@ type ProfilePayload = {
     operativeNumber?: number | null;
     stationAvailable?: boolean;
     isMaquinista?: boolean;
+    maquinistaAvailable?: boolean;
     company?: { name: string; number: number; city: string; logoUrl?: string | null } | null;
     cuerpoName?: string | null;
     memberNumber?: string | null;
@@ -116,6 +117,12 @@ export function ProfileScreen({
             <Truck />
             <span>{person.stationAvailable ? 'Disponible en sala de radio' : 'Fuera de sala de radio'}</span>
           </p>
+          {person.isMaquinista && (
+            <p className={person.maquinistaAvailable ? 'on' : ''}>
+              <Truck />
+              <span>{person.maquinistaAvailable ? 'Maquinista disponible' : 'Maquinista no habilitado ahora'}</span>
+            </p>
+          )}
         </div>
       )}
 
