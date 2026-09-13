@@ -92,19 +92,19 @@ export class UsersService {
     excludeUserId?: string,
   ) {
     if (operativeNumber == null) return;
-    if (!companyId) {
-      throw new BadRequestException('El N° operativo requiere asignar una compañía');
-    }
+    const scopedCompanyId = companyId || null;
     const dup = await this.prisma.user.findFirst({
       where: {
-        companyId,
         operativeNumber,
+        companyId: scopedCompanyId,
         ...(excludeUserId ? { id: { not: excludeUserId } } : {}),
       },
     });
     if (dup) {
       throw new ConflictException(
-        `El N° operativo ${operativeNumber} ya está asignado en esta compañía`,
+        scopedCompanyId
+          ? `El N° operativo ${operativeNumber} ya está asignado en esta compañía`
+          : `El N° operativo ${operativeNumber} ya está asignado a un perfil sin compañía`,
       );
     }
   }
@@ -128,13 +128,14 @@ export class UsersService {
     if (exists) throw new ConflictException('Email o RUT ya registrado');
     await this.assertOperativeNumber(dto.companyId, dto.operativeNumber);
 
-    const { password, role, roles, phone, ...rest } = dto;
+    const { password, role, roles, phone, companyId, ...rest } = dto;
     const assigned = this.resolveRoles(role, roles);
     const passwordHash = await bcrypt.hash(password, 10);
     return this.prisma.user.create({
       data: {
         ...rest,
         ...assigned,
+        companyId: companyId || null,
         phone: normalizePhone(phone),
         passwordHash,
       },
@@ -144,8 +145,11 @@ export class UsersService {
 
   async update(id: string, dto: UpdateUserDto) {
     const current = await this.findById(id);
-    const { password, operativeNumber, role, roles, phone, ...rest } = dto;
+    const { password, operativeNumber, role, roles, phone, companyId, ...rest } = dto;
     const data: Record<string, unknown> = { ...rest };
+    if (companyId !== undefined) {
+      data.companyId = companyId || null;
+    }
 
     if (role !== undefined || roles !== undefined) {
       const assigned = this.resolveRoles(
@@ -170,10 +174,10 @@ export class UsersService {
       data.passwordHash = await bcrypt.hash(password, 10);
     }
 
-    const companyId = (rest.companyId ?? current.companyId) as string | null;
+    const nextCompanyId = (companyId !== undefined ? companyId || null : current.companyId) as string | null;
     const nextNumber =
       operativeNumber !== undefined ? operativeNumber : current.operativeNumber;
-    await this.assertOperativeNumber(companyId, nextNumber ?? undefined, id);
+    await this.assertOperativeNumber(nextCompanyId, nextNumber ?? undefined, id);
 
     return this.prisma.user.update({
       where: { id },

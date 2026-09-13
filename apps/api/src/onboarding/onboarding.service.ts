@@ -376,12 +376,19 @@ export class OnboardingService {
         continue;
       }
 
-      if (row.operativeNumber != null && company) {
+      if (row.operativeNumber != null) {
         const opDup = await this.prisma.user.findFirst({
-          where: { companyId: company.id, operativeNumber: row.operativeNumber },
+          where: {
+            operativeNumber: row.operativeNumber,
+            companyId: company?.id ?? null,
+          },
         });
         if (opDup) {
-          skipped.push(`Fila ${index + 1}: N° ${row.operativeNumber} ya usado en ${company.number}ª`);
+          skipped.push(
+            company
+              ? `Fila ${index + 1}: N° ${row.operativeNumber} ya usado en ${company.number}ª`
+              : `Fila ${index + 1}: N° ${row.operativeNumber} ya usado en un perfil sin compañía`,
+          );
           continue;
         }
       }

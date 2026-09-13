@@ -25,7 +25,7 @@ export class CreateUserDto {
   @IsOptional() @IsEnum(Role) role?: Role;
   @IsOptional() @IsArray() @IsEnum(Role, { each: true }) roles?: Role[];
   @IsOptional() @IsString() @MaxLength(40) phone?: string;
-  @IsOptional() @IsString() companyId?: string;
+  @IsOptional() @IsString() companyId?: string | null;
   @IsOptional() @IsString() photoUrl?: string;
   @IsOptional() @IsInt() @Min(1) @Max(999) operativeNumber?: number;
 }

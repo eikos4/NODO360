@@ -9,7 +9,7 @@ export class UpdateUserDto {
   @IsOptional() @IsEnum(Role) role?: Role;
   @IsOptional() @IsArray() @IsEnum(Role, { each: true }) roles?: Role[];
   @IsOptional() @IsString() @MaxLength(40) phone?: string | null;
-  @IsOptional() @IsString() companyId?: string;
+  @IsOptional() @IsString() companyId?: string | null;
   @IsOptional() isActive?: boolean;
   @IsOptional() @IsString() photoUrl?: string;
   /** null para quitar el número */

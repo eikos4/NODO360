@@ -532,7 +532,7 @@ export default function SuperAdminImplementacionPage() {
               </button>
             </div>
             <p className="text-xs text-slate-500 mb-2">
-              Se carga en <strong>{workspace.name}</strong>. Columnas: RUT, Nombres, Apellidos, Correo, Teléfono, Contraseña, Rol, Compañía, N° operativo. Varios cargos en Rol separados por <code>|</code>, ej. <code>CAPITAN|BOMBERO|ENCARGADO_MATERIAL</code>.
+              Se carga en <strong>{workspace.name}</strong>. Columnas: RUT, Nombres, Apellidos, Correo, Teléfono, Contraseña, Rol, Compañía, N° operativo. Varios cargos en Rol separados por <code>|</code>, ej. <code>CAPITAN|BOMBERO|ENCARGADO_MATERIAL</code>. Admin y Super Admin pueden ir sin compañía y con N° propio (666, 999).
             </p>
             <label className="flex items-center justify-center gap-2 rounded-xl border-2 border-dashed border-slate-300 dark:border-slate-700 px-4 py-6 cursor-pointer hover:border-red-400 mb-3">
               <Upload className="w-5 h-5 text-red-500" />

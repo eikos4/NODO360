@@ -14,6 +14,8 @@ export const PARRAL_COMPANIES = [
 ];
 
 export const PARRAL_CSV_TEMPLATE = `rut,nombres,apellidos,correo,telefono,contraseña,rol,compania,n_operativo
+77.000.666-6,Admin,Cuerpo,admin@cia.cl,+56911110000,Demo1234!,SUPER_ADMIN,,666
+77.000.999-9,Super,Admin,superadmin@cia.cl,+56911110001,Demo1234!,SUPER_ADMIN,,999
 12.345.678-9,Mario,González,mario@cia.cl,+56911112222,Demo1234!,CAPITAN|BOMBERO|ENCARGADO_MATERIAL,1,12
 13.456.789-0,Ana,Martínez,ana@cia.cl,+56911113333,Demo1234!,Capitán,1,1
 39.012.345-6,Karen,Bravo,central@cia.cl,+56911114444,Demo1234!,Centralista,1,

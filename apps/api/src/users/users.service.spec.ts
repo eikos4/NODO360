@@ -24,6 +24,38 @@ function makeService(prisma: Record<string, unknown>) {
   return new UsersService(prisma as never);
 }
 
+describe('UsersService.create', () => {
+  it('lets Super Admin keep a platform number without a company', async () => {
+    const created = { ...bombero, id: 'admin-1', role: 'SUPER_ADMIN', companyId: null, operativeNumber: 666 };
+    const prisma = {
+      user: {
+        findFirst: vi.fn().mockResolvedValue(null),
+        create: vi.fn().mockResolvedValue(created),
+      },
+    };
+    const service = makeService(prisma);
+
+    await expect(service.create({
+      rut: '22.222.222-2',
+      firstName: 'Admin',
+      lastName: 'Cuerpo',
+      email: 'admin@cuerpo.cl',
+      password: 'Demo1234!',
+      role: 'SUPER_ADMIN' as never,
+      companyId: null,
+      operativeNumber: 666,
+    })).resolves.toMatchObject({ operativeNumber: 666, companyId: null });
+
+    expect(prisma.user.create).toHaveBeenCalledWith(expect.objectContaining({
+      data: expect.objectContaining({
+        companyId: null,
+        operativeNumber: 666,
+        role: 'SUPER_ADMIN',
+      }),
+    }));
+  });
+});
+
 describe('UsersService.remove', () => {
   it('rejects deleting a missing user', async () => {
     const service = makeService({

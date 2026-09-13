@@ -112,7 +112,7 @@ export default function UsersPage() {
       phone: form.phone.trim() || undefined,
       role: pickPrimaryRole(form.roles),
       roles: form.roles,
-      companyId: form.companyId || undefined,
+      companyId: form.companyId || null,
       photoUrl: form.photoUrl || undefined,
     };
     if (!editing) payload.password = form.password;
@@ -362,8 +362,10 @@ export default function UsersPage() {
               </div>
               <p className="text-[10px] text-slate-600 mt-1">
                 {form.roles.includes('OPERADOR_CENTRAL')
-                  ? 'La centralista opera todo el Cuerpo. Elegí una compañía del Cuerpo para vincularla a la sala de radio.'
-                  : 'Único por compañía · visible en sala pública'}
+                  ? 'La centralista opera todo el Cuerpo. Puede ir sin compañía y aún así tener N° (ej. 999).'
+                  : form.roles.some((role) => role === 'SUPER_ADMIN' || role === 'KODESK' || role === 'COMANDANTE')
+                    ? 'Admin y Super Admin pueden quedar sin compañía con un N° propio (ej. 666 o 999).'
+                    : 'Único por compañía. Sin compañía también se puede asignar un N° de plataforma.'}
               </p>
             </div>
 
