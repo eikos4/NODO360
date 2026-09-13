@@ -9,6 +9,7 @@ import {
 import toast from 'react-hot-toast';
 import { api } from '../lib/api';
 import { useAuthStore } from '../store/authStore';
+import { useEmergencyLiveSocket } from '../hooks/useEmergencyLiveSocket';
 import { notifyDispatchLive, subscribeDispatchLive, subscribeAnyDispatchLive, PUBLIC_POLL_MS_IDLE, PUBLIC_POLL_MS_URGENT } from '../lib/dispatch-live-sync';
 import { openGoogleMapsDirections } from '../lib/incident-location-pin';
 import { usePublicDispatchAlarm } from '../hooks/usePublicDispatchAlarm';
@@ -319,6 +320,7 @@ function getTimeElapsed(dateStr: string): string {
 
 export default function BomberoEmergencyPage() {
   const user = useAuthStore((s) => s.user);
+  const token = useAuthStore((s) => s.token);
   const qc = useQueryClient();
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [mobileTab, setMobileTab] = useState<'map' | 'team'>('map');
@@ -360,6 +362,18 @@ export default function BomberoEmergencyPage() {
     refetchInterval: (query) => {
       const active = query.state.data?.emergencyStats?.active ?? 0;
       return active > 0 || urgentPoll ? PUBLIC_POLL_MS_URGENT : PUBLIC_POLL_MS_IDLE;
+    },
+  });
+
+  useEmergencyLiveSocket({
+    token,
+    slug: dispatchSlug,
+    onEvent: () => {
+      setUrgentPoll(true);
+      void refetch();
+      if (dispatchSlug) {
+        void qc.invalidateQueries({ queryKey: ['dispatch-public-live', dispatchSlug] });
+      }
     },
   });
 

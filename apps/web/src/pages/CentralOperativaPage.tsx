@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
-import { useQuery } from '@tanstack/react-query';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { Link } from 'react-router-dom';
 import {
   Siren, Users, Truck, RefreshCw, Radio, MapPin, Clock,
@@ -12,6 +12,7 @@ import { type PublicEmergency } from '../components/dispatch/DispatchEmergencies
 import PublicEmergencyBanner from '../components/dispatch/PublicEmergencyBanner';
 import RadioPttPanel from '../components/radio/RadioPttPanel';
 import PublicOsmMap, { PARRAL_CENTER, type OsmBaseStyle } from '../components/map/PublicOsmMap';
+import { useEmergencyLiveSocket } from '../hooks/useEmergencyLiveSocket';
 
 const POLL_MS = 10_000;
 const apiBase = import.meta.env.VITE_API_URL?.replace(/\/$/, '') || '/api';
@@ -79,6 +80,7 @@ function mapIncidentToPublic(inc: {
 
 export default function CentralOperativaPage() {
   const user = useAuthStore((s) => s.user);
+  const qc = useQueryClient();
   const { tokens: th, toggleTheme, isDark } = useCentralParralTheme();
   const companyId = user?.companyId ?? '';
   const [dismissedBannerId, setDismissedBannerId] = useState<string | null>(null);
@@ -109,6 +111,14 @@ export default function CentralOperativaPage() {
     },
     enabled: !!slug,
     refetchInterval: POLL_MS,
+  });
+
+  useEmergencyLiveSocket({
+    slug,
+    onEvent: () => {
+      void refetch();
+      void qc.invalidateQueries({ queryKey: ['incidents', companyId] });
+    },
   });
 
   const { data: incidents = [] } = useQuery({

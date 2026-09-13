@@ -40,6 +40,14 @@ export class EmergencyGateway implements OnGatewayConnection {
       const token =
         (client.handshake.auth?.token as string | undefined) ||
         client.handshake.headers.authorization?.replace(/^Bearer\s+/i, '');
+      const publicSlug = String(
+        client.handshake.auth?.slug ?? client.handshake.query?.slug ?? '',
+      ).trim();
+
+      if (!token && publicSlug) {
+        await this.joinPublicSala(client, publicSlug);
+        return;
+      }
       if (!token) return client.disconnect(true);
 
       const payload = this.jwt.verify<{ sub?: string }>(token);
@@ -86,6 +94,25 @@ export class EmergencyGateway implements OnGatewayConnection {
       this.logger.warn(`Emergency socket auth failed: ${(error as Error).message}`);
       client.disconnect(true);
     }
+  }
+
+  private async joinPublicSala(client: Socket, slug: string) {
+    const company = await this.prisma.company.findUnique({
+      where: { dispatchSlug: slug },
+      select: { id: true, isActive: true },
+    });
+    if (!company?.isActive) {
+      client.disconnect(true);
+      return;
+    }
+    client.data.publicSlug = slug;
+    client.data.companyIds = [company.id];
+    await client.join([roomForCompany(company.id)]);
+    client.emit('emergency.ready.v1', {
+      schemaVersion: 1,
+      companyIds: [company.id],
+      serverTime: new Date().toISOString(),
+    });
   }
 
   emitToCompanies(event: EmergencyEventEnvelope) {

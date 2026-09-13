@@ -21,6 +21,7 @@ import {
   subscribeDispatchLive,
 } from '../lib/dispatch-live-sync';
 import { useSalaNightMode } from '../hooks/useSalaNightMode';
+import { useEmergencyLiveSocket } from '../hooks/useEmergencyLiveSocket';
 import {
   DISPATCH_PUBLIC_THEMES,
   SALA_NIGHT_THEME,
@@ -338,6 +339,11 @@ export default function DispatchPublicPage() {
       setLoading(false);
     }
   }, [slug]);
+
+  useEmergencyLiveSocket({
+    slug,
+    onEvent: () => { void load(); },
+  });
 
   const enableAudio = () => {
     sessionStorage.setItem(AUDIO_KEY, '1');

@@ -65,10 +65,10 @@ describe('emergency realtime contract', () => {
 
   it('disconnects unauthenticated sockets without querying users', async () => {
     const jwt = { verify: vi.fn() };
-    const prisma = { user: { findUnique: vi.fn() } };
+    const prisma = { user: { findUnique: vi.fn() }, company: { findUnique: vi.fn() } };
     const gateway = new EmergencyGateway(jwt as never, prisma as never);
     const client = {
-      handshake: { auth: {}, headers: {} },
+      handshake: { auth: {}, headers: {}, query: {} },
       disconnect: vi.fn(),
     };
 
@@ -76,5 +76,34 @@ describe('emergency realtime contract', () => {
 
     expect(client.disconnect).toHaveBeenCalledWith(true);
     expect(prisma.user.findUnique).not.toHaveBeenCalled();
+    expect(prisma.company.findUnique).not.toHaveBeenCalled();
+  });
+
+  it('lets the public sala join by dispatch slug without a JWT', async () => {
+    const jwt = { verify: vi.fn() };
+    const prisma = {
+      user: { findUnique: vi.fn() },
+      company: {
+        findUnique: vi.fn().mockResolvedValue({ id: 'company-1', isActive: true }),
+      },
+    };
+    const gateway = new EmergencyGateway(jwt as never, prisma as never);
+    const client = {
+      handshake: { auth: { slug: 'bomberos-parral' }, headers: {}, query: {} },
+      data: {},
+      join: vi.fn().mockResolvedValue(undefined),
+      emit: vi.fn(),
+      disconnect: vi.fn(),
+    };
+
+    await gateway.handleConnection(client as never);
+
+    expect(jwt.verify).not.toHaveBeenCalled();
+    expect(prisma.company.findUnique).toHaveBeenCalledWith({
+      where: { dispatchSlug: 'bomberos-parral' },
+      select: { id: true, isActive: true },
+    });
+    expect(client.join).toHaveBeenCalledWith(['emergency:company:company-1']);
+    expect(client.disconnect).not.toHaveBeenCalled();
   });
 });
