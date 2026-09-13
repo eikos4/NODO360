@@ -6,6 +6,18 @@ import { ConfirmIncidentLocationDto } from './dto/confirm-incident-location.dto'
 export class IncidentLocationPinController {
   constructor(private readonly service: IncidentLocationPinService) {}
 
+  /** PRE-DISPATCH: Polling desde Botonera / Alarms */
+  @Get('pre-dispatch/:token')
+  pollPreDispatch(@Param('token') token: string) {
+    return this.service.pollPreDispatch(token);
+  }
+
+  /** PRE-DISPATCH: Confirmar ubicación desde el teléfono sin incidente creado */
+  @Post('pre-dispatch/:token/confirm')
+  confirmPreDispatch(@Param('token') token: string, @Body() dto: ConfirmIncidentLocationDto) {
+    return this.service.submitPreDispatch(token, dto.latitude, dto.longitude, dto.note);
+  }
+
   /** Datos públicos de la emergencia para la página de captura GPS */
   @Get(':token')
   getPublic(@Param('token') token: string) {
@@ -16,17 +28,5 @@ export class IncidentLocationPinController {
   @Post(':token/confirm')
   confirm(@Param('token') token: string, @Body() dto: ConfirmIncidentLocationDto) {
     return this.service.confirm(token, dto);
-  }
-
-  /** PRE-DISPATCH: Polling desde Botonera */
-  @Get('pre-dispatch/:token')
-  pollPreDispatch(@Param('token') token: string) {
-    return this.service.pollPreDispatch(token);
-  }
-
-  /** PRE-DISPATCH: Confirmar ubicación desde el teléfono sin incidente creado */
-  @Post('pre-dispatch/:token/confirm')
-  confirmPreDispatch(@Param('token') token: string, @Body() dto: ConfirmIncidentLocationDto) {
-    return this.service.submitPreDispatch(token, dto.latitude, dto.longitude, dto.note);
   }
 }

@@ -83,10 +83,10 @@ export default function CentralOperativaPage() {
   const companyId = user?.companyId ?? '';
   const [dismissedBannerId, setDismissedBannerId] = useState<string | null>(null);
   const [focusId, setFocusId] = useState<string | null>(null);
-  const [mapStyle, setMapStyle] = useState<OsmBaseStyle>(isDark ? 'dark' : 'voyager');
+  const [mapStyle, setMapStyle] = useState<OsmBaseStyle>(isDark ? 'dark' : 'osm');
 
   useEffect(() => {
-    setMapStyle(isDark ? 'dark' : 'voyager');
+    setMapStyle(isDark ? 'dark' : 'osm');
   }, [isDark]);
 
   const { data: config } = useQuery({

@@ -539,7 +539,7 @@ export default function CentralGlobalPage() {
             <div className="flex-1 bg-slate-100 dark:bg-slate-900 w-full relative z-0 border-t border-slate-200 dark:border-slate-800">
               <PublicOsmMap
                 theme={isDark ? 'dark' : 'light'}
-                baseStyle={isDark ? 'dark' : 'voyager'}
+                baseStyle={isDark ? 'dark' : 'osm'}
                 center={PARRAL_CENTER}
                 zoom={13}
                 className="h-full w-full"

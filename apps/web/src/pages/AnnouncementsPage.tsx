@@ -115,14 +115,20 @@ export default function AnnouncementsPage() {
     },
   });
 
+  type AnnouncementPayload = Omit<typeof EMPTY, 'eventDate' | 'eventLocation' | 'expiresAt'> & {
+    eventDate?: string;
+    eventLocation?: string;
+    expiresAt?: string;
+  };
+
   const create = useMutation({
-    mutationFn: (d: typeof EMPTY) => api.post('/announcements', d),
+    mutationFn: (d: AnnouncementPayload) => api.post('/announcements', d),
     onSuccess: () => { qc.invalidateQueries({ queryKey: ['announcements'] }); toast.success('Comunicado publicado'); reset(); },
     onError: () => toast.error('No se pudo publicar'),
   });
 
   const update = useMutation({
-    mutationFn: ({ id, data }: { id: string; data: typeof EMPTY }) => api.put(`/announcements/${id}`, data),
+    mutationFn: ({ id, data }: { id: string; data: AnnouncementPayload }) => api.put(`/announcements/${id}`, data),
     onSuccess: () => { qc.invalidateQueries({ queryKey: ['announcements'] }); toast.success('Comunicado actualizado'); reset(); },
     onError: () => toast.error('No se pudo actualizar'),
   });

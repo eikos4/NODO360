@@ -1,38 +1,11 @@
-import { useCallback, useEffect, useState } from 'react';
-import { Map, AdvancedMarker, useMap } from '@vis.gl/react-google-maps';
+import { useCallback, useState } from 'react';
 import { Copy, Crosshair, LocateFixed, MapPin } from 'lucide-react';
 import toast from 'react-hot-toast';
+import PublicOsmMap, { PARRAL_CENTER } from './PublicOsmMap';
 
-/** Centro por defecto — Parral, Región del Maule (demo Cuerpo de Bomberos) */
-const DEFAULT_CENTER: [number, number] = [-36.1428, -71.8258];
-
-const TILE_LAYERS = {
-  light: {
-    url: 'https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',
-    attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>',
-  },
-  dark: {
-    url: 'https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png',
-    attribution: '&copy; CARTO',
-  },
-} as const;
-
-function Recenter({ center, zoom }: { center: [number, number]; zoom?: number }) {
-  const map = useMap();
-  useEffect(() => {
-    if (map) {
-      map.setCenter({ lat: center[0], lng: center[1] });
-      if (zoom) map.setZoom(zoom);
-    }
-  }, [center, zoom, map]);
-  return null;
+function formatCoord(n: number, decimals = 6): string {
+  return n.toFixed(decimals);
 }
-
-const PinIcon = () => (
-  <div style={{ width: 32, height: 32, background: '#dc2626', border: '3px solid white', borderRadius: '50% 50% 50% 0', transform: 'rotate(-45deg)', boxShadow: '0 4px 14px rgba(0,0,0,.35)' }}>
-    <div style={{ width: 10, height: 10, background: 'white', borderRadius: '50%', position: 'absolute', top: '50%', left: '50%', transform: 'translate(-50%,-50%) rotate(45deg)' }}></div>
-  </div>
-);
 
 type Props = {
   center?: [number, number];
@@ -44,10 +17,6 @@ type Props = {
   theme?: 'light' | 'dark';
   showGpsPanel?: boolean;
 };
-
-function formatCoord(n: number, decimals = 6): string {
-  return n.toFixed(decimals);
-}
 
 export default function DispatchMapPicker({
   center,
@@ -62,15 +31,14 @@ export default function DispatchMapPicker({
   const lat = typeof latitude === 'string' ? parseFloat(latitude) : latitude;
   const lng = typeof longitude === 'string' ? parseFloat(longitude) : longitude;
   const hasPoint = lat != null && lng != null && !Number.isNaN(lat) && !Number.isNaN(lng);
-  const mapCenter: [number, number] = hasPoint ? [lat!, lng!] : center ?? DEFAULT_CENTER;
-  const tiles = TILE_LAYERS[theme];
+  const mapCenter: [number, number] = hasPoint ? [lat!, lng!] : center ?? PARRAL_CENTER;
 
   const [locating, setLocating] = useState(false);
 
   const copyGps = useCallback(() => {
     if (!hasPoint) return;
     const text = `${formatCoord(lat!)}, ${formatCoord(lng!)}`;
-    navigator.clipboard.writeText(text);
+    void navigator.clipboard.writeText(text);
     toast.success('Coordenadas GPS copiadas');
   }, [hasPoint, lat, lng]);
 
@@ -101,24 +69,17 @@ export default function DispatchMapPicker({
           theme === 'light' ? 'border-slate-300' : 'border-slate-700'
         } ${pickActive ? 'cursor-crosshair' : ''}`}
       >
-        <Map
-          defaultCenter={{ lat: mapCenter[0], lng: mapCenter[1] }}
-          defaultZoom={hasPoint ? 17 : 13}
-          style={{ height: '100%', width: '100%', background: theme === 'light' ? '#f1f5f9' : '#0f172a' }}
-          className="z-0 dispatch-map"
-          disableDefaultUI
-          mapId="dispatch-map-picker"
-          onClick={pickActive ? (e) => {
-            if (e.detail.latLng) onPick(e.detail.latLng.lat, e.detail.latLng.lng);
-          } : undefined}
-        >
-          <Recenter center={mapCenter} zoom={hasPoint ? 17 : undefined} />
-          {hasPoint && (
-            <AdvancedMarker position={{ lat: lat!, lng: lng! }}>
-              <PinIcon />
-            </AdvancedMarker>
-          )}
-        </Map>
+        <PublicOsmMap
+          theme={theme}
+          baseStyle="osm"
+          center={mapCenter}
+          focus={hasPoint ? mapCenter : null}
+          zoom={hasPoint ? 17 : 13}
+          pickActive={pickActive}
+          onPick={onPick}
+          className="h-full w-full"
+          markers={hasPoint ? [{ id: 'pin', lat: lat!, lng: lng!, tone: 'active', label: 'Emergencia' }] : []}
+        />
 
         {pickActive && (
           <div className="absolute top-2 left-1/2 -translate-x-1/2 z-[500] pointer-events-none">

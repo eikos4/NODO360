@@ -657,6 +657,9 @@ html:not(.dark) .localizar-publico .localizar-btn * {
 .leaflet-container {
   font-family: 'Inter', system-ui, sans-serif;
 }
+.osm-tiles-dark .leaflet-tile-pane {
+  filter: invert(1) hue-rotate(180deg) brightness(0.92) contrast(0.95);
+}
 
 .leaflet-popup-content-wrapper {
   background: #0f172a;

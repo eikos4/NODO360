@@ -13,7 +13,7 @@ export function useDispatchPublicTheme() {
   const tokens = DISPATCH_PUBLIC_THEMES[themeId] ?? DISPATCH_PUBLIC_THEMES.dark;
 
   const setThemeId = useCallback(
-    (id: DispatchPublicThemeId) => setTheme(id),
+    (id: DispatchPublicThemeId) => setTheme(id === 'light' ? 'light' : 'dark'),
     [setTheme],
   );
 

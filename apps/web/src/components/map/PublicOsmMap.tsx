@@ -28,21 +28,19 @@ type Props = {
   className?: string;
   pickActive?: boolean;
   onPick?: (lat: number, lng: number) => void;
+  onMarkerClick?: (id: string) => void;
 };
 
+const OSM_TILE = {
+  url: 'https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',
+  attr: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>',
+};
+
+/** Carto exige API key; usamos OSM en todos los estilos. */
 const TILES: Record<OsmBaseStyle, { url: string; attr: string }> = {
-  osm: {
-    url: 'https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',
-    attr: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>',
-  },
-  voyager: {
-    url: 'https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png',
-    attr: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> &copy; <a href="https://carto.com/attributions">CARTO</a>',
-  },
-  dark: {
-    url: 'https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png',
-    attr: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> &copy; <a href="https://carto.com/attributions">CARTO</a>',
-  },
+  osm: OSM_TILE,
+  voyager: OSM_TILE,
+  dark: OSM_TILE,
 };
 
 function markerIcon(tone: OsmMarkerTone) {
@@ -65,14 +63,17 @@ export default function PublicOsmMap({
   className = 'h-full w-full',
   pickActive = false,
   onPick,
+  onMarkerClick,
 }: Props) {
   const elRef = useRef<HTMLDivElement>(null);
-  const mapRef = useRef<L.Map | null>(null);
-  const layerRef = useRef<L.LayerGroup | null>(null);
-  const tileRef = useRef<L.TileLayer | null>(null);
+  const mapRef = useRef<ReturnType<typeof L.map> | null>(null);
+  const layerRef = useRef<ReturnType<typeof L.layerGroup> | null>(null);
+  const tileRef = useRef<ReturnType<typeof L.tileLayer> | null>(null);
   const pickRef = useRef({ active: pickActive, onPick });
   pickRef.current = { active: pickActive, onPick };
-  const resolved = baseStyle ?? (theme === 'dark' ? 'dark' : 'voyager');
+  const markerClickRef = useRef(onMarkerClick);
+  markerClickRef.current = onMarkerClick;
+  const resolved = baseStyle ?? 'osm';
 
   useEffect(() => {
     if (!elRef.current || mapRef.current) return;
@@ -123,6 +124,7 @@ export default function PublicOsmMap({
     pts.forEach((m) => {
       L.marker([m.lat, m.lng], { icon: markerIcon(m.tone ?? (m.active !== false ? 'active' : 'idle')) })
         .bindPopup(m.label ?? '')
+        .on('click', () => markerClickRef.current?.(m.id))
         .addTo(layer);
     });
     layer.addTo(map);
@@ -141,5 +143,10 @@ export default function PublicOsmMap({
     requestAnimationFrame(() => map.invalidateSize());
   }, [markers, center, focus, zoom]);
 
-  return <div ref={elRef} className={`${className}${pickActive ? ' cursor-crosshair' : ''}`} />;
+  return (
+    <div
+      ref={elRef}
+      className={`${className}${pickActive ? ' cursor-crosshair' : ''}${resolved === 'dark' || theme === 'dark' ? ' osm-tiles-dark' : ''}`}
+    />
+  );
 }

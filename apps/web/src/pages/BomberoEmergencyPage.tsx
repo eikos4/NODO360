@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { Map, AdvancedMarker, useMap } from '@vis.gl/react-google-maps';
+import PublicOsmMap, { type OsmMarker } from '../components/map/PublicOsmMap';
 import {
   Siren, MapPin, Navigation, CheckCircle2, XCircle, UserX, Loader2,
   RefreshCw, Users, Truck, AlertTriangle, Crosshair, Radio, Building2, Volume2, VolumeX,
@@ -214,34 +214,6 @@ function mapPublicEmergency(e: {
     },
   };
 }
-
-function FitPoints({ points }: { points: [number, number][] }) {
-  const map = useMap();
-  useEffect(() => {
-    if (!map || points.length === 0) return;
-    if (points.length === 1) {
-      map.setCenter({ lat: points[0][0], lng: points[0][1] });
-      map.setZoom(16);
-      return;
-    }
-    const bounds = new google.maps.LatLngBounds();
-    points.forEach(p => bounds.extend({ lat: p[0], lng: p[1] }));
-    map.fitBounds(bounds, { bottom: 36, left: 36, right: 36, top: 36 });
-  }, [map, points]);
-  return null;
-}
-
-const DispatchIcon = () => (
-  <div style={{ background: '#f97316', width: 14, height: 14, borderRadius: '50%', border: '3px solid white', boxShadow: '0 2px 8px rgba(0,0,0,.35)' }}></div>
-);
-
-const FieldIcon = () => (
-  <div style={{ background: '#22c55e', width: 18, height: 18, borderRadius: '50%', border: '3px solid white', boxShadow: '0 0 12px #22c55e' }}></div>
-);
-
-const YouIcon = () => (
-  <div style={{ background: '#3b82f6', width: 16, height: 16, borderRadius: '50%', border: '3px solid white' }}></div>
-);
 
 function useGps() {
   const [pos, setPos] = useState<{ lat: number; lng: number; accuracy?: number } | null>(null);
@@ -545,6 +517,36 @@ export default function BomberoEmergencyPage() {
   }, [selected, pos]);
 
   const mapCenter: [number, number] = mapPoints[0] ?? [-36.1431, -71.8261];
+
+  const osmMarkers = useMemo((): OsmMarker[] => {
+    if (!selected) return [];
+    const list: OsmMarker[] = [];
+    if (selected.dispatchGps) {
+      list.push({
+        id: 'dispatch',
+        lat: selected.dispatchGps.latitude,
+        lng: selected.dispatchGps.longitude,
+        tone: 'dispatch',
+        label: 'Despacho',
+      });
+    }
+    if (selected.fieldGps) {
+      list.push({
+        id: 'field',
+        lat: selected.fieldGps.latitude,
+        lng: selected.fieldGps.longitude,
+        tone: 'field',
+        label: 'Ubicación confirmada',
+      });
+    }
+    if (pos) {
+      list.push({ id: 'you', lat: pos.lat, lng: pos.lng, tone: 'you', label: 'Tu GPS' });
+    }
+    if (selected.mapLat != null && selected.mapLng != null) {
+      list.push({ id: 'map', lat: selected.mapLat, lng: selected.mapLng, tone: 'active', label: selected.address });
+    }
+    return list;
+  }, [selected, pos]);
 
   const destCoords = useMemo(() => {
     if (!selected) return null;
@@ -1069,24 +1071,15 @@ export default function BomberoEmergencyPage() {
                       {mobileTab === 'map' && (
                         <div className="space-y-3">
                           <div className="h-[220px] rounded-xl overflow-hidden border border-slate-200 dark:border-slate-800 relative">
-                            <Map defaultCenter={{ lat: mapCenter[0], lng: mapCenter[1] }} defaultZoom={15} style={{ height: '100%', width: '100%' }} className="z-0" mapId="mobile-map" disableDefaultUI>
-                              <FitPoints points={mapPoints.length ? mapPoints : [mapCenter]} />
-                              {selected.dispatchGps && (
-                                <AdvancedMarker position={{ lat: selected.dispatchGps.latitude, lng: selected.dispatchGps.longitude }}>
-                                  <DispatchIcon />
-                                </AdvancedMarker>
-                              )}
-                              {selected.fieldGps && (
-                                <AdvancedMarker position={{ lat: selected.fieldGps.latitude, lng: selected.fieldGps.longitude }}>
-                                  <FieldIcon />
-                                </AdvancedMarker>
-                              )}
-                              {pos && (
-                                <AdvancedMarker position={{ lat: pos.lat, lng: pos.lng }}>
-                                  <YouIcon />
-                                </AdvancedMarker>
-                              )}
-                            </Map>
+                            <PublicOsmMap
+                              theme="light"
+                              baseStyle="osm"
+                              center={mapCenter}
+                              focus={pos ? [pos.lat, pos.lng] : null}
+                              zoom={15}
+                              markers={osmMarkers}
+                              className="h-full w-full z-0"
+                            />
                           </div>
 
                           <div className="flex justify-between text-[9px] text-slate-500 dark:text-slate-400 px-1 border-b border-slate-200 dark:border-slate-800 pb-2">
@@ -1237,24 +1230,15 @@ export default function BomberoEmergencyPage() {
                   <div className="grid grid-cols-12 border-b border-slate-200 dark:border-slate-800">
                     {/* Map (7 Columns) */}
                     <div className="col-span-7 h-[360px] relative border-r border-slate-200 dark:border-slate-800">
-                      <Map defaultCenter={{ lat: mapCenter[0], lng: mapCenter[1] }} defaultZoom={15} style={{ height: '100%', width: '100%' }} className="z-0" mapId="desktop-map" disableDefaultUI>
-                        <FitPoints points={mapPoints.length ? mapPoints : [mapCenter]} />
-                        {selected.dispatchGps && (
-                          <AdvancedMarker position={{ lat: selected.dispatchGps.latitude, lng: selected.dispatchGps.longitude }}>
-                            <DispatchIcon />
-                          </AdvancedMarker>
-                        )}
-                        {selected.fieldGps && (
-                          <AdvancedMarker position={{ lat: selected.fieldGps.latitude, lng: selected.fieldGps.longitude }}>
-                            <FieldIcon />
-                          </AdvancedMarker>
-                        )}
-                        {pos && (
-                          <AdvancedMarker position={{ lat: pos.lat, lng: pos.lng }}>
-                            <YouIcon />
-                          </AdvancedMarker>
-                        )}
-                      </Map>
+                      <PublicOsmMap
+                        theme="light"
+                        baseStyle="osm"
+                        center={mapCenter}
+                        focus={pos ? [pos.lat, pos.lng] : null}
+                        zoom={15}
+                        markers={osmMarkers}
+                        className="h-full w-full z-0"
+                      />
                       <div className="absolute bottom-3 left-3 z-[1000] flex gap-2">
                         <button
                           type="button"

@@ -6,7 +6,7 @@ import { useDispatchTTS } from './useDispatchTTS';
 
 export type AlarmEmergency = {
   id: string;
-  status: 'ACTIVA' | 'CERRADA';
+  status: 'ACTIVA' | 'CERRADA' | 'CANCELADA';
   emergencyCodeId?: string | null;
   radioMessage?: string;
   dispatchedAt: string;
