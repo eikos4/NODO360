@@ -13,9 +13,9 @@ export const PARRAL_COMPANIES = [
   { number: '6', name: 'Sexta Compañía de Bomberos de Parral', address: 'Camino Parral–Catillo km 17, Remulcao, Parral' },
 ];
 
-export const PARRAL_CSV_TEMPLATE = `rut,nombres,apellidos,correo,contraseña,rol,compania,n_operativo
-12.345.678-9,Mario,González,mario@cia.cl,Demo1234!,Bombero Operativo,1,12
-13.456.789-0,Ana,Martínez,ana@cia.cl,Demo1234!,Capitán,1,1
-39.012.345-6,Karen,Bravo,central@cia.cl,Demo1234!,Centralista,1,
-18.901.234-5,Diego,Fuentes,diego@cia.cl,Demo1234!,Bombero Operativo,,
+export const PARRAL_CSV_TEMPLATE = `rut,nombres,apellidos,correo,telefono,contraseña,rol,compania,n_operativo
+12.345.678-9,Mario,González,mario@cia.cl,+56911112222,Demo1234!,CAPITAN|BOMBERO|ENCARGADO_MATERIAL,1,12
+13.456.789-0,Ana,Martínez,ana@cia.cl,+56911113333,Demo1234!,Capitán,1,1
+39.012.345-6,Karen,Bravo,central@cia.cl,+56911114444,Demo1234!,Centralista,1,
+18.901.234-5,Diego,Fuentes,diego@cia.cl,+56911115555,Demo1234!,Bombero Operativo,,
 `;

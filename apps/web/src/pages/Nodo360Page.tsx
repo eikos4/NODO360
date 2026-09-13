@@ -15,7 +15,7 @@ import { Nodo360Report } from '../lib/pdf/Nodo360Report';
 import Nodo360Reports from '../components/nodo360/Nodo360Reports';
 import Nodo360HubVisual from '../components/nodo360/Nodo360HubVisual';
 import { useAuthStore } from '../store/authStore';
-import { isBomberoRole } from '../lib/roles';
+import { isBomberoUser } from '../lib/roles';
 
 /* ── helpers ── */
 const money  = (n: number) => `$${Number(n ?? 0).toLocaleString('es-CL')}`;
@@ -145,7 +145,7 @@ function StatRow({ label, value, total, color }: { label: string; value: number;
 ══════════════════════════════════════════ */
 export default function Nodo360Page() {
   const { user } = useAuthStore();
-  const isBombero = isBomberoRole(user?.role);
+  const isBombero = isBomberoUser(user);
 
   const [section, setSection] = useState<'panel' | 'reports'>('panel');
   const [selectedId, setSelectedId] = useState<string>(isBombero ? (user?.companyId || '') : '');

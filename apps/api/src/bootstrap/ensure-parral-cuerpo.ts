@@ -197,7 +197,7 @@ async function ensureParralPilotUsers(prisma: PrismaClient, cuerpoId: string): P
       where: { OR: [{ email: person.email }, { rut: person.rut }] },
     });
     if (exists) continue;
-    await prisma.user.create({ data: { ...person, isActive: true } });
+    await prisma.user.create({ data: { ...person, roles: [person.role], isActive: true } });
     created += 1;
   }
   return created;

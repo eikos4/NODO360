@@ -3,7 +3,7 @@ import { useNavigate, Link, Navigate } from 'react-router-dom';
 import { Flame, Loader2, Eye, EyeOff, Shield, Zap, BarChart3, Bell, Sun, Moon } from 'lucide-react';
 import PwaInstallPrompt from '../components/nodo360/PwaInstallPrompt';
 import { useAuthStore } from '../store/authStore';
-import { getDefaultRouteForRole } from '../lib/roleAccess';
+import { getDefaultRouteForUser } from '../lib/roleAccess';
 import { useAuthHydrated } from '../hooks/useAuthHydrated';
 import { useThemeStore } from '../store/themeStore';
 import { cn } from '../lib/utils';
@@ -39,7 +39,7 @@ export default function LoginPage() {
   }
 
   if (isAuthenticated) {
-    return <Navigate to={getDefaultRouteForRole(user?.role)} replace />;
+    return <Navigate to={getDefaultRouteForUser(user)} replace />;
   }
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -47,8 +47,7 @@ export default function LoginPage() {
     setLoading(true);
     try {
       await login(email.trim(), password);
-      const role = useAuthStore.getState().user?.role;
-      navigate(getDefaultRouteForRole(role));
+      navigate(getDefaultRouteForUser(useAuthStore.getState().user));
     } catch (err) {
       if (!axios.isAxiosError(err) || !err.response) {
         toast.error(

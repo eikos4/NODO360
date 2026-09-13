@@ -1,3 +1,5 @@
+import { hasAnyRole, pickPrimaryRole, userRoles, type RoleActor } from './roles';
+
 /** Rutas y redirección del perfil Operador Central de Despacho */
 export const OPERADOR_CENTRAL_ROLE = 'OPERADOR_CENTRAL';
 
@@ -25,6 +27,11 @@ export function isKodesk(role?: string | null) {
   return role === 'KODESK';
 }
 
+export function isRestrictedCentralista(user?: RoleActor) {
+  const roles = userRoles(user);
+  return roles.length === 1 && roles[0] === OPERADOR_CENTRAL_ROLE;
+}
+
 export function getDefaultRouteForRole(role?: string | null) {
   if (isKodesk(role)) return '/implementacion';
   if (isCentralOperator(role)) return '/despacho360';
@@ -32,6 +39,15 @@ export function getDefaultRouteForRole(role?: string | null) {
     return '/emergencia-respuesta';
   }
   return '/dashboard';
+}
+
+export function getDefaultRouteForUser(user?: RoleActor) {
+  return getDefaultRouteForRole(pickPrimaryRole(userRoles(user), user?.role ?? 'BOMBERO'));
+}
+
+export function canAccessNavRoles(user: RoleActor, allowed: string[]) {
+  if (allowed.includes('ALL')) return true;
+  return hasAnyRole(user, ...allowed);
 }
 
 export function isCentralOperatorRoute(pathname: string) {

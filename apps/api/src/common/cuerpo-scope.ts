@@ -1,9 +1,9 @@
 import { PrismaService } from '../prisma/prisma.service';
 
-export type Actor = { role?: string; companyId?: string | null };
+export type Actor = { role?: string; roles?: string[] | null; companyId?: string | null };
 
-export function isPlatformOwner(role?: string | null) {
-  return role === 'KODESK';
+export function isPlatformOwner(role?: string | null, roles?: string[] | null) {
+  return role === 'KODESK' || (roles ?? []).includes('KODESK');
 }
 
 export async function cuerpoIdForUser(

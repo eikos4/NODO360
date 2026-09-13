@@ -9,6 +9,8 @@ import { api } from '../lib/api';
 import { useAuthStore } from '../store/authStore';
 import { cn } from '../lib/utils';
 import { PARRAL_CSV_TEMPLATE } from '../lib/parral-cuerpo';
+import { parseRoster } from '../lib/roster-csv';
+import { hasAnyRole } from '../lib/roles';
 
 const REGIONS = [
   'Arica y Parinacota', 'Tarapacá', 'Antofagasta', 'Atacama', 'Coquimbo', 'Valparaíso',
@@ -22,56 +24,6 @@ type CentralistaDraft = { rut: string; firstName: string; lastName: string; emai
 const EMPTY_CENTRALISTA = (): CentralistaDraft => ({
   rut: '', firstName: '', lastName: '', email: '', password: '',
 });
-
-function parseCompanyNumber(raw?: string) {
-  const value = (raw ?? '').trim();
-  if (!value || /sin\s*compa/i.test(value)) return undefined;
-  const n = Number(value);
-  if (Number.isFinite(n) && n > 0) return n;
-  const key = value.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase();
-  const ordinals: Record<string, number> = {
-    primera: 1, segunda: 2, tercera: 3, cuarta: 4, quinta: 5, sexta: 6,
-    septima: 7, octava: 8, novena: 9, decima: 10,
-  };
-  for (const [name, num] of Object.entries(ordinals)) {
-    if (key.includes(name)) return num;
-  }
-  const match = key.match(/(\d+)/);
-  return match ? Number(match[1]) : undefined;
-}
-
-function slugEmailPart(value: string) {
-  return value
-    .normalize('NFD')
-    .replace(/[\u0300-\u036f]/g, '')
-    .toLowerCase()
-    .replace(/[^a-z0-9]+/g, '')
-    .slice(0, 16);
-}
-
-function parseRoster(text: string) {
-  const lines = text.split(/\r?\n/).map((l) => l.trim()).filter(Boolean);
-  if (!lines.length) return [];
-  const start = /rut/i.test(lines[0]) ? 1 : 0;
-  return lines.slice(start).map((line) => {
-    const [rut, firstName, lastName, email, password, role, companyNumber, operativeNumber] = line
-      .split(/[;,\t]/)
-      .map((s) => s.trim());
-    const op = operativeNumber ? Number(operativeNumber) : undefined;
-    const generatedEmail = email
-      || `${slugEmailPart(firstName)}.${slugEmailPart(lastName)}${op ? `.${op}` : ''}@bomberosparral.cl`;
-    return {
-      rut,
-      firstName,
-      lastName,
-      email: generatedEmail,
-      password: password || undefined,
-      role: role || 'BOMBERO',
-      companyNumber: parseCompanyNumber(companyNumber),
-      operativeNumber: Number.isFinite(op as number) ? op : undefined,
-    };
-  }).filter((r) => r.rut && r.firstName && r.lastName && r.email);
-}
 
 export default function SuperAdminImplementacionPage() {
   const user = useAuthStore((s) => s.user);
@@ -101,13 +53,13 @@ export default function SuperAdminImplementacionPage() {
   const { data: status } = useQuery({
     queryKey: ['onboarding-status'],
     queryFn: () => api.get('/onboarding/status').then((r) => r.data),
-    enabled: user?.role === 'KODESK',
+    enabled: hasAnyRole(user, 'KODESK'),
   });
 
   const { data: logs } = useQuery({
     queryKey: ['platform-logs'],
     queryFn: () => api.get('/onboarding/logs').then((r) => r.data),
-    enabled: user?.role === 'KODESK',
+    enabled: hasAnyRole(user, 'KODESK'),
     refetchInterval: 30_000,
   });
 
@@ -286,7 +238,7 @@ export default function SuperAdminImplementacionPage() {
   const hasParral = bodies.some((b: any) => /parral/i.test(b.city) || /parral/i.test(b.name));
   const rosterPreview = parseRoster(rosterText).length;
 
-  if (user?.role !== 'KODESK') {
+  if (!hasAnyRole(user, 'KODESK')) {
     return <Navigate to="/dashboard" replace />;
   }
 
@@ -580,7 +532,7 @@ export default function SuperAdminImplementacionPage() {
               </button>
             </div>
             <p className="text-xs text-slate-500 mb-2">
-              Se carga en <strong>{workspace.name}</strong>. Columnas: RUT, Nombres, Apellidos, Correo, Contraseña, Rol, Compañía, N° operativo.
+              Se carga en <strong>{workspace.name}</strong>. Columnas: RUT, Nombres, Apellidos, Correo, Teléfono, Contraseña, Rol, Compañía, N° operativo. Varios cargos en Rol separados por <code>|</code>, ej. <code>CAPITAN|BOMBERO|ENCARGADO_MATERIAL</code>.
             </p>
             <label className="flex items-center justify-center gap-2 rounded-xl border-2 border-dashed border-slate-300 dark:border-slate-700 px-4 py-6 cursor-pointer hover:border-red-400 mb-3">
               <Upload className="w-5 h-5 text-red-500" />

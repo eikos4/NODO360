@@ -17,6 +17,52 @@ export function isBomberoRole(role?: string | null): boolean {
   return !!role && (BOMBERO_ROLES as readonly string[]).includes(role);
 }
 
+const ROLE_RANK: Record<string, number> = {
+  KODESK: 100,
+  SUPER_ADMIN: 90,
+  COMANDANTE: 80,
+  CAPITAN: 70,
+  OPERADOR_CENTRAL: 60,
+  ENCARGADO_MATERIAL: 50,
+  SECRETARIO: 45,
+  TESORERO: 45,
+  AUDITOR: 40,
+  BOMBERO_PROFESIONAL: 30,
+  BOMBERO: 25,
+  BOMBERO_HONORARIO: 20,
+  BOMBERO_INICIAL: 10,
+};
+
+export type RoleActor = { role?: string | null; roles?: string[] | null } | null | undefined;
+
+export function userRoles(user?: RoleActor): string[] {
+  const set = new Set<string>();
+  if (user?.role) set.add(user.role);
+  for (const role of user?.roles ?? []) {
+    if (role) set.add(role);
+  }
+  return [...set];
+}
+
+export function pickPrimaryRole(roles: string[], fallback = 'BOMBERO'): string {
+  if (!roles.length) return fallback;
+  return [...roles].sort((a, b) => (ROLE_RANK[b] ?? 0) - (ROLE_RANK[a] ?? 0))[0] ?? fallback;
+}
+
+export function hasAnyRole(user: RoleActor, ...required: string[]): boolean {
+  const assigned = userRoles(user);
+  if (assigned.includes('KODESK')) return true;
+  return required.some((role) => assigned.includes(role));
+}
+
+export function isBomberoUser(user?: RoleActor): boolean {
+  return userRoles(user).some((role) => isBomberoRole(role));
+}
+
+export function roleLabels(user?: RoleActor): string[] {
+  return userRoles(user).map((role) => roleInfo(role).label);
+}
+
 export type RoleMeta = {
   value: string;
   label: string;

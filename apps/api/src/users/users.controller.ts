@@ -7,6 +7,7 @@ import { StorageService } from '../storage/storage.service';
 import { memoryUpload } from '../storage/upload.interceptor';
 import { CreateUserDto } from './dto/create-user.dto';
 import { UpdateUserDto } from './dto/update-user.dto';
+import { assignedRoles, hasAnyRole } from '../common/user-roles';
 
 @Controller('users')
 @UseGuards(JwtAuthGuard, RolesGuard)
@@ -17,13 +18,13 @@ export class UsersController {
   ) {}
 
   @Get()
-  @Roles('SUPER_ADMIN', 'COMANDANTE', 'CAPITAN', 'OPERADOR_CENTRAL')
+  @Roles('KODESK', 'SUPER_ADMIN', 'COMANDANTE', 'CAPITAN', 'OPERADOR_CENTRAL')
   findAll(@Query('companyId') companyId?: string, @Req() req?: any) {
     return this.usersService.findAll(companyId, req?.user);
   }
 
   @Post('upload-photo')
-  @Roles('SUPER_ADMIN', 'COMANDANTE')
+  @Roles('KODESK', 'SUPER_ADMIN', 'COMANDANTE')
   @UseInterceptors(memoryUpload({ maxBytes: 5 * 1024 * 1024, kind: 'image' }))
   async uploadPhoto(@UploadedFile() file: any, @Req() req: any) {
     if (!file) throw new BadRequestException('Imagen requerida');
@@ -33,32 +34,38 @@ export class UsersController {
   }
 
   @Get(':id')
-  @Roles('SUPER_ADMIN', 'COMANDANTE', 'CAPITAN')
+  @Roles('KODESK', 'SUPER_ADMIN', 'COMANDANTE', 'CAPITAN')
   findOne(@Param('id') id: string) {
     return this.usersService.findById(id);
   }
 
   @Post()
-  @Roles('SUPER_ADMIN', 'COMANDANTE')
+  @Roles('KODESK', 'SUPER_ADMIN', 'COMANDANTE')
   create(@Body() dto: CreateUserDto, @Req() req: any) {
-    if (dto.role === 'KODESK' && req.user?.role !== 'KODESK') {
+    if (assignedRoles(dto.role, dto.roles).includes('KODESK') && !hasAnyRole(req.user, 'KODESK')) {
       throw new ForbiddenException('El perfil Kodesk solo lo asigna Kodesk');
     }
     return this.usersService.create(dto);
   }
 
   @Put(':id')
-  @Roles('SUPER_ADMIN', 'COMANDANTE')
+  @Roles('KODESK', 'SUPER_ADMIN', 'COMANDANTE')
   update(@Param('id') id: string, @Body() dto: UpdateUserDto, @Req() req: any) {
-    if (dto.role === 'KODESK' && req.user?.role !== 'KODESK') {
+    if (assignedRoles(dto.role, dto.roles).includes('KODESK') && !hasAnyRole(req.user, 'KODESK')) {
       throw new ForbiddenException('El perfil Kodesk solo lo asigna Kodesk');
     }
     return this.usersService.update(id, dto);
   }
 
+  @Post(':id/deactivate')
+  @Roles('KODESK', 'SUPER_ADMIN', 'COMANDANTE')
+  deactivate(@Param('id') id: string, @Req() req: any) {
+    return this.usersService.deactivate(id, req.user);
+  }
+
   @Delete(':id')
-  @Roles('SUPER_ADMIN')
-  deactivate(@Param('id') id: string) {
-    return this.usersService.deactivate(id);
+  @Roles('KODESK', 'SUPER_ADMIN')
+  remove(@Param('id') id: string, @Req() req: any) {
+    return this.usersService.remove(id, req.user);
   }
 }

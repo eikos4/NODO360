@@ -1,4 +1,4 @@
-import { IsEmail, IsEnum, IsInt, IsOptional, IsString, Max, Min, MinLength } from 'class-validator';
+import { IsArray, IsEmail, IsEnum, IsInt, IsOptional, IsString, Max, MaxLength, Min, MinLength } from 'class-validator';
 import { Role } from './create-user.dto';
 
 export class UpdateUserDto {
@@ -7,6 +7,8 @@ export class UpdateUserDto {
   @IsOptional() @IsEmail() email?: string;
   @IsOptional() @IsString() @MinLength(6) password?: string;
   @IsOptional() @IsEnum(Role) role?: Role;
+  @IsOptional() @IsArray() @IsEnum(Role, { each: true }) roles?: Role[];
+  @IsOptional() @IsString() @MaxLength(40) phone?: string | null;
   @IsOptional() @IsString() companyId?: string;
   @IsOptional() isActive?: boolean;
   @IsOptional() @IsString() photoUrl?: string;

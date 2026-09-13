@@ -21,7 +21,13 @@ export class AuthService {
   }
 
   async login(user: any) {
-    const payload = { sub: user.id, email: user.email, role: user.role, companyId: user.companyId };
+    const payload = {
+      sub: user.id,
+      email: user.email,
+      role: user.role,
+      roles: user.roles ?? [user.role],
+      companyId: user.companyId,
+    };
     const company = user.companyId
       ? await this.prisma.company.findUnique({
           where: { id: user.companyId },
@@ -45,7 +51,9 @@ export class AuthService {
         firstName: user.firstName,
         lastName: user.lastName,
         email: user.email,
+        phone: user.phone ?? null,
         role: user.role,
+        roles: user.roles?.length ? user.roles : [user.role],
         companyId: user.companyId,
         isActive: user.isActive,
         stationAvailable: user.stationAvailable ?? false,

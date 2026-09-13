@@ -11,6 +11,7 @@ import { cn } from '../../lib/utils';
 import SidebarCompanias360 from './SidebarCompanias360';
 import UserIdentityBlock from './UserIdentityBlock';
 import { useAuthCompany } from '../../hooks/useAuthCompany';
+import { canAccessNavRoles } from '../../lib/roleAccess';
 
 const SIDEBAR_COMPACT_KEY = 'nodo360_sidebar_compact';
 
@@ -35,7 +36,7 @@ export const navItems: NavItem[] = [
   { to: '/emergency-plans', label: 'Planes Emergencia', icon: Shield, roles: ['SUPER_ADMIN', 'COMANDANTE', 'CAPITAN', 'SECRETARIO'] },
   { to: '/evacuation', label: 'Simulacros', icon: Signpost, roles: ['SUPER_ADMIN', 'COMANDANTE', 'CAPITAN', 'SECRETARIO', 'ENCARGADO_MATERIAL'] },
   { to: '/companies',  label: 'Compañías',    icon: Building2,       roles: ['SUPER_ADMIN', 'COMANDANTE'] },
-  { to: '/users',      label: 'Personal',     icon: Users,           roles: ['SUPER_ADMIN', 'COMANDANTE', 'CAPITAN'] },
+  { to: '/users',      label: 'Personal',     icon: Users,           roles: ['KODESK', 'SUPER_ADMIN', 'COMANDANTE', 'CAPITAN'] },
   { to: '/training',   label: 'Capacitación', icon: GraduationCap,   roles: ['SUPER_ADMIN', 'COMANDANTE', 'CAPITAN', 'SECRETARIO'] },
   { to: '/health',     label: 'Salud',        icon: HeartPulse,      roles: ['SUPER_ADMIN', 'COMANDANTE', 'CAPITAN', 'SECRETARIO'] },
   { to: '/organigrama',label: 'Organigrama',  icon: Network,         roles: ['SUPER_ADMIN', 'COMANDANTE', 'CAPITAN', 'SECRETARIO'] },
@@ -69,9 +70,7 @@ export default function Sidebar({ onStartTour: _onStartTour }: SidebarProps) {
     localStorage.setItem(SIDEBAR_COMPACT_KEY, String(compact));
   }, [compact]);
 
-  const visibleItems = navItems.filter(
-    (item) => role === 'KODESK' || item.roles.includes('ALL') || item.roles.includes(role)
-  );
+  const visibleItems = navItems.filter((item) => canAccessNavRoles(user, item.roles));
 
   const companias360After =
     (['/central-despachos-parral', '/despacho360', '/nodo360'] as const).find((to) =>

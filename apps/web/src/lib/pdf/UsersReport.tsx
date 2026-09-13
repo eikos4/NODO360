@@ -32,7 +32,8 @@ export function UsersReport({ users, companies, filterCia, filterRole }: Props) 
   const inactive = users.filter(u => !u.isActive);
 
   const roleCounts = users.reduce((acc: any, u: any) => {
-    acc[u.role] = (acc[u.role] ?? 0) + 1;
+    const roles = u.roles?.length ? u.roles : [u.role];
+    for (const role of roles) acc[role] = (acc[role] ?? 0) + 1;
     return acc;
   }, {} as Record<string, number>);
 
@@ -90,8 +91,9 @@ export function UsersReport({ users, companies, filterCia, filterRole }: Props) 
             <View style={BASE.tableHead}>
               <Text style={[BASE.tableHeadCell, { flex: 2 }]}>Nombre</Text>
               <Text style={[BASE.tableHeadCell, { flex: 1.2 }]}>RUT</Text>
-              <Text style={[BASE.tableHeadCell, { flex: 1.5 }]}>Rol</Text>
-              <Text style={[BASE.tableHeadCell, { flex: 1.8 }]}>Compañía</Text>
+              <Text style={[BASE.tableHeadCell, { flex: 1.3 }]}>Rol</Text>
+              <Text style={[BASE.tableHeadCell, { flex: 1.1 }]}>Teléfono</Text>
+              <Text style={[BASE.tableHeadCell, { flex: 1.5 }]}>Compañía</Text>
               <Text style={[BASE.tableHeadCell, { flex: 0.8 }]}>Estado</Text>
             </View>
             {users.map((u, i) => {
@@ -102,8 +104,11 @@ export function UsersReport({ users, companies, filterCia, filterRole }: Props) 
                     {u.firstName} {u.lastName}
                   </Text>
                   <Text style={[BASE.tableCellMuted, { flex: 1.2 }]}>{u.rut ?? '—'}</Text>
-                  <Text style={[BASE.tableCell, { flex: 1.5 }]}>{ROLE_LABELS[u.role] ?? u.role}</Text>
-                  <Text style={[BASE.tableCellMuted, { flex: 1.8 }]}>{cia?.name ?? '—'}</Text>
+                  <Text style={[BASE.tableCell, { flex: 1.3 }]}>
+                    {(u.roles?.length ? u.roles : [u.role]).map((role: string) => ROLE_LABELS[role] ?? role).join(' · ')}
+                  </Text>
+                  <Text style={[BASE.tableCellMuted, { flex: 1.1 }]}>{u.phone ?? '—'}</Text>
+                  <Text style={[BASE.tableCellMuted, { flex: 1.5 }]}>{cia?.name ?? '—'}</Text>
                   <View style={{ flex: 0.8 }}>
                     <Text style={u.isActive ? BASE.badgeGreen : BASE.badgeGray}>
                       {u.isActive ? 'Activo' : 'Inactivo'}

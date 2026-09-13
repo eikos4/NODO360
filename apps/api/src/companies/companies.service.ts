@@ -12,7 +12,7 @@ export class CompaniesService {
 
   async findAll(actor?: Actor) {
     const where: { isActive: boolean; cuerpoId?: string } = { isActive: true };
-    if (actor && !isPlatformOwner(actor.role)) {
+    if (actor && !isPlatformOwner(actor.role, actor.roles)) {
       const cuerpoId = await cuerpoIdForUser(this.prisma, actor);
       if (cuerpoId) where.cuerpoId = cuerpoId;
     }

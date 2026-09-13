@@ -35,6 +35,10 @@ export class ImportUserRowDto {
   role?: string;
 
   @IsOptional()
+  @IsString()
+  phone?: string;
+
+  @IsOptional()
   @Type(() => Number)
   @IsInt()
   @Min(1)

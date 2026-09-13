@@ -9,42 +9,9 @@ import { CreateCentralistasDto } from './dto/create-centralistas.dto';
 import { AddCompanyDto } from './dto/add-company.dto';
 import { mergeDuplicateCuerpos } from './dedupe-cuerpos';
 import { PARRAL_COMPANIES, PARRAL_CUERPO } from './parral-cuerpo';
+import { assignedRoles, normalizePhone, parseRoles, pickPrimaryRole, prismaHasRole } from '../common/user-roles';
 
 const DEFAULT_PASSWORD = 'Demo1234!';
-
-const ROLE_ALIASES: Record<string, Role> = {
-  SUPER_ADMIN: Role.SUPER_ADMIN,
-  SUPER_ADMINISTRADOR: Role.SUPER_ADMIN,
-  ADMIN: Role.SUPER_ADMIN,
-  COMANDANTE: Role.COMANDANTE,
-  CDTE: Role.COMANDANTE,
-  CAPITAN: Role.CAPITAN,
-  CAPITÁN: Role.CAPITAN,
-  OFICIAL_OPERATIVO: Role.CAPITAN,
-  OPERADOR_CENTRAL: Role.OPERADOR_CENTRAL,
-  OPERADOR_CENTRAL_DE_DESPACHO: Role.OPERADOR_CENTRAL,
-  CENTRAL: Role.OPERADOR_CENTRAL,
-  CENTRALISTA: Role.OPERADOR_CENTRAL,
-  CENTRALISTAS: Role.OPERADOR_CENTRAL,
-  SALA_DE_RADIO: Role.OPERADOR_CENTRAL,
-  ENCARGADO_MATERIAL: Role.ENCARGADO_MATERIAL,
-  ENCARGADO_MATERIAL_MAYOR: Role.ENCARGADO_MATERIAL,
-  MATERIAL: Role.ENCARGADO_MATERIAL,
-  SECRETARIO: Role.SECRETARIO,
-  TESORERO: Role.TESORERO,
-  BOMBERO: Role.BOMBERO,
-  BOMBERO_OPERATIVO: Role.BOMBERO,
-  BOMBERO_HONORARIO: Role.BOMBERO_HONORARIO,
-  HONORARIO: Role.BOMBERO_HONORARIO,
-  BOMBERO_INICIAL: Role.BOMBERO_INICIAL,
-  INICIAL: Role.BOMBERO_INICIAL,
-  BOMBERO_PROFESIONAL: Role.BOMBERO_PROFESIONAL,
-  PROFESIONAL: Role.BOMBERO_PROFESIONAL,
-  AUDITOR: Role.AUDITOR,
-  I: Role.BOMBERO_INICIAL,
-  HONORARIO_BOMBERO_OPERATIVO: Role.BOMBERO_HONORARIO,
-  HONORARIO_BOMBERO: Role.BOMBERO_HONORARIO,
-};
 
 function slugify(value: string) {
   return value
@@ -54,23 +21,6 @@ function slugify(value: string) {
     .replace(/[^a-z0-9]+/g, '-')
     .replace(/^-|-$/g, '')
     .slice(0, 40);
-}
-
-function parseRole(raw?: string): Role {
-  if (!raw) return Role.BOMBERO;
-  const key = raw
-    .normalize('NFD')
-    .replace(/[\u0300-\u036f]/g, '')
-    .trim()
-    .toUpperCase()
-    .replace(/[\/|-]+/g, ' ')
-    .replace(/\s+/g, '_');
-  if (key === 'KODESK') return Role.BOMBERO;
-  if (key.includes('HONORARIO')) return Role.BOMBERO_HONORARIO;
-  if (key === 'I' || key.includes('INICIAL')) return Role.BOMBERO_INICIAL;
-  if (key.includes('PROFESIONAL')) return Role.BOMBERO_PROFESIONAL;
-  if (key.includes('CENTRALISTA') || key.includes('SALA_DE_RADIO')) return Role.OPERADOR_CENTRAL;
-  return ROLE_ALIASES[key] ?? Role.BOMBERO;
 }
 
 @Injectable()
@@ -92,7 +42,7 @@ export class OnboardingService {
             orderBy: { number: 'asc' },
             include: {
               _count: { select: { users: true, vehicles: true } },
-              users: { where: { isActive: true }, select: { role: true } },
+              users: { where: { isActive: true }, select: { role: true, roles: true } },
             },
           },
         },
@@ -105,7 +55,7 @@ export class OnboardingService {
         },
       }),
       this.prisma.user.findMany({
-        where: { isActive: true, role: Role.OPERADOR_CENTRAL },
+        where: { isActive: true, ...prismaHasRole(Role.OPERADOR_CENTRAL) },
         select: {
           id: true,
           firstName: true,
@@ -128,7 +78,7 @@ export class OnboardingService {
         city: company.city,
         users: company._count.users,
         vehicles: company._count.vehicles,
-        hasCapitan: company.users.some((u) => u.role === Role.CAPITAN),
+        hasCapitan: company.users.some((u) => assignedRoles(u.role, u.roles).includes(Role.CAPITAN)),
         dispatchSlug: company.dispatchSlug,
         publicEnabled: company.dispatchPublicEnabled,
       })),
@@ -166,10 +116,10 @@ export class OnboardingService {
             number: company.number,
             name: company.name,
             users: company._count.users,
-            hasCapitan: company.users.some((u) => u.role === Role.CAPITAN),
+            hasCapitan: company.users.some((u) => assignedRoles(u.role, u.roles).includes(Role.CAPITAN)),
           })),
           users: cuerpo.companies.reduce((sum, c) => sum + c._count.users, 0),
-          ready: cuerpo.companies.filter((c) => c._count.users > 0 && c.users.some((u) => u.role === Role.CAPITAN)).length,
+          ready: cuerpo.companies.filter((c) => c._count.users > 0 && c.users.some((u) => assignedRoles(u.role, u.roles).includes(Role.CAPITAN))).length,
           centralistas: sala.map((u) => ({
             id: u.id,
             firstName: u.firstName,
@@ -359,6 +309,7 @@ export class OnboardingService {
         await this.prisma.user.create({
           data: {
             ...person,
+            roles: [person.role],
             passwordHash: hash,
             isActive: true,
           },
@@ -408,7 +359,8 @@ export class OnboardingService {
     for (const [index, row] of dto.users.entries()) {
       const email = row.email.trim().toLowerCase();
       const rut = row.rut.trim();
-      const role = parseRole(row.role);
+      const roles = parseRoles(row.role) as Role[];
+      const role = pickPrimaryRole(roles) as Role;
       const company = row.companyNumber != null ? byNumber.get(row.companyNumber) : undefined;
 
       if (row.companyNumber != null && !company) {
@@ -440,7 +392,9 @@ export class OnboardingService {
           firstName: row.firstName.trim(),
           lastName: row.lastName.trim(),
           email,
+          phone: normalizePhone(row.phone),
           role,
+          roles,
           companyId: company?.id,
           operativeNumber: row.operativeNumber,
           passwordHash: await bcrypt.hash(row.password || password, 10),
@@ -474,7 +428,7 @@ export class OnboardingService {
     const existing = await this.prisma.user.count({
       where: {
         isActive: true,
-        role: Role.OPERADOR_CENTRAL,
+        ...prismaHasRole(Role.OPERADOR_CENTRAL),
         company: { cuerpoId: cuerpo.id },
       },
     });
@@ -511,6 +465,7 @@ export class OnboardingService {
           lastName,
           email,
           role: Role.OPERADOR_CENTRAL,
+          roles: [Role.OPERADOR_CENTRAL],
           companyId: home.id,
           passwordHash: hash,
           isActive: true,

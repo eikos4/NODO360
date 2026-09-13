@@ -1,6 +1,6 @@
 import { Routes, Route, Navigate, useLocation } from 'react-router-dom';
 import { useAuthStore } from './store/authStore';
-import { canCentralOperatorAccess, getDefaultRouteForRole, isCentralOperator } from './lib/roleAccess';
+import { canCentralOperatorAccess, getDefaultRouteForUser, isRestrictedCentralista } from './lib/roleAccess';
 import { useAuthHydrated } from './hooks/useAuthHydrated';
 import ErrorBoundary from './components/ErrorBoundary';
 import LoginPage from './pages/LoginPage';
@@ -65,8 +65,8 @@ function PrivateRoute({ children }: { children: React.ReactNode }) {
     return <Navigate to="/login" replace />;
   }
 
-  if (isCentralOperator(user?.role) && !canCentralOperatorAccess(location.pathname)) {
-    return <Navigate to={getDefaultRouteForRole(user?.role)} replace />;
+  if (isRestrictedCentralista(user) && !canCentralOperatorAccess(location.pathname)) {
+    return <Navigate to={getDefaultRouteForUser(user)} replace />;
   }
 
   return <>{children}</>;

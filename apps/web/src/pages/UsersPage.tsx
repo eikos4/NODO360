@@ -1,8 +1,8 @@
 import { useState, useRef } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import {
-  Plus, Users, Shield, Building2, Pencil, UserX,
-  Mail, CreditCard, Lock, X, CheckCircle2,
+  Plus, Users, Shield, Building2, Pencil, UserX, Trash2,
+  Mail, CreditCard, Lock, X, CheckCircle2, Phone,
   ChevronRight, Search, SlidersHorizontal, FileDown, Camera, Hash,
   Siren, Moon, Zap, Medal, Trophy
 } from 'lucide-react';
@@ -13,7 +13,7 @@ import { UsersReport } from '../lib/pdf/UsersReport';
 import { downloadPdf } from '../lib/pdf/usePdfDownload';
 import FirefighterAvatar from '../components/FirefighterAvatar';
 import RoleBadge from '../components/RoleBadge';
-import { ROLES, roleInfo } from '../lib/roles';
+import { ROLES, hasAnyRole, pickPrimaryRole, roleInfo, userRoles } from '../lib/roles';
 import { useAuthStore } from '../store/authStore';
 
 const ICON_MAP: Record<string, any> = {
@@ -29,17 +29,26 @@ const avatarColor = (name: string) => AVATAR_COLORS[name.charCodeAt(0) % AVATAR_
 
 interface UserFormData {
   rut: string; firstName: string; lastName: string;
-  email: string; password: string; role: string; companyId: string; photoUrl: string;
+  email: string; password: string; phone: string; roles: string[]; companyId: string; photoUrl: string;
   operativeNumber: string;
 }
 const EMPTY_FORM: UserFormData = {
-  rut: '', firstName: '', lastName: '', email: '', password: '', role: 'BOMBERO',
+  rut: '', firstName: '', lastName: '', email: '', password: '', phone: '', roles: ['BOMBERO'],
   companyId: '', photoUrl: '', operativeNumber: '',
 };
 
 export default function UsersPage() {
   const currentUser = useAuthStore((s) => s.user);
-  const assignableRoles = ROLES.filter((r) => r.value !== 'KODESK' || currentUser?.role === 'KODESK');
+  const assignableRoles = ROLES.filter((r) => r.value !== 'KODESK' || hasAnyRole(currentUser, 'KODESK'));
+  const canDeactivate = hasAnyRole(currentUser, 'KODESK', 'SUPER_ADMIN', 'COMANDANTE');
+  const canDelete = hasAnyRole(currentUser, 'KODESK', 'SUPER_ADMIN');
+  const canDeleteUser = (u: any) => {
+    if (!canDelete || !u) return false;
+    if (u.id === currentUser?.id) return false;
+    if (hasAnyRole(u, 'KODESK')) return false;
+    if (hasAnyRole(u, 'SUPER_ADMIN') && !hasAnyRole(currentUser, 'KODESK')) return false;
+    return true;
+  };
   const qc = useQueryClient();
   const [showForm, setShowForm] = useState(false);
   const [editing, setEditing] = useState<any>(null);
@@ -65,10 +74,22 @@ export default function UsersPage() {
     onError: (e: any) => toast.error(e.response?.data?.message ?? 'Error al actualizar'),
   });
   const deactivateMutation = useMutation({
-    mutationFn: (id: string) => api.delete(`/users/${id}`),
+    mutationFn: (id: string) => api.post(`/users/${id}/deactivate`),
     onSuccess: () => { qc.invalidateQueries({ queryKey: ['users'] }); toast.success('Usuario desactivado'); setSelected(null); },
-    onError: () => toast.error('Error al desactivar'),
+    onError: (e: any) => toast.error(e.response?.data?.message ?? 'Error al desactivar'),
   });
+  const deleteMutation = useMutation({
+    mutationFn: (id: string) => api.delete(`/users/${id}`),
+    onSuccess: () => { qc.invalidateQueries({ queryKey: ['users'] }); toast.success('Bombero eliminado'); setSelected(null); },
+    onError: (e: any) => toast.error(e.response?.data?.message ?? 'No se pudo eliminar'),
+  });
+
+  const confirmDelete = (u: any) => {
+    const name = `${u.firstName} ${u.lastName}`.trim();
+    if (!window.confirm(`¿Eliminar definitivamente a ${name}?\n\nSe borra el acceso, el perfil y el N° operativo. Esta acción no se puede deshacer.`)) return;
+    if (!window.confirm(`Confirmá la eliminación de ${name}.`)) return;
+    deleteMutation.mutate(u.id);
+  };
 
   const reset = () => { setShowForm(false); setEditing(null); setForm(EMPTY_FORM); };
 
@@ -79,12 +100,18 @@ export default function UsersPage() {
       toast.error('N° operativo: use 1 a 3 dígitos (1–999)');
       return;
     }
+    if (!form.roles.length) {
+      toast.error('Asigná al menos un rol');
+      return;
+    }
     const payload: any = {
       rut: form.rut,
       firstName: form.firstName,
       lastName: form.lastName,
       email: form.email,
-      role: form.role,
+      phone: form.phone.trim() || undefined,
+      role: pickPrimaryRole(form.roles),
+      roles: form.roles,
       companyId: form.companyId || undefined,
       photoUrl: form.photoUrl || undefined,
     };
@@ -118,7 +145,7 @@ export default function UsersPage() {
     setEditing(u); setSelected(null);
     setForm({
       rut: u.rut, firstName: u.firstName, lastName: u.lastName, email: u.email,
-      password: '', role: u.role, companyId: u.companyId ?? '', photoUrl: u.photoUrl ?? '',
+      password: '', phone: u.phone ?? '', roles: userRoles(u), companyId: u.companyId ?? '', photoUrl: u.photoUrl ?? '',
       operativeNumber: u.operativeNumber != null ? String(u.operativeNumber) : '',
     });
     setShowForm(true);
@@ -129,8 +156,8 @@ export default function UsersPage() {
 
   const filtered = (users ?? []).filter((u: any) => {
     const q = search.toLowerCase();
-    const matchSearch = !q || `${u.firstName} ${u.lastName} ${u.email} ${u.rut} ${u.operativeNumber ?? ''}`.toLowerCase().includes(q);
-    const matchRole = !filterRole || u.role === filterRole;
+    const matchSearch = !q || `${u.firstName} ${u.lastName} ${u.email} ${u.phone ?? ''} ${u.rut} ${u.operativeNumber ?? ''} ${userRoles(u).join(' ')}`.toLowerCase().includes(q);
+    const matchRole = !filterRole || userRoles(u).includes(filterRole);
     const matchCia = !filterCia || u.companyId === filterCia;
     return matchSearch && matchRole && matchCia;
   });
@@ -175,7 +202,7 @@ export default function UsersPage() {
           {[
             { label: 'Total personal', value: users.length, color: 'text-white', bg: 'bg-slate-800' },
             { label: 'Activos', value: users.filter((u: any) => u.isActive).length, color: 'text-emerald-400', bg: 'bg-emerald-600/10' },
-            { label: 'Roles distintos', value: [...new Set(users.map((u: any) => u.role))].length, color: 'text-blue-400', bg: 'bg-blue-600/10' },
+            { label: 'Roles distintos', value: [...new Set(users.flatMap((u: any) => userRoles(u)))].length, color: 'text-blue-400', bg: 'bg-blue-600/10' },
             { label: 'Sin compañía', value: users.filter((u: any) => !u.companyId).length, color: 'text-amber-400', bg: 'bg-amber-600/10' },
           ].map(s => (
             <div key={s.label} className={`${s.bg} border border-slate-800 rounded-xl p-4`}>
@@ -197,9 +224,9 @@ export default function UsersPage() {
               <div>
                 <h2 className="text-sm font-bold text-white">{editing ? 'Editar perfil' : 'Registrar nuevo perfil'}</h2>
                 <p className="text-xs text-slate-500">
-                  {form.role === 'OPERADOR_CENTRAL'
-                    ? 'Centralista: queda vinculada a la sala de radio (Despacho360, Central en vivo, bitácora).'
-                    : 'Completa la información del personal'}
+                  {form.roles.includes('OPERADOR_CENTRAL')
+                    ? 'Si incluye Centralista, también entra a la sala de radio. Podés sumar otros cargos.'
+                    : 'Un bombero puede tener varios cargos a la vez'}
                 </p>
               </div>
             </div>
@@ -262,6 +289,7 @@ export default function UsersPage() {
               { k: 'firstName' as const, label: 'Nombres',     icon: Users,      placeholder: 'Ej: Mario',    req: true },
               { k: 'lastName' as const,  label: 'Apellidos',   icon: Users,      placeholder: 'Ej: González', req: true },
               { k: 'email' as const,     label: 'Correo',      icon: Mail,       placeholder: 'correo@cia.cl', req: true, type: 'email' },
+              { k: 'phone' as const,     label: 'Teléfono',    icon: Phone,      placeholder: '+56 9 1111 2222' },
               { k: 'password' as const,  label: editing ? 'Nueva contraseña (opcional)' : 'Contraseña', icon: Lock, placeholder: '••••••••', req: !editing, type: 'password' },
             ].map(({ k, label, icon: Icon, placeholder, req, type = 'text' }) => (
               <div key={k}>
@@ -274,14 +302,34 @@ export default function UsersPage() {
               </div>
             ))}
 
-            <div>
-              <label className="block text-xs font-semibold text-slate-400 mb-1.5 uppercase tracking-wide">Rol</label>
-              <div className="relative">
-                <Shield className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-slate-500" />
-                <select value={form.role} onChange={set('role')}
-                  className="w-full bg-slate-800 border border-slate-700 rounded-xl pl-9 pr-3 py-2.5 text-sm text-slate-100 focus:outline-none focus:border-red-500 focus:ring-1 focus:ring-red-500/50 transition-all appearance-none">
-                  {assignableRoles.map(r => <option key={r.value} value={r.value}>{r.label}</option>)}
-                </select>
+            <div className="sm:col-span-2 lg:col-span-3">
+              <label className="block text-xs font-semibold text-slate-400 mb-1.5 uppercase tracking-wide">Roles / cargos</label>
+              <p className="text-[11px] text-slate-500 mb-2">
+                Podés marcar varios. El cargo principal queda el de mayor rango (ej. Capitán + Bombero + Enc. Material).
+              </p>
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2">
+                {assignableRoles.map((r) => {
+                  const checked = form.roles.includes(r.value);
+                  return (
+                    <label
+                      key={r.value}
+                      className={`flex items-center gap-2 rounded-xl border px-3 py-2 text-xs cursor-pointer transition-colors ${
+                        checked ? 'border-red-500/50 bg-red-600/10 text-slate-100' : 'border-slate-800 bg-slate-800/60 text-slate-300 hover:border-slate-600'
+                      }`}
+                    >
+                      <input
+                        type="checkbox"
+                        checked={checked}
+                        onChange={() => setForm((f) => ({
+                          ...f,
+                          roles: checked ? f.roles.filter((value) => value !== r.value) : [...f.roles, r.value],
+                        }))}
+                        className="rounded border-slate-600 bg-slate-900 text-red-600 focus:ring-red-500/40"
+                      />
+                      <span className="font-medium">{r.label}</span>
+                    </label>
+                  );
+                })}
               </div>
             </div>
 
@@ -313,7 +361,7 @@ export default function UsersPage() {
                 />
               </div>
               <p className="text-[10px] text-slate-600 mt-1">
-                {form.role === 'OPERADOR_CENTRAL'
+                {form.roles.includes('OPERADOR_CENTRAL')
                   ? 'La centralista opera todo el Cuerpo. Elegí una compañía del Cuerpo para vincularla a la sala de radio.'
                   : 'Único por compañía · visible en sala pública'}
               </p>
@@ -380,7 +428,15 @@ export default function UsersPage() {
                 <span className="text-xs text-slate-600 bg-slate-800 px-2 py-0.5 rounded-full">{cia.members.length} personas</span>
               </div>
               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3">
-                {cia.members.map((u: any) => <UserCard key={u.id} u={u} onSelect={setSelected} onEdit={handleEdit} />)}
+                {cia.members.map((u: any) => (
+                  <UserCard
+                    key={u.id}
+                    u={u}
+                    onSelect={setSelected}
+                    onEdit={handleEdit}
+                    onDelete={canDeleteUser(u) ? confirmDelete : undefined}
+                  />
+                ))}
               </div>
             </div>
           ))}
@@ -396,7 +452,15 @@ export default function UsersPage() {
                 <span className="text-xs text-slate-600 bg-slate-800 px-2 py-0.5 rounded-full">{unassigned.length}</span>
               </div>
               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3">
-                {unassigned.map((u: any) => <UserCard key={u.id} u={u} onSelect={setSelected} onEdit={handleEdit} />)}
+                {unassigned.map((u: any) => (
+                  <UserCard
+                    key={u.id}
+                    u={u}
+                    onSelect={setSelected}
+                    onEdit={handleEdit}
+                    onDelete={canDeleteUser(u) ? confirmDelete : undefined}
+                  />
+                ))}
               </div>
             </div>
           )}
@@ -423,7 +487,7 @@ export default function UsersPage() {
                   />
                   <div>
                     <p className="text-white font-bold text-lg leading-tight">{selected.firstName} {selected.lastName}</p>
-                    <p className="text-white/60 text-xs mt-0.5">{roleInfo(selected.role).label}</p>
+                    <p className="text-white/60 text-xs mt-0.5">{userRoles(selected).map((role) => roleInfo(role).short).join(' · ')}</p>
                     <div className={`inline-flex items-center gap-1 mt-1.5 px-2 py-0.5 rounded-full text-[10px] font-semibold ${selected.isActive ? 'bg-emerald-500/20 text-emerald-300' : 'bg-red-500/20 text-red-300'}`}>
                       <span className={`w-1.5 h-1.5 rounded-full ${selected.isActive ? 'bg-emerald-400' : 'bg-red-400'}`} />
                       {selected.isActive ? 'Activo' : 'Inactivo'}
@@ -466,8 +530,9 @@ export default function UsersPage() {
               {[
                 { icon: CreditCard, label: 'RUT', value: selected.rut },
                 { icon: Mail, label: 'Correo', value: selected.email },
+                { icon: Phone, label: 'Teléfono', value: selected.phone || 'Sin teléfono' },
                 { icon: Building2, label: 'Compañía', value: selected.company ? `Cía. ${selected.company.number} — ${selected.company.name}` : 'Sin compañía asignada' },
-                { icon: Shield, label: 'Rol', value: roleInfo(selected.role).label },
+                { icon: Shield, label: 'Roles', value: userRoles(selected).map((role) => roleInfo(role).label).join(' · ') },
                 ...(selected.operativeNumber != null
                   ? [{ icon: Hash, label: 'N° operativo', value: String(selected.operativeNumber) }]
                   : []),
@@ -485,15 +550,27 @@ export default function UsersPage() {
             </div>
 
             {/* Acciones */}
-            <div className="px-5 pb-5 flex gap-2">
-              <button onClick={() => handleEdit(selected)}
-                className="flex-1 flex items-center justify-center gap-2 bg-slate-800 hover:bg-slate-700 text-slate-200 text-sm font-medium py-2.5 rounded-xl transition-colors">
-                <Pencil className="w-3.5 h-3.5" />Editar
-              </button>
-              {selected.isActive && (
-                <button onClick={() => { if (confirm(`¿Desactivar a ${selected.firstName} ${selected.lastName}?`)) deactivateMutation.mutate(selected.id); }}
-                  className="flex-1 flex items-center justify-center gap-2 bg-red-600/10 hover:bg-red-600/20 text-red-400 text-sm font-medium py-2.5 rounded-xl border border-red-600/20 transition-colors">
-                  <UserX className="w-3.5 h-3.5" />Desactivar
+            <div className="px-5 pb-5 space-y-2">
+              <div className="flex gap-2">
+                <button onClick={() => handleEdit(selected)}
+                  className="flex-1 flex items-center justify-center gap-2 bg-slate-800 hover:bg-slate-700 text-slate-200 text-sm font-medium py-2.5 rounded-xl transition-colors">
+                  <Pencil className="w-3.5 h-3.5" />Editar
+                </button>
+                {canDeactivate && selected.isActive && selected.id !== currentUser?.id && !hasAnyRole(selected, 'KODESK') && (
+                  <button onClick={() => { if (confirm(`¿Desactivar a ${selected.firstName} ${selected.lastName}?`)) deactivateMutation.mutate(selected.id); }}
+                    className="flex-1 flex items-center justify-center gap-2 bg-red-600/10 hover:bg-red-600/20 text-red-400 text-sm font-medium py-2.5 rounded-xl border border-red-600/20 transition-colors">
+                    <UserX className="w-3.5 h-3.5" />Desactivar
+                  </button>
+                )}
+              </div>
+              {canDeleteUser(selected) && (
+                <button
+                  onClick={() => confirmDelete(selected)}
+                  disabled={deleteMutation.isPending}
+                  className="w-full flex items-center justify-center gap-2 bg-red-600 hover:bg-red-700 disabled:opacity-50 text-white text-sm font-semibold py-2.5 rounded-xl transition-colors"
+                >
+                  <Trash2 className="w-3.5 h-3.5" />
+                  {deleteMutation.isPending ? 'Eliminando…' : 'Eliminar bombero'}
                 </button>
               )}
             </div>
@@ -504,14 +581,26 @@ export default function UsersPage() {
   );
 }
 
-function UserCard({ u, onSelect, onEdit }: { u: any; onSelect: (u: any) => void; onEdit: (u: any) => void }) {
+function UserCard({ u, onSelect, onEdit, onDelete }: { u: any; onSelect: (u: any) => void; onEdit: (u: any) => void; onDelete?: (u: any) => void }) {
   return (
     <div
       onClick={() => onSelect(u)}
       className="group bg-slate-900 border border-slate-800 hover:border-slate-600 rounded-2xl p-4 cursor-pointer transition-all hover:shadow-lg hover:shadow-black/20 relative"
     >
       {/* Indicador activo */}
-      <div className={`absolute top-3 right-3 w-2 h-2 rounded-full ${u.isActive ? 'bg-emerald-500' : 'bg-slate-600'}`} />
+      <div className={`absolute top-3 right-3 flex items-center gap-1.5`}>
+        {onDelete && (
+          <button
+            type="button"
+            title="Eliminar bombero"
+            onClick={(e) => { e.stopPropagation(); onDelete(u); }}
+            className="p-1 rounded-lg text-slate-600 hover:text-red-400 hover:bg-red-600/10 opacity-100 sm:opacity-0 sm:group-hover:opacity-100 transition-all"
+          >
+            <Trash2 className="w-3.5 h-3.5" />
+          </button>
+        )}
+        <span className={`w-2 h-2 rounded-full ${u.isActive ? 'bg-emerald-500' : 'bg-slate-600'}`} />
+      </div>
 
       <div className="flex items-center gap-3 mb-3">
         <FirefighterAvatar
@@ -535,7 +624,12 @@ function UserCard({ u, onSelect, onEdit }: { u: any; onSelect: (u: any) => void;
       </div>
 
       <div className="flex items-center justify-between">
-        <RoleBadge role={u.role} size="xs" />
+        <div className="flex flex-wrap gap-1 min-w-0">
+          {userRoles(u).slice(0, 3).map((role) => <RoleBadge key={role} role={role} size="xs" />)}
+          {userRoles(u).length > 3 && (
+            <span className="text-[9px] text-slate-500 font-semibold">+{userRoles(u).length - 3}</span>
+          )}
+        </div>
         <ChevronRight className="w-3.5 h-3.5 text-slate-600 group-hover:text-slate-400 transition-colors" />
       </div>
 

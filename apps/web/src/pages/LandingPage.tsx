@@ -8,7 +8,7 @@ import {
 } from 'lucide-react';
 import { useAuthStore } from '../store/authStore';
 import { useAuthHydrated } from '../hooks/useAuthHydrated';
-import { getDefaultRouteForRole } from '../lib/roleAccess';
+import { getDefaultRouteForUser } from '../lib/roleAccess';
 
 export default function LandingPage() {
   const hydrated = useAuthHydrated();
@@ -28,7 +28,7 @@ export default function LandingPage() {
   }
 
   if (isAuthenticated) {
-    return <Navigate to={getDefaultRouteForRole(user?.role)} replace />;
+    return <Navigate to={getDefaultRouteForUser(user)} replace />;
   }
 
   return (

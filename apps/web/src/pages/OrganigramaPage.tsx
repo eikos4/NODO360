@@ -6,6 +6,7 @@ import {
   DollarSign, Eye, UserCheck, Phone, Mail,
 } from 'lucide-react';
 import { api } from '../lib/api';
+import { pickPrimaryRole, userRoles } from '../lib/roles';
 
 /* ── Jerarquía de roles ── */
 const ROLE_HIERARCHY = [
@@ -191,12 +192,12 @@ export default function OrganigramaPage() {
   const cUsers = (users ?? []).filter((u: any) => {
     const matchCia = u.companyId === selectedCia;
     const q = search.toLowerCase();
-    const matchQ = !q || `${u.firstName} ${u.lastName} ${u.rut ?? ''} ${u.role}`.toLowerCase().includes(q);
+    const matchQ = !q || `${u.firstName} ${u.lastName} ${u.rut ?? ''} ${u.phone ?? ''} ${userRoles(u).join(' ')}`.toLowerCase().includes(q);
     return matchCia && matchQ;
   });
 
   /* Agrupar por rol */
-  const byRole = (roles: string[]) => cUsers.filter((u: any) => roles.includes(u.role));
+  const byRole = (roles: string[]) => cUsers.filter((u: any) => roles.includes(pickPrimaryRole(userRoles(u), u.role)));
 
   /* Stats */
   const total  = cUsers.length;

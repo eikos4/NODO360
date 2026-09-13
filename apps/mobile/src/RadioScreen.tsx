@@ -15,9 +15,12 @@ import type { EmergencyResponseStatus } from '@nodo360/shared';
 
 const MAX_MS = 15_000;
 
-function canTalkOnIncident(status: EmergencyResponseStatus | null, role?: string) {
+function canTalkOnIncident(status: EmergencyResponseStatus | null, user?: { role?: string; roles?: string[] }) {
   if (status === 'GOING' || status === 'ON_SCENE') return true;
-  return role === 'OPERADOR_CENTRAL' || role === 'COMANDANTE' || role === 'CAPITAN' || role === 'SUPER_ADMIN';
+  const roles = user?.roles?.length ? user.roles : [user?.role];
+  return roles.some((role) =>
+    role === 'OPERADOR_CENTRAL' || role === 'COMANDANTE' || role === 'CAPITAN' || role === 'SUPER_ADMIN' || role === 'KODESK',
+  );
 }
 
 export function RadioScreen({
@@ -52,7 +55,7 @@ export function RadioScreen({
     [incident],
   );
 
-  const canTalk = canTalkOnIncident(status, user.role);
+  const canTalk = canTalkOnIncident(status, user);
 
   const playTx = useCallback(async (tx: RadioTx, force = false) => {
     if (!force && tx.userId === user.id) return;

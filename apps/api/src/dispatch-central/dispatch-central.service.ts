@@ -80,6 +80,8 @@ export class DispatchCentralService {
     firstName: string;
     lastName: string;
     role: string;
+    roles?: string[];
+    phone?: string | null;
     photoUrl: string | null;
     stationAvailable: boolean;
     stationAvailableAt: Date | null;
@@ -87,13 +89,16 @@ export class DispatchCentralService {
     companyId?: string | null;
     supportCompanyId?: string | null;
   }) {
+    const roles = user.roles?.length ? user.roles : [user.role];
     return {
       id: user.id,
       firstName: user.firstName,
       lastName: user.lastName,
       fullName: `${user.firstName} ${user.lastName}`,
       role: user.role,
-      roleLabel: ROLE_LABELS[user.role] ?? user.role,
+      roles,
+      phone: user.phone ?? null,
+      roleLabel: roles.map((role) => ROLE_LABELS[role] ?? role).join(' · '),
       photoUrl: user.photoUrl,
       stationAvailable: user.stationAvailable,
       stationAvailableAt: user.stationAvailableAt,
@@ -271,6 +276,8 @@ export class DispatchCentralService {
         firstName: true,
         lastName: true,
         role: true,
+        roles: true,
+        phone: true,
         photoUrl: true,
         stationAvailable: true,
         stationAvailableAt: true,
