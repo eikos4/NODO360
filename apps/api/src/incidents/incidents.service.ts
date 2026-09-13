@@ -96,15 +96,15 @@ export class IncidentsService {
 
   async findByIdAuthorized(id: string, user: IncidentAuthUser) {
     if (user.role !== 'SUPER_ADMIN' && user.role !== 'KODESK') {
-      if (!user.companyId) throw new ForbiddenException('Usuario sin compañía asignada');
+      const or: Prisma.IncidentWhereInput[] = [
+        { emergencyResponses: { some: { userId: user.id } } },
+      ];
+      if (user.companyId) {
+        or.push({ companyId: user.companyId });
+        or.push({ vehicles: { some: { vehicle: { companyId: user.companyId } } } });
+      }
       const permitted = await this.prisma.incident.findFirst({
-        where: {
-          id,
-          OR: [
-            { companyId: user.companyId },
-            { vehicles: { some: { vehicle: { companyId: user.companyId } } } },
-          ],
-        },
+        where: { id, OR: or },
         select: { id: true },
       });
       if (!permitted) throw new NotFoundException('Emergencia no encontrada');
@@ -202,7 +202,7 @@ export class IncidentsService {
         address: dto.address,
         latitude: dto.latitude,
         longitude: dto.longitude,
-        locationPinToken: randomUUID().replace(/-/g, ''),
+        locationPinToken: dto.locationPinToken?.trim() || randomUUID().replace(/-/g, ''),
         dispatchedAt: new Date().toISOString(),
         companyId: dto.companyId,
         participantIds: dto.participantIds,

@@ -2,8 +2,8 @@
 import { useParams, Link } from 'react-router-dom';
 import {
   Siren, ShieldAlert, Users, CheckCircle2, UserX, RefreshCw, Truck, Fuel, Star,
-  Search, SlidersHorizontal, Clock, Calendar, Radio, ChevronDown, ChevronUp, Volume2, Hash,
-  Sun, Moon, Maximize2, Minimize2,
+  Search, SlidersHorizontal, Clock, Calendar, Radio, Volume2, Hash,
+  Sun, Moon, Maximize2, Minimize2, Leaf, Hexagon,
 } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { api } from '../lib/api';
@@ -20,9 +20,12 @@ import {
   PUBLIC_POLL_MS_URGENT,
   subscribeDispatchLive,
 } from '../lib/dispatch-live-sync';
-import { useDispatchPublicTheme } from '../hooks/useDispatchPublicTheme';
 import { useSalaNightMode } from '../hooks/useSalaNightMode';
-import { SALA_NIGHT_THEME, type DispatchPublicThemeTokens } from '../lib/dispatch-public-theme';
+import {
+  DISPATCH_PUBLIC_THEMES,
+  SALA_NIGHT_THEME,
+  type DispatchPublicThemeTokens,
+} from '../lib/dispatch-public-theme';
 import SalaNightAtmosphere from '../components/companies/SalaNightAtmosphere';
 
 const DISMISSED_KEY = 'nodo360_public_emergency_dismissed';
@@ -210,10 +213,10 @@ function CardPhoto({
 
       {operativeNumber != null ? (
         <div className="absolute inset-x-0 bottom-0 z-10 pointer-events-none">
-          <div className="bg-gradient-to-t from-black/95 via-black/70 to-transparent pt-10 pb-2 px-2 flex items-end justify-center">
-            <div className="flex items-center gap-1.5">
-              <span className="text-[10px] font-bold uppercase tracking-widest text-amber-400/90">N°</span>
-              <span className="text-4xl sm:text-[2.75rem] font-black text-white tabular-nums leading-none drop-shadow-lg">
+          <div className="bg-gradient-to-t from-black via-black/80 to-transparent pt-10 pb-2.5 px-2 flex items-end justify-center">
+            <div className="flex items-end gap-1.5">
+              <span className="operative-num pb-1 text-[11px] font-semibold uppercase" style={{ color: '#ffffff' }}>N°</span>
+              <span className="operative-num text-4xl sm:text-[2.75rem] font-semibold tabular-nums leading-none" style={{ color: '#ffffff' }}>
                 {operativeNumber}
               </span>
             </div>
@@ -230,9 +233,8 @@ function CardPhoto({
 
 export default function DispatchPublicPage() {
   const { slug } = useParams<{ slug: string }>();
-  const { tokens: dayTokens, isDark } = useDispatchPublicTheme();
-  const { night, pref, cycle: cycleNight, label: nightLabel } = useSalaNightMode();
-  const th = night ? SALA_NIGHT_THEME : dayTokens;
+  const { look, night, isNodo, isVerde, isAzul, cycle: cycleLook, label: lookLabel } = useSalaNightMode();
+  const th = look === 'night' ? SALA_NIGHT_THEME : DISPATCH_PUBLIC_THEMES[look];
   const [data, setData] = useState<PublicCentral | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
@@ -269,7 +271,6 @@ export default function DispatchPublicPage() {
   const [operativeQuick, setOperativeQuick] = useState('');
   const [roleFilter, setRoleFilter] = useState('');
   const [availFilter, setAvailFilter] = useState<'available' | 'all'>('available');
-  const [showFleet, setShowFleet] = useState(false);
   const [dismissedIds, setDismissedIds] = useState<string[]>(() => loadDismissed());
   const [audioEnabled, setAudioEnabled] = useState(() => sessionStorage.getItem(AUDIO_KEY) === '1');
   const [audioMuted, setAudioMuted] = useState(false);
@@ -701,14 +702,20 @@ export default function DispatchPublicPage() {
 
   const { roster, maquinistas, fleet, emergencyStats } = data;
   const hqImage = data.headquartersImageUrl || DEFAULT_HQ;
-  const darkChrome = night || isDark;
+  const darkChrome = night || isNodo || isVerde || isAzul;
   const qrUrl = `https://api.qrserver.com/v1/create-qr-code/?size=100x100&data=${encodeURIComponent(publicUrl)}&bgcolor=${th.qrBg}&color=${darkChrome ? 'ffffff' : '0f172a'}`;
   const floatBtn = night
     ? 'bg-[#16101c]/90 border border-amber-500/30 text-amber-100 shadow-xl shadow-amber-950/40'
-    : 'bg-white border border-slate-200 text-slate-800 shadow-xl';
+    : isNodo
+      ? 'bg-[#0d1924] border border-[#38bdf8]/50 text-[#67c8ff] shadow-xl shadow-sky-950/50'
+      : isVerde
+        ? 'bg-[#062016] border border-[#1ce783]/50 text-[#1ce783] shadow-xl shadow-emerald-950/50'
+        : isAzul
+          ? 'bg-[#0712b8] border border-white/40 text-white shadow-xl shadow-blue-950/40'
+          : 'bg-white border border-slate-200 text-slate-800 shadow-xl';
 
   return (
-    <div className={`h-screen overflow-hidden flex flex-col transition-colors relative ${night ? 'sala-guardia' : ''} ${onEmergency ? th.pageEmergency : th.page}`}>
+    <div className={`sala-public h-screen overflow-hidden flex flex-col transition-colors relative ${night ? 'sala-guardia' : ''} ${onEmergency ? th.pageEmergency : th.page}`}>
       {night && <SalaNightAtmosphere />}
       {/* Audio + alarma activa */}
       {!audioEnabled && (
@@ -768,17 +775,31 @@ export default function DispatchPublicPage() {
       <div className="fixed bottom-6 right-6 z-[100] flex items-center gap-2">
         <button
           type="button"
-          onClick={cycleNight}
+          onClick={cycleLook}
           className={`${floatBtn} p-3 rounded-full hover:scale-105 transition-all relative`}
-          title={nightLabel}
-          aria-label={nightLabel}
+          title={`${lookLabel} · toca para cambiar`}
+          aria-label={lookLabel}
         >
-          {night ? <Sun className={`w-5 h-5 ${night ? 'text-amber-300' : 'text-slate-800'}`} /> : <Moon className="w-5 h-5 text-indigo-600" />}
-          {pref === 'auto' && (
-            <span className="absolute -top-1 -right-1 text-[8px] font-black uppercase tracking-wide bg-amber-400 text-amber-950 px-1 rounded">
-              Auto
-            </span>
+          {night ? (
+            <Moon className="w-5 h-5 text-amber-300" />
+          ) : isNodo ? (
+            <Radio className="w-5 h-5 text-[#67c8ff]" />
+          ) : isVerde ? (
+            <Leaf className="w-5 h-5 text-[#1ce783]" />
+          ) : isAzul ? (
+            <Hexagon className="w-5 h-5 text-white" />
+          ) : (
+            <Sun className="w-5 h-5 text-amber-500" />
           )}
+          <span className={`absolute -top-1 -right-1 text-[8px] font-semibold uppercase px-1 rounded ${
+            night ? 'bg-amber-400 text-amber-950'
+              : isNodo ? 'bg-[#38bdf8] text-[#071019]'
+                : isVerde ? 'bg-[#1ce783] text-[#00140e]'
+                  : isAzul ? 'keep-on-color bg-white text-[#0918e3]'
+                    : 'bg-slate-200 text-slate-700'
+          }`}>
+            {night ? 'Noche' : isNodo ? 'Nodo' : isVerde ? 'Verde' : isAzul ? 'Azul' : 'Claro'}
+          </span>
         </button>
         <button
           type="button"
@@ -787,7 +808,9 @@ export default function DispatchPublicPage() {
           title={isFullscreen ? 'Salir de pantalla completa' : 'Pantalla completa'}
           aria-label={isFullscreen ? 'Salir de pantalla completa' : 'Pantalla completa'}
         >
-          {isFullscreen ? <Minimize2 className={`w-5 h-5 ${night ? 'text-amber-100' : 'text-slate-800'}`} /> : <Maximize2 className={`w-5 h-5 ${night ? 'text-amber-100' : 'text-slate-800'}`} />}
+          {isFullscreen
+            ? <Minimize2 className={`w-5 h-5 ${night ? 'text-amber-100' : isNodo ? 'text-[#67c8ff]' : isVerde ? 'text-[#1ce783]' : isAzul ? 'text-white' : 'text-slate-800'}`} />
+            : <Maximize2 className={`w-5 h-5 ${night ? 'text-amber-100' : isNodo ? 'text-[#67c8ff]' : isVerde ? 'text-[#1ce783]' : isAzul ? 'text-white' : 'text-slate-800'}`} />}
         </button>
         <button
           type="button"
@@ -796,7 +819,7 @@ export default function DispatchPublicPage() {
           title="Cambiar diseño"
           aria-label="Cambiar diseño"
         >
-          <SlidersHorizontal className={`w-4 h-4 ${night ? 'text-amber-300' : 'text-blue-600'}`} />
+          <SlidersHorizontal className={`w-4 h-4 ${night ? 'text-amber-300' : isNodo ? 'text-[#67c8ff]' : isVerde ? 'text-[#1ce783]' : isAzul ? 'text-white' : 'text-blue-600'}`} />
         </button>
       </div>
 
@@ -811,6 +834,7 @@ export default function DispatchPublicPage() {
           onEmergency={onEmergency}
           padActive={isFullscreen}
           night={night}
+          look={look}
         />
       ) : (
         <>
@@ -845,6 +869,21 @@ export default function DispatchPublicPage() {
               {night && (
                 <p className="mt-1 inline-flex items-center gap-1.5 text-[10px] font-black uppercase tracking-[0.18em] text-amber-300/90">
                   <Moon className="w-3 h-3" /> Guardia nocturna
+                </p>
+              )}
+              {isNodo && (
+                <p className="mt-1 inline-flex items-center gap-1.5 text-[10px] font-semibold uppercase text-[#67c8ff]">
+                  <Radio className="w-3 h-3" /> Tema Nodo
+                </p>
+              )}
+              {isVerde && (
+                <p className="mt-1 inline-flex items-center gap-1.5 text-[10px] font-semibold uppercase text-[#1ce783]">
+                  <Leaf className="w-3 h-3" /> Tema verde
+                </p>
+              )}
+              {isAzul && (
+                <p className="mt-1 inline-flex items-center gap-1.5 text-[10px] font-semibold uppercase text-white">
+                  <Hexagon className="w-3 h-3" /> Tema azul
                 </p>
               )}
             </div>
@@ -885,7 +924,7 @@ export default function DispatchPublicPage() {
               <img src={qrUrl} alt="QR sala de máquinas" className={`w-20 h-20 sm:w-24 sm:h-24 rounded-lg border ${darkChrome ? 'border-amber-500/25 bg-[#100c14]' : 'border-slate-300 bg-white'}`} />
               <Link
                 to={`/cuartel/${data.slug}`}
-                className="flex items-center gap-1 px-3 py-1.5 rounded-lg bg-red-600/90 hover:bg-red-500 text-white text-[11px] font-bold transition-colors whitespace-nowrap"
+                className="keep-on-color flex items-center gap-1 px-3 py-1.5 rounded-lg bg-red-600/90 hover:bg-red-500 text-white text-[11px] font-bold transition-colors whitespace-nowrap"
                 title="Ver perfil público de la compañía"
               >
                 <Siren className="w-3 h-3" />
@@ -1239,40 +1278,35 @@ export default function DispatchPublicPage() {
           </section>
         )}
 
-        <div className="space-y-3">
-          <CollapsibleSection
-            title="Material mayor"
-            icon={Truck}
-            iconColor="text-orange-400"
-            open={showFleet}
-            onToggle={() => setShowFleet((v) => !v)}
-            badge={`${fleet.stats.operativo} operativos`}
-            th={th}
-          >
-            <div className="grid sm:grid-cols-2 gap-3">
-              {fleet.vehicles.map((v) => (
-                <div key={v.id} className={`flex gap-3 rounded-xl p-3 border ${th.fleetItem}`}>
-                  <div className="w-20 h-16 rounded-lg overflow-hidden bg-slate-800 shrink-0">
-                    {v.imageUrl ? (
-                      <img src={v.imageUrl} alt={v.patent} className="w-full h-full object-cover" />
-                    ) : (
-                      <div className="w-full h-full flex items-center justify-center"><Truck className="w-6 h-6 text-slate-600" /></div>
-                    )}
-                  </div>
-                  <div className="flex-1 min-w-0 text-xs">
-                    <p className="font-bold">{v.patent} · {v.type}</p>
-                    <p className="text-slate-500">{v.statusLabel}</p>
-                    {v.fuelLevelPercent != null && (
-                      <p className="text-slate-400 flex items-center gap-1 mt-1">
-                        <Fuel className="w-3 h-3" /> {v.fuelLevelPercent}%
-                      </p>
-                    )}
-                  </div>
+        <section className={`${th.card} rounded-2xl p-4 sm:p-5`}>
+          <div className="flex items-center gap-2 mb-4">
+            <Truck className="w-5 h-5 text-orange-400" />
+            <h2 className={`font-semibold text-base ${th.sectionTitle}`}>Material mayor</h2>
+            <span className={`text-xs ${th.sectionCount}`}>{fleet.stats.operativo} operativos de {fleet.stats.total}</span>
+          </div>
+          <div className="grid sm:grid-cols-2 xl:grid-cols-3 gap-3">
+            {fleet.vehicles.map((v) => (
+              <div key={v.id} className={`flex gap-3 rounded-xl p-3 border ${th.fleetItem}`}>
+                <div className={`w-28 h-20 rounded-lg overflow-hidden shrink-0 ${night || isNodo || isVerde || isAzul ? 'bg-[#e8eef4]' : 'bg-slate-100'}`}>
+                  {v.imageUrl ? (
+                    <img src={v.imageUrl} alt={v.patent} className="w-full h-full object-cover object-center" />
+                  ) : (
+                    <div className="w-full h-full flex items-center justify-center"><Truck className="w-6 h-6 text-slate-500" /></div>
+                  )}
                 </div>
-              ))}
-            </div>
-          </CollapsibleSection>
-        </div>
+                <div className="flex-1 min-w-0 text-xs">
+                  <p className={`font-semibold ${th.memberName}`}>{v.patent} · {v.type}</p>
+                  <p className={th.cardMuted}>{v.statusLabel}</p>
+                  {v.fuelLevelPercent != null && (
+                    <p className={`flex items-center gap-1 mt-1 ${th.cardMuted}`}>
+                      <Fuel className="w-3 h-3" /> {v.fuelLevelPercent}%
+                    </p>
+                  )}
+                </div>
+              </div>
+            ))}
+          </div>
+        </section>
       </main>
 
       <footer className={`shrink-0 border-t py-5 px-4 ${th.footerBorder}`}>
@@ -1316,37 +1350,6 @@ function StatPill({
       <Icon className={`w-4 h-4 mx-auto mb-1 ${styles[color]}`} />
       <p className={`text-xl font-bold ${styles[color]}`}>{value}</p>
       <p className={`text-[10px] uppercase ${th.statLabel}`}>{label}</p>
-    </div>
-  );
-}
-
-function CollapsibleSection({
-  title, icon: Icon, iconColor, open, onToggle, badge, children, th,
-}: {
-  title: string;
-  icon: typeof Truck;
-  iconColor: string;
-  open: boolean;
-  onToggle: () => void;
-  badge?: string;
-  children: React.ReactNode;
-  th: DispatchPublicThemeTokens;
-}) {
-  return (
-    <div className={`${th.collapsible} border rounded-2xl overflow-hidden`}>
-      <button
-        type="button"
-        onClick={onToggle}
-        className={`w-full flex items-center gap-2 px-4 py-3 text-left transition-colors ${th.collapsibleBtn}`}
-      >
-        <Icon className={`w-4 h-4 ${iconColor}`} />
-        <span className={`font-bold text-sm ${th.collapsibleTitle}`}>{title}</span>
-        {badge && <span className={`text-[10px] ml-1 ${th.cardMuted}`}>{badge}</span>}
-        <span className={`ml-auto ${th.cardMuted}`}>
-          {open ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
-        </span>
-      </button>
-      {open && <div className={`px-4 pb-4 border-t pt-3 ${th.collapsibleBorder}`}>{children}</div>}
     </div>
   );
 }

@@ -54,6 +54,49 @@ export interface EmergencySnapshot {
   statusLabels: Record<string, string>;
 }
 
+export interface TimelineEvent {
+  id: string;
+  kind: string;
+  label: string;
+  note?: string | null;
+  occurredAt: string;
+  author?: { id: string; firstName: string; lastName: string } | null;
+}
+
+export interface EmergencyRecap {
+  incident: {
+    id: string;
+    code: string;
+    type: string;
+    address: string;
+    description?: string | null;
+    dispatchedAt: string;
+    closedAt?: string | null;
+    status: string;
+  };
+  myResponse: {
+    status: EmergencyResponseStatus | null;
+    statusLabel: string | null;
+    respondedAt?: string;
+    onSceneAt?: string | null;
+  } | null;
+  timeline: TimelineEvent[];
+  report: {
+    id: string;
+    title: string;
+    emergencyType?: string | null;
+    address?: string | null;
+    occurredAt: string;
+    summary: string;
+    actionsTaken?: string | null;
+    personnelNotes?: string | null;
+    vehicleNotes?: string | null;
+    outcome?: string | null;
+    observations?: string | null;
+    author?: { firstName: string; lastName: string } | null;
+  } | null;
+}
+
 export interface AlarmHistoryItem {
   id: string;
   incidentId: string;

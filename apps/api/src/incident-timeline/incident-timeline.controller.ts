@@ -6,7 +6,19 @@ import { IncidentAuthUser } from '../incidents/incidents.service';
 import { CreateIncidentTimelineEventDto } from './dto/create-incident-timeline-event.dto';
 import { IncidentTimelineService } from './incident-timeline.service';
 
-const READ_ROLES = ['SUPER_ADMIN', 'COMANDANTE', 'CAPITAN', 'SECRETARIO', 'OPERADOR_CENTRAL', 'AUDITOR'] as const;
+const READ_ROLES = [
+  'SUPER_ADMIN',
+  'COMANDANTE',
+  'CAPITAN',
+  'SECRETARIO',
+  'OPERADOR_CENTRAL',
+  'AUDITOR',
+  'ENCARGADO_MATERIAL',
+  'BOMBERO',
+  'BOMBERO_HONORARIO',
+  'BOMBERO_INICIAL',
+  'BOMBERO_PROFESIONAL',
+] as const;
 const WRITE_ROLES = ['SUPER_ADMIN', 'COMANDANTE', 'CAPITAN', 'SECRETARIO', 'OPERADOR_CENTRAL'] as const;
 
 @Controller('incident-timeline')

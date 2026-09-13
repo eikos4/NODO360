@@ -45,6 +45,7 @@ import BomberoEmergencyPage from './pages/BomberoEmergencyPage';
 import CompanyPublicProfilePage from './pages/CompanyPublicProfilePage';
 import Vision360CuartelesPage from './pages/Vision360CuartelesPage';
 import SuperAdminImplementacionPage from './pages/SuperAdminImplementacionPage';
+import Nodo360AlarmsPage from './pages/Nodo360AlarmsPage';
 
 function PrivateRoute({ children }: { children: React.ReactNode }) {
   const hydrated = useAuthHydrated();
@@ -115,6 +116,7 @@ export default function App() {
         <Route path="fleet-logs" element={<FleetLogPage />} />
         <Route path="organigrama" element={<OrganigramaPage />} />
         <Route path="despacho360" element={<Despacho360Page />} />
+        <Route path="nodo360-alarms" element={<Nodo360AlarmsPage />} />
         <Route path="emergencia-respuesta" element={<BomberoEmergencyPage />} />
         <Route path="central-despachos-parral" element={<CentralDespachosParralPage />} />
         <Route path="dispatch/global" element={<CentralGlobalPage />} />

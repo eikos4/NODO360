@@ -172,11 +172,11 @@ export default function CentralDespachosParralPage() {
   };
 
   return (
-    <div className={`h-full min-h-0 flex flex-col overflow-hidden transition-colors duration-300 ${th.page}`}>
+    <div className={`central-parral-page h-full min-h-0 flex flex-col overflow-hidden transition-colors duration-300 ${th.page}`}>
       {/* Header */}
       <header className={`shrink-0 flex flex-wrap items-center justify-between gap-x-4 gap-y-2 px-3 sm:px-5 py-2.5 sm:py-3 border-b ${th.header}`}>
         <div className="flex items-center gap-3 min-w-0 flex-1 basis-[200px]">
-          <div className={`w-10 h-10 sm:w-11 sm:h-11 rounded-full flex items-center justify-center shrink-0 ${d.dispatching ? 'bg-red-600 animate-pulse' : 'bg-red-600'}`}>
+          <div className={`keep-on-color w-10 h-10 sm:w-11 sm:h-11 rounded-full flex items-center justify-center shrink-0 ${d.dispatching ? 'bg-red-600 animate-pulse' : 'bg-red-600'}`}>
             <Siren className="w-5 h-5 text-white" />
           </div>
           <div className="min-w-0">
@@ -271,11 +271,13 @@ export default function CentralDespachosParralPage() {
               <CompanyMaquinistaAlert
                 company={d.company}
                 availableCount={d.maquinistasAvailable}
+                isDark={isDark}
               />
               {d.secondaryCia && d.secondaryCompany && (
                 <CompanyMaquinistaAlert
                   company={d.secondaryCompany}
                   availableCount={d.secondaryMaquinistasAvailable}
+                  isDark={isDark}
                 />
               )}
               <div>
@@ -292,7 +294,7 @@ export default function CentralDespachosParralPage() {
                     type="button"
                     onClick={d.searchAddress}
                     disabled={d.geocoding}
-                    className="shrink-0 px-4 py-2.5 rounded-xl bg-sky-600 hover:bg-sky-500 text-white font-bold text-sm flex items-center gap-1.5"
+                    className="keep-on-color shrink-0 px-4 py-2.5 rounded-xl bg-sky-600 hover:bg-sky-500 text-white font-bold text-sm flex items-center gap-1.5"
                   >
                     {d.geocoding ? <Loader2 className="w-4 h-4 animate-spin" /> : <Search className="w-4 h-4" />}
                     Buscar
@@ -319,10 +321,10 @@ export default function CentralDespachosParralPage() {
                 : 'border-orange-400 bg-gradient-to-br from-orange-50 to-orange-100/80 shadow-md shadow-orange-100'
               : th.activeKeyEmpty
           }`}>
-            <p className="text-[10px] font-bold uppercase tracking-widest text-orange-600 mb-2">Clave activa</p>
+            <p className={`text-[10px] font-bold uppercase tracking-widest mb-2 ${isDark ? 'text-orange-400' : 'text-orange-800'}`}>Clave activa</p>
             {emerg ? (
               <div className="flex items-center gap-3">
-                <div className="w-12 h-12 rounded-xl bg-orange-600 flex items-center justify-center shrink-0">
+                <div className="keep-on-color w-12 h-12 rounded-xl bg-orange-600 flex items-center justify-center shrink-0">
                   <EmergIcon className="w-6 h-6 text-white" />
                 </div>
                 <div>
@@ -440,7 +442,7 @@ export default function CentralDespachosParralPage() {
                   type="button"
                   onClick={playPreview}
                   disabled={playingPreview}
-                  className="shrink-0 w-9 h-9 rounded-full bg-orange-600 hover:bg-orange-500 flex items-center justify-center"
+                  className="keep-on-color shrink-0 w-9 h-9 rounded-full bg-orange-600 hover:bg-orange-500 flex items-center justify-center"
                 >
                   {playingPreview ? <Loader2 className="w-4 h-4 animate-spin text-white" /> : <Play className="w-4 h-4 text-white ml-0.5" />}
                 </button>
@@ -460,7 +462,7 @@ export default function CentralDespachosParralPage() {
               type="button"
               disabled={!d.canDispatch || d.dispatching}
               onClick={d.handleDispatch}
-              className="w-full flex items-center justify-center gap-3 py-4 rounded-2xl bg-red-600 hover:bg-red-500 disabled:opacity-40 disabled:cursor-not-allowed font-black text-lg uppercase tracking-wide shadow-xl shadow-red-900/40 transition active:scale-[0.98]"
+              className="parral-dispatch-btn keep-on-color w-full flex items-center justify-center gap-3 py-4 rounded-2xl bg-red-600 hover:bg-red-500 disabled:cursor-not-allowed font-black text-lg uppercase tracking-wide shadow-xl shadow-red-900/40 transition active:scale-[0.98] text-white"
             >
               {d.dispatching ? (
                 <>
@@ -502,7 +504,7 @@ export default function CentralDespachosParralPage() {
                   <button
                     type="button"
                     onClick={() => handleSendWa(d.lastDispatchedIncident)}
-                    className="bg-[#25D366] hover:bg-[#20bd5a] text-white px-4 py-2 rounded-xl flex items-center justify-center shrink-0 shadow-md font-bold text-xs gap-1.5"
+                    className="keep-on-color bg-[#25D366] hover:bg-[#20bd5a] text-white px-4 py-2 rounded-xl flex items-center justify-center shrink-0 shadow-md font-bold text-xs gap-1.5"
                     title="Enviar enlace al reportante"
                   >
                     <MessageCircle className="w-4 h-4" />
@@ -545,7 +547,7 @@ export default function CentralDespachosParralPage() {
                   onClick={() => d.handleEmergencyTypeClick(main)}
                   className={`relative flex flex-col items-center justify-center gap-1 p-2.5 rounded-xl border-2 min-h-[80px] transition-all active:scale-95 ${
                     active
-                      ? `${main.color} ${main.text} border-transparent shadow-lg ring-2 ${main.ring}/60`
+                      ? `keep-on-color ${main.color} ${main.text} border-transparent shadow-lg ring-2 ${main.ring}/60`
                       : 'hover:scale-[1.04]'
                   }`}
                   style={
@@ -584,7 +586,7 @@ export default function CentralDespachosParralPage() {
                   onClick={() => d.handleSubdivisionClick(sub, d.activeMainWithSubs!)}
                   className={`px-3 py-1.5 rounded-full text-xs font-medium border ${
                     d.selectedType === sub.id
-                      ? 'bg-orange-600 border-orange-500 text-white'
+                      ? 'keep-on-color bg-orange-600 border-orange-500 text-white'
                       : th.keySubIdle
                   }`}
                 >

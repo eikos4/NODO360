@@ -68,16 +68,20 @@ export function HelpScreen({ onBack }: { onBack: () => void }) {
             <Radio />
             <span>Usas Radio para coordinar con la compañía mientras vas o estás en el lugar.</span>
           </li>
+          <li>
+            <Flame />
+            <span>En Alarmas ves la bitácora de la centralista en vivo. Después, en Perfil, tocás la emergencia y ves qué pasó.</span>
+          </li>
         </ol>
       </section>
 
       <section className="help-card">
         <h2><HelpCircle /> Esta aplicación</h2>
         <ul>
-          <li><b>Alarmas:</b> emergencias activas y tu respuesta.</li>
+          <li><b>Alarmas:</b> emergencias activas, tu respuesta y la bitácora de la central en vivo.</li>
           <li><b>Radio:</b> canal de la compañía durante el servicio.</li>
-          <li><b>Historial:</b> despachos recientes.</li>
-          <li><b>Perfil:</b> tu ficha y alertas del teléfono.</li>
+          <li><b>Historial:</b> despachos recientes; tocá uno cerrado para ver qué pasó.</li>
+          <li><b>Perfil:</b> tu ficha y emergencias en las que respondiste, con el relato operacional.</li>
           <li><b>Ayuda:</b> esta guía de Nodo360 y Kodesk.</li>
         </ul>
         <p className="help-note">

@@ -72,7 +72,7 @@ export default function EmergencyBitacoraFinalizeModal({
     'w-full bg-[#0f172a] border border-slate-600 rounded-xl px-3 py-2.5 text-sm text-slate-100 placeholder-slate-500 focus:outline-none focus:border-emerald-500';
 
   return (
-    <div className="fixed inset-0 z-[10000] flex items-center justify-center p-4" role="dialog" aria-modal="true">
+    <div className="sala-dark-modal fixed inset-0 z-[10000] flex items-center justify-center p-4" role="dialog" aria-modal="true">
       <div className="absolute inset-0 bg-black/75 backdrop-blur-sm" onClick={handleOmit} />
       <div className="relative w-full max-w-lg bg-[#1a2f4a] border border-emerald-500/30 rounded-2xl shadow-2xl overflow-hidden">
         <div className="flex items-center justify-between px-5 py-4 border-b border-slate-700/80">
@@ -143,7 +143,7 @@ export default function EmergencyBitacoraFinalizeModal({
             type="button"
             onClick={handleSave}
             disabled={saving}
-            className="flex-1 flex items-center justify-center gap-2 bg-emerald-600 hover:bg-emerald-500 disabled:opacity-50 text-white font-bold text-sm py-3 rounded-xl"
+            className="keep-on-color flex-1 flex items-center justify-center gap-2 bg-emerald-600 hover:bg-emerald-500 disabled:opacity-50 text-white font-semibold text-sm py-3 rounded-xl"
           >
             {saving ? <Loader2 className="w-4 h-4 animate-spin" /> : <CheckCircle2 className="w-4 h-4" />}
             Guardar bitácora

@@ -1,6 +1,6 @@
 import { useEffect, useState, type ReactNode } from 'react';
 import {
-  Building2, Calendar, Flame, Mail, MapPin, ShieldCheck, Truck, UserRound,
+  Building2, Calendar, ChevronRight, Flame, Mail, MapPin, ShieldCheck, Truck, UserRound,
 } from 'lucide-react';
 import { api } from './lib/api';
 
@@ -58,7 +58,13 @@ function initials(name: string) {
   return name.split(' ').filter(Boolean).slice(0, 2).map((part) => part[0]?.toUpperCase() ?? '').join('');
 }
 
-export function ProfileScreen({ children }: { children?: ReactNode }) {
+export function ProfileScreen({
+  children,
+  onOpenEmergency,
+}: {
+  children?: ReactNode;
+  onOpenEmergency?: (incidentId: string) => void;
+}) {
   const [data, setData] = useState<ProfilePayload | null>(null);
   const [error, setError] = useState('');
 
@@ -126,8 +132,14 @@ export function ProfileScreen({ children }: { children?: ReactNode }) {
 
       <div className="profile-ops">
         <p>Emergencias en las que respondiste</p>
+        <small className="profile-ops-hint">Tocá una para ver la bitácora y qué pasó</small>
         {data?.emergencies.length ? data.emergencies.map((item) => (
-          <article key={item.id} className="profile-op">
+          <button
+            key={item.id}
+            type="button"
+            className="profile-op"
+            onClick={() => onOpenEmergency?.(item.id)}
+          >
             <span className="profile-op-code"><Flame />{item.code}</span>
             <b>{item.type}</b>
             <small><MapPin /> {item.address}</small>
@@ -135,7 +147,8 @@ export function ProfileScreen({ children }: { children?: ReactNode }) {
               <time>{fmt(item.dispatchedAt)}</time>
               <em className={STATUS_CLASS[item.status ?? ''] || ''}>{item.statusLabel}</em>
             </footer>
-          </article>
+            <ChevronRight className="profile-op-go" />
+          </button>
         )) : (
           <p className="empty">{data ? 'Aún no registrás respuestas a emergencias.' : 'Cargando historial…'}</p>
         )}

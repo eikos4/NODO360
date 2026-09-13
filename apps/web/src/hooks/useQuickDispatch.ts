@@ -63,7 +63,21 @@ async function reverseGeocode(lat: number, lng: number) {
 
 const apiBase = import.meta.env.VITE_API_URL?.replace(/\/$/, '') || '/api';
 
-export function useQuickDispatch() {
+export type QuickDispatchOptions = {
+  /** Botonera: al elegir 10-X despacha al tiro. Alarms: false. */
+  autoDispatchOnKey?: boolean;
+  /** Exige dirección escrita, no el cuartel por defecto. */
+  requireExplicitAddress?: boolean;
+  /** Crea la emergencia antes de reproducir audio (Alarms). */
+  persistImmediately?: boolean;
+  dispatchSource?: 'BOTONERA' | 'MANUAL';
+};
+
+export function useQuickDispatch(options: QuickDispatchOptions = {}) {
+  const autoDispatchOnKey = options.autoDispatchOnKey !== false;
+  const requireExplicitAddress = options.requireExplicitAddress === true;
+  const persistImmediately = options.persistImmediately === true;
+  const dispatchSource = options.dispatchSource ?? 'BOTONERA';
   const qc = useQueryClient();
   const user = useAuthStore((s) => s.user);
   const [soundMode] = useState<DispatchSoundMode>(() => loadDispatchSoundMode());
@@ -77,6 +91,7 @@ export function useQuickDispatch() {
   const [latitude, setLatitude] = useState('');
   const [longitude, setLongitude] = useState('');
   const [notes, setNotes] = useState('');
+  const [locationPinToken, setLocationPinToken] = useState<string | null>(null);
   const [selectedCia, setSelectedCiaState] = useState(user?.companyId ?? '');
   const [secondaryCia, setSecondaryCiaState] = useState('');
   const [muted, setMuted] = useState(false);
@@ -288,7 +303,7 @@ export function useQuickDispatch() {
         return;
       }
       if (!isEmergencyTypeReadyForDispatch(typeId)) {
-        toast.error('Elige el detalle de la clave');
+        toast.error('Elige el detalle de la clave (ej. 10-0-1)');
         return;
       }
       if (!selectedCia) {
@@ -296,7 +311,11 @@ export function useQuickDispatch() {
         return;
       }
       if (vehicleIds.length === 0) {
-        toast.error('Sin carros operativos');
+        toast.error('Selecciona al menos un carro operativo');
+        return;
+      }
+      if (requireExplicitAddress && !address.trim()) {
+        toast.error('Ingresa la dirección de la emergencia');
         return;
       }
 
@@ -336,6 +355,23 @@ export function useQuickDispatch() {
       if (opts?.typeId) setSelectedType(opts.typeId);
       if (!address.trim() && company?.address) setAddress(company.address);
 
+      let lat = latitude ? parseFloat(latitude) : undefined;
+      let lng = longitude ? parseFloat(longitude) : undefined;
+      if ((lat == null || Number.isNaN(lat) || lng == null || Number.isNaN(lng)) && addr && addr !== 'Sin dirección — cuartel') {
+        setGeocoding(true);
+        try {
+          const hit = await geocodeAddress(`${addr}, Chile`);
+          if (hit) {
+            lat = hit.lat;
+            lng = hit.lng;
+            setLatitude(hit.lat.toFixed(6));
+            setLongitude(hit.lng.toFixed(6));
+          }
+        } finally {
+          setGeocoding(false);
+        }
+      }
+
       pendingPersistRef.current = true;
       setDispatching(true);
 
@@ -346,31 +382,56 @@ export function useQuickDispatch() {
         vehicles as { id: string; patent: string; type?: string }[],
       );
 
-      if (!muted) {
-        await playBrandIdent();
-        if (!opts?.keyToneAlreadyPlayed) await playEmergencyKeyTone(typeId);
-      }
-      await new Promise((r) => setTimeout(r, 120));
-      if (!muted) await playSiren(1800);
-      if (voiceEnabled && radioMsg) {
-        await new Promise<void>((res) => speak(radioMsg, res));
-      }
+      const payload = {
+        type: botoneraTypeToIncident(typeId),
+        address: addr,
+        description: notes.trim() || radioMsg || `Despacho ${emerg.code}`,
+        companyId: selectedCia,
+        vehicleIds,
+        latitude: lat != null && !Number.isNaN(lat) ? lat : undefined,
+        longitude: lng != null && !Number.isNaN(lng) ? lng : undefined,
+        dispatchNotes: [notes.trim(), apoyoNote].filter(Boolean).join(' · ') || undefined,
+        dispatchSource,
+        locationPinToken: locationPinToken || undefined,
+      };
 
-      setDispatching(false);
+      const playSequence = async () => {
+        if (!muted) {
+          await playBrandIdent();
+          if (!opts?.keyToneAlreadyPlayed) await playEmergencyKeyTone(typeId);
+        }
+        await new Promise((r) => setTimeout(r, 120));
+        if (!muted) await playSiren(1800);
+        if (voiceEnabled && radioMsg) {
+          await new Promise<void>((res) => {
+            const t = window.setTimeout(res, 8000);
+            void speak(radioMsg, () => {
+              window.clearTimeout(t);
+              res();
+            });
+          });
+        }
+      };
 
-      if (pendingPersistRef.current) {
+      try {
+        if (persistImmediately) {
+          if (!pendingPersistRef.current) return;
+          pendingPersistRef.current = false;
+          await persistDispatch.mutateAsync(payload);
+          setDispatching(false);
+          void playSequence();
+          return;
+        }
+
+        await playSequence();
+        setDispatching(false);
+        if (pendingPersistRef.current) {
+          pendingPersistRef.current = false;
+          await persistDispatch.mutateAsync(payload);
+        }
+      } catch {
+        setDispatching(false);
         pendingPersistRef.current = false;
-        await persistDispatch.mutateAsync({
-          type: botoneraTypeToIncident(typeId),
-          address: addr,
-          description: notes.trim() || radioMsg || `Despacho ${emerg.code}`,
-          companyId: selectedCia,
-          vehicleIds,
-          latitude: latitude ? parseFloat(latitude) : undefined,
-          longitude: longitude ? parseFloat(longitude) : undefined,
-          dispatchNotes: [notes.trim(), apoyoNote].filter(Boolean).join(' · ') || undefined,
-          dispatchSource: 'BOTONERA',
-        });
       }
     },
     [
@@ -391,6 +452,10 @@ export function useQuickDispatch() {
       latitude,
       longitude,
       persistDispatch,
+      persistImmediately,
+      dispatchSource,
+      locationPinToken,
+      requireExplicitAddress,
       dispatchConfig,
       secondaryCia,
       secondaryDispatchConfig,
@@ -433,7 +498,7 @@ export function useQuickDispatch() {
     if (!muted) void playEmergencyKeyTone(main.id);
 
     if (main.subdivisions?.length) return;
-    tryAutoDispatch(main.id);
+    if (autoDispatchOnKey) tryAutoDispatch(main.id);
   };
 
   const handleSubdivisionClick = (sub: EmergencySubdivision, main: EmergencyMainType) => {
@@ -444,8 +509,17 @@ export function useQuickDispatch() {
     }
     setSelectedType(sub.id);
     if (!muted) void playEmergencyKeyTone(sub.id);
-    tryAutoDispatch(sub.id);
+    if (autoDispatchOnKey) tryAutoDispatch(sub.id);
   };
+
+  const resetDraft = useCallback(() => {
+    setSelectedType('');
+    setAddress('');
+    setLatitude('');
+    setLongitude('');
+    setNotes('');
+    setLocationPinToken(null);
+  }, []);
 
   const handleStop = () => {
     stop();
@@ -463,7 +537,7 @@ export function useQuickDispatch() {
     isEmergencyTypeReadyForDispatch(selectedType) &&
     selectedCia &&
     getVehicleIdsForDispatch().length > 0 &&
-    (address.trim() || company?.address)
+    (address.trim() || (!requireExplicitAddress && company?.address))
   );
 
   const activeIncidents = (incidents as { closedAt?: string | null }[]).filter((i) => !i.closedAt);
@@ -579,6 +653,8 @@ export function useQuickDispatch() {
     longitude,
     notes,
     setNotes,
+    locationPinToken,
+    setLocationPinToken,
     selectedCia,
     setSelectedCia,
     secondaryCia,
@@ -602,6 +678,7 @@ export function useQuickDispatch() {
     publicUrl: slug ? `${window.location.origin}/central/${slug}` : null,
     mapCenter,
     lastDispatchedIncident,
+    resetDraft,
     onMapPick,
     searchAddress,
     handleEmergencyTypeClick,

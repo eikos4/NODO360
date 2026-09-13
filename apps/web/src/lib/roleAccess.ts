@@ -3,6 +3,7 @@ export const OPERADOR_CENTRAL_ROLE = 'OPERADOR_CENTRAL';
 
 export const CENTRAL_OPERATOR_ROUTES = [
   '/despacho360',
+  '/nodo360-alarms',
   '/central-despachos-parral',
   '/central-express',
   '/central-operativa',

@@ -740,6 +740,93 @@ export class EmergencyResponseService {
     };
   }
 
+  async getRecap(userId: string, incidentId: string) {
+    const user = await this.prisma.user.findUnique({
+      where: { id: userId },
+      select: { id: true, role: true, companyId: true, isActive: true },
+    });
+    if (!user?.isActive) throw new ForbiddenException('Usuario inactivo');
+
+    const incident = await this.prisma.incident.findUnique({
+      where: { id: incidentId },
+      select: {
+        id: true,
+        code: true,
+        type: true,
+        description: true,
+        address: true,
+        status: true,
+        dispatchedAt: true,
+        closedAt: true,
+        companyId: true,
+        vehicles: { select: { vehicle: { select: { companyId: true } } } },
+        bitacoraEntry: {
+          select: {
+            id: true,
+            title: true,
+            emergencyType: true,
+            address: true,
+            occurredAt: true,
+            summary: true,
+            actionsTaken: true,
+            personnelNotes: true,
+            vehicleNotes: true,
+            outcome: true,
+            observations: true,
+            author: { select: { firstName: true, lastName: true } },
+          },
+        },
+        timelineEvents: {
+          select: {
+            id: true,
+            kind: true,
+            label: true,
+            note: true,
+            occurredAt: true,
+            author: { select: { id: true, firstName: true, lastName: true } },
+          },
+          orderBy: [{ occurredAt: 'asc' }, { createdAt: 'asc' }],
+        },
+      },
+    });
+    if (!incident) throw new NotFoundException('Emergencia no encontrada');
+
+    const privileged = user.role === 'SUPER_ADMIN' || user.role === 'KODESK';
+    const companyMatch = Boolean(
+      user.companyId && (
+        incident.companyId === user.companyId
+        || incident.vehicles.some((row) => row.vehicle.companyId === user.companyId)
+      ),
+    );
+
+    const mine = await this.prisma.incidentEmergencyResponse.findUnique({
+      where: { incidentId_userId: { incidentId, userId } },
+      include: {
+        user: { select: { id: true, firstName: true, lastName: true, photoUrl: true, operativeNumber: true } },
+      },
+    });
+
+    if (!privileged && !companyMatch && !mine) {
+      throw new NotFoundException('Emergencia no encontrada');
+    }
+
+    return {
+      incident: {
+        id: incident.id,
+        code: this.parseEmergencyCodeId(incident.type) || incident.code,
+        type: incident.type,
+        address: incident.address,
+        description: incident.description,
+        dispatchedAt: incident.dispatchedAt,
+        closedAt: incident.closedAt,
+        status: incident.status,
+      },
+      myResponse: mine ? this.mapResponse(mine) : null,
+      timeline: incident.timelineEvents,
+      report: incident.bitacoraEntry,
+    };
+  }
+
   async getMyProfile(userId: string) {
     const user = await this.prisma.user.findUnique({
       where: { id: userId },

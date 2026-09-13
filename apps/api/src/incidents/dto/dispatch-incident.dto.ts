@@ -16,4 +16,5 @@ export class DispatchIncidentDto {
   @IsOptional() @IsArray() @IsString({ each: true }) participantIds?: string[];
   @IsOptional() @IsString() dispatchNotes?: string;
   @IsOptional() @IsEnum(DispatchSourceDto) dispatchSource?: DispatchSourceDto;
+  @IsOptional() @IsString() locationPinToken?: string;
 }

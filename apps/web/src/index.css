@@ -118,6 +118,539 @@ html:not(.dark) {
   aside nav button.bg-red-600 svg {
     color: #ffffff !important;
   }
+
+  /* Banner Vision360: el override global de .text-white lo pone oscuro */
+  .vision360-banner,
+  .vision360-banner * {
+    color: #ffffff !important;
+  }
+  .vision360-banner .text-red-500 {
+    color: #ef4444 !important;
+  }
+
+  /* Central Parral: textos blancos sobre color sólido */
+  .central-parral-page .keep-on-color,
+  .central-parral-page .keep-on-color * {
+    color: #ffffff !important;
+  }
+}
+
+/* CTA Despachar: rojo sólido en ambos temas, sin opacity lavada */
+.central-parral-page .parral-dispatch-btn,
+.central-parral-page .parral-dispatch-btn * {
+  color: #ffffff !important;
+}
+.central-parral-page .parral-dispatch-btn {
+  background-color: #dc2626 !important;
+  opacity: 1 !important;
+  box-shadow: 0 12px 28px rgba(220, 38, 38, 0.28);
+}
+.central-parral-page .parral-dispatch-btn:hover:not(:disabled) {
+  background-color: #b91c1c !important;
+}
+.central-parral-page .parral-dispatch-btn:disabled {
+  background-color: #dc2626 !important;
+  opacity: 1 !important;
+  box-shadow: 0 10px 22px rgba(220, 38, 38, 0.18);
+  cursor: not-allowed;
+}
+
+html:not(.dark) .radio-ptt-btn.bg-violet-600,
+html:not(.dark) .radio-ptt-btn.bg-violet-600 *,
+html:not(.dark) .radio-ptt-btn.bg-red-600,
+html:not(.dark) .radio-ptt-btn.bg-red-600 * {
+  color: #ffffff !important;
+}
+
+html:not(.dark) .nodo360-alarms-page .keep-on-color,
+html:not(.dark) .nodo360-alarms-page .keep-on-color * {
+  color: #ffffff !important;
+}
+.nodo360-alarms-page .alarms-dispatch-btn,
+.nodo360-alarms-page .alarms-dispatch-btn * {
+  color: #ffffff !important;
+}
+.nodo360-alarms-page .alarms-dispatch-btn {
+  background-color: #dc2626 !important;
+  opacity: 1 !important;
+}
+.nodo360-alarms-page .alarms-dispatch-btn:hover:not(:disabled) {
+  background-color: #b91c1c !important;
+}
+.nodo360-alarms-page .alarms-wa-btn,
+.nodo360-alarms-page .alarms-wa-btn * {
+  color: #ffffff !important;
+}
+.nodo360-alarms-page .alarms-wa-btn {
+  background-color: #25D366 !important;
+  opacity: 1 !important;
+}
+.nodo360-alarms-page .alarms-wa-btn:hover {
+  background-color: #20bd5a !important;
+}
+
+/* Central operativa: texto blanco sobre rojo en tema claro */
+html:not(.dark) .central-operativa-page .keep-on-color,
+html:not(.dark) .central-operativa-page .keep-on-color * {
+  color: #ffffff !important;
+}
+
+/* Modales oscuros de sala pública: no heredar el remap de .text-white */
+.sala-dark-modal {
+  font-synthesis: none;
+  font-variant-ligatures: none;
+}
+html:not(.dark) .sala-dark-modal .text-white,
+html:not(.dark) .sala-dark-modal .text-slate-100,
+html:not(.dark) .sala-dark-modal .text-slate-200 {
+  color: #ffffff !important;
+}
+html:not(.dark) .sala-dark-modal .text-slate-300 {
+  color: #e2e8f0 !important;
+}
+html:not(.dark) .sala-dark-modal .text-slate-400,
+html:not(.dark) .sala-dark-modal .text-slate-500 {
+  color: #94a3b8 !important;
+}
+html:not(.dark) .sala-dark-modal .bg-slate-800 {
+  background-color: #1e293b !important;
+}
+html:not(.dark) .sala-dark-modal .hover\:text-white:hover {
+  color: #ffffff !important;
+}
+html:not(.dark) .sala-dark-modal .keep-on-color,
+html:not(.dark) .sala-dark-modal .keep-on-color * {
+  color: #ffffff !important;
+}
+
+/* Sala pública · tema Nodo (vale con html.dark o tema claro) */
+.sala-nodo,
+.sala-modern-nodo {
+  color: #e7edf4;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+.sala-nodo,
+.sala-modern-nodo,
+.sala-modern-nodo * {
+  font-synthesis: none;
+  font-variant-ligatures: none;
+  letter-spacing: normal;
+  text-shadow: none;
+}
+.sala-modern-nodo .font-black,
+.sala-modern-nodo .font-extrabold,
+.sala-modern-nodo .tracking-widest,
+.sala-modern-nodo .tracking-wide,
+.sala-modern-nodo .tracking-wider {
+  font-weight: 600;
+  letter-spacing: 0;
+}
+.sala-nodo .text-white,
+.sala-modern-nodo .text-white,
+html:not(.dark) .sala-nodo .text-white,
+html:not(.dark) .sala-modern-nodo .text-white {
+  color: #ffffff !important;
+}
+.sala-modern-nodo header.bg-white,
+.sala-modern-nodo .bg-white {
+  background-color: #0d1924 !important;
+  border-color: #1d3041 !important;
+}
+.sala-modern-nodo .text-slate-800,
+.sala-modern-nodo .text-slate-900,
+.sala-modern-nodo h1,
+.sala-modern-nodo h2,
+.sala-modern-nodo h3,
+.sala-modern-nodo h4,
+html:not(.dark) .sala-modern-nodo .text-slate-800,
+html:not(.dark) .sala-modern-nodo .text-slate-900,
+html:not(.dark) .sala-modern-nodo h1,
+html:not(.dark) .sala-modern-nodo h2,
+html:not(.dark) .sala-modern-nodo h3,
+html:not(.dark) .sala-modern-nodo h4 {
+  color: #e7edf4 !important;
+}
+.sala-modern-nodo .text-slate-700,
+.sala-modern-nodo .text-slate-600,
+.sala-modern-nodo .text-slate-500,
+.sala-modern-nodo .text-slate-400,
+html:not(.dark) .sala-modern-nodo .text-slate-700,
+html:not(.dark) .sala-modern-nodo .text-slate-600,
+html:not(.dark) .sala-modern-nodo .text-slate-500,
+html:not(.dark) .sala-modern-nodo .text-slate-400 {
+  color: #9fb3c4 !important;
+}
+.sala-modern-nodo .border-slate-200,
+.sala-modern-nodo .border-slate-200\/60,
+.sala-modern-nodo .border-slate-100,
+.sala-modern-nodo .border-slate-50 {
+  border-color: #1d3041 !important;
+}
+.sala-modern-nodo .bg-slate-50,
+.sala-modern-nodo .bg-slate-100 {
+  background-color: #102433 !important;
+}
+html:not(.dark) .sala-modern-nodo .bg-slate-800,
+html:not(.dark) .sala-modern-nodo .bg-slate-900,
+.sala-modern-nodo .bg-slate-800,
+.sala-modern-nodo .bg-slate-900 {
+  background-color: #122333 !important;
+}
+.sala-modern-nodo .fleet-photo,
+html:not(.dark) .sala-modern-nodo .fleet-photo,
+html:not(.dark) .sala-modern-nodo .fleet-photo.bg-slate-100 {
+  background: #e8eef4 !important;
+}
+.sala-modern-nodo .fleet-photo img {
+  mix-blend-mode: normal !important;
+  filter: none !important;
+  opacity: 1 !important;
+}
+.sala-modern-nodo .qr-plate,
+html:not(.dark) .sala-modern-nodo .qr-plate {
+  background: #ffffff !important;
+}
+.sala-modern-nodo .qr-plate img {
+  mix-blend-mode: normal !important;
+  opacity: 1 !important;
+}
+.sala-modern-nodo .nodo-on-color,
+.sala-modern-nodo .nodo-on-color * {
+  color: #ffffff !important;
+}
+.sala-modern-nodo .text-blue-600 {
+  color: #67c8ff !important;
+}
+
+/* Sala pública · tema verde (referencia New Relic) */
+.sala-verde,
+.sala-modern-verde {
+  color: #e8f8ee;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+.sala-verde,
+.sala-modern-verde,
+.sala-modern-verde * {
+  font-synthesis: none;
+  font-variant-ligatures: none;
+  letter-spacing: normal;
+  text-shadow: none;
+}
+.sala-modern-verde .font-black,
+.sala-modern-verde .font-extrabold,
+.sala-modern-verde .tracking-widest,
+.sala-modern-verde .tracking-wide,
+.sala-modern-verde .tracking-wider {
+  font-weight: 600;
+  letter-spacing: 0;
+}
+.sala-verde .text-white,
+.sala-modern-verde .text-white,
+html:not(.dark) .sala-verde .text-white,
+html:not(.dark) .sala-modern-verde .text-white {
+  color: #ffffff !important;
+}
+.sala-modern-verde header.bg-white,
+.sala-modern-verde .bg-white {
+  background-color: #062016 !important;
+  border-color: #13402c !important;
+}
+.sala-modern-verde .text-slate-800,
+.sala-modern-verde .text-slate-900,
+.sala-modern-verde h1,
+.sala-modern-verde h2,
+.sala-modern-verde h3,
+.sala-modern-verde h4,
+html:not(.dark) .sala-modern-verde .text-slate-800,
+html:not(.dark) .sala-modern-verde .text-slate-900,
+html:not(.dark) .sala-modern-verde h1,
+html:not(.dark) .sala-modern-verde h2,
+html:not(.dark) .sala-modern-verde h3,
+html:not(.dark) .sala-modern-verde h4 {
+  color: #e8f8ee !important;
+}
+.sala-modern-verde .text-slate-700,
+.sala-modern-verde .text-slate-600,
+.sala-modern-verde .text-slate-500,
+.sala-modern-verde .text-slate-400,
+html:not(.dark) .sala-modern-verde .text-slate-700,
+html:not(.dark) .sala-modern-verde .text-slate-600,
+html:not(.dark) .sala-modern-verde .text-slate-500,
+html:not(.dark) .sala-modern-verde .text-slate-400 {
+  color: #8fb9a4 !important;
+}
+.sala-modern-verde .border-slate-200,
+.sala-modern-verde .border-slate-200\/60,
+.sala-modern-verde .border-slate-100,
+.sala-modern-verde .border-slate-50 {
+  border-color: #13402c !important;
+}
+.sala-modern-verde .bg-slate-50,
+.sala-modern-verde .bg-slate-100 {
+  background-color: #0a2a1c !important;
+}
+html:not(.dark) .sala-modern-verde .bg-slate-800,
+html:not(.dark) .sala-modern-verde .bg-slate-900,
+.sala-modern-verde .bg-slate-800,
+.sala-modern-verde .bg-slate-900 {
+  background-color: #0a2a1c !important;
+}
+.sala-modern-verde .fleet-photo,
+html:not(.dark) .sala-modern-verde .fleet-photo,
+html:not(.dark) .sala-modern-verde .fleet-photo.bg-slate-100 {
+  background: #e8eef4 !important;
+}
+.sala-modern-verde .fleet-photo img {
+  mix-blend-mode: normal !important;
+  filter: none !important;
+  opacity: 1 !important;
+}
+.sala-modern-verde .qr-plate,
+html:not(.dark) .sala-modern-verde .qr-plate {
+  background: #ffffff !important;
+}
+.sala-modern-verde .nodo-on-color,
+.sala-modern-verde .nodo-on-color * {
+  color: #ffffff !important;
+}
+.sala-modern-verde .text-blue-600 {
+  color: #1ce783 !important;
+}
+
+/* Sala pública · tema azul eléctrico Kodesk */
+.sala-azul,
+.sala-modern-azul {
+  color: #ffffff;
+  background: linear-gradient(155deg, #0918e3 0%, #2a3af0 46%, #050d7a 100%);
+  -webkit-font-smoothing: antialiased;
+}
+.sala-azul,
+.sala-modern-azul,
+.sala-modern-azul * {
+  font-synthesis: none;
+  letter-spacing: normal;
+  text-shadow: none;
+}
+html:not(.dark) .sala-azul .text-slate-800,
+html:not(.dark) .sala-azul .text-slate-900,
+html:not(.dark) .sala-azul .text-slate-700,
+html:not(.dark) .sala-azul h1,
+html:not(.dark) .sala-azul h2 {
+  color: #ffffff !important;
+}
+html:not(.dark) .sala-azul .text-slate-500,
+html:not(.dark) .sala-azul .text-slate-400,
+html:not(.dark) .sala-azul .text-slate-600 {
+  color: rgba(255, 255, 255, 0.75) !important;
+}
+.sala-azul .text-white,
+.sala-modern-azul .text-white,
+html:not(.dark) .sala-azul .text-white,
+html:not(.dark) .sala-modern-azul .text-white,
+html:not(.dark) .sala-azul .keep-on-color,
+html:not(.dark) .sala-azul .keep-on-color *,
+html:not(.dark) .sala-modern-azul .keep-on-color,
+html:not(.dark) .sala-modern-azul .keep-on-color * {
+  color: #ffffff !important;
+}
+.sala-modern-azul header.bg-white,
+.sala-modern-azul .bg-white {
+  background-color: rgba(7, 18, 184, 0.42) !important;
+  border-color: rgba(255, 255, 255, 0.22) !important;
+}
+.sala-modern-azul .text-slate-800,
+.sala-modern-azul .text-slate-900,
+.sala-modern-azul h1,
+.sala-modern-azul h2,
+.sala-modern-azul h3,
+.sala-modern-azul h4,
+html:not(.dark) .sala-modern-azul .text-slate-800,
+html:not(.dark) .sala-modern-azul .text-slate-900,
+html:not(.dark) .sala-modern-azul h1,
+html:not(.dark) .sala-modern-azul h2,
+html:not(.dark) .sala-modern-azul h3,
+html:not(.dark) .sala-modern-azul h4 {
+  color: #ffffff !important;
+}
+.sala-modern-azul .text-slate-700,
+.sala-modern-azul .text-slate-600,
+.sala-modern-azul .text-slate-500,
+.sala-modern-azul .text-slate-400,
+html:not(.dark) .sala-modern-azul .text-slate-700,
+html:not(.dark) .sala-modern-azul .text-slate-600,
+html:not(.dark) .sala-modern-azul .text-slate-500,
+html:not(.dark) .sala-modern-azul .text-slate-400 {
+  color: rgba(255, 255, 255, 0.75) !important;
+}
+.sala-modern-azul .border-slate-200,
+.sala-modern-azul .border-slate-200\/60,
+.sala-modern-azul .border-slate-100,
+.sala-modern-azul .border-slate-50 {
+  border-color: rgba(255, 255, 255, 0.2) !important;
+}
+.sala-modern-azul .bg-slate-50,
+.sala-modern-azul .bg-slate-100 {
+  background-color: rgba(255, 255, 255, 0.12) !important;
+}
+.sala-modern-azul .text-blue-600 {
+  color: #ffffff !important;
+}
+.sala-modern-azul .fleet-photo,
+html:not(.dark) .sala-modern-azul .fleet-photo {
+  background: #e8eef4 !important;
+}
+.sala-modern-azul .qr-plate {
+  background: #ffffff !important;
+}
+.sala-modern-azul .nodo-on-color,
+.sala-modern-azul .nodo-on-color * {
+  color: #ffffff !important;
+}
+
+.osm-pin-wrap {
+  position: relative;
+  width: 28px;
+  height: 28px;
+}
+.osm-pin-pulse {
+  position: absolute;
+  inset: 0;
+  border-radius: 50%;
+  opacity: 0;
+}
+.osm-pin-pulse-active {
+  background: rgba(220, 38, 38, 0.4);
+  animation: osm-pin-pulse 1.6s ease-out infinite;
+}
+.osm-pin-dot {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  width: 14px;
+  height: 14px;
+  margin: -7px 0 0 -7px;
+  border-radius: 50%;
+  border: 2.5px solid #fff;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.35);
+}
+.osm-pin-dot-active { background: #dc2626; }
+.osm-pin-dot-idle { background: #64748b; }
+.osm-pin-dot-dispatch { background: #f97316; }
+.osm-pin-dot-field { background: #22c55e; }
+.osm-pin-dot-you { background: #3b82f6; }
+.osm-pin-pulse-dispatch {
+  background: rgba(249, 115, 22, 0.4);
+  animation: osm-pin-pulse 1.6s ease-out infinite;
+}
+.osm-pin-pulse-field {
+  background: rgba(34, 197, 94, 0.4);
+  animation: osm-pin-pulse 1.6s ease-out infinite;
+}
+.osm-pin-pulse-you {
+  background: rgba(59, 130, 246, 0.4);
+  animation: osm-pin-pulse 1.6s ease-out infinite;
+}
+@keyframes osm-pin-pulse {
+  0% { transform: scale(0.55); opacity: 0.7; }
+  100% { transform: scale(1.85); opacity: 0; }
+}
+
+@keyframes alarm-confirm-pop {
+  0% { transform: scale(0.86) translateY(16px); opacity: 0; }
+  60% { transform: scale(1.03) translateY(0); opacity: 1; }
+  100% { transform: scale(1); opacity: 1; }
+}
+@keyframes alarm-confirm-siren {
+  0%, 100% { transform: rotate(-8deg); }
+  50% { transform: rotate(8deg); }
+}
+@keyframes alarm-confirm-ring {
+  0% { transform: scale(0.7); opacity: 0.55; }
+  100% { transform: scale(1.7); opacity: 0; }
+}
+@keyframes alarm-confirm-bar {
+  0% { transform: scaleX(0); }
+  100% { transform: scaleX(1); }
+}
+@keyframes alarm-confirm-check {
+  0% { transform: scale(0.4); opacity: 0; }
+  70% { transform: scale(1.15); opacity: 1; }
+  100% { transform: scale(1); opacity: 1; }
+}
+.alarm-confirm-pop { animation: alarm-confirm-pop 0.45s cubic-bezier(0.22, 1, 0.36, 1) both; }
+.alarm-confirm-siren { animation: alarm-confirm-siren 0.55s ease-in-out 3; }
+.alarm-confirm-ring {
+  position: absolute;
+  inset: 0;
+  border-radius: 9999px;
+  border: 3px solid #dc2626;
+  animation: alarm-confirm-ring 1.2s ease-out infinite;
+}
+.alarm-confirm-ring-delay { animation-delay: 0.4s; }
+.alarm-confirm-bar { transform-origin: left; animation: alarm-confirm-bar 0.5s ease-out both; }
+.alarm-confirm-check { animation: alarm-confirm-check 0.45s 0.25s both; }
+
+/* Perfil público del cuartel: no heredar remap del tema claro */
+.cuartel-publico {
+  background-color: #020617 !important;
+  color: #f8fafc;
+}
+html:not(.dark) .cuartel-publico .bg-slate-950,
+.cuartel-publico .bg-slate-950 {
+  background-color: #020617 !important;
+}
+html:not(.dark) .cuartel-publico .bg-slate-900,
+.cuartel-publico .bg-slate-900 {
+  background-color: #0f172a !important;
+}
+html:not(.dark) .cuartel-publico .text-white,
+.cuartel-publico .text-white,
+html:not(.dark) .cuartel-publico .keep-on-color,
+html:not(.dark) .cuartel-publico .keep-on-color * {
+  color: #ffffff !important;
+}
+html:not(.dark) .cuartel-publico .border-slate-800,
+.cuartel-publico .border-slate-800 {
+  border-color: #1e293b !important;
+}
+.cuartel-publico .font-black {
+  font-weight: 700;
+  letter-spacing: 0;
+}
+
+/* Enlace público /localizar/:token — no heredar remap ni Google Maps */
+.localizar-publico {
+  background-color: #f4f6f8 !important;
+  color: #0f172a;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+.localizar-publico,
+.localizar-publico * {
+  font-synthesis: none;
+  font-variant-ligatures: none;
+  letter-spacing: normal;
+  word-spacing: normal;
+  text-shadow: none;
+}
+.localizar-publico .font-black,
+.localizar-publico .font-extrabold,
+.localizar-publico .tracking-widest,
+.localizar-publico .tracking-wider,
+.localizar-publico .tracking-wide {
+  font-weight: 600;
+  letter-spacing: 0.01em;
+}
+html:not(.dark) .localizar-publico .localizar-btn,
+.localizar-publico .localizar-btn,
+html:not(.dark) .localizar-publico .localizar-btn * {
+  color: #ffffff !important;
+}
+.localizar-publico .leaflet-container {
+  background: #e8edf2;
+  font-family: system-ui, sans-serif;
 }
 
 /* Leaflet Map Styles */
@@ -283,6 +816,41 @@ html:not(.dark) .leaflet-popup-tip {
     opacity: 1;
     transform: translateY(0);
   }
+}
+
+/* Sala pública: número operativo y texto no heredan el remap claro */
+.sala-public .operative-num,
+html:not(.dark) .sala-public .operative-num,
+html:not(.dark) .sala-public .keep-on-color,
+html:not(.dark) .sala-public .keep-on-color * {
+  color: #ffffff !important;
+}
+.sala-public,
+.sala-public main {
+  scrollbar-width: none;
+}
+.sala-public::-webkit-scrollbar,
+.sala-public *::-webkit-scrollbar {
+  width: 0;
+  height: 0;
+  display: none;
+}
+
+html:not(.dark) .sala-guardia .text-white,
+.sala-guardia .text-white {
+  color: #ffffff !important;
+}
+html:not(.dark) .sala-guardia .text-slate-800,
+html:not(.dark) .sala-guardia .text-slate-900,
+html:not(.dark) .sala-guardia .text-slate-700,
+html:not(.dark) .sala-guardia h1,
+html:not(.dark) .sala-guardia h2 {
+  color: #f4e8d0 !important;
+}
+html:not(.dark) .sala-guardia .text-slate-500,
+html:not(.dark) .sala-guardia .text-slate-400,
+html:not(.dark) .sala-guardia .text-slate-600 {
+  color: rgba(244, 232, 208, 0.72) !important;
 }
 
 /* ── Sala de máquinas · Guardia nocturna ── */

@@ -4,8 +4,11 @@ const config: CapacitorConfig = {
   appId: 'cl.nodo360.mobile',
   appName: 'Nodo360',
   webDir: 'dist',
-  backgroundColor: '#071019',
-  android: { allowMixedContent: false },
+  backgroundColor: '#f8fafc',
+  android: {
+    allowMixedContent: false,
+    backgroundColor: '#f8fafc',
+  },
   plugins: {
     CapacitorHttp: { enabled: true },
     FirebaseMessaging: {

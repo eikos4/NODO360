@@ -1,6 +1,10 @@
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useState } from 'react';
+import type { SalaLook } from '../lib/dispatch-public-theme';
 
-const KEY = 'nodo360_sala_night';
+const LOOK_KEY = 'nodo360_sala_look';
+const LEGACY_KEY = 'nodo360_sala_night';
+
+const LOOKS: SalaLook[] = ['light', 'nodo', 'verde', 'azul', 'night'];
 
 export type SalaNightPref = 'auto' | 'day' | 'night';
 
@@ -9,38 +13,40 @@ export function isGuardiaHours(d = new Date()) {
   return h >= 19 || h < 7;
 }
 
-function readPref(): SalaNightPref {
+function readLook(): SalaLook {
   try {
-    const raw = localStorage.getItem(KEY);
-    if (raw === 'day' || raw === 'night' || raw === 'auto') return raw;
+    const look = localStorage.getItem(LOOK_KEY);
+    if (look && LOOKS.includes(look as SalaLook)) return look as SalaLook;
+    const legacy = localStorage.getItem(LEGACY_KEY);
+    if (legacy === 'night') return 'night';
+    if (legacy === 'day') return 'light';
+    if (legacy === 'auto') return isGuardiaHours() ? 'night' : 'light';
   } catch { /* ignore */ }
-  return 'auto';
+  return 'light';
 }
 
 export function useSalaNightMode() {
-  const [pref, setPref] = useState<SalaNightPref>(readPref);
-  const [, setTick] = useState(0);
-
-  useEffect(() => {
-    const id = window.setInterval(() => setTick((n) => n + 1), 30_000);
-    return () => window.clearInterval(id);
-  }, []);
-
-  const night = pref === 'night' || (pref === 'auto' && isGuardiaHours());
+  const [look, setLook] = useState<SalaLook>(readLook);
 
   const cycle = useCallback(() => {
-    setPref((prev) => {
-      const next: SalaNightPref = prev === 'auto' ? 'night' : prev === 'night' ? 'day' : 'auto';
-      try { localStorage.setItem(KEY, next); } catch { /* ignore */ }
+    setLook((prev) => {
+      const next = LOOKS[(LOOKS.indexOf(prev) + 1) % LOOKS.length];
+      try { localStorage.setItem(LOOK_KEY, next); } catch { /* ignore */ }
       return next;
     });
   }, []);
 
-  const label = pref === 'auto'
-    ? (night ? 'Guardia nocturna · auto' : 'Día · auto')
-    : pref === 'night'
-      ? 'Noche fija'
-      : 'Día fijo';
+  const night = look === 'night';
+  const isNodo = look === 'nodo';
+  const isVerde = look === 'verde';
+  const isAzul = look === 'azul';
+  const pref: SalaNightPref = look === 'night' ? 'night' : 'day';
+  const label =
+    look === 'light' ? 'Tema claro'
+      : look === 'nodo' ? 'Tema Nodo'
+        : look === 'verde' ? 'Tema verde'
+          : look === 'azul' ? 'Tema azul'
+            : 'Guardia nocturna';
 
-  return { night, pref, cycle, label };
+  return { look, night, isNodo, isVerde, isAzul, pref, cycle, label };
 }

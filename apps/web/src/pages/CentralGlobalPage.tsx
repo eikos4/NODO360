@@ -10,12 +10,8 @@ import { useThemeStore } from '../store/themeStore';
 import { useAuthStore } from '../store/authStore';
 import { isCentralOperator } from '../lib/roleAccess';
 import toast from 'react-hot-toast';
-import { Map, AdvancedMarker } from '@vis.gl/react-google-maps';
 import { COMPANIAS360 } from '../lib/companias360';
-
-const IncidentIcon = () => (
-  <div style={{ background: '#ef4444', width: 14, height: 14, borderRadius: '50%', border: '3px solid white', boxShadow: '0 2px 8px rgba(0,0,0,.4)' }}></div>
-);
+import PublicOsmMap, { PARRAL_CENTER } from '../components/map/PublicOsmMap';
 
 export default function CentralGlobalPage() {
   const { user } = useAuthStore();
@@ -403,7 +399,7 @@ export default function CentralGlobalPage() {
                       {m.photoUrl ? <img src={m.photoUrl} className={`w-full h-full object-cover ${(!m.stationAvailable && !isSupport) ? 'grayscale opacity-60' : ''}`} /> : <Users className="w-6 h-6 text-slate-600 absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2"/>}
                     </div>
                     <p className="text-[11px] font-bold text-slate-900 dark:text-white leading-tight mb-0.5 w-full truncate">
-                      {m.operativeNumber ? <span className="text-amber-400 mr-1">{m.operativeNumber}</span> : null}
+                      {m.operativeNumber ? <span className="text-red-600 dark:text-red-500 mr-1">{m.operativeNumber}</span> : null}
                       {m.firstName} {m.lastName}
                     </p>
                     <p className="text-[9px] text-slate-500 w-full truncate">{m.companyName}</p>
@@ -541,20 +537,22 @@ export default function CentralGlobalPage() {
               </p>
             </div>
             <div className="flex-1 bg-slate-100 dark:bg-slate-900 w-full relative z-0 border-t border-slate-200 dark:border-slate-800">
-              <Map
-                mapId="central-mini-map"
-                defaultZoom={11}
-                defaultCenter={{ lat: -36.14, lng: -71.82 }} // Parral aprox
-                gestureHandling="greedy"
-                disableDefaultUI={true}
-                colorScheme={isDark ? "DARK" : "LIGHT"}
-              >
-                {data?.activeEmergencies?.map((e: any) => e.latitude && e.longitude && (
-                  <AdvancedMarker key={e.id} position={{ lat: e.latitude, lng: e.longitude }}>
-                    <IncidentIcon />
-                  </AdvancedMarker>
-                ))}
-              </Map>
+              <PublicOsmMap
+                theme={isDark ? 'dark' : 'light'}
+                baseStyle={isDark ? 'dark' : 'voyager'}
+                center={PARRAL_CENTER}
+                zoom={13}
+                className="h-full w-full"
+                markers={(data?.activeEmergencies ?? [])
+                  .filter((e: any) => e.latitude && e.longitude)
+                  .map((e: any) => ({
+                    id: e.id,
+                    lat: e.latitude,
+                    lng: e.longitude,
+                    active: true,
+                    label: `<strong>${e.code ? `${e.code} · ` : ''}${e.type ?? 'Emergencia'}</strong><br/>${e.address ?? ''}`,
+                  }))}
+              />
             </div>
           </div>
         </div>

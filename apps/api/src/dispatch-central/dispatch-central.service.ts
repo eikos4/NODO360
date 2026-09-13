@@ -447,6 +447,10 @@ export class DispatchCentralService {
         alarmBy,
         dispatchSource: inc.dispatchSource,
         vehicles,
+        participants: (inc.participants ?? []).map((p: any) => ({
+          name: `${p.user.firstName} ${p.user.lastName}`.trim(),
+          role: p.user.role,
+        })),
         involvedAsSupport: !isDispatchOwner,
         dispatchCompanyName: isDispatchOwner ? null : inc.company.name,
         dispatchCompanyNumber: isDispatchOwner ? null : inc.company.number,

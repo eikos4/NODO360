@@ -15,6 +15,7 @@ import { unregisterPushToken } from '../../lib/push-notifications';
 
 const IMMERSIVE_ROUTES = [
   '/despacho360',
+  '/nodo360-alarms',
   '/central-despachos',
   '/central-operativa',
   '/central-bitacora',

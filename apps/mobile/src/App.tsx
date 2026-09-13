@@ -21,11 +21,13 @@ import { HelmetIcon } from './HelmetIcon';
 import { RadioScreen } from './RadioScreen';
 import { AnnouncementsScreen } from './AnnouncementsScreen';
 import { ProfileScreen } from './ProfileScreen';
+import { EmergencyRecapScreen } from './EmergencyRecapScreen';
+import { OperationalBitacora } from './OperationalBitacora';
 import { HelpMenuButton, HelpScreen } from './HelpScreen';
 import { useAppTheme } from './theme';
 import type { ActiveIncident, AuthUser } from './types';
 
-type Screen = 'alarms' | 'radio' | 'history' | 'settings' | 'announcements' | 'help';
+type Screen = 'alarms' | 'radio' | 'history' | 'settings' | 'announcements' | 'help' | 'recap';
 
 function ThemeToggle({ compact = false }: { compact?: boolean }) {
   const { theme, toggleTheme } = useAppTheme();
@@ -499,6 +501,8 @@ function IncidentView({
         {mapUrl ? <iframe title="Mapa de emergencia" src={mapUrl} loading="lazy" /> : <div className="map-empty"><MapPin /> Coordenadas aún no confirmadas</div>}
       </section>
 
+      <OperationalBitacora incidentId={incident.id} live />
+
       <section className="team-card">
         <div className="section-title"><span><Users /> COMPAÑEROS</span><small>{incident.teamSummary.total} respuestas</small></div>
         {incident.teamSummary.responses.length ? incident.teamSummary.responses.map((response) => (
@@ -523,6 +527,8 @@ export default function App() {
   const [activated, setActivated] = useState(false);
   const [screen, setScreen] = useState<Screen>('alarms');
   const [settingsHelp, setSettingsHelp] = useState(false);
+  const [recapId, setRecapId] = useState<string | null>(null);
+  const [recapFrom, setRecapFrom] = useState<Exclude<Screen, 'recap'>>('settings');
   useEffect(() => {
     if (screen !== 'settings') setSettingsHelp(false);
   }, [screen]);
@@ -639,7 +645,7 @@ export default function App() {
         await api.post('/notifications/register', { token, platform: Capacitor.getPlatform() });
       }
       if (disposed) await Promise.all(listeners.map((handle) => handle.remove()));
-    })().catch(() => setNotice('Push FCM no disponible: revisa la configuración Firebase nativa.'));
+    })().catch(() => undefined);
     return () => {
       disposed = true;
       void Promise.all(listeners.map((handle) => handle.remove()));
@@ -758,7 +764,7 @@ export default function App() {
       {notice && <div className="toast"><Check /> {notice}</div>}
       {sync.lastError && <div className="warning"><AlertTriangle /> {sync.lastError}</div>}
       <main className="content">
-        {screen !== 'history' && screen !== 'radio' && screen !== 'announcements' && screen !== 'settings' && screen !== 'help' && (
+        {screen !== 'history' && screen !== 'radio' && screen !== 'announcements' && screen !== 'settings' && screen !== 'help' && screen !== 'recap' && (
           <RadioAvailability available={stationAvailable} busy={stationBusy} onToggle={toggleStation} />
         )}
         {screen === 'help' ? (
@@ -767,10 +773,29 @@ export default function App() {
           settingsHelp ? (
             <HelpScreen onBack={() => setSettingsHelp(false)} />
           ) : (
-            <ProfileScreen>
+            <ProfileScreen
+              onOpenEmergency={(incidentId) => {
+                if (incidents.some((item) => item.id === incidentId)) {
+                  setSelectedId(incidentId);
+                  setScreen('alarms');
+                  return;
+                }
+                setRecapFrom('settings');
+                setRecapId(incidentId);
+                setScreen('recap');
+              }}
+            >
               <AlarmSettings onOpenHelp={() => setSettingsHelp(true)} />
             </ProfileScreen>
           )
+        ) : screen === 'recap' && recapId ? (
+          <EmergencyRecapScreen
+            incidentId={recapId}
+            onBack={() => {
+              setScreen(recapFrom);
+              setRecapId(null);
+            }}
+          />
         ) : screen === 'radio' ? (
           <RadioScreen
             user={user}
@@ -784,7 +809,16 @@ export default function App() {
           <section className="history">
             <h2>Historial reciente</h2>
             {sync.history.length ? sync.history.map((item) => (
-              <button key={item.id} onClick={() => { setSelectedId(item.incidentId); setScreen('alarms'); }}>
+              <button key={item.id} onClick={() => {
+                if (incidents.some((incident) => incident.id === item.incidentId)) {
+                  setSelectedId(item.incidentId);
+                  setScreen('alarms');
+                  return;
+                }
+                setRecapFrom('history');
+                setRecapId(item.incidentId);
+                setScreen('recap');
+              }}>
                 <span className="history-icon"><Siren /></span><span><b>{item.title}</b><small>{item.body}</small><time>{new Date(item.createdAt).toLocaleString('es-CL')}</time></span><ChevronRight />
               </button>
             )) : <p className="empty">No hay alarmas recientes.</p>}
@@ -810,8 +844,8 @@ export default function App() {
       <nav className="nav-5">
         <button className={screen === 'alarms' ? 'active' : ''} onClick={() => setScreen('alarms')}><Siren />Alarmas{incidents.length > 0 && <i>{incidents.length}</i>}</button>
         <button className={screen === 'radio' ? 'active' : ''} onClick={() => setScreen('radio')}><Radio />Radio{incidents.length > 0 && <i className="radio-live-dot" />}</button>
-        <button className={screen === 'history' ? 'active' : ''} onClick={() => setScreen('history')}><History />Historial</button>
-        <button className={screen === 'settings' ? 'active' : ''} onClick={() => { setSettingsHelp(false); setScreen('settings'); }}><UserRound />Perfil</button>
+        <button className={screen === 'history' || (screen === 'recap' && recapFrom === 'history') ? 'active' : ''} onClick={() => setScreen('history')}><History />Historial</button>
+        <button className={screen === 'settings' || (screen === 'recap' && recapFrom === 'settings') ? 'active' : ''} onClick={() => { setSettingsHelp(false); setScreen('settings'); }}><UserRound />Perfil</button>
         <button className={screen === 'help' || settingsHelp ? 'active' : ''} onClick={() => { setSettingsHelp(false); setScreen('help'); }}><HelpCircle />Ayuda</button>
       </nav>
     </div>

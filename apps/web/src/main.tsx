@@ -13,19 +13,26 @@ const queryClient = new QueryClient({
   defaultOptions: { queries: { retry: 1, staleTime: 30000 } },
 });
 
+const GOOGLE_MAPS_KEY = import.meta.env.VITE_GOOGLE_MAPS_API_KEY as string | undefined;
+
 function ThemeProvider({ children }: { children: React.ReactNode }) {
   const theme = useThemeStore((s) => s.theme);
   useEffect(() => { applyTheme(theme); }, [theme]);
   return <>{children}</>;
 }
 
+function OptionalGoogleMaps({ children }: { children: React.ReactNode }) {
+  if (!GOOGLE_MAPS_KEY) return <>{children}</>;
+  return <APIProvider apiKey={GOOGLE_MAPS_KEY}>{children}</APIProvider>;
+}
+
 ReactDOM.createRoot(document.getElementById('root')!).render(
   <QueryClientProvider client={queryClient}>
     <BrowserRouter>
       <ThemeProvider>
-        <APIProvider apiKey={import.meta.env.VITE_GOOGLE_MAPS_API_KEY || ''}>
+        <OptionalGoogleMaps>
           <App />
-        </APIProvider>
+        </OptionalGoogleMaps>
         <Toaster position="top-right" />
       </ThemeProvider>
     </BrowserRouter>

@@ -7,15 +7,21 @@ export function buildLocationPinWhatsAppMessage(opts: {
   type: string;
   address: string;
   url: string;
+  company?: string;
 }) {
-  return [
-    `🚨 *Emergencia ${opts.code}*`,
-    opts.type,
-    `📍 ${opts.address}`,
+  const lines = [`🚨 Bomberos — ${opts.code}`, opts.type];
+  if (opts.address.trim() && opts.address.trim() !== 'Por confirmar') {
+    lines.push(`📍 ${opts.address.trim()}`);
+  }
+  if (opts.company?.trim()) {
+    lines.push(opts.company.trim());
+  }
+  lines.push(
     '',
-    'Por favor abre este enlace para marcar la ubicación exacta del incendio en el mapa:',
+    'Abre el enlace, toca «Obtener mi ubicación» y confirma el punto exacto para que lleguen los carros:',
     opts.url,
-  ].join('\n');
+  );
+  return lines.join('\n');
 }
 
 export function buildWhatsAppShareUrl(phone: string, message: string) {

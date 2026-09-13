@@ -52,7 +52,7 @@ export default function EmergencyReturnCelebration({ open, onClose, companyName 
 
   return (
     <div
-      className="fixed inset-0 z-[9999] flex items-center justify-center p-4 return-celebration-backdrop"
+      className="sala-dark-modal fixed inset-0 z-[9999] flex items-center justify-center p-4 return-celebration-backdrop"
       role="dialog"
       aria-modal="true"
       aria-labelledby="return-celebration-title"
@@ -96,19 +96,19 @@ export default function EmergencyReturnCelebration({ open, onClose, companyName 
               <AnimatedFirefighter delayMs={360} />
             </div>
 
-            <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-emerald-500/15 border border-emerald-500/30 text-emerald-300 text-xs font-bold uppercase tracking-wider mb-4">
+            <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-emerald-500/15 border border-emerald-500/30 text-emerald-300 text-xs font-semibold uppercase mb-4">
               <CheckCircle2 className="w-4 h-4" />
               Regreso al cuartel
             </div>
 
-            <h2 id="return-celebration-title" className="text-2xl sm:text-3xl font-black text-white leading-tight mb-2">
+            <h2 id="return-celebration-title" className="text-2xl sm:text-3xl font-bold text-white leading-tight mb-2">
               {message.title}
             </h2>
             <p className="text-sm sm:text-base text-slate-300 leading-relaxed max-w-sm mx-auto">
               {message.subtitle}
             </p>
             {companyName ? (
-              <p className="text-xs text-emerald-400/90 mt-3 font-semibold">{companyName}</p>
+              <p className="text-xs text-emerald-300 mt-3 font-semibold">{companyName}</p>
             ) : null}
           </div>
 
@@ -116,7 +116,7 @@ export default function EmergencyReturnCelebration({ open, onClose, companyName 
             <button
               type="button"
               onClick={onClose}
-              className="w-full py-3 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-sm transition-colors"
+              className="keep-on-color w-full py-3 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-semibold text-sm transition-colors"
             >
               Continuar
             </button>

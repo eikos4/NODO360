@@ -10,6 +10,7 @@ import {
   type RadioTx,
 } from '../../lib/radio-socket';
 import { cn } from '../../lib/utils';
+import { useThemeStore } from '../../store/themeStore';
 
 type Props = {
   incidentId: string;
@@ -19,6 +20,7 @@ type Props = {
   /** Puede transmitir (PTT) */
   canTalk?: boolean;
   className?: string;
+  isDark?: boolean;
 };
 
 const MAX_MS = 15000;
@@ -29,7 +31,10 @@ export default function RadioPttPanel({
   enabled = true,
   canTalk = true,
   className,
+  isDark: isDarkProp,
 }: Props) {
+  const theme = useThemeStore((s) => s.theme);
+  const isDark = isDarkProp ?? theme === 'dark';
   const me = useAuthStore((s) => s.user);
   const [connected, setConnected] = useState(false);
   const [state, setState] = useState<RadioChannelState | null>(null);
@@ -211,35 +216,38 @@ export default function RadioPttPanel({
   return (
     <div
       className={cn(
-        'rounded-2xl border border-violet-500/40 bg-[#100a18] p-4 shadow-[0_0_20px_rgba(139,92,246,0.15)] space-y-3',
+        'radio-ptt-panel rounded-2xl border p-4 space-y-3',
+        isDark
+          ? 'border-violet-500/40 bg-[#100a18] shadow-[0_0_20px_rgba(139,92,246,0.15)]'
+          : 'border-violet-300 bg-violet-50 shadow-sm',
         className,
       )}
     >
       <div className="flex items-start justify-between gap-2">
         <div className="min-w-0">
           <div className="flex items-center gap-2">
-            <Radio className="w-4 h-4 text-violet-400" />
-            <p className="text-[10px] uppercase tracking-[0.16em] font-black text-violet-300">
+            <Radio className={cn('w-4 h-4', isDark ? 'text-violet-400' : 'text-violet-700')} />
+            <p className={cn('text-[10px] uppercase tracking-[0.16em] font-black', isDark ? 'text-violet-300' : 'text-violet-800')}>
               Radio de emergencia
             </p>
           </div>
-          <p className="text-sm font-bold text-white mt-1 truncate">
+          <p className={cn('text-sm font-bold mt-1 truncate', isDark ? 'text-white' : 'text-slate-900')}>
             {incidentLabel || 'Canal del incidente'}
           </p>
-          <p className="text-[11px] text-slate-400 mt-0.5 flex items-center gap-2">
-            <span className={cn('w-1.5 h-1.5 rounded-full', connected ? 'bg-emerald-400' : 'bg-slate-500')} />
+          <p className={cn('text-[11px] mt-0.5 flex items-center gap-2', isDark ? 'text-slate-400' : 'text-slate-700')}>
+            <span className={cn('w-1.5 h-1.5 rounded-full', connected ? 'bg-emerald-500' : 'bg-slate-400')} />
             {connected ? 'En canal' : 'Conectando…'}
-            <span className="flex items-center gap-1 text-slate-500">
+            <span className={cn('flex items-center gap-1', isDark ? 'text-slate-500' : 'text-slate-600')}>
               <Users className="w-3 h-3" /> {state?.listeners ?? 0}
             </span>
           </p>
         </div>
         {talker && (
           <div className="shrink-0 text-right">
-            <p className="text-[9px] uppercase tracking-wider text-amber-400 font-bold flex items-center gap-1 justify-end">
+            <p className={cn('text-[9px] uppercase tracking-wider font-bold flex items-center gap-1 justify-end', isDark ? 'text-amber-400' : 'text-amber-800')}>
               <Volume2 className="w-3 h-3 animate-pulse" /> Al aire
             </p>
-            <p className="text-xs font-black text-white">{talker.speakerName}</p>
+            <p className={cn('text-xs font-black', isDark ? 'text-white' : 'text-slate-900')}>{talker.speakerName}</p>
           </div>
         )}
       </div>
@@ -262,13 +270,17 @@ export default function RadioPttPanel({
           if (holding) void finishPtt();
         }}
         className={cn(
-          'w-full select-none touch-none rounded-2xl py-5 flex flex-col items-center justify-center gap-2 font-black uppercase tracking-wider transition-all border-2',
+          'radio-ptt-btn w-full select-none touch-none rounded-2xl py-5 flex flex-col items-center justify-center gap-2 font-black uppercase tracking-wider transition-all border-2',
           holding
             ? 'bg-red-600 border-red-400 text-white shadow-[0_0_28px_rgba(239,68,68,0.55)] scale-[1.02]'
             : canTalk
-              ? 'bg-violet-600/90 border-violet-400/60 text-white hover:bg-violet-500 shadow-[0_0_18px_rgba(139,92,246,0.35)]'
-              : 'bg-slate-800 border-slate-700 text-slate-400',
-          'disabled:opacity-40 disabled:cursor-not-allowed disabled:shadow-none',
+              ? isDark
+                ? 'bg-violet-600 border-violet-400 text-white hover:bg-violet-500 shadow-[0_0_18px_rgba(139,92,246,0.35)]'
+                : 'bg-violet-600 border-violet-700 text-white hover:bg-violet-700 shadow-md'
+              : isDark
+                ? 'bg-slate-800 border-slate-700 text-slate-300'
+                : 'bg-slate-200 border-slate-300 text-slate-700',
+          'disabled:cursor-not-allowed disabled:shadow-none',
         )}
       >
         {holding ? <Mic className="w-8 h-8 animate-pulse" /> : uploading ? <MicOff className="w-8 h-8 animate-pulse" /> : <Mic className="w-8 h-8" />}
@@ -281,14 +293,14 @@ export default function RadioPttPanel({
                 ? 'Enviando…'
                 : 'Mantén para hablar'}
         </span>
-        <span className="text-[10px] font-semibold opacity-80 normal-case tracking-normal">
+        <span className="text-[10px] font-semibold normal-case tracking-normal">
           Máx. {MAX_MS / 1000}s · un hablante a la vez
         </span>
       </button>
 
       {state?.recent && state.recent.length > 0 && (
         <div className="space-y-1.5 max-h-28 overflow-y-auto">
-          <p className="text-[9px] uppercase tracking-wider text-slate-500 font-bold">Últimas transmisiones</p>
+          <p className={cn('text-[9px] uppercase tracking-wider font-bold', isDark ? 'text-slate-400' : 'text-slate-600')}>Últimas transmisiones</p>
           {state.recent.slice(0, 5).map((tx) => (
             <button
               key={tx.id}
@@ -297,12 +309,16 @@ export default function RadioPttPanel({
               className={cn(
                 'w-full flex items-center justify-between gap-2 text-left px-2.5 py-1.5 rounded-lg border text-xs transition-colors',
                 lastPlayedId === tx.id
-                  ? 'border-violet-500/50 bg-violet-500/15 text-violet-200'
-                  : 'border-slate-800 bg-black/30 text-slate-300 hover:border-slate-600',
+                  ? isDark
+                    ? 'border-violet-500/50 bg-violet-500/15 text-violet-200'
+                    : 'border-violet-400 bg-violet-100 text-violet-900'
+                  : isDark
+                    ? 'border-slate-800 bg-black/30 text-slate-300 hover:border-slate-600'
+                    : 'border-slate-200 bg-white text-slate-800 hover:border-slate-300',
               )}
             >
               <span className="font-semibold truncate">{tx.speakerName}</span>
-              <span className="text-[10px] text-slate-500 shrink-0">
+              <span className={cn('text-[10px] shrink-0', isDark ? 'text-slate-500' : 'text-slate-600')}>
                 {Math.max(1, Math.round(tx.durationMs / 1000))}s
               </span>
             </button>

@@ -39,6 +39,12 @@ export class EmergencyResponseController {
     return this.service.getMyProfile(req.user.id);
   }
 
+  @Get(':incidentId/recap')
+  @Roles(...RESPONDER_ROLES)
+  getRecap(@Param('incidentId') incidentId: string, @Req() req: { user: { id: string } }) {
+    return this.service.getRecap(req.user.id, incidentId);
+  }
+
   @Get(':incidentId')
   @Roles(...RESPONDER_ROLES)
   getDetail(@Param('incidentId') incidentId: string, @Req() req: { user: { id: string } }) {

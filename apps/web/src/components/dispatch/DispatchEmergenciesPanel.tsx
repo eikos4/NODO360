@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { Siren, MapPin, Clock, Radio, BookOpen, CheckCircle2, AlertTriangle, Navigation } from 'lucide-react';
 import EmergencyLocationUpdater from './EmergencyLocationUpdater';
 import PublicOsmMap, { PARRAL_CENTER } from '../map/PublicOsmMap';
+import PublicEmergencySummaryModal, { type EmergencyOpen } from './PublicEmergencySummaryModal';
 
 export type PublicEmergency = {
   id: string;
@@ -20,7 +21,7 @@ export type PublicEmergency = {
   dispatchLongitude?: number | null;
   dispatchedAt: string;
   closedAt?: string | null;
-  status: 'ACTIVA' | 'CERRADA';
+  status: 'ACTIVA' | 'CERRADA' | 'CANCELADA';
   alarmBy: string;
   radioMessage?: string;
   emergencyCodeId?: string | null;
@@ -29,7 +30,7 @@ export type PublicEmergency = {
   involvedAsSupport?: boolean;
   dispatchCompanyName?: string | null;
   dispatchCompanyNumber?: number | null;
-  participants?: any[];
+  participants?: { name?: string; role?: string; firstName?: string; lastName?: string }[];
 };
 
 function formatWhen(iso: string) {
@@ -111,17 +112,24 @@ export default function DispatchEmergenciesPanel({
     !e.hasBitacora && (e.status === 'CERRADA' || pendingBitacoraIds.includes(e.id));
 
   const [editingLocationId, setEditingLocationId] = useState<string | null>(null);
+  const [summaryOpen, setSummaryOpen] = useState<EmergencyOpen>(null);
 
   return (
     <div className={`border rounded-2xl overflow-hidden h-full flex flex-col ${s.wrap}`}>
       <div className={`px-4 py-3 border-b ${s.header}`}>
         <div className="flex items-center gap-2">
           <Siren className="w-4 h-4 text-red-500" />
-          <h3 className={`text-sm font-bold ${s.title}`}>Últimas emergencias</h3>
+          <button type="button" onClick={() => setSummaryOpen('all')} className={`text-sm font-bold text-left ${s.title}`}>
+            Últimas emergencias
+          </button>
           <span className={`ml-auto text-[10px] ${s.meta}`}>{emergencies.length} en mapa</span>
         </div>
         {pendingCount > 0 && (
-          <div className="mt-2 flex items-center gap-1.5 text-[10px] text-amber-300 bg-amber-500/10 border border-amber-500/25 rounded-lg px-2.5 py-1.5">
+          <div className={`mt-2 flex items-center gap-1.5 text-[10px] font-semibold rounded-lg px-2.5 py-1.5 border ${
+            theme === 'dark'
+              ? 'text-amber-200 bg-amber-500/10 border-amber-500/25'
+              : 'text-amber-950 bg-amber-100 border-amber-400'
+          }`}>
             <AlertTriangle className="w-3 h-3 shrink-0" />
             <span>{pendingCount} bitácora{pendingCount !== 1 ? 's' : ''} pendiente{pendingCount !== 1 ? 's' : ''} — complétalas abajo</span>
           </div>
@@ -147,11 +155,19 @@ export default function DispatchEmergenciesPanel({
             <div
               key={e.id}
               id={`emergency-row-${e.id}`}
-              className={`px-4 py-3 transition-colors ${
+              role="button"
+              tabIndex={0}
+              onClick={() => setSummaryOpen(e)}
+              onKeyDown={(ev) => { if (ev.key === 'Enter' || ev.key === ' ') { ev.preventDefault(); setSummaryOpen(e); } }}
+              className={`px-4 py-3 transition-colors cursor-pointer ${
                 highlighted
-                  ? 'bg-amber-500/10 ring-1 ring-inset ring-amber-500/40'
+                  ? theme === 'dark'
+                    ? 'bg-amber-500/10 ring-1 ring-inset ring-amber-500/40'
+                    : 'bg-amber-100 ring-1 ring-inset ring-amber-400'
                   : pending
-                    ? 'bg-amber-950/20 hover:bg-amber-950/30'
+                    ? theme === 'dark'
+                      ? 'bg-amber-950/20 hover:bg-amber-950/30'
+                      : 'bg-amber-50 hover:bg-amber-100'
                     : `${s.rowHover}`
               }`}
             >
@@ -171,7 +187,9 @@ export default function DispatchEmergenciesPanel({
                       Bitácora
                     </span>
                   ) : pending ? (
-                    <span className="text-[9px] font-bold uppercase px-1.5 py-0.5 rounded bg-amber-500/15 text-amber-400">
+                    <span className={`text-[9px] font-bold uppercase px-1.5 py-0.5 rounded ${
+                      theme === 'dark' ? 'bg-amber-500/15 text-amber-300' : 'bg-amber-100 text-amber-900 border border-amber-300'
+                    }`}>
                       Sin bitácora
                     </span>
                   ) : null}
@@ -195,8 +213,8 @@ export default function DispatchEmergenciesPanel({
               {pending && onCompleteBitacora && (
                 <button
                   type="button"
-                  onClick={() => onCompleteBitacora(e)}
-                  className="w-full flex items-center justify-center gap-1.5 mt-1 px-3 py-2 rounded-xl bg-amber-600/90 hover:bg-amber-500 text-white text-[11px] font-bold transition-colors"
+                  onClick={(ev) => { ev.stopPropagation(); onCompleteBitacora(e); }}
+                  className="w-full flex items-center justify-center gap-1.5 mt-1 px-3 py-2 rounded-xl bg-amber-600 hover:bg-amber-500 !text-white text-[11px] font-bold transition-colors"
                 >
                   <BookOpen className="w-3.5 h-3.5" />
                   Completar bitácora
@@ -209,11 +227,15 @@ export default function DispatchEmergenciesPanel({
                 </p>
               )}
 
+              <p className={`text-[10px] font-semibold mt-2 ${theme === 'dark' ? 'text-sky-300' : 'text-blue-600'}`}>
+                Ver resumen
+              </p>
+
               {e.status === 'ACTIVA' && (
-                <div className="mt-3">
+                <div className="mt-3" onClick={(ev) => ev.stopPropagation()}>
                   <button
                     type="button"
-                    onClick={() => setEditingLocationId(editingLocationId === e.id ? null : e.id)}
+                    onClick={(ev) => { ev.stopPropagation(); setEditingLocationId(editingLocationId === e.id ? null : e.id); }}
                     className="w-full flex items-center justify-center gap-1.5 px-3 py-1.5 rounded-lg border border-slate-300 dark:border-slate-700 hover:bg-slate-100 dark:hover:bg-slate-800 text-[10px] font-bold transition-colors text-slate-700 dark:text-slate-300"
                   >
                     <Navigation className="w-3 h-3 text-blue-500" />
@@ -233,6 +255,14 @@ export default function DispatchEmergenciesPanel({
           );
         })}
       </div>
+
+      <PublicEmergencySummaryModal
+        open={summaryOpen}
+        emergencies={emergencies}
+        onClose={() => setSummaryOpen(null)}
+        onSelect={setSummaryOpen}
+        dark={theme === 'dark'}
+      />
     </div>
   );
 }
