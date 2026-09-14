@@ -80,6 +80,7 @@ function mapIncidentToPublic(inc: {
 
 export default function CentralOperativaPage() {
   const user = useAuthStore((s) => s.user);
+  const token = useAuthStore((s) => s.token);
   const qc = useQueryClient();
   const { tokens: th, toggleTheme, isDark } = useCentralParralTheme();
   const companyId = user?.companyId ?? '';
@@ -103,9 +104,9 @@ export default function CentralOperativaPage() {
     queryKey: ['central-live', slug],
     queryFn: async () => {
       if (slug) {
-        const res = await fetch(`${apiBase}/dispatch/public/${slug}`);
-        if (!res.ok) throw new Error('No se pudo cargar la central');
-        return res.json() as Promise<PublicCentral>;
+        const res = await api.get(`/dispatch/public/${slug}`);
+        if (res.data?.locked) throw new Error('Sala bloqueada');
+        return res.data as PublicCentral;
       }
       return null;
     },
@@ -114,6 +115,7 @@ export default function CentralOperativaPage() {
   });
 
   useEmergencyLiveSocket({
+    token,
     slug,
     onEvent: () => {
       void refetch();

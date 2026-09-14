@@ -3,10 +3,9 @@ import { useParams, Link } from 'react-router-dom';
 import {
   Siren, ShieldAlert, Users, CheckCircle2, UserX, RefreshCw, Truck, Fuel, Star,
   Search, SlidersHorizontal, Clock, Calendar, Radio, Volume2, Hash,
-  Sun, Moon, Maximize2, Minimize2, Leaf, Hexagon,
+  Sun, Moon, Maximize2, Minimize2, Leaf, Hexagon, Lock,
 } from 'lucide-react';
 import toast from 'react-hot-toast';
-import { api } from '../lib/api';
 import FirefighterAvatar, { FirefighterPlaceholder } from '../components/FirefighterAvatar';
 import RoleBadge from '../components/RoleBadge';
 import DispatchEmergenciesPanel, { type PublicEmergency } from '../components/dispatch/DispatchEmergenciesPanel';
@@ -14,6 +13,7 @@ import PublicEmergencyBanner from '../components/dispatch/PublicEmergencyBanner'
 import EmergencyReturnCelebration from '../components/dispatch/EmergencyReturnCelebration';
 import EmergencyBitacoraFinalizeModal from '../components/dispatch/EmergencyBitacoraFinalizeModal';
 import PublicCompanyModernView from '../components/companies/PublicCompanyModernView';
+import SalaPinGate, { type SalaLockPreview } from '../components/dispatch/SalaPinGate';
 import { usePublicDispatchAlarm } from '../hooks/usePublicDispatchAlarm';
 import {
   PUBLIC_POLL_MS_IDLE,
@@ -28,6 +28,7 @@ import {
   type DispatchPublicThemeTokens,
 } from '../lib/dispatch-public-theme';
 import SalaNightAtmosphere from '../components/companies/SalaNightAtmosphere';
+import { clearSalaToken, readSalaToken, salaAuthHeaders, writeSalaToken } from '../lib/sala-auth';
 
 const DISMISSED_KEY = 'nodo360_public_emergency_dismissed';
 const AUDIO_KEY = 'nodo360_public_audio_enabled';
@@ -74,7 +75,7 @@ function removePendingBitacora(id: string) {
 async function closePublicEmergency(apiBase: string, slug: string, incidentId: string) {
   const res = await fetch(`${apiBase}/emergency-bitacora/public/${slug}/close`, {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
+    headers: salaAuthHeaders(slug),
     body: JSON.stringify({ incidentId }),
   });
   if (!res.ok) {
@@ -241,6 +242,10 @@ export default function DispatchPublicPage() {
   const [data, setData] = useState<PublicCentral | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
+  const [lockedPreview, setLockedPreview] = useState<SalaLockPreview | null>(null);
+  const [unlocking, setUnlocking] = useState(false);
+  const [pinError, setPinError] = useState<string | null>(null);
+  const [salaToken, setSalaToken] = useState('');
   
   const [layout, setLayout] = useState<'classic'|'modern'>(() => {
     return (localStorage.getItem('public_view_layout') as 'classic'|'modern') || 'classic';
@@ -320,7 +325,9 @@ export default function DispatchPublicPage() {
   const load = useCallback(async () => {
     if (!slug) return;
     try {
-      const res = await fetch(`${apiBase}/dispatch/public/${slug}`);
+      const res = await fetch(`${apiBase}/dispatch/public/${slug}`, {
+        headers: salaAuthHeaders(slug),
+      });
       if (!res.ok) {
         if (res.status === 502 || res.status === 504) {
           throw new Error('NetworkError: Vite proxy no pudo conectar con la API');
@@ -328,7 +335,18 @@ export default function DispatchPublicPage() {
         const body = await res.json().catch(() => ({}));
         throw new Error(body.message ?? 'Central no disponible');
       }
-      setData(await res.json());
+      const json = await res.json();
+      if (json?.locked) {
+        clearSalaToken(slug);
+        setSalaToken('');
+        setLockedPreview(json as SalaLockPreview);
+        setData(null);
+        setError(null);
+        return;
+      }
+      setLockedPreview(null);
+      setSalaToken(readSalaToken(slug));
+      setData(json);
       setError(null);
     } catch (e: unknown) {
       const raw = e instanceof Error ? e.message : 'Central no disponible';
@@ -337,6 +355,7 @@ export default function DispatchPublicPage() {
         : raw;
       setError(msg);
       setData(null);
+      setLockedPreview(null);
     } finally {
       setLoading(false);
     }
@@ -344,6 +363,8 @@ export default function DispatchPublicPage() {
 
   useEmergencyLiveSocket({
     slug,
+    salaToken,
+    enabled: Boolean(slug) && !lockedPreview && Boolean(data),
     onEvent: () => { void load(); },
   });
 
@@ -352,6 +373,47 @@ export default function DispatchPublicPage() {
     setAudioEnabled(true);
     pendingAudioReplayRef.current = !!visibleActiveEmergency;
     toast.success('Avisos de alarma activados en este equipo', { duration: 2500 });
+  };
+
+  const unlockSala = async (pin: string) => {
+    if (!slug) return;
+    setUnlocking(true);
+    setPinError(null);
+    try {
+      const res = await fetch(`${apiBase}/dispatch/public/${slug}/unlock`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ pin }),
+      });
+      const body = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        throw new Error(body.message ?? 'PIN incorrecto');
+      }
+      writeSalaToken(slug, body.token);
+      setSalaToken(body.token);
+      setLoading(true);
+      await load();
+    } catch (e: unknown) {
+      setPinError(e instanceof Error ? e.message : 'PIN incorrecto');
+    } finally {
+      setUnlocking(false);
+    }
+  };
+
+  const lockSala = () => {
+    if (!slug || !data) return;
+    clearSalaToken(slug);
+    setSalaToken('');
+    setLockedPreview({
+      locked: true,
+      hasPin: true,
+      slug: data.slug,
+      name: data.name,
+      number: data.number,
+      city: data.city,
+      logoUrl: data.logoUrl,
+    });
+    setData(null);
   };
 
   useEffect(() => {
@@ -417,12 +479,13 @@ export default function DispatchPublicPage() {
   }, [data?.recentEmergencies]);
 
   useEffect(() => {
+    if (lockedPreview) return;
     load();
     const urgent = onEmergency || (data?.emergencyStats?.active ?? 0) > 0 || Boolean(data?.standby?.id);
     const intervalMs = urgent ? PUBLIC_POLL_MS_URGENT : PUBLIC_POLL_MS_IDLE;
     const id = setInterval(load, intervalMs);
     return () => clearInterval(id);
-  }, [load, onEmergency, data?.emergencyStats?.active, data?.standby?.id]);
+  }, [load, onEmergency, data?.emergencyStats?.active, data?.standby?.id, lockedPreview]);
 
   useEffect(() => {
     const refresh = () => { void load(); };
@@ -501,7 +564,7 @@ export default function DispatchPublicPage() {
     try {
       const res = await fetch(`${apiBase}/dispatch/public/${slug}/availability`, {
         method: 'PATCH',
-        headers: { 'Content-Type': 'application/json' },
+        headers: salaAuthHeaders(slug),
         body: JSON.stringify({ userId: member.id, available: next }),
       });
       if (!res.ok) throw new Error();
@@ -527,7 +590,7 @@ export default function DispatchPublicPage() {
     try {
       const res = await fetch(`${apiBase}/dispatch/public/${slug}/availability/by-number`, {
         method: 'PATCH',
-        headers: { 'Content-Type': 'application/json' },
+        headers: salaAuthHeaders(slug),
         body: JSON.stringify({
           operativeNumber: num,
           ...(isAvailableFlag !== undefined ? { available: isAvailableFlag } : {}),
@@ -628,7 +691,7 @@ export default function DispatchPublicPage() {
     try {
       const res = await fetch(`${apiBase}/dispatch/public/${slug}/maquinista`, {
         method: 'PATCH',
-        headers: { 'Content-Type': 'application/json' },
+        headers: salaAuthHeaders(slug),
         body: JSON.stringify({ userId: member.id, ...payload }),
       });
       if (!res.ok) throw new Error('No se pudo actualizar');
@@ -703,12 +766,23 @@ export default function DispatchPublicPage() {
     return Array.from(roles.entries());
   }, [data]);
 
-  if (loading) {
+  if (loading && !lockedPreview) {
     return (
       <div className={`min-h-screen flex items-center justify-center ${th.loading}`}>
         <RefreshCw className="w-6 h-6 animate-spin mr-2" />
         Cargando sala de máquinas…
       </div>
+    );
+  }
+
+  if (lockedPreview) {
+    return (
+      <SalaPinGate
+        preview={lockedPreview}
+        unlocking={unlocking}
+        error={pinError}
+        onSubmit={(pin) => { void unlockSala(pin); }}
+      />
     );
   }
 
@@ -796,12 +870,22 @@ export default function DispatchPublicPage() {
         slug={slug ?? ''}
         emergency={bitacoraEmergency}
         apiBase={apiBase}
+        requestHeaders={slug ? salaAuthHeaders(slug) : { 'Content-Type': 'application/json' }}
         onClose={() => setShowBitacoraModal(false)}
         onOmit={handleBitacoraOmit}
         onSaved={handleBitacoraSaved}
       />
 
       <div className="fixed bottom-6 right-6 z-[100] flex items-center gap-2">
+        <button
+          type="button"
+          onClick={lockSala}
+          className={`${floatBtn} p-3 rounded-full hover:scale-105 transition-all`}
+          title="Bloquear sala"
+          aria-label="Bloquear sala"
+        >
+          <Lock className={`w-5 h-5 ${night ? 'text-amber-300' : isNodo ? 'text-[#67c8ff]' : isVerde ? 'text-[#1ce783]' : isAzul ? 'text-white' : 'text-slate-700'}`} />
+        </button>
         <button
           type="button"
           onClick={cycleLook}
@@ -864,6 +948,7 @@ export default function DispatchPublicPage() {
           padActive={isFullscreen}
           night={night}
           look={look}
+          requestHeaders={slug ? salaAuthHeaders(slug) : undefined}
         />
       ) : (
         <>

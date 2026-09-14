@@ -1,13 +1,27 @@
 import {
+  BadRequestException,
   ConflictException,
   ForbiddenException,
   Injectable,
   NotFoundException,
+  UnauthorizedException,
 } from '@nestjs/common';
+import { JwtService } from '@nestjs/jwt';
+import * as bcrypt from 'bcryptjs';
 import { EquipmentStatus, FleetLogType, DispatchSource, IncidentStatus } from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
 import { StandbyAlertService } from './standby-alert.service';
 import { UpdateDispatchCentralDto } from './dto/update-dispatch-central.dto';
+import { Actor, assertCompanyAccess, companyIdsForActor } from '../common/cuerpo-scope';
+import { assignedRoles } from '../common/user-roles';
+import {
+  HeaderRequest,
+  SALA_TOKEN_EXPIRES_SEC,
+  bearerFromRequest,
+  readSalaToken,
+  salaTokenFromRequest,
+  signSalaToken,
+} from '../common/sala-token';
 
 export type DispatchPublicStatus = 'DISPONIBLE' | 'NO_DISPONIBLE' | 'OCULTA';
 
@@ -50,11 +64,19 @@ function slugify(text: string) {
     .slice(0, 64);
 }
 
+type PublicSalaAccess = 'sala' | 'user' | 'open' | 'locked';
+
+const UNLOCK_MAX_FAILS = 8;
+const UNLOCK_BLOCK_MS = 5 * 60 * 1000;
+
 @Injectable()
 export class DispatchCentralService {
+  private unlockAttempts = new Map<string, { fails: number; blockedUntil: number }>();
+
   constructor(
     private prisma: PrismaService,
     private standbyAlerts: StandbyAlertService,
+    private jwt: JwtService,
   ) {}
 
   private mapPublicStatus(
@@ -268,7 +290,8 @@ export class DispatchCentralService {
     };
   }
 
-  async getRosterForCompany(companyId: string) {
+  async getRosterForCompany(companyId: string, actor?: Actor) {
+    if (actor) await assertCompanyAccess(this.prisma, actor, companyId);
     const members = await this.prisma.user.findMany({
       where: {
         OR: [
@@ -528,6 +551,112 @@ export class DispatchCentralService {
     return `${codeSpoken} SECTOR ${sector} CONCURRE ${concurre}`;
   }
 
+  private assertUnlockAllowed(slug: string) {
+    const row = this.unlockAttempts.get(slug);
+    if (row && row.blockedUntil > Date.now()) {
+      throw new UnauthorizedException('Demasiados intentos. Espera unos minutos e inténtalo de nuevo.');
+    }
+  }
+
+  private recordUnlockFail(slug: string) {
+    const prev = this.unlockAttempts.get(slug);
+    const fails = (prev?.fails ?? 0) + 1;
+    this.unlockAttempts.set(slug, {
+      fails,
+      blockedUntil: fails >= UNLOCK_MAX_FAILS ? Date.now() + UNLOCK_BLOCK_MS : 0,
+    });
+  }
+
+  private clearUnlockFails(slug: string) {
+    this.unlockAttempts.delete(slug);
+  }
+
+  private async actorFromBearer(token: string): Promise<Actor | null> {
+    const sala = readSalaToken(this.jwt, token);
+    if (sala) return null;
+    try {
+      const payload = this.jwt.verify<{ typ?: string; sub?: string }>(token);
+      if (payload.typ === 'sala' || !payload.sub) return null;
+      const user = await this.prisma.user.findUnique({
+        where: { id: payload.sub },
+        select: {
+          id: true,
+          role: true,
+          roles: true,
+          isActive: true,
+          companyId: true,
+          company: { select: { cuerpoId: true } },
+        },
+      });
+      if (!user?.isActive) return null;
+      return {
+        id: user.id,
+        role: user.role,
+        roles: assignedRoles(user.role, user.roles),
+        companyId: user.companyId,
+        cuerpoId: user.company?.cuerpoId ?? null,
+      };
+    } catch {
+      return null;
+    }
+  }
+
+  async peekPublicAccess(slug: string, req: HeaderRequest): Promise<PublicSalaAccess> {
+    const company = await this.getCompanyBySlug(slug);
+    const sala = readSalaToken(this.jwt, salaTokenFromRequest(req));
+    if (sala && sala.slug === slug && sala.companyId === company.id) return 'sala';
+
+    const bearer = bearerFromRequest(req);
+    const actor = bearer ? await this.actorFromBearer(bearer) : null;
+    if (actor) {
+      await assertCompanyAccess(this.prisma, actor, company.id);
+      return 'user';
+    }
+
+    if (!company.dispatchPinHash) return 'open';
+    return 'locked';
+  }
+
+  async assertPublicSalaAccess(slug: string, req: HeaderRequest) {
+    const access = await this.peekPublicAccess(slug, req);
+    if (access === 'locked') {
+      throw new UnauthorizedException('PIN de sala requerido');
+    }
+    return access;
+  }
+
+  async getPublicLocked(slug: string) {
+    const company = await this.getCompanyBySlug(slug);
+    return {
+      locked: true as const,
+      hasPin: Boolean(company.dispatchPinHash),
+      slug: company.dispatchSlug,
+      name: company.name,
+      number: company.number,
+      city: company.city,
+      logoUrl: company.logoUrl,
+      publicEnabled: company.dispatchPublicEnabled,
+    };
+  }
+
+  async unlockPublic(slug: string, pin: string) {
+    const company = await this.getCompanyBySlug(slug);
+    if (!company.dispatchPinHash) {
+      throw new BadRequestException('Esta sala aún no tiene PIN. Configúralo en Despacho360.');
+    }
+    this.assertUnlockAllowed(slug);
+    const ok = await bcrypt.compare(pin, company.dispatchPinHash);
+    if (!ok) {
+      this.recordUnlockFail(slug);
+      throw new UnauthorizedException('PIN incorrecto');
+    }
+    this.clearUnlockFails(slug);
+    return {
+      token: signSalaToken(this.jwt, company.id, slug),
+      expiresIn: SALA_TOKEN_EXPIRES_SEC,
+    };
+  }
+
   async getPublicBySlug(slug: string) {
     const company = await this.getCompanyBySlug(slug);
     const [roster, maquinistas, fleet, recentEmergencies] = await Promise.all([
@@ -568,7 +697,8 @@ export class DispatchCentralService {
     };
   }
 
-  triggerStandby(companyId: string, message?: string) {
+  async triggerStandby(companyId: string, message?: string, actor?: Actor) {
+    if (actor) await assertCompanyAccess(this.prisma, actor, companyId);
     return this.standbyAlerts.trigger(companyId, message);
   }
 
@@ -730,9 +860,14 @@ export class DispatchCentralService {
 
   async searchOperativeGlobally(slug: string, operativeNumber: number) {
     if (!operativeNumber || isNaN(operativeNumber)) return null;
+    const company = await this.getCompanyBySlug(slug);
     const user = await this.prisma.user.findFirst({
-      where: { operativeNumber, isActive: true },
-      include: { company: true }
+      where: {
+        operativeNumber,
+        isActive: true,
+        company: { cuerpoId: company.cuerpoId },
+      },
+      include: { company: true },
     });
     if (!user) return null;
     return {
@@ -759,6 +894,7 @@ export class DispatchCentralService {
       where: {
         isActive: true,
         operativeNumber,
+        company: { cuerpoId: company.cuerpoId },
       },
     });
     if (!user) {
@@ -790,7 +926,8 @@ export class DispatchCentralService {
     return this.getPublicBySlug(slug);
   }
 
-  async getConfig(companyId: string) {
+  async getConfig(companyId: string, actor?: Actor) {
+    if (actor) await assertCompanyAccess(this.prisma, actor, companyId);
     const company = await this.prisma.company.findUnique({
       where: { id: companyId },
       select: {
@@ -801,16 +938,19 @@ export class DispatchCentralService {
         dispatchSlug: true,
         dispatchPublicEnabled: true,
         dispatchAvailable: true,
+        dispatchPinHash: true,
       },
     });
     if (!company) throw new NotFoundException('Compañía no encontrada');
+    const { dispatchPinHash, ...rest } = company;
     const suggestedSlug =
-      company.dispatchSlug ??
-      slugify(`cia-${company.number}-${company.city}`);
+      rest.dispatchSlug ??
+      slugify(`cia-${rest.number}-${rest.city}`);
     const roster = await this.getRosterForCompany(companyId);
     const maquinistas = await this.getMaquinistasForCompany(companyId);
     return {
-      ...company,
+      ...rest,
+      hasPin: Boolean(dispatchPinHash),
       suggestedSlug,
       status: this.mapPublicStatus(
         company.dispatchPublicEnabled,
@@ -821,7 +961,8 @@ export class DispatchCentralService {
     };
   }
 
-  async updateConfig(companyId: string, dto: UpdateDispatchCentralDto) {
+  async updateConfig(companyId: string, dto: UpdateDispatchCentralDto, actor?: Actor) {
+    if (actor) await assertCompanyAccess(this.prisma, actor, companyId);
     const company = await this.prisma.company.findUnique({
       where: { id: companyId },
     });
@@ -836,12 +977,23 @@ export class DispatchCentralService {
       }
     }
 
+    const enablingPublic = dto.dispatchPublicEnabled === true;
+    const willHavePin = Boolean(dto.dispatchPin) || Boolean(company.dispatchPinHash);
+    if (enablingPublic && !willHavePin) {
+      throw new BadRequestException('Definí un PIN de 4 a 8 dígitos para la sala de máquinas');
+    }
+
+    const nextPinHash = dto.dispatchPin
+      ? await bcrypt.hash(dto.dispatchPin, 10)
+      : undefined;
+
     const updated = await this.prisma.company.update({
       where: { id: companyId },
       data: {
         dispatchSlug: dto.dispatchSlug,
         dispatchPublicEnabled: dto.dispatchPublicEnabled,
         dispatchAvailable: dto.dispatchAvailable,
+        ...(nextPinHash ? { dispatchPinHash: nextPinHash } : {}),
       },
       select: {
         id: true,
@@ -851,14 +1003,17 @@ export class DispatchCentralService {
         dispatchSlug: true,
         dispatchPublicEnabled: true,
         dispatchAvailable: true,
+        dispatchPinHash: true,
       },
     });
 
     const roster = await this.getRosterForCompany(companyId);
     const maquinistas = await this.getMaquinistasForCompany(companyId);
+    const { dispatchPinHash, ...rest } = updated;
 
     return {
-      ...updated,
+      ...rest,
+      hasPin: Boolean(dispatchPinHash),
       status: this.mapPublicStatus(
         updated.dispatchPublicEnabled,
         updated.dispatchAvailable,
@@ -868,7 +1023,8 @@ export class DispatchCentralService {
     };
   }
 
-  async ensureSlug(companyId: string) {
+  async ensureSlug(companyId: string, actor?: Actor) {
+    if (actor) await assertCompanyAccess(this.prisma, actor, companyId);
     const company = await this.prisma.company.findUnique({
       where: { id: companyId },
     });
@@ -893,9 +1049,10 @@ export class DispatchCentralService {
     return this.getConfig(companyId);
   }
 
-  async getCuartelesOverview() {
+  async getCuartelesOverview(actor?: Actor) {
+    const ids = actor ? await companyIdsForActor(this.prisma, actor) : null;
     const companies = await this.prisma.company.findMany({
-      where: { isActive: true },
+      where: { isActive: true, ...(ids ? { id: { in: ids } } : {}) },
       orderBy: { number: 'asc' },
       select: {
         id: true,
@@ -935,9 +1092,10 @@ export class DispatchCentralService {
     );
   }
 
-  async getGlobalDispatch() {
+  async getGlobalDispatch(actor?: Actor) {
+    const ids = actor ? await companyIdsForActor(this.prisma, actor) : null;
     const companies = await this.prisma.company.findMany({
-      where: { isActive: true },
+      where: { isActive: true, ...(ids ? { id: { in: ids } } : {}) },
       orderBy: { number: 'asc' },
       select: {
         id: true,
@@ -966,7 +1124,10 @@ export class DispatchCentralService {
     );
 
     const activeIncidents = await this.prisma.incident.findMany({
-      where: { status: { in: [IncidentStatus.ACTIVE, IncidentStatus.ARRIVED] } },
+      where: {
+        status: { in: [IncidentStatus.ACTIVE, IncidentStatus.ARRIVED] },
+        ...(ids ? { companyId: { in: ids } } : {}),
+      },
       orderBy: { createdAt: 'desc' },
       select: {
         id: true,

@@ -9,6 +9,7 @@ import { Server, Socket } from 'socket.io';
 import { PrismaService } from '../prisma/prisma.service';
 import { isAllowedCorsOrigin } from '../common/cors-origins';
 import { hasAnyRole } from '../common/user-roles';
+import { readSalaToken } from '../common/sala-token';
 import {
   EMERGENCY_SOCKET_NAMESPACE,
   EmergencyEventEnvelope,
@@ -44,7 +45,13 @@ export class EmergencyGateway implements OnGatewayConnection {
       const publicSlug = String(
         client.handshake.auth?.slug ?? client.handshake.query?.slug ?? '',
       ).trim();
+      const salaToken = String(client.handshake.auth?.salaToken ?? '').trim() || token;
+      const salaPayload = readSalaToken(this.jwt, salaToken);
 
+      if (salaPayload) {
+        await this.joinPublicSala(client, salaPayload.slug, salaToken);
+        return;
+      }
       if (!token && publicSlug) {
         await this.joinPublicSala(client, publicSlug);
         return;
@@ -63,16 +70,22 @@ export class EmergencyGateway implements OnGatewayConnection {
           isActive: true,
           companyId: true,
           supportCompanyId: true,
-          company: { select: { isActive: true } },
+          company: { select: { isActive: true, cuerpoId: true } },
           supportCompany: { select: { isActive: true } },
         },
       });
       if (!user?.isActive) return client.disconnect(true);
 
       let companyIds: string[];
-      if (hasAnyRole(user, 'SUPER_ADMIN', 'KODESK')) {
+      if (hasAnyRole(user, 'KODESK')) {
         const companies = await this.prisma.company.findMany({
           where: { isActive: true },
+          select: { id: true },
+        });
+        companyIds = companies.map((company) => company.id);
+      } else if (hasAnyRole(user, 'SUPER_ADMIN', 'COMANDANTE', 'OPERADOR_CENTRAL') && user.company?.cuerpoId) {
+        const companies = await this.prisma.company.findMany({
+          where: { isActive: true, cuerpoId: user.company.cuerpoId },
           select: { id: true },
         });
         companyIds = companies.map((company) => company.id);
@@ -98,14 +111,26 @@ export class EmergencyGateway implements OnGatewayConnection {
     }
   }
 
-  private async joinPublicSala(client: Socket, slug: string) {
+  private async joinPublicSala(client: Socket, slug: string, salaToken?: string) {
     const company = await this.prisma.company.findUnique({
       where: { dispatchSlug: slug },
-      select: { id: true, isActive: true },
+      select: {
+        id: true,
+        isActive: true,
+        dispatchPublicEnabled: true,
+        dispatchPinHash: true,
+      },
     });
-    if (!company?.isActive) {
+    if (!company?.isActive || !company.dispatchPublicEnabled) {
       client.disconnect(true);
       return;
+    }
+    if (company.dispatchPinHash) {
+      const payload = readSalaToken(this.jwt, salaToken);
+      if (!payload || payload.slug !== slug || payload.companyId !== company.id) {
+        client.disconnect(true);
+        return;
+      }
     }
     client.data.publicSlug = slug;
     client.data.companyIds = [company.id];

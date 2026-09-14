@@ -22,6 +22,7 @@ export function useEmergencyLiveSocket(opts: {
   enabled?: boolean;
   token?: string | null;
   slug?: string | null;
+  salaToken?: string | null;
   onEvent: () => void;
 }) {
   const onEventRef = useRef(opts.onEvent);
@@ -31,10 +32,13 @@ export function useEmergencyLiveSocket(opts: {
     const enabled = opts.enabled !== false;
     const token = opts.token?.trim() || '';
     const slug = opts.slug?.trim() || '';
+    const salaToken = opts.salaToken?.trim() || '';
     if (!enabled || (!token && !slug)) return;
 
     const socket: Socket = io(`${socketOrigin()}/emergencies`, {
-      auth: token ? { token } : { slug },
+      auth: token
+        ? { token }
+        : { slug, ...(salaToken ? { salaToken } : {}) },
       transports: ['websocket', 'polling'],
       reconnection: true,
     });
@@ -46,5 +50,5 @@ export function useEmergencyLiveSocket(opts: {
       LIVE_EVENTS.forEach((name) => socket.off(name, handle));
       socket.disconnect();
     };
-  }, [opts.enabled, opts.token, opts.slug]);
+  }, [opts.enabled, opts.token, opts.slug, opts.salaToken]);
 }

@@ -15,9 +15,12 @@ import { ToggleStationAvailabilityDto } from './dto/toggle-station-availability.
 import { ToggleByOperativeNumberDto } from './dto/toggle-by-operative-number.dto';
 import { ToggleMaquinistaDto } from './dto/toggle-maquinista.dto';
 import { ToggleMyAvailabilityDto } from './dto/toggle-my-availability.dto';
+import { UnlockSalaDto } from './dto/unlock-sala.dto';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { RolesGuard } from '../auth/guards/roles.guard';
 import { Roles } from '../auth/decorators/roles.decorator';
+import { Actor } from '../common/cuerpo-scope';
+import { HeaderRequest } from '../common/sala-token';
 
 const DISPATCH_ROLES = ['SUPER_ADMIN', 'COMANDANTE', 'CAPITAN', 'OPERADOR_CENTRAL'] as const;
 
@@ -25,33 +28,46 @@ const DISPATCH_ROLES = ['SUPER_ADMIN', 'COMANDANTE', 'CAPITAN', 'OPERADOR_CENTRA
 export class DispatchCentralController {
   constructor(private readonly service: DispatchCentralService) {}
 
-  /** URL pública por cuartel — sin autenticación */
+  /** Vista pública por cuartel — PIN de sala o JWT de operador */
   @Get('public/:slug')
-  getPublic(@Param('slug') slug: string) {
+  async getPublic(@Param('slug') slug: string, @Req() req: HeaderRequest) {
+    const access = await this.service.peekPublicAccess(slug, req);
+    if (access === 'locked') return this.service.getPublicLocked(slug);
     return this.service.getPublicBySlug(slug);
   }
 
+  @Post('public/:slug/unlock')
+  unlockPublic(@Param('slug') slug: string, @Body() dto: UnlockSalaDto) {
+    return this.service.unlockPublic(slug, dto.pin);
+  }
+
   @Get('public/:slug/search-operative/:number')
-  searchOperative(
+  async searchOperative(
     @Param('slug') slug: string,
     @Param('number') operativeNumber: string,
+    @Req() req: HeaderRequest,
   ) {
+    await this.service.assertPublicSalaAccess(slug, req);
     return this.service.searchOperativeGlobally(slug, parseInt(operativeNumber, 10));
   }
 
   @Patch('public/:slug/availability')
-  toggleAvailability(
+  async toggleAvailability(
     @Param('slug') slug: string,
     @Body() dto: ToggleStationAvailabilityDto,
+    @Req() req: HeaderRequest,
   ) {
+    await this.service.assertPublicSalaAccess(slug, req);
     return this.service.toggleStationAvailability(slug, dto.userId, dto.available);
   }
 
   @Patch('public/:slug/availability/by-number')
-  toggleAvailabilityByNumber(
+  async toggleAvailabilityByNumber(
     @Param('slug') slug: string,
     @Body() dto: ToggleByOperativeNumberDto,
+    @Req() req: HeaderRequest,
   ) {
+    await this.service.assertPublicSalaAccess(slug, req);
     return this.service.toggleStationAvailabilityByOperativeNumber(
       slug,
       dto.operativeNumber,
@@ -60,10 +76,12 @@ export class DispatchCentralController {
   }
 
   @Patch('public/:slug/maquinista')
-  toggleMaquinista(
+  async toggleMaquinista(
     @Param('slug') slug: string,
     @Body() dto: ToggleMaquinistaDto,
+    @Req() req: HeaderRequest,
   ) {
+    await this.service.assertPublicSalaAccess(slug, req);
     return this.service.toggleMaquinista(slug, dto.userId, {
       available: dto.available,
       principal: dto.principal,
@@ -91,29 +109,29 @@ export class DispatchCentralController {
   @Get('central/:companyId/roster')
   @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles(...DISPATCH_ROLES)
-  getRoster(@Param('companyId') companyId: string) {
-    return this.service.getRosterForCompany(companyId);
+  getRoster(@Param('companyId') companyId: string, @Req() req: { user: Actor }) {
+    return this.service.getRosterForCompany(companyId, req.user);
   }
 
   @Get('central/overview')
   @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles(...DISPATCH_ROLES)
-  getOverview() {
-    return this.service.getCuartelesOverview();
+  getOverview(@Req() req: { user: Actor }) {
+    return this.service.getCuartelesOverview(req.user);
   }
 
   @Get('central/global')
   @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles(...DISPATCH_ROLES)
-  getGlobal() {
-    return this.service.getGlobalDispatch();
+  getGlobal(@Req() req: { user: Actor }) {
+    return this.service.getGlobalDispatch(req.user);
   }
 
   @Get('central/config')
   @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles(...DISPATCH_ROLES)
-  getConfig(@Query('companyId') companyId: string) {
-    return this.service.getConfig(companyId);
+  getConfig(@Query('companyId') companyId: string, @Req() req: { user: Actor }) {
+    return this.service.getConfig(companyId, req.user);
   }
 
   @Patch('central/:companyId')
@@ -122,15 +140,16 @@ export class DispatchCentralController {
   updateConfig(
     @Param('companyId') companyId: string,
     @Body() dto: UpdateDispatchCentralDto,
+    @Req() req: { user: Actor },
   ) {
-    return this.service.updateConfig(companyId, dto);
+    return this.service.updateConfig(companyId, dto, req.user);
   }
 
   @Post('central/:companyId/ensure-slug')
   @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles(...DISPATCH_ROLES)
-  ensureSlug(@Param('companyId') companyId: string) {
-    return this.service.ensureSlug(companyId);
+  ensureSlug(@Param('companyId') companyId: string, @Req() req: { user: Actor }) {
+    return this.service.ensureSlug(companyId, req.user);
   }
 
   @Post('central/:companyId/standby')
@@ -139,7 +158,8 @@ export class DispatchCentralController {
   triggerStandby(
     @Param('companyId') companyId: string,
     @Body() body: { message?: string },
+    @Req() req: { user: Actor },
   ) {
-    return this.service.triggerStandby(companyId, body?.message);
+    return this.service.triggerStandby(companyId, body?.message, req.user);
   }
 }

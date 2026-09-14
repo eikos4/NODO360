@@ -17,6 +17,7 @@ import { COMPANIAS360 } from '../lib/companias360';
 import { useThemeStore } from '../store/themeStore';
 import { cn } from '../lib/utils';
 import RadioPttPanel from '../components/radio/RadioPttPanel';
+import { hasAnyRole } from '../lib/roles';
 
 type ResponseStatus = 'GOING' | 'NOT_GOING' | 'NOT_AVAILABLE' | 'ON_SCENE' | 'LOCATION_MARKED';
 
@@ -353,9 +354,9 @@ export default function BomberoEmergencyPage() {
   const { data: publicLive } = useQuery({
     queryKey: ['dispatch-public-live', dispatchSlug],
     queryFn: async () => {
-      const res = await fetch(`${apiBase}/dispatch/public/${dispatchSlug}`);
-      if (!res.ok) throw new Error('No se pudo sincronizar con la sala pública');
-      return res.json();
+      const res = await api.get(`/dispatch/public/${dispatchSlug}`);
+      if (res.data?.locked) throw new Error('Sala bloqueada');
+      return res.data;
     },
     enabled: !!dispatchSlug,
     refetchOnWindowFocus: true,
@@ -1016,10 +1017,7 @@ export default function BomberoEmergencyPage() {
                       selectedChoice === 'GOING' ||
                       selectedChoice === 'ON_SCENE' ||
                       selectedChoice === 'LOCATION_MARKED' ||
-                      user?.role === 'OPERADOR_CENTRAL' ||
-                      user?.role === 'COMANDANTE' ||
-                      user?.role === 'CAPITAN' ||
-                      user?.role === 'SUPER_ADMIN'
+                      hasAnyRole(user, 'OPERADOR_CENTRAL', 'COMANDANTE', 'CAPITAN', 'SUPER_ADMIN')
                     }
                   />
 
@@ -1410,10 +1408,7 @@ export default function BomberoEmergencyPage() {
                         selectedChoice === 'GOING' ||
                         selectedChoice === 'ON_SCENE' ||
                         selectedChoice === 'LOCATION_MARKED' ||
-                        user?.role === 'OPERADOR_CENTRAL' ||
-                        user?.role === 'COMANDANTE' ||
-                        user?.role === 'CAPITAN' ||
-                        user?.role === 'SUPER_ADMIN'
+                        hasAnyRole(user, 'OPERADOR_CENTRAL', 'COMANDANTE', 'CAPITAN', 'SUPER_ADMIN')
                       }
                     />
                   </div>

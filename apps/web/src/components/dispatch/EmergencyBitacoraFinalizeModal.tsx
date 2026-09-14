@@ -8,13 +8,14 @@ type Props = {
   slug: string;
   emergency: PublicEmergency | null;
   apiBase: string;
+  requestHeaders?: Record<string, string>;
   onClose: () => void;
   onSaved: () => void;
   onOmit?: (emergency: PublicEmergency) => void;
 };
 
 export default function EmergencyBitacoraFinalizeModal({
-  open, slug, emergency, apiBase, onClose, onSaved, onOmit,
+  open, slug, emergency, apiBase, requestHeaders, onClose, onSaved, onOmit,
 }: Props) {
   const [summary, setSummary] = useState('');
   const [actionsTaken, setActionsTaken] = useState('');
@@ -41,7 +42,7 @@ export default function EmergencyBitacoraFinalizeModal({
     try {
       const res = await fetch(`${apiBase}/emergency-bitacora/public/${slug}/finalize`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: requestHeaders ?? { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           incidentId: emergency.id,
           summary: summary.trim(),

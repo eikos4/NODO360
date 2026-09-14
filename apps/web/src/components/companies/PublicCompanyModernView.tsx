@@ -112,6 +112,7 @@ interface Props {
   padActive?: boolean;
   night?: boolean;
   look?: 'light' | 'nodo' | 'verde' | 'azul' | 'night';
+  requestHeaders?: Record<string, string>;
 }
 
 function LiveClock({ night, nodo, verde, azul }: { night?: boolean; nodo?: boolean; verde?: boolean; azul?: boolean }) {
@@ -203,7 +204,7 @@ function StatCard({ icon: Icon, value, label, subtext, colorClass, isAlert = fal
   );
 }
 
-export default function PublicCompanyModernView({ data, onToggleMember, onToggleMaquinista, onToggleByNumber, togglingId, onEmergency, padActive, night, look }: Props) {
+export default function PublicCompanyModernView({ data, onToggleMember, onToggleMaquinista, onToggleByNumber, togglingId, onEmergency, padActive, night, look, requestHeaders }: Props) {
   const isNodo = look === 'nodo';
   const isVerde = look === 'verde';
   const isAzul = look === 'azul';
@@ -242,7 +243,9 @@ export default function PublicCompanyModernView({ data, onToggleMember, onToggle
     const delay = setTimeout(async () => {
       try {
         setIsSearchingGlobal(true);
-        const res = await fetch(`${apiBase}/dispatch/public/${data.slug}/search-operative/${num}`);
+        const res = await fetch(`${apiBase}/dispatch/public/${data.slug}/search-operative/${num}`, {
+          headers: requestHeaders,
+        });
         if (res.ok) {
           const user = await res.json();
           // Solo lo guardamos si existe y si no está ya en la compañía actual como oficial, aunque no importa mucho
@@ -257,7 +260,7 @@ export default function PublicCompanyModernView({ data, onToggleMember, onToggle
       }
     }, 500);
     return () => clearTimeout(delay);
-  }, [search, data.slug, apiBase]);
+  }, [search, data.slug, apiBase, requestHeaders]);
   
   const bomberosDisp = data.roster.stats.available;
   const maqDisp = data.maquinistas.stats.available;

@@ -1,9 +1,10 @@
-import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
+import { BadRequestException, ForbiddenException, Injectable, NotFoundException } from '@nestjs/common';
 import { EmergencyBitacoraSource, Prisma } from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
 import { CreateEmergencyBitacoraDto } from './dto/create-emergency-bitacora.dto';
 import { UpdateEmergencyBitacoraDto } from './dto/update-emergency-bitacora.dto';
 import { FinalizePublicEmergencyDto } from './dto/finalize-public-emergency.dto';
+import { Actor, assertCompanyAccess, companyIdWhere, companyIdsForActor } from '../common/cuerpo-scope';
 
 const INCLUDE = {
   company: { select: { id: true, name: true, number: true } },
@@ -24,9 +25,10 @@ export class EmergencyBitacoraService {
     from?: string;
     to?: string;
     limit?: number;
+    actor: Actor;
   }) {
-    const where: Prisma.EmergencyBitacoraEntryWhereInput = {};
-    if (params.companyId) where.companyId = params.companyId;
+    const scope = companyIdWhere(await companyIdsForActor(this.prisma, params.actor, params.companyId));
+    const where: Prisma.EmergencyBitacoraEntryWhereInput = { ...scope };
     if (params.from || params.to) {
       where.occurredAt = {};
       if (params.from) where.occurredAt.gte = new Date(params.from);
@@ -41,16 +43,18 @@ export class EmergencyBitacoraService {
     });
   }
 
-  async findById(id: string) {
+  async findById(id: string, actor?: Actor) {
     const row = await this.prisma.emergencyBitacoraEntry.findUnique({
       where: { id },
       include: INCLUDE,
     });
     if (!row) throw new NotFoundException('Entrada de bitácora no encontrada');
+    if (actor) await assertCompanyAccess(this.prisma, actor, row.companyId);
     return row;
   }
 
-  async create(dto: CreateEmergencyBitacoraDto, authorId?: string) {
+  async create(dto: CreateEmergencyBitacoraDto, authorId?: string, actor?: Actor) {
+    if (actor) await assertCompanyAccess(this.prisma, actor, dto.companyId);
     await this.assertCompany(dto.companyId);
     if (dto.incidentId) {
       await this.assertIncidentForCompany(dto.incidentId, dto.companyId);
@@ -83,8 +87,8 @@ export class EmergencyBitacoraService {
     });
   }
 
-  async update(id: string, dto: UpdateEmergencyBitacoraDto) {
-    await this.findById(id);
+  async update(id: string, dto: UpdateEmergencyBitacoraDto, actor?: Actor) {
+    await this.findById(id, actor);
     return this.prisma.emergencyBitacoraEntry.update({
       where: { id },
       data: {
@@ -103,8 +107,8 @@ export class EmergencyBitacoraService {
     });
   }
 
-  async remove(id: string) {
-    await this.findById(id);
+  async remove(id: string, actor?: Actor) {
+    await this.findById(id, actor);
     return this.prisma.emergencyBitacoraEntry.delete({ where: { id } });
   }
 

@@ -84,7 +84,12 @@ describe('emergency realtime contract', () => {
     const prisma = {
       user: { findUnique: vi.fn() },
       company: {
-        findUnique: vi.fn().mockResolvedValue({ id: 'company-1', isActive: true }),
+        findUnique: vi.fn().mockResolvedValue({
+          id: 'company-1',
+          isActive: true,
+          dispatchPublicEnabled: true,
+          dispatchPinHash: null,
+        }),
       },
     };
     const gateway = new EmergencyGateway(jwt as never, prisma as never);
@@ -101,8 +106,80 @@ describe('emergency realtime contract', () => {
     expect(jwt.verify).not.toHaveBeenCalled();
     expect(prisma.company.findUnique).toHaveBeenCalledWith({
       where: { dispatchSlug: 'bomberos-parral' },
-      select: { id: true, isActive: true },
+      select: {
+        id: true,
+        isActive: true,
+        dispatchPublicEnabled: true,
+        dispatchPinHash: true,
+      },
     });
+    expect(client.join).toHaveBeenCalledWith(['emergency:company:company-1']);
+    expect(client.disconnect).not.toHaveBeenCalled();
+  });
+
+  it('disconnects the public sala when a PIN is set and no sala token is sent', async () => {
+    const jwt = { verify: vi.fn() };
+    const prisma = {
+      user: { findUnique: vi.fn() },
+      company: {
+        findUnique: vi.fn().mockResolvedValue({
+          id: 'company-1',
+          isActive: true,
+          dispatchPublicEnabled: true,
+          dispatchPinHash: 'hashed-pin',
+        }),
+      },
+    };
+    const gateway = new EmergencyGateway(jwt as never, prisma as never);
+    const client = {
+      handshake: { auth: { slug: 'bomberos-parral' }, headers: {}, query: {} },
+      data: {},
+      join: vi.fn(),
+      emit: vi.fn(),
+      disconnect: vi.fn(),
+    };
+
+    await gateway.handleConnection(client as never);
+
+    expect(client.disconnect).toHaveBeenCalledWith(true);
+    expect(client.join).not.toHaveBeenCalled();
+  });
+
+  it('lets the public sala join with a matching sala token', async () => {
+    const jwt = {
+      verify: vi.fn().mockReturnValue({
+        typ: 'sala',
+        slug: 'bomberos-parral',
+        companyId: 'company-1',
+      }),
+    };
+    const prisma = {
+      user: { findUnique: vi.fn() },
+      company: {
+        findUnique: vi.fn().mockResolvedValue({
+          id: 'company-1',
+          isActive: true,
+          dispatchPublicEnabled: true,
+          dispatchPinHash: 'hashed-pin',
+        }),
+      },
+    };
+    const gateway = new EmergencyGateway(jwt as never, prisma as never);
+    const client = {
+      handshake: {
+        auth: { slug: 'bomberos-parral', salaToken: 'sala-jwt' },
+        headers: {},
+        query: {},
+      },
+      data: {},
+      join: vi.fn().mockResolvedValue(undefined),
+      emit: vi.fn(),
+      disconnect: vi.fn(),
+    };
+
+    await gateway.handleConnection(client as never);
+
+    expect(jwt.verify).toHaveBeenCalledWith('sala-jwt');
     expect(client.join).toHaveBeenCalledWith(['emergency:company:company-1']);
     expect(client.disconnect).not.toHaveBeenCalled();
   });

@@ -39,6 +39,7 @@ model Company {
   dispatchSlug          String?                  @unique
   dispatchPublicEnabled Boolean                  @default(false)
   dispatchAvailable     Boolean                  @default(true)
+  dispatchPinHash       String?
   cuerpoId              String
   cuerpo                Cuerpo                   @relation(fields: [cuerpoId], references: [id], onDelete: Restrict)
   budgets               Budget[]

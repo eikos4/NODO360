@@ -177,9 +177,9 @@ export function useQuickDispatch(options: QuickDispatchOptions = {}) {
     queryKey: ['dispatch-live', slug],
     queryFn: async () => {
       if (!slug) return null;
-      const res = await fetch(`${apiBase}/dispatch/public/${slug}`);
-      if (!res.ok) return null;
-      return res.json();
+      const res = await api.get(`/dispatch/public/${slug}`);
+      if (!res.data || res.data.locked) return null;
+      return res.data;
     },
     enabled: !!slug,
     refetchInterval: 8000,

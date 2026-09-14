@@ -6,7 +6,7 @@ import {
   MapPin, Building2, Square, Settings,
   CheckCircle2, X, Crosshair, ExternalLink, BookOpen,
   Globe, Copy, UserX, Star, Search, ChevronDown, ChevronUp,
-  Clock, Keyboard, Loader2, Users, LogOut, Menu, LayoutGrid, Sun, Moon, MessageCircle, GraduationCap, Radio,
+  Clock, Keyboard, Loader2, Users, LogOut, Menu, LayoutGrid, Sun, Moon, MessageCircle, GraduationCap, Radio, KeyRound,
 } from 'lucide-react';
 import { api } from '../lib/api';
 import toast from 'react-hot-toast';
@@ -275,6 +275,8 @@ export default function BotoneraPage() {
   }, []);
   const [geocoding, setGeocoding] = useState(false);
   const [showPublicPanel, setShowPublicPanel] = useState(false);
+  const [salaPin, setSalaPin] = useState('');
+  const [salaPinConfirm, setSalaPinConfirm] = useState('');
   const [showPersonal, setShowPersonal] = useState(false);
   const [now, setNow] = useState(() => new Date());
 
@@ -1410,9 +1412,91 @@ export default function BotoneraPage() {
                         </div>
                       </div>
                       <label className="flex items-center gap-3 bg-slate-950 border border-slate-800 rounded-xl px-4 py-3 cursor-pointer">
-                        <input type="checkbox" checked={dispatchConfig.dispatchPublicEnabled} onChange={(e) => updateDispatchConfig.mutate({ dispatchPublicEnabled: e.target.checked })} className="rounded border-slate-600" />
+                        <input
+                          type="checkbox"
+                          checked={dispatchConfig.dispatchPublicEnabled}
+                          onChange={(e) => {
+                            if (e.target.checked && !dispatchConfig.hasPin) {
+                              if (!/^\d{4,8}$/.test(salaPin) || salaPin !== salaPinConfirm) {
+                                toast.error('Definí y confirma un PIN de 4 a 8 dígitos antes de activar la sala');
+                                return;
+                              }
+                              updateDispatchConfig.mutate({
+                                dispatchPublicEnabled: true,
+                                dispatchPin: salaPin,
+                              });
+                              return;
+                            }
+                            updateDispatchConfig.mutate({ dispatchPublicEnabled: e.target.checked });
+                          }}
+                          className="rounded border-slate-600"
+                        />
                         <span className="text-sm text-slate-300">URL pública activa</span>
                       </label>
+                      {dispatchConfig.dispatchPublicEnabled && !dispatchConfig.hasPin && (
+                        <p className="text-xs text-amber-400 px-1">
+                          La sala está abierta sin PIN. Definí uno para que solo el cuartel pueda usarla.
+                        </p>
+                      )}
+                      <div className="bg-slate-950 border border-slate-800 rounded-xl px-4 py-3 space-y-2">
+                        <label className="flex items-center gap-2 text-sm text-slate-300">
+                          <KeyRound className="w-4 h-4 text-amber-400" />
+                          PIN de sala de máquinas
+                          {dispatchConfig.hasPin && (
+                            <span className="text-[10px] font-bold uppercase tracking-wide text-emerald-400">Configurado</span>
+                          )}
+                        </label>
+                        <p className="text-[11px] text-slate-500">
+                          4 a 8 dígitos. Lo pide la pantalla `/central` al abrir el kiosco.
+                        </p>
+                        <div className="flex flex-col sm:flex-row gap-2">
+                          <input
+                            type="password"
+                            inputMode="numeric"
+                            autoComplete="new-password"
+                            maxLength={8}
+                            value={salaPin}
+                            onChange={(e) => setSalaPin(e.target.value.replace(/\D/g, '').slice(0, 8))}
+                            placeholder={dispatchConfig.hasPin ? 'Nuevo PIN' : 'PIN'}
+                            className="flex-1 bg-slate-900 border border-slate-700 rounded-xl px-3 py-2 text-sm text-slate-200"
+                          />
+                          <input
+                            type="password"
+                            inputMode="numeric"
+                            autoComplete="new-password"
+                            maxLength={8}
+                            value={salaPinConfirm}
+                            onChange={(e) => setSalaPinConfirm(e.target.value.replace(/\D/g, '').slice(0, 8))}
+                            placeholder="Confirmar"
+                            className="flex-1 bg-slate-900 border border-slate-700 rounded-xl px-3 py-2 text-sm text-slate-200"
+                          />
+                          <button
+                            type="button"
+                            onClick={() => {
+                              if (!/^\d{4,8}$/.test(salaPin)) {
+                                toast.error('El PIN debe tener entre 4 y 8 dígitos');
+                                return;
+                              }
+                              if (salaPin !== salaPinConfirm) {
+                                toast.error('Los PIN no coinciden');
+                                return;
+                              }
+                              updateDispatchConfig.mutate(
+                                { dispatchPin: salaPin },
+                                {
+                                  onSuccess: () => {
+                                    setSalaPin('');
+                                    setSalaPinConfirm('');
+                                  },
+                                },
+                              );
+                            }}
+                            className="px-3 py-2 rounded-xl bg-amber-600/20 border border-amber-600/40 text-amber-200 text-sm whitespace-nowrap hover:bg-amber-600/30"
+                          >
+                            Guardar PIN
+                          </button>
+                        </div>
+                      </div>
                       <label className="flex items-center gap-3 bg-slate-950 border border-slate-800 rounded-xl px-4 py-3 cursor-pointer">
                         <input type="checkbox" checked={dispatchConfig.dispatchAvailable} onChange={(e) => updateDispatchConfig.mutate({ dispatchAvailable: e.target.checked })} className="rounded border-slate-600" />
                         <span className="text-sm text-slate-300">Cuartel disponible</span>
