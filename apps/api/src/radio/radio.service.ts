@@ -65,6 +65,10 @@ export class RadioService {
     return leftChannels;
   }
 
+  isInChannel(channelId: string, socketId: string) {
+    return this.rooms.get(channelId)?.has(socketId) === true;
+  }
+
   leaveChannel(channelId: string, socketId: string) {
     const members = this.rooms.get(channelId);
     if (!members) return this.snapshot(channelId);

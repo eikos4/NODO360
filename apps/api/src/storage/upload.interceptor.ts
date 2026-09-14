@@ -25,7 +25,7 @@ export function memoryUpload(opts: { maxBytes: number; kind: UploadKind }) {
       const nameOk = FILTERS[opts.kind].test(extname(file.originalname || ''));
       const mimeOk =
         opts.kind === 'audio'
-          ? /^audio\//i.test(file.mimetype) || nameOk
+          ? /^audio\//i.test(file.mimetype) || /^(video\/webm|video\/mp4)/i.test(file.mimetype) || nameOk
           : nameOk;
       cb(mimeOk ? null : new BadRequestException(MESSAGES[opts.kind]), mimeOk);
     },

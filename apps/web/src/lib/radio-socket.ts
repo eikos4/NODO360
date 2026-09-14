@@ -19,25 +19,26 @@ export type RadioTx = {
   at: number;
 };
 
-function socketOrigin(): string {
+export function radioSocketOrigin(): string {
   const api = import.meta.env.VITE_API_URL?.replace(/\/$/, '') || '';
   if (!api) return window.location.origin;
-  // VITE_API_URL suele ser .../api → origen sin /api
   return api.replace(/\/api\/?$/, '') || window.location.origin;
 }
 
 let shared: Socket | null = null;
 
 export function getRadioSocket(token: string): Socket {
-  if (shared?.connected) return shared;
   if (shared) {
     shared.auth = { token };
-    shared.connect();
+    if (!shared.connected) shared.connect();
     return shared;
   }
-  shared = io(`${socketOrigin()}/radio`, {
+  shared = io(`${radioSocketOrigin()}/radio`, {
     auth: { token },
     transports: ['websocket', 'polling'],
+    reconnection: true,
+    reconnectionAttempts: Infinity,
+    reconnectionDelay: 800,
     autoConnect: true,
   });
   return shared;
@@ -55,4 +56,33 @@ export function incidentChannelId(incidentId: string) {
 
 export function companyChannelId(companyId: string) {
   return `company:${companyId}`;
+}
+
+export function resolveRadioAudioUrl(audioUrl?: string | null): string {
+  const raw = String(audioUrl || '').trim();
+  if (!raw) return '';
+  if (/^https?:\/\//i.test(raw) || raw.startsWith('blob:') || raw.startsWith('data:')) return raw;
+  const origin = radioSocketOrigin().replace(/\/$/, '');
+  return raw.startsWith('/') ? `${origin}${raw}` : `${origin}/${raw}`;
+}
+
+export function mergeRadioTx(
+  prev: RadioChannelState | null,
+  tx: RadioTx,
+  channelId: string,
+): RadioChannelState {
+  const base =
+    prev?.channelId === channelId
+      ? prev
+      : {
+          channelId,
+          listeners: prev?.listeners ?? 0,
+          participants: prev?.participants ?? [],
+          talker: prev?.talker ?? null,
+          recent: [],
+        };
+  return {
+    ...base,
+    recent: [tx, ...(base.recent ?? []).filter((item) => item.id !== tx.id)].slice(0, 16),
+  };
 }

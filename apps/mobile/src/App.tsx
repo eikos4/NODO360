@@ -799,6 +799,10 @@ export default function App() {
       </main>
     );
   }
+  useEffect(() => {
+    if (!user) disconnectRadioSocket();
+  }, [user]);
+
   if (!user) return <Login onLogin={setUser} />;
   if (!activated) return <Activation onReady={() => setActivated(true)} />;
 
@@ -832,8 +836,20 @@ export default function App() {
       {sync.lastError && <div className="warning"><AlertTriangle /> {sync.lastError}</div>}
       <main className="content">
         {screen !== 'history' && screen !== 'radio' && screen !== 'announcements' && screen !== 'settings' && screen !== 'help' && screen !== 'recap' && (
-          <RadioAvailability available={stationAvailable} busy={stationBusy} onToggle={toggleStation} />
-          <MaquinistaAvailability available={maqAvailable} busy={maqBusy} onToggle={toggleMaquinista} />
+          <>
+            <RadioAvailability available={stationAvailable} busy={stationBusy} onToggle={toggleStation} />
+            <MaquinistaAvailability available={maqAvailable} busy={maqBusy} onToggle={toggleMaquinista} />
+          </>
+        )}
+        {selected && (
+          <div hidden={screen !== 'radio'} className="radio-host">
+            <RadioScreen
+              user={user}
+              incident={selected}
+              status={myStatus ?? selected?.myResponse?.status ?? null}
+              onNotice={flash}
+            />
+          </div>
         )}
         {screen === 'help' ? (
           <HelpScreen onBack={() => setScreen('settings')} />
@@ -865,12 +881,14 @@ export default function App() {
             }}
           />
         ) : screen === 'radio' ? (
-          <RadioScreen
-            user={user}
-            incident={selected}
-            status={myStatus ?? selected?.myResponse?.status ?? null}
-            onNotice={flash}
-          />
+          selected ? null : (
+            <RadioScreen
+              user={user}
+              incident={null}
+              status={null}
+              onNotice={flash}
+            />
+          )
         ) : screen === 'announcements' ? (
           <AnnouncementsScreen onCount={setAnnounceCount} />
         ) : screen === 'history' ? (

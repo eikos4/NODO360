@@ -3,6 +3,7 @@ import {
   MessageBody,
   OnGatewayConnection,
   OnGatewayDisconnect,
+  OnGatewayInit,
   SubscribeMessage,
   WebSocketGateway,
   WebSocketServer,
@@ -13,11 +14,14 @@ import { Server, Socket } from 'socket.io';
 import { PrismaService } from '../prisma/prisma.service';
 import { RadioService, RadioTransmission } from './radio.service';
 import { isAllowedCorsOrigin } from '../common/cors-origins';
+import { hasAnyRole } from '../common/user-roles';
+import { assertCompanyAccess } from '../common/cuerpo-scope';
 
 type SocketUser = {
   userId: string;
   email: string;
   role: string;
+  roles: string[];
   companyId: string | null;
   firstName: string;
   lastName: string;
@@ -26,14 +30,11 @@ type SocketUser = {
 @WebSocketGateway({
   namespace: '/radio',
   cors: {
-    origin: (origin, cb) => {
-      if (isAllowedCorsOrigin(origin)) return cb(null, true);
-      return cb(null, false);
-    },
+    origin: (origin, cb) => cb(null, isAllowedCorsOrigin(origin)),
     credentials: true,
   },
 })
-export class RadioGateway implements OnGatewayConnection, OnGatewayDisconnect {
+export class RadioGateway implements OnGatewayInit, OnGatewayConnection, OnGatewayDisconnect {
   private readonly logger = new Logger(RadioGateway.name);
 
   @WebSocketServer()
@@ -45,51 +46,26 @@ export class RadioGateway implements OnGatewayConnection, OnGatewayDisconnect {
     private readonly radio: RadioService,
   ) {}
 
-  async handleConnection(client: Socket) {
-    try {
-      const token =
-        (client.handshake.auth?.token as string | undefined) ||
-        (client.handshake.headers.authorization?.replace(/^Bearer\s+/i, '') ?? '');
-      if (!token) {
-        client.disconnect(true);
-        return;
+  afterInit(server: Server) {
+    server.use(async (socket, next) => {
+      try {
+        socket.data.user = await this.authenticate(socket);
+        next();
+      } catch (err) {
+        this.logger.warn(`Radio auth falló: ${(err as Error).message}`);
+        next(new Error('unauthorized'));
       }
-      const payload = this.jwt.verify(token) as {
-        sub: string;
-        email: string;
-        role: string;
-        companyId?: string | null;
-      };
-      const user = await this.prisma.user.findUnique({
-        where: { id: payload.sub },
-        select: {
-          id: true,
-          email: true,
-          role: true,
-          companyId: true,
-          firstName: true,
-          lastName: true,
-          isActive: true,
-        },
-      });
-      if (!user?.isActive) {
-        client.disconnect(true);
-        return;
-      }
-      const sockUser: SocketUser = {
-        userId: user.id,
-        email: user.email,
-        role: user.role,
-        companyId: user.companyId,
-        firstName: user.firstName,
-        lastName: user.lastName,
-      };
-      client.data.user = sockUser;
-      this.logger.log(`Radio conectado: ${user.firstName} ${user.lastName}`);
-    } catch (err) {
-      this.logger.warn(`Radio auth falló: ${(err as Error).message}`);
+    });
+  }
+
+  handleConnection(client: Socket) {
+    const user = this.userOf(client);
+    if (!user) {
       client.disconnect(true);
+      return;
     }
+    this.logger.log(`Radio conectado: ${user.firstName} ${user.lastName}`);
+    client.emit('radio.ready', { serverTime: new Date().toISOString() });
   }
 
   handleDisconnect(client: Socket) {
@@ -99,21 +75,95 @@ export class RadioGateway implements OnGatewayConnection, OnGatewayDisconnect {
     }
   }
 
+  private async authenticate(client: Socket): Promise<SocketUser> {
+    const token =
+      (client.handshake.auth?.token as string | undefined) ||
+      (client.handshake.headers.authorization?.replace(/^Bearer\s+/i, '') ?? '');
+    if (!token) throw new Error('Sin token');
+    const payload = this.jwt.verify(token) as {
+      sub: string;
+      email: string;
+      role: string;
+      companyId?: string | null;
+    };
+    const user = await this.prisma.user.findUnique({
+      where: { id: payload.sub },
+      select: {
+        id: true,
+        email: true,
+        role: true,
+        roles: true,
+        companyId: true,
+        firstName: true,
+        lastName: true,
+        isActive: true,
+      },
+    });
+    if (!user?.isActive) throw new Error('Usuario inactivo');
+    return {
+      userId: user.id,
+      email: user.email,
+      role: user.role,
+      roles: user.roles ?? [],
+      companyId: user.companyId,
+      firstName: user.firstName,
+      lastName: user.lastName,
+    };
+  }
+
   private userOf(client: Socket): SocketUser | null {
     return (client.data.user as SocketUser | undefined) ?? null;
   }
 
-  private canAccessChannel(user: SocketUser, channelId: string): boolean {
-    if (user.role === 'KODESK' || user.role === 'SUPER_ADMIN' || user.role === 'COMANDANTE' || user.role === 'OPERADOR_CENTRAL') {
-      return true;
-    }
+  private async canAccessChannel(user: SocketUser, channelId: string): Promise<boolean> {
+    if (hasAnyRole(user, 'KODESK')) return true;
     if (channelId.startsWith('company:')) {
       const companyId = channelId.slice('company:'.length);
-      return user.companyId === companyId || user.role === 'CAPITAN';
+      try {
+        await assertCompanyAccess(this.prisma, user, companyId);
+        return true;
+      } catch {
+        return false;
+      }
     }
-    // incident:* — cualquier usuario autenticado activo (filtrado en join por respuesta)
-    if (channelId.startsWith('incident:')) return true;
+    if (channelId.startsWith('incident:')) {
+      const incidentId = channelId.slice('incident:'.length);
+      const incident = await this.prisma.incident.findUnique({
+        where: { id: incidentId },
+        select: {
+          companyId: true,
+          vehicles: { select: { vehicle: { select: { companyId: true } } } },
+        },
+      });
+      if (!incident) return false;
+      try {
+        await assertCompanyAccess(this.prisma, user, incident.companyId);
+        return true;
+      } catch {
+        return Boolean(
+          user.companyId &&
+            incident.vehicles.some((row) => row.vehicle.companyId === user.companyId),
+        );
+      }
+    }
     return false;
+  }
+
+  private async canTalkOnChannel(user: SocketUser, channelId: string): Promise<boolean> {
+    if (hasAnyRole(user, 'OPERADOR_CENTRAL', 'COMANDANTE', 'CAPITAN', 'SUPER_ADMIN', 'KODESK')) {
+      return true;
+    }
+    if (!channelId.startsWith('incident:')) return false;
+    const incidentId = channelId.slice('incident:'.length);
+    const response = await this.prisma.incidentEmergencyResponse.findUnique({
+      where: { incidentId_userId: { incidentId, userId: user.userId } },
+      select: { status: true, locationMarkedAt: true },
+    });
+    return (
+      response?.status === 'GOING' ||
+      response?.status === 'ON_SCENE' ||
+      Boolean(response?.locationMarkedAt)
+    );
   }
 
   @SubscribeMessage('channel:join')
@@ -123,13 +173,13 @@ export class RadioGateway implements OnGatewayConnection, OnGatewayDisconnect {
   ) {
     const user = this.userOf(client);
     if (!user || !body?.channelId) return { ok: false, reason: 'Datos inválidos' };
-    if (!this.canAccessChannel(user, body.channelId)) {
+    if (!(await this.canAccessChannel(user, body.channelId))) {
       return { ok: false, reason: 'Sin permiso para este canal' };
     }
 
-    // Salir de otros canales incident/company del mismo cliente (un canal a la vez)
     const prev = this.radio.leave(client.id);
     for (const ch of prev) {
+      if (ch === body.channelId) continue;
       client.leave(ch);
       this.server.to(ch).emit('channel:state', this.radio.snapshot(ch));
     }
@@ -161,12 +211,19 @@ export class RadioGateway implements OnGatewayConnection, OnGatewayDisconnect {
   }
 
   @SubscribeMessage('ptt:start')
-  onPttStart(
+  async onPttStart(
     @ConnectedSocket() client: Socket,
     @MessageBody() body: { channelId?: string },
   ) {
     const user = this.userOf(client);
     if (!user || !body?.channelId) return { ok: false, reason: 'Datos inválidos' };
+    if (!this.radio.isInChannel(body.channelId, client.id)) {
+      const joined = await this.onJoin(client, body);
+      if (!joined?.ok) return joined;
+    }
+    if (!(await this.canTalkOnChannel(user, body.channelId))) {
+      return { ok: false, reason: 'Marcá VOY para transmitir' };
+    }
     const speakerName = `${user.firstName} ${user.lastName}`.trim();
     const result = this.radio.tryPttStart(body.channelId, client.id, user.userId, speakerName);
     if (!result.ok) return result;
@@ -195,7 +252,7 @@ export class RadioGateway implements OnGatewayConnection, OnGatewayDisconnect {
 
   /** Tras subir el audio por HTTP, el cliente emite esto para retransmitir. */
   @SubscribeMessage('tx:broadcast')
-  onBroadcast(
+  async onBroadcast(
     @ConnectedSocket() client: Socket,
     @MessageBody()
     body: {
@@ -208,6 +265,10 @@ export class RadioGateway implements OnGatewayConnection, OnGatewayDisconnect {
     const user = this.userOf(client);
     if (!user || !body?.channelId || !body?.audioUrl) {
       return { ok: false, reason: 'Datos inválidos' };
+    }
+    if (!this.radio.isInChannel(body.channelId, client.id)) {
+      const joined = await this.onJoin(client, body);
+      if (!joined?.ok) return joined;
     }
     const tx: RadioTransmission = {
       id: body.id || `tx_${Date.now()}`,
@@ -225,6 +286,7 @@ export class RadioGateway implements OnGatewayConnection, OnGatewayDisconnect {
     this.server.to(body.channelId).emit('tx:new', tx);
     this.server.to(body.channelId).emit('channel:state', state);
     this.server.to(body.channelId).emit('ptt:idle', { channelId: body.channelId });
-    return { ok: true, tx };
+    client.emit('tx:new', tx);
+    return { ok: true, tx, state };
   }
 }

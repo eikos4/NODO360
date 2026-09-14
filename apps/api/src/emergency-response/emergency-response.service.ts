@@ -11,6 +11,7 @@ import { DispatchCentralService } from '../dispatch-central/dispatch-central.ser
 import { AlarmQueueService } from '../notifications/alarm-queue.service';
 import { EmergencyBroadcaster } from '../emergency-realtime/emergency-broadcaster.service';
 import { EMERGENCY_EVENT_NAMES } from '../emergency-realtime/emergency-events.contract';
+import { hasAnyRole } from '../common/user-roles';
 
 const RESPONSE_LABELS: Record<EmergencyResponseStatus, string> = {
   GOING: 'Voy',
@@ -795,7 +796,7 @@ export class EmergencyResponseService {
     });
     if (!incident) throw new NotFoundException('Emergencia no encontrada');
 
-    const privileged = user.role === 'SUPER_ADMIN' || user.role === 'KODESK';
+    const privileged = hasAnyRole(user, 'SUPER_ADMIN', 'KODESK');
     const companyMatch = Boolean(
       user.companyId && (
         incident.companyId === user.companyId

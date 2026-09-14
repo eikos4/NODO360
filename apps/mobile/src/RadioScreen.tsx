@@ -5,7 +5,11 @@ import {
   disconnectRadioSocket,
   getRadioSocket,
   incidentChannelId,
+  mergeRadioTx,
   pickRecorderMime,
+  prepareRadioAudio,
+  resolveRadioAudioUrl,
+  unlockRadioAudio,
   type RadioChannelState,
   type RadioTx,
 } from './lib/radio';
@@ -23,6 +27,17 @@ function canTalkOnIncident(status: EmergencyResponseStatus | null, user?: { role
   );
 }
 
+function applyTx(tx: RadioTx): RadioTx {
+  return { ...tx, audioUrl: resolveRadioAudioUrl(tx.audioUrl) };
+}
+
+function applyState(state: RadioChannelState): RadioChannelState {
+  return {
+    ...state,
+    recent: (state.recent ?? []).map(applyTx),
+  };
+}
+
 export function RadioScreen({
   user,
   incident,
@@ -35,6 +50,7 @@ export function RadioScreen({
   onNotice: (message: string) => void;
 }) {
   const [connected, setConnected] = useState(false);
+  const [joined, setJoined] = useState(false);
   const [state, setState] = useState<RadioChannelState | null>(null);
   const [holding, setHolding] = useState(false);
   const [uploading, setUploading] = useState(false);
@@ -47,6 +63,8 @@ export function RadioScreen({
   const startedAtRef = useRef(0);
   const streamRef = useRef<MediaStream | null>(null);
   const audioRef = useRef<HTMLAudioElement | null>(null);
+  const audioReadyRef = useRef(false);
+  const pendingTxRef = useRef<RadioTx | null>(null);
   const noticeRef = useRef(onNotice);
   noticeRef.current = onNotice;
 
@@ -59,42 +77,79 @@ export function RadioScreen({
 
   const playTx = useCallback(async (tx: RadioTx, force = false) => {
     if (!force && tx.userId === user.id) return;
+    const url = resolveRadioAudioUrl(tx.audioUrl);
+    if (!url) return;
     try {
       if (!audioRef.current) audioRef.current = new Audio();
       const audio = audioRef.current;
-      audio.src = tx.audioUrl;
+      prepareRadioAudio(audio);
+      audio.src = url;
       setLastPlayedId(tx.id);
       setNowPlaying(tx.speakerName);
       await audio.play();
+      audioReadyRef.current = true;
       setAudioReady(true);
       audio.onended = () => setNowPlaying(null);
     } catch {
+      pendingTxRef.current = tx;
+      audioReadyRef.current = false;
       setAudioReady(false);
     }
   }, [user.id]);
 
+  const playTxRef = useRef(playTx);
+  playTxRef.current = playTx;
+
   useEffect(() => {
     if (!channelId) {
       setConnected(false);
+      setJoined(false);
       setState(null);
       setNowPlaying(null);
       disconnectRadioSocket();
       return;
     }
+
     let socket: ReturnType<typeof getRadioSocket> | null = null;
     let cancelled = false;
+    let joinTimer: number | null = null;
     const handlers: {
       onConnect?: () => void;
       onDisconnect?: () => void;
+      onReady?: () => void;
       onState?: (next: RadioChannelState) => void;
       onTx?: (tx: RadioTx) => void;
     } = {};
 
+    const joinChannel = (tries = 6) => {
+      if (cancelled || !socket) return;
+      socket.emit(
+        'channel:join',
+        { channelId },
+        (res: { ok?: boolean; state?: RadioChannelState; reason?: string }) => {
+          if (cancelled) return;
+          if (res?.ok && res.state) {
+            setJoined(true);
+            setState(applyState(res.state));
+            return;
+          }
+          if (tries > 1) {
+            joinTimer = window.setTimeout(() => joinChannel(tries - 1), 400);
+            return;
+          }
+          setJoined(false);
+          if (res?.reason) noticeRef.current(res.reason);
+        },
+      );
+    };
+
     const detach = () => {
+      if (joinTimer) window.clearTimeout(joinTimer);
       if (!socket) return;
       socket.emit('channel:leave', { channelId });
       if (handlers.onConnect) socket.off('connect', handlers.onConnect);
       if (handlers.onDisconnect) socket.off('disconnect', handlers.onDisconnect);
+      if (handlers.onReady) socket.off('radio.ready', handlers.onReady);
       if (handlers.onState) socket.off('channel:state', handlers.onState);
       if (handlers.onTx) socket.off('tx:new', handlers.onTx);
     };
@@ -105,27 +160,28 @@ export function RadioScreen({
 
       handlers.onConnect = () => {
         setConnected(true);
-        socket?.emit('channel:join', { channelId }, (res: { ok?: boolean; state?: RadioChannelState; reason?: string }) => {
-          if (res?.ok && res.state) setState(res.state);
-          else if (res?.reason) noticeRef.current(res.reason);
-        });
+        joinChannel();
       };
-      handlers.onDisconnect = () => setConnected(false);
+      handlers.onReady = () => joinChannel();
+      handlers.onDisconnect = () => {
+        setConnected(false);
+        setJoined(false);
+      };
       handlers.onState = (next) => {
-        if (next.channelId === channelId) setState(next);
+        if (next.channelId !== channelId) return;
+        setJoined(true);
+        setState(applyState(next));
       };
       handlers.onTx = (tx) => {
         if (tx.channelId !== channelId) return;
-        setState((prev) =>
-          prev
-            ? { ...prev, recent: [tx, ...(prev.recent ?? []).filter((item) => item.id !== tx.id)].slice(0, 16) }
-            : prev,
-        );
-        void playTx(tx);
+        const clip = applyTx(tx);
+        setState((prev) => mergeRadioTx(prev, clip, channelId));
+        void playTxRef.current(clip);
       };
 
       socket.on('connect', handlers.onConnect);
       socket.on('disconnect', handlers.onDisconnect);
+      socket.on('radio.ready', handlers.onReady);
       socket.on('channel:state', handlers.onState);
       socket.on('tx:new', handlers.onTx);
       if (socket.connected) handlers.onConnect();
@@ -133,11 +189,43 @@ export function RadioScreen({
       if (cancelled) detach();
     });
 
+    const poll = window.setInterval(() => {
+      void api
+        .get<{ recent?: RadioTx[]; state?: RadioChannelState }>(
+          `/radio/channels/${encodeURIComponent(channelId)}/recent`,
+        )
+        .then(({ data }) => {
+          const clips = (data?.state?.recent ?? data?.recent ?? []).map(applyTx);
+          if (!clips.length) return;
+          setState((prev) => {
+            if (!prev) {
+              return applyState(
+                data.state ?? {
+                  channelId,
+                  listeners: 0,
+                  participants: [],
+                  talker: null,
+                  recent: clips,
+                },
+              );
+            }
+            const byId = new Map(prev.recent.map((item) => [item.id, item]));
+            for (const clip of clips) byId.set(clip.id, clip);
+            return {
+              ...prev,
+              recent: [...byId.values()].sort((a, b) => b.at - a.at).slice(0, 16),
+            };
+          });
+        })
+        .catch(() => undefined);
+    }, 4000);
+
     return () => {
       cancelled = true;
+      window.clearInterval(poll);
       detach();
     };
-  }, [channelId, playTx]);
+  }, [channelId]);
 
   const stopTracks = () => {
     streamRef.current?.getTracks().forEach((track) => track.stop());
@@ -181,12 +269,19 @@ export function RadioScreen({
       const ext = mime.includes('mp4') ? 'm4a' : mime.includes('aac') ? 'aac' : 'webm';
       form.append('file', blob, `radio-${Date.now()}.${ext}`);
       const { data } = await api.post<{ audioUrl: string }>('/radio/upload', form);
-      socket.emit('tx:broadcast', {
-        channelId,
-        audioUrl: data.audioUrl,
-        durationMs,
-        id: `tx_${Date.now()}`,
-      });
+      const audioUrl = resolveRadioAudioUrl(data.audioUrl);
+      socket.emit(
+        'tx:broadcast',
+        { channelId, audioUrl, durationMs, id: `tx_${Date.now()}` },
+        (res: { ok?: boolean; tx?: RadioTx; reason?: string }) => {
+          if (res?.tx) {
+            const clip = applyTx(res.tx);
+            setState((prev) => mergeRadioTx(prev, clip, channelId));
+            return;
+          }
+          if (res?.reason) onNotice(res.reason);
+        },
+      );
     } catch {
       stopPtt();
       onNotice('No se pudo enviar la transmisión');
@@ -200,6 +295,16 @@ export function RadioScreen({
     const token = await getSessionToken();
     if (!token) return;
     const socket = getRadioSocket(token);
+    if (!audioRef.current) audioRef.current = new Audio();
+    await unlockRadioAudio(audioRef.current);
+    audioReadyRef.current = true;
+    setAudioReady(true);
+    if (pendingTxRef.current) {
+      const pending = pendingTxRef.current;
+      pendingTxRef.current = null;
+      void playTx(pending, true);
+    }
+
     const ack = await new Promise<{ ok?: boolean; reason?: string; talker?: { speakerName: string } }>((resolve) => {
       socket.emit('ptt:start', { channelId }, (res: { ok?: boolean; reason?: string; talker?: { speakerName: string } }) => {
         resolve(res || { ok: false });
@@ -225,7 +330,6 @@ export function RadioScreen({
       startedAtRef.current = Date.now();
       recorder.start(250);
       setHolding(true);
-      setAudioReady(true);
       window.setTimeout(() => {
         if (mediaRecorderRef.current === recorder && recorder.state === 'recording') void finishPtt();
       }, MAX_MS);
@@ -233,10 +337,11 @@ export function RadioScreen({
       socket.emit('ptt:stop', { channelId });
       onNotice('No se pudo acceder al micrófono');
     }
-  }, [canTalk, channelId, finishPtt, holding, onNotice, uploading]);
+  }, [canTalk, channelId, finishPtt, holding, onNotice, playTx, uploading]);
 
   const talker = state?.talker;
   const busyOther = Boolean(talker && !holding);
+  const inChannel = connected && joined;
 
   if (!incident) {
     return (
@@ -255,8 +360,8 @@ export function RadioScreen({
         <div>
           <b>Radio de emergencia</b>
           <small>
-            <i className={connected ? 'on' : ''} />
-            {connected ? 'En canal' : 'Conectando…'}
+            <i className={inChannel ? 'on' : ''} />
+            {inChannel ? 'En canal' : connected ? 'Entrando al canal…' : 'Conectando…'}
             <span><Users /> {state?.listeners ?? 0}</span>
           </small>
         </div>
@@ -286,9 +391,14 @@ export function RadioScreen({
           onClick={() => {
             const audio = audioRef.current ?? new Audio();
             audioRef.current = audio;
-            void audio.play().catch(() => undefined);
-            setAudioReady(true);
-            onNotice('Audio de radio activado');
+            void unlockRadioAudio(audio).then(() => {
+              audioReadyRef.current = true;
+              setAudioReady(true);
+              const pending = pendingTxRef.current;
+              pendingTxRef.current = null;
+              if (pending) void playTx(pending, true);
+              onNotice('Audio de radio activado');
+            });
           }}
         >
           <Volume2 /> Activar escucha
@@ -309,7 +419,7 @@ export function RadioScreen({
       <button
         type="button"
         className={`ptt ${holding ? 'hot' : ''} ${!canTalk ? 'listen' : ''}`}
-        disabled={!connected || uploading || (busyOther && !holding)}
+        disabled={!inChannel || uploading || (busyOther && !holding)}
         onPointerDown={(event) => {
           event.preventDefault();
           if (!canTalk) {

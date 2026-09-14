@@ -6,6 +6,8 @@ import { useAuthStore } from '../../store/authStore';
 import {
   getRadioSocket,
   incidentChannelId,
+  mergeRadioTx,
+  resolveRadioAudioUrl,
   type RadioChannelState,
   type RadioTx,
 } from '../../lib/radio-socket';
@@ -29,7 +31,7 @@ export default function RadioPttPanel({
   incidentId,
   incidentLabel,
   enabled = true,
-  canTalk = true,
+  canTalk = false,
   className,
   isDark: isDarkProp,
 }: Props) {
@@ -49,12 +51,15 @@ export default function RadioPttPanel({
   const streamRef = useRef<MediaStream | null>(null);
   const audioRef = useRef<HTMLAudioElement | null>(null);
 
-  const playTx = useCallback(async (tx: RadioTx) => {
-    if (me?.id && tx.userId === me.id) return;
+  const playTx = useCallback(async (tx: RadioTx, force = false) => {
+    if (!force && me?.id && tx.userId === me.id) return;
+    const url = resolveRadioAudioUrl(tx.audioUrl);
+    if (!url) return;
     try {
       if (!audioRef.current) audioRef.current = new Audio();
       const audio = audioRef.current;
-      audio.src = tx.audioUrl;
+      audio.setAttribute('playsinline', 'true');
+      audio.src = url;
       setLastPlayedId(tx.id);
       await audio.play();
     } catch {
@@ -62,35 +67,53 @@ export default function RadioPttPanel({
     }
   }, [me?.id]);
 
+  const playTxRef = useRef(playTx);
+  playTxRef.current = playTx;
+
   useEffect(() => {
     if (!enabled || !incidentId) return;
     const token = localStorage.getItem('nodo360_token');
     if (!token) return;
 
     const socket = getRadioSocket(token);
+    let joinTimer: number | null = null;
+
+    const applyTx = (tx: RadioTx): RadioTx => ({ ...tx, audioUrl: resolveRadioAudioUrl(tx.audioUrl) });
+    const applyState = (next: RadioChannelState): RadioChannelState => ({
+      ...next,
+      recent: (next.recent ?? []).map(applyTx),
+    });
+
+    const joinChannel = (tries = 6) => {
+      socket.emit(
+        'channel:join',
+        { channelId },
+        (res: { ok?: boolean; state?: RadioChannelState; reason?: string }) => {
+          if (res?.ok && res.state) setState(applyState(res.state));
+          else if (tries > 1) joinTimer = window.setTimeout(() => joinChannel(tries - 1), 400);
+          else if (res?.reason) toast.error(res.reason);
+        },
+      );
+    };
 
     const onConnect = () => {
       setConnected(true);
-      socket.emit('channel:join', { channelId }, (res: { ok?: boolean; state?: RadioChannelState; reason?: string }) => {
-        if (res?.ok && res.state) setState(res.state);
-        else if (res?.reason) toast.error(res.reason);
-      });
+      joinChannel();
     };
+    const onReady = () => joinChannel();
     const onDisconnect = () => setConnected(false);
     const onState = (s: RadioChannelState) => {
-      if (s.channelId === channelId) setState(s);
+      if (s.channelId === channelId) setState(applyState(s));
     };
     const onTx = (tx: RadioTx) => {
       if (tx.channelId !== channelId) return;
-      setState((prev) =>
-        prev
-          ? { ...prev, recent: [tx, ...(prev.recent ?? []).filter((r) => r.id !== tx.id)].slice(0, 12) }
-          : prev,
-      );
-      void playTx(tx);
+      const clip = applyTx(tx);
+      setState((prev) => mergeRadioTx(prev, clip, channelId));
+      void playTxRef.current(clip);
     };
 
     socket.on('connect', onConnect);
+    socket.on('radio.ready', onReady);
     socket.on('disconnect', onDisconnect);
     socket.on('channel:state', onState);
     socket.on('tx:new', onTx);
@@ -98,14 +121,35 @@ export default function RadioPttPanel({
     if (socket.connected) onConnect();
     else socket.connect();
 
+    const poll = window.setInterval(() => {
+      void api
+        .get<{ recent?: RadioTx[]; state?: RadioChannelState }>(
+          `/radio/channels/${encodeURIComponent(channelId)}/recent`,
+        )
+        .then(({ data }) => {
+          const clips = (data?.state?.recent ?? data?.recent ?? []).map(applyTx);
+          if (!clips.length) return;
+          setState((prev) => {
+            if (!prev) return applyState(data.state ?? { ...data, channelId, recent: clips } as RadioChannelState);
+            const byId = new Map((prev.recent ?? []).map((item) => [item.id, item]));
+            for (const clip of clips) byId.set(clip.id, clip);
+            return { ...prev, recent: [...byId.values()].sort((a, b) => b.at - a.at).slice(0, 16) };
+          });
+        })
+        .catch(() => undefined);
+    }, 4000);
+
     return () => {
+      if (joinTimer) window.clearTimeout(joinTimer);
+      window.clearInterval(poll);
       socket.emit('channel:leave', { channelId });
       socket.off('connect', onConnect);
+      socket.off('radio.ready', onReady);
       socket.off('disconnect', onDisconnect);
       socket.off('channel:state', onState);
       socket.off('tx:new', onTx);
     };
-  }, [channelId, enabled, incidentId, playTx]);
+  }, [channelId, enabled, incidentId]);
 
   const stopTracks = () => {
     streamRef.current?.getTracks().forEach((t) => t.stop());
@@ -152,10 +196,13 @@ export default function RadioPttPanel({
       const form = new FormData();
       form.append('file', blob, `radio-${Date.now()}.webm`);
       const { data } = await api.post<{ audioUrl: string }>('/radio/upload', form);
+      const audioUrl = resolveRadioAudioUrl(data.audioUrl);
       socket.emit(
         'tx:broadcast',
-        { channelId, audioUrl: data.audioUrl, durationMs, id: `tx_${Date.now()}` },
-        () => undefined,
+        { channelId, audioUrl, durationMs, id: `tx_${Date.now()}` },
+        (res: { ok?: boolean; tx?: RadioTx }) => {
+          if (res?.tx) setState((prev) => mergeRadioTx(prev, { ...res.tx!, audioUrl: resolveRadioAudioUrl(res.tx!.audioUrl) }, channelId));
+        },
       );
     } catch {
       stopPttSignal();
@@ -305,7 +352,7 @@ export default function RadioPttPanel({
             <button
               key={tx.id}
               type="button"
-              onClick={() => void playTx(tx)}
+              onClick={() => void playTx(tx, true)}
               className={cn(
                 'w-full flex items-center justify-between gap-2 text-left px-2.5 py-1.5 rounded-lg border text-xs transition-colors',
                 lastPlayedId === tx.id
