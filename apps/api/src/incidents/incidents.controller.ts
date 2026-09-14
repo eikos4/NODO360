@@ -19,10 +19,10 @@ export class IncidentsController {
   ) {}
 
   @Get('stats')
-  getStats(@Req() req: { user: IncidentAuthUser }, @Query('companyId') companyId?: string) {
+  async getStats(@Req() req: { user: IncidentAuthUser }, @Query('companyId') companyId?: string) {
     if (req.user.role !== 'SUPER_ADMIN' && req.user.role !== 'KODESK') {
-      this.service.assertCanCreateFor(companyId ?? req.user.companyId ?? '', req.user);
-      return this.service.getStats(req.user.companyId!);
+      await this.service.assertCanCreateFor(companyId ?? req.user.companyId ?? '', req.user);
+      return this.service.getStats(companyId ?? req.user.companyId!);
     }
     return this.service.getStats(companyId);
   }
@@ -60,15 +60,15 @@ export class IncidentsController {
 
   @Post('dispatch')
   @Roles('SUPER_ADMIN', 'COMANDANTE', 'CAPITAN', 'OPERADOR_CENTRAL')
-  dispatch(@Body() dto: DispatchIncidentDto, @Req() req: { user: IncidentAuthUser }) {
-    this.service.assertCanCreateFor(dto.companyId, req.user);
+  async dispatch(@Body() dto: DispatchIncidentDto, @Req() req: { user: IncidentAuthUser }) {
+    await this.service.assertCanCreateFor(dto.companyId, req.user);
     return this.service.dispatch(dto, req.user?.id);
   }
 
   @Post()
   @Roles('SUPER_ADMIN', 'COMANDANTE', 'CAPITAN')
-  create(@Body() dto: CreateIncidentDto, @Req() req: { user: IncidentAuthUser }) {
-    this.service.assertCanCreateFor(dto.companyId, req.user);
+  async create(@Body() dto: CreateIncidentDto, @Req() req: { user: IncidentAuthUser }) {
+    await this.service.assertCanCreateFor(dto.companyId, req.user);
     return this.service.create(dto, req.user?.id);
   }
 
@@ -80,7 +80,7 @@ export class IncidentsController {
     @Req() req: { user: IncidentAuthUser },
   ) {
     await this.service.assertCanManage(id, req.user);
-    if (dto.companyId) this.service.assertCanCreateFor(dto.companyId, req.user);
+    if (dto.companyId) await this.service.assertCanCreateFor(dto.companyId, req.user);
     return this.service.update(id, dto);
   }
 

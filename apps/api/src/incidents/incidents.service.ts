@@ -8,6 +8,7 @@ import { AlarmWorkerService } from '../notifications/alarm-worker.service';
 import { EmergencyBroadcaster } from '../emergency-realtime/emergency-broadcaster.service';
 import { EMERGENCY_EVENT_NAMES } from '../emergency-realtime/emergency-events.contract';
 import { cuerpoIdForUser } from '../common/cuerpo-scope';
+import { hasAnyRole } from '../common/user-roles';
 import { CreateIncidentDto } from './dto/create-incident.dto';
 import { UpdateIncidentDto } from './dto/update-incident.dto';
 import { DispatchIncidentDto } from './dto/dispatch-incident.dto';
@@ -44,7 +45,9 @@ const INCLUDE = {
 export type IncidentAuthUser = {
   id: string;
   role: string;
+  roles?: string[];
   companyId: string | null;
+  cuerpoId?: string | null;
 };
 
 @Injectable()
@@ -67,11 +70,18 @@ export class IncidentsService {
   }
 
   async findAllAuthorized(user: IncidentAuthUser, requestedCompanyId?: string) {
-    if (user.role === 'KODESK') return this.findAll(requestedCompanyId);
-    if (user.role === 'SUPER_ADMIN') {
-      if (requestedCompanyId) return this.findAll(requestedCompanyId);
-      const cuerpoId = await cuerpoIdForUser(this.prisma, user);
-      if (!cuerpoId) return this.findAll();
+    if (hasAnyRole(user, 'KODESK')) return this.findAll(requestedCompanyId);
+    if (hasAnyRole(user, 'SUPER_ADMIN', 'COMANDANTE', 'OPERADOR_CENTRAL')) {
+      if (requestedCompanyId) {
+        await this.assertCanCreateFor(requestedCompanyId, user);
+        return this.findAll(requestedCompanyId);
+      }
+      const cuerpoId = await this.actorCuerpoId(user);
+      if (!cuerpoId) {
+        if (hasAnyRole(user, 'SUPER_ADMIN')) return this.findAll();
+        if (!user.companyId) throw new ForbiddenException('Usuario sin compañía asignada');
+        return this.findAll(user.companyId);
+      }
       const rows = await this.prisma.incident.findMany({
         where: { company: { cuerpoId } },
         include: INCLUDE,
@@ -97,7 +107,7 @@ export class IncidentsService {
   }
 
   async findByIdAuthorized(id: string, user: IncidentAuthUser) {
-    if (user.role !== 'SUPER_ADMIN' && user.role !== 'KODESK') {
+    if (!hasAnyRole(user, 'SUPER_ADMIN', 'KODESK')) {
       const or: Prisma.IncidentWhereInput[] = [
         { emergencyResponses: { some: { userId: user.id } } },
       ];
@@ -115,19 +125,50 @@ export class IncidentsService {
   }
 
   async assertCanManage(id: string, user: IncidentAuthUser) {
-    if (user.role === 'SUPER_ADMIN' || user.role === 'KODESK') return;
-    if (!user.companyId) throw new ForbiddenException('Usuario sin compañía asignada');
-    const owned = await this.prisma.incident.findFirst({
-      where: { id, companyId: user.companyId },
-      select: { id: true },
+    if (hasAnyRole(user, 'KODESK')) return;
+    const incident = await this.prisma.incident.findUnique({
+      where: { id },
+      select: { companyId: true, company: { select: { cuerpoId: true } } },
     });
-    if (!owned) throw new ForbiddenException('No puede modificar una emergencia de otra compañía');
+    if (!incident) throw new NotFoundException('Emergencia no encontrada');
+    if (hasAnyRole(user, 'SUPER_ADMIN', 'COMANDANTE', 'OPERADOR_CENTRAL')) {
+      const cuerpoId = await this.actorCuerpoId(user);
+      if (!cuerpoId || cuerpoId === incident.company.cuerpoId) return;
+      throw new ForbiddenException('No puede modificar una emergencia de otro Cuerpo');
+    }
+    if (!user.companyId) throw new ForbiddenException('Usuario sin compañía asignada');
+    if (incident.companyId !== user.companyId) {
+      throw new ForbiddenException('No puede modificar una emergencia de otra compañía');
+    }
   }
 
-  assertCanCreateFor(companyId: string, user: IncidentAuthUser) {
-    if (user.role !== 'SUPER_ADMIN' && user.role !== 'KODESK' && user.companyId !== companyId) {
-      throw new ForbiddenException('No puede despachar para otra compañía');
+  async assertCanCreateFor(companyId: string, user: IncidentAuthUser) {
+    if (hasAnyRole(user, 'KODESK')) return;
+    if (user.companyId === companyId) return;
+
+    const target = await this.prisma.company.findFirst({
+      where: { id: companyId, isActive: true },
+      select: { cuerpoId: true },
+    });
+    if (!target) throw new ForbiddenException('Compañía no disponible');
+
+    if (hasAnyRole(user, 'SUPER_ADMIN', 'COMANDANTE', 'OPERADOR_CENTRAL')) {
+      const cuerpoId = await this.actorCuerpoId(user);
+      if (!cuerpoId) {
+        if (hasAnyRole(user, 'SUPER_ADMIN')) return;
+        const cuerpos = await this.prisma.cuerpo.count({ where: { isActive: true } });
+        if (cuerpos <= 1) return;
+        throw new ForbiddenException('Centralista sin Cuerpo asignado');
+      }
+      if (cuerpoId === target.cuerpoId) return;
+      throw new ForbiddenException('No puede despachar fuera de este Cuerpo');
     }
+
+    throw new ForbiddenException('No puede despachar para otra compañía');
+  }
+
+  private async actorCuerpoId(user: IncidentAuthUser) {
+    return user.cuerpoId ?? (await cuerpoIdForUser(this.prisma, user));
   }
 
   async findById(id: string) {
