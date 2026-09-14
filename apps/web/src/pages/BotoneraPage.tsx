@@ -572,6 +572,32 @@ export default function BotoneraPage() {
 
     const radioMsg = buildDispatchRadioMessage(typeId, address, vehicleIds, (vehicles ?? []) as { id: string; patent: string; type?: string }[]);
     let skipKeyTone = opts?.keyToneAlreadyPlayed ?? false;
+    const lat = latitude ? parseFloat(latitude) : undefined;
+    const lng = longitude ? parseFloat(longitude) : undefined;
+
+    if (pendingPersistRef.current) {
+      pendingPersistRef.current = false;
+      try {
+        await persistDispatch.mutateAsync({
+          type: botoneraTypeToIncident(typeId),
+          address: address.trim(),
+          description: notes.trim() || radioMsg || `Despacho clave ${emerg.code}: ${emerg.label}`,
+          companyId: selectedCia,
+          vehicleIds,
+          participantIds: selectedParticipants.length ? selectedParticipants : undefined,
+          latitude: lat != null && Number.isFinite(lat) ? lat : undefined,
+          longitude: lng != null && Number.isFinite(lng) ? lng : undefined,
+          dispatchNotes: notes.trim() || undefined,
+          dispatchSource: 'BOTONERA',
+          locationPinToken: preDispatchToken || undefined,
+        });
+        qc.invalidateQueries({ queryKey: ['incidents'] });
+        qc.invalidateQueries({ queryKey: ['guard-log-dashboard'] });
+      } catch {
+        setDispatching(false);
+        return;
+      }
+    }
 
     const doDispatch = async (remaining: number) => {
       if (remaining <= 0) {
@@ -588,27 +614,6 @@ export default function BotoneraPage() {
           latitude,
           longitude,
         });
-        toast.success(`Despacho emitido × ${repeatCount}`);
-        if (pendingPersistRef.current) {
-          pendingPersistRef.current = false;
-          try {
-            await persistDispatch.mutateAsync({
-              type: botoneraTypeToIncident(typeId),
-              address: address.trim(),
-              description: notes.trim() || radioMsg || `Despacho clave ${emerg.code}: ${emerg.label}`,
-              companyId: selectedCia,
-              vehicleIds,
-              participantIds: selectedParticipants.length ? selectedParticipants : undefined,
-              latitude: latitude ? parseFloat(latitude) : undefined,
-              longitude: longitude ? parseFloat(longitude) : undefined,
-              dispatchNotes: notes.trim() || undefined,
-              dispatchSource: 'BOTONERA',
-              locationPinToken: preDispatchToken || undefined,
-            });
-            qc.invalidateQueries({ queryKey: ['incidents'] });
-            qc.invalidateQueries({ queryKey: ['guard-log-dashboard'] });
-          } catch { /* toast en mutation */ }
-        }
         return;
       }
 

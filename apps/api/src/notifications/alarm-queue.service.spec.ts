@@ -50,7 +50,15 @@ describe('AlarmQueueService', () => {
     await expect(service.enqueue(event)).resolves.toMatchObject({ deduplicated: false });
     expect(prisma.devicePushToken.findMany).toHaveBeenCalledWith(
       expect.objectContaining({
-        where: { user: { isActive: true, companyId: { in: ['company-1'] } } },
+        where: {
+          user: {
+            isActive: true,
+            OR: [
+              { companyId: { in: ['company-1'] } },
+              { supportCompanyId: { in: ['company-1'] } },
+            ],
+          },
+        },
       }),
     );
     expect(prisma.alarmNotification.create).toHaveBeenCalledWith({

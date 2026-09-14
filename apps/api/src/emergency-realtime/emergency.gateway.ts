@@ -8,6 +8,7 @@ import { JwtService } from '@nestjs/jwt';
 import { Server, Socket } from 'socket.io';
 import { PrismaService } from '../prisma/prisma.service';
 import { isAllowedCorsOrigin } from '../common/cors-origins';
+import { hasAnyRole } from '../common/user-roles';
 import {
   EMERGENCY_SOCKET_NAMESPACE,
   EmergencyEventEnvelope,
@@ -58,6 +59,7 @@ export class EmergencyGateway implements OnGatewayConnection {
         select: {
           id: true,
           role: true,
+          roles: true,
           isActive: true,
           companyId: true,
           supportCompanyId: true,
@@ -68,7 +70,7 @@ export class EmergencyGateway implements OnGatewayConnection {
       if (!user?.isActive) return client.disconnect(true);
 
       let companyIds: string[];
-      if (user.role === 'SUPER_ADMIN' || user.role === 'KODESK') {
+      if (hasAnyRole(user, 'SUPER_ADMIN', 'KODESK')) {
         const companies = await this.prisma.company.findMany({
           where: { isActive: true },
           select: { id: true },

@@ -32,7 +32,15 @@ export class AlarmQueueService {
     const companyIds = [...new Set(event.companyIds.filter(Boolean))];
     const devices = companyIds.length
       ? await client.devicePushToken.findMany({
-          where: { user: { isActive: true, companyId: { in: companyIds } } },
+          where: {
+            user: {
+              isActive: true,
+              OR: [
+                { companyId: { in: companyIds } },
+                { supportCompanyId: { in: companyIds } },
+              ],
+            },
+          },
           select: { id: true, userId: true, token: true, platform: true },
         })
       : [];

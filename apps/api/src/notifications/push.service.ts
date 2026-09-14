@@ -125,9 +125,12 @@ export class PushService {
 
     const devices = await this.prisma.devicePushToken.findMany({
       where: {
-        user: {
+          user: {
           isActive: true,
-          companyId: { in: companyIds },
+          OR: [
+            { companyId: { in: companyIds } },
+            { supportCompanyId: { in: companyIds } },
+          ],
         },
       },
       select: { token: true, id: true },
@@ -221,9 +224,12 @@ export class PushService {
 
     const devices = await this.prisma.devicePushToken.findMany({
       where: {
-        user: {
+          user: {
           isActive: true,
-          companyId: { in: companyIds },
+          OR: [
+            { companyId: { in: companyIds } },
+            { supportCompanyId: { in: companyIds } },
+          ],
         },
       },
       select: { token: true },

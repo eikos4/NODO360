@@ -15,6 +15,9 @@ const RESPONDER_ROLES = [
   'COMANDANTE',
   'OPERADOR_CENTRAL',
   'ENCARGADO_MATERIAL',
+  'SECRETARIO',
+  'TESORERO',
+  'AUDITOR',
 ] as const;
 
 @Controller('emergency-response')
