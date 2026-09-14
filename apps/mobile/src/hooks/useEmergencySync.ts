@@ -12,8 +12,8 @@ import type {
   QueuedResponse,
 } from '../types';
 
-const POLL_ACTIVE_MS = 12_000;
-const POLL_IDLE_MS = 15_000;
+const POLL_ACTIVE_MS = 3_000;
+const POLL_IDLE_MS = 4_000;
 const socketOrigin = API_URL.replace(/\/api\/?$/, '') || window.location.origin;
 
 type NewDispatchHandler = (incident: {

@@ -7,6 +7,6 @@ import { AlarmWorkerService } from './alarm-worker.service';
 @Module({
   controllers: [NotificationsController],
   providers: [PushService, AlarmQueueService, AlarmWorkerService],
-  exports: [PushService, AlarmQueueService],
+  exports: [PushService, AlarmQueueService, AlarmWorkerService],
 })
 export class NotificationsModule {}

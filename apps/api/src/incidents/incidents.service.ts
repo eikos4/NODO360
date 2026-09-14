@@ -4,6 +4,7 @@ import { createHash, randomUUID } from 'crypto';
 import { PrismaService } from '../prisma/prisma.service';
 import { GuardLogService } from '../guard-log/guard-log.service';
 import { AlarmQueueService } from '../notifications/alarm-queue.service';
+import { AlarmWorkerService } from '../notifications/alarm-worker.service';
 import { EmergencyBroadcaster } from '../emergency-realtime/emergency-broadcaster.service';
 import { EMERGENCY_EVENT_NAMES } from '../emergency-realtime/emergency-events.contract';
 import { cuerpoIdForUser } from '../common/cuerpo-scope';
@@ -52,6 +53,7 @@ export class IncidentsService {
     private prisma: PrismaService,
     private guardLogService: GuardLogService,
     private alarms: AlarmQueueService,
+    private alarmWorker: AlarmWorkerService,
     private emergencyBroadcaster: EmergencyBroadcaster,
   ) {}
 
@@ -339,12 +341,24 @@ export class IncidentsService {
             code: created.code,
             type: created.type,
             address: created.address,
+            emergencyCodeId: created.type.split(' — ')[0]?.trim() || created.code,
           },
         },
         tx,
       );
       return created;
     });
+
+    const companyIds = new Set<string>([incident.companyId]);
+    incident.vehicles.forEach((row) => companyIds.add(row.vehicle.companyId));
+    this.emergencyBroadcaster.emit({
+      event: EMERGENCY_EVENT_NAMES.dispatchCreated,
+      incidentId: incident.id,
+      companyIds: [...companyIds],
+      snapshotVersion: incident.updatedAt,
+      data: { incident },
+    });
+    void this.alarmWorker.flushNow();
 
     const full = await this.findById(incident.id);
 
@@ -366,15 +380,6 @@ export class IncidentsService {
     } catch {
       result = { ...full, guardLogLinked: false };
     }
-    const companyIds = new Set<string>([full.companyId]);
-    full.vehicles.forEach((row: any) => companyIds.add(row.vehicle.companyId));
-    this.emergencyBroadcaster.emit({
-      event: EMERGENCY_EVENT_NAMES.dispatchCreated,
-      incidentId: full.id,
-      companyIds: [...companyIds],
-      snapshotVersion: full.updatedAt,
-      data: { incident: result },
-    });
     return result;
   }
 
@@ -505,8 +510,10 @@ export class IncidentsService {
           type: updated.type,
           address: updated.address,
           status: updated.status,
+          emergencyCodeId: updated.type.split(' — ')[0]?.trim() || updated.code,
         },
       });
+      void this.alarmWorker.flushNow();
     }
     const realtimeEvent =
       updated.status === IncidentStatus.CANCELLED

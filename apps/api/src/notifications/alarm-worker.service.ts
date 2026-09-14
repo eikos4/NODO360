@@ -28,7 +28,7 @@ export class AlarmWorkerService implements OnModuleInit, OnModuleDestroy {
       this.logger.warn('Worker de alarmas desactivado');
       return;
     }
-    const interval = this.numberConfig('ALARM_WORKER_INTERVAL_MS', 3000, 500);
+    const interval = this.numberConfig('ALARM_WORKER_INTERVAL_MS', 750, 250);
     this.timer = setInterval(() => void this.tick(), interval);
     void this.tick();
     this.logger.log(`Worker de alarmas activo cada ${interval}ms`);
@@ -57,6 +57,30 @@ export class AlarmWorkerService implements OnModuleInit, OnModuleDestroy {
     }
   }
 
+  /** Manda ya lo que esté en cola, sin esperar el intervalo. */
+  async flushNow() {
+    try {
+      const batchSize = this.numberConfig('ALARM_WORKER_FLUSH_SIZE', 80, 1);
+      const now = new Date();
+      const candidates = await this.prisma.alarmDelivery.findMany({
+        where: {
+          status: AlarmDeliveryStatus.QUEUED,
+          nextAttemptAt: { lte: now },
+          notification: { expiresAt: { gt: now } },
+        },
+        orderBy: [{ nextAttemptAt: 'asc' }, { createdAt: 'asc' }],
+        select: { id: true },
+        take: batchSize,
+      });
+      if (!candidates.length) return { flushed: 0 };
+      await Promise.allSettled(candidates.map((row) => this.claimAndDeliver(row.id)));
+      return { flushed: candidates.length };
+    } catch (error) {
+      this.logger.error('Flush inmediato de alarmas falló', error);
+      return { flushed: 0 };
+    }
+  }
+
   private async claimNext() {
     const now = new Date();
     const candidate = await this.prisma.alarmDelivery.findFirst({
@@ -69,10 +93,19 @@ export class AlarmWorkerService implements OnModuleInit, OnModuleDestroy {
       select: { id: true },
     });
     if (!candidate) return null;
+    return this.claimById(candidate.id);
+  }
 
+  private async claimAndDeliver(id: string) {
+    const delivery = await this.claimById(id);
+    if (delivery) await this.deliver(delivery);
+  }
+
+  private async claimById(id: string) {
+    const now = new Date();
     return this.prisma.$transaction(async (tx) => {
       const claimed = await tx.alarmDelivery.updateMany({
-        where: { id: candidate.id, status: AlarmDeliveryStatus.QUEUED },
+        where: { id, status: AlarmDeliveryStatus.QUEUED },
         data: {
           status: AlarmDeliveryStatus.PROCESSING,
           lockedAt: now,
@@ -82,12 +115,12 @@ export class AlarmWorkerService implements OnModuleInit, OnModuleDestroy {
       if (!claimed.count) return null;
       await tx.alarmDeliveryHistory.create({
         data: {
-          deliveryId: candidate.id,
+          deliveryId: id,
           status: AlarmDeliveryStatus.PROCESSING,
         },
       });
       return tx.alarmDelivery.findUniqueOrThrow({
-        where: { id: candidate.id },
+        where: { id },
         include: {
           notification: {
             select: {
