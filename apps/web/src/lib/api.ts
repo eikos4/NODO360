@@ -7,14 +7,28 @@ const apiBase =
 
 export const api = axios.create({
   baseURL: apiBase,
-  headers: { 'Content-Type': 'application/json' },
 });
+
+function dropContentType(headers: unknown) {
+  const value = headers as { delete?: (name: string) => void } & Record<string, unknown>;
+  if (!value) return;
+  if (typeof value.delete === 'function') {
+    value.delete('Content-Type');
+    value.delete('content-type');
+    return;
+  }
+  delete value['Content-Type'];
+  delete value['content-type'];
+}
 
 api.interceptors.request.use((config) => {
   const token = localStorage.getItem('nodo360_token');
   if (token) config.headers.Authorization = `Bearer ${token}`;
-  if (typeof FormData !== 'undefined' && config.data instanceof FormData) {
-    delete config.headers['Content-Type'];
+  const isForm = typeof FormData !== 'undefined' && config.data instanceof FormData;
+  if (isForm) {
+    dropContentType(config.headers);
+  } else if (config.data && typeof config.data === 'object') {
+    config.headers['Content-Type'] = 'application/json';
   }
   return config;
 });

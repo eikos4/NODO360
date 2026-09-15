@@ -177,6 +177,8 @@ export class RadioGateway implements OnGatewayInit, OnGatewayConnection, OnGatew
       return { ok: false, reason: 'Sin permiso para este canal' };
     }
 
+    await this.radio.hydrate(body.channelId);
+
     const prev = this.radio.leave(client.id);
     for (const ch of prev) {
       if (ch === body.channelId) continue;

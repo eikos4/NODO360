@@ -1,5 +1,6 @@
+import { Capacitor } from '@capacitor/core';
 import { io, type Socket } from 'socket.io-client';
-import { API_URL } from './api';
+import { api, API_URL } from './api';
 
 export type RadioTx = {
   id: string;
@@ -85,10 +86,90 @@ export function mergeRadioTx(
 
 export function pickRecorderMime() {
   if (typeof MediaRecorder === 'undefined') return '';
-  for (const type of ['audio/webm;codecs=opus', 'audio/webm', 'audio/mp4', 'audio/aac']) {
+  const android = /Android/i.test(navigator.userAgent);
+  const types = android
+    ? ['audio/mp4', 'audio/aac', 'audio/webm;codecs=opus', 'audio/webm']
+    : ['audio/webm;codecs=opus', 'audio/webm', 'audio/mp4', 'audio/aac'];
+  for (const type of types) {
     if (MediaRecorder.isTypeSupported(type)) return type;
   }
   return '';
+}
+
+export function radioFileMeta(mime: string) {
+  const m = (mime || '').toLowerCase();
+  if (m.includes('mp4') || m.includes('m4a') || m.includes('aac')) {
+    return { ext: 'm4a', type: mime || 'audio/mp4' };
+  }
+  if (m.includes('mpeg') || m.includes('mp3')) return { ext: 'mp3', type: mime || 'audio/mpeg' };
+  if (m.includes('3gp')) return { ext: '3gp', type: mime || 'audio/3gpp' };
+  if (m.includes('ogg')) return { ext: 'ogg', type: mime || 'audio/ogg' };
+  return { ext: 'webm', type: mime || 'audio/webm' };
+}
+
+export function radioUploadFile(blob: Blob, mime: string) {
+  const meta = radioFileMeta(mime || blob.type);
+  const name = `radio-${Date.now()}.${meta.ext}`;
+  try {
+    return new File([blob], name, { type: meta.type });
+  } catch {
+    return blob;
+  }
+}
+
+export async function stopRadioRecorder(recorder: MediaRecorder, chunks: Blob[]) {
+  if (recorder.state !== 'inactive') {
+    if (recorder.state === 'recording') {
+      try { recorder.requestData(); } catch { /* Android WebView */ }
+      await new Promise((r) => setTimeout(r, 60));
+    }
+    await new Promise<void>((resolve) => {
+      const done = () => resolve();
+      recorder.addEventListener('stop', done, { once: true });
+      try {
+        recorder.stop();
+      } catch {
+        done();
+      }
+    });
+  }
+  return new Blob(chunks, { type: recorder.mimeType || chunks[0]?.type || 'audio/webm' });
+}
+
+export function blobToBase64(blob: Blob): Promise<string> {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onloadend = () => {
+      const result = String(reader.result || '');
+      const comma = result.indexOf(',');
+      resolve(comma >= 0 ? result.slice(comma + 1) : result);
+    };
+    reader.onerror = () => reject(new Error('No se pudo leer el audio'));
+    reader.readAsDataURL(blob);
+  });
+}
+
+/** En Android, CapacitorHttp rompe FormData/multipart. El JSON en base64 sí llega al API. */
+export async function uploadRadioClip(blob: Blob, mime: string): Promise<string> {
+  const meta = radioFileMeta(mime || blob.type);
+  const filename = `radio-${Date.now()}.${meta.ext}`;
+  if (Capacitor.isNativePlatform()) {
+    const audio = await blobToBase64(blob);
+    if (!audio) throw new Error('El teléfono no grabó audio');
+    const { data } = await api.post<{ audioUrl: string }>('/radio/upload-base64', {
+      audio,
+      mimeType: meta.type,
+      filename,
+    });
+    if (!data?.audioUrl) throw new Error('El servidor no devolvió audio');
+    return data.audioUrl;
+  }
+  const form = new FormData();
+  const file = radioUploadFile(blob, mime);
+  form.append('file', file, file instanceof File ? file.name : filename);
+  const { data } = await api.post<{ audioUrl: string }>('/radio/upload', form);
+  if (!data?.audioUrl) throw new Error('El servidor no devolvió audio');
+  return data.audioUrl;
 }
 
 const SILENT_WAV =

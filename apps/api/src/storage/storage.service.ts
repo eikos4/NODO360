@@ -102,7 +102,7 @@ export class StorageService {
   private resourceType(mimeType: string | undefined, filename: string): 'image' | 'video' | 'raw' | 'auto' {
     if (mimeType?.startsWith('image/')) return 'image';
     if (mimeType?.startsWith('audio/') || mimeType?.startsWith('video/')) return 'video';
-    if (/\.(webm|ogg|mp3|m4a|wav)$/i.test(filename)) return 'video';
+    if (/\.(webm|ogg|mp3|m4a|wav|mp4|3gp|aac)$/i.test(filename)) return 'video';
     if (/\.(pdf|doc|docx|xls|xlsx|ppt|pptx|zip|txt|csv)$/i.test(filename)) return 'raw';
     return 'auto';
   }

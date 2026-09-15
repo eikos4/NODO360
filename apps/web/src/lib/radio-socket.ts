@@ -58,6 +58,58 @@ export function companyChannelId(companyId: string) {
   return `company:${companyId}`;
 }
 
+export function pickRecorderMime() {
+  if (typeof MediaRecorder === 'undefined') return '';
+  const android = /Android/i.test(navigator.userAgent);
+  const types = android
+    ? ['audio/mp4', 'audio/aac', 'audio/webm;codecs=opus', 'audio/webm']
+    : ['audio/webm;codecs=opus', 'audio/webm', 'audio/mp4', 'audio/aac'];
+  for (const type of types) {
+    if (MediaRecorder.isTypeSupported(type)) return type;
+  }
+  return '';
+}
+
+export function radioFileMeta(mime: string) {
+  const m = (mime || '').toLowerCase();
+  if (m.includes('mp4') || m.includes('m4a') || m.includes('aac')) {
+    return { ext: 'm4a', type: mime || 'audio/mp4' };
+  }
+  if (m.includes('mpeg') || m.includes('mp3')) return { ext: 'mp3', type: mime || 'audio/mpeg' };
+  if (m.includes('3gp')) return { ext: '3gp', type: mime || 'audio/3gpp' };
+  if (m.includes('ogg')) return { ext: 'ogg', type: mime || 'audio/ogg' };
+  return { ext: 'webm', type: mime || 'audio/webm' };
+}
+
+export function radioUploadFile(blob: Blob, mime: string) {
+  const meta = radioFileMeta(mime || blob.type);
+  const name = `radio-${Date.now()}.${meta.ext}`;
+  try {
+    return new File([blob], name, { type: meta.type });
+  } catch {
+    return blob;
+  }
+}
+
+export async function stopRadioRecorder(recorder: MediaRecorder, chunks: Blob[]) {
+  if (recorder.state !== 'inactive') {
+    if (recorder.state === 'recording') {
+      try { recorder.requestData(); } catch { /* */ }
+      await new Promise((r) => setTimeout(r, 60));
+    }
+    await new Promise<void>((resolve) => {
+      const done = () => resolve();
+      recorder.addEventListener('stop', done, { once: true });
+      try {
+        recorder.stop();
+      } catch {
+        done();
+      }
+    });
+  }
+  return new Blob(chunks, { type: recorder.mimeType || chunks[0]?.type || 'audio/webm' });
+}
+
 export function resolveRadioAudioUrl(audioUrl?: string | null): string {
   const raw = String(audioUrl || '').trim();
   if (!raw) return '';

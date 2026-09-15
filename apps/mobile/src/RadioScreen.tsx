@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Mic, MicOff, Radio, Users, Volume2 } from 'lucide-react';
-import { api } from './lib/api';
+import { api, errorMessage } from './lib/api';
 import {
   disconnectRadioSocket,
   getRadioSocket,
@@ -9,7 +9,9 @@ import {
   pickRecorderMime,
   prepareRadioAudio,
   resolveRadioAudioUrl,
+  stopRadioRecorder,
   unlockRadioAudio,
+  uploadRadioClip,
   type RadioChannelState,
   type RadioTx,
 } from './lib/radio';
@@ -66,6 +68,7 @@ export function RadioScreen({
   const audioReadyRef = useRef(false);
   const pendingTxRef = useRef<RadioTx | null>(null);
   const noticeRef = useRef(onNotice);
+  const pttRef = useRef({ starting: false, recording: false, finishing: false, stopQueued: false });
   noticeRef.current = onNotice;
 
   const channelId = useMemo(
@@ -233,67 +236,91 @@ export function RadioScreen({
   };
 
   const finishPtt = useCallback(async () => {
+    const ptt = pttRef.current;
+    if (ptt.starting) {
+      ptt.stopQueued = true;
+      return;
+    }
+    if (ptt.finishing || !ptt.recording) return;
+    ptt.finishing = true;
+    ptt.recording = false;
+    ptt.stopQueued = false;
+
     const token = await getSessionToken();
-    if (!token || !channelId) return;
+    if (!token || !channelId) {
+      ptt.finishing = false;
+      return;
+    }
     const socket = getRadioSocket(token);
     const recorder = mediaRecorderRef.current;
     setHolding(false);
 
     const stopPtt = () => socket.emit('ptt:stop', { channelId });
-    if (!recorder || recorder.state === 'inactive') {
+    if (!recorder) {
       stopPtt();
       stopTracks();
+      ptt.finishing = false;
       return;
     }
 
-    await new Promise<void>((resolve) => {
-      recorder.onstop = () => resolve();
-      try { recorder.stop(); } catch { resolve(); }
-    });
+    const blob = await stopRadioRecorder(recorder, chunksRef.current);
     mediaRecorderRef.current = null;
+    chunksRef.current = [];
     stopTracks();
 
-    const mime = recorder.mimeType || 'audio/webm';
-    const blob = new Blob(chunksRef.current, { type: mime });
-    chunksRef.current = [];
     const durationMs = Math.min(MAX_MS, Date.now() - startedAtRef.current);
-    if (blob.size < 800) {
+    if (blob.size < 250) {
       stopPtt();
-      onNotice('Transmisión muy corta');
+      onNotice(durationMs < 500
+        ? 'Mantené el botón al menos un segundo'
+        : 'El teléfono no grabó audio. Revisá el permiso de micrófono.');
+      ptt.finishing = false;
       return;
     }
 
     setUploading(true);
     try {
-      const form = new FormData();
-      const ext = mime.includes('mp4') ? 'm4a' : mime.includes('aac') ? 'aac' : 'webm';
-      form.append('file', blob, `radio-${Date.now()}.${ext}`);
-      const { data } = await api.post<{ audioUrl: string }>('/radio/upload', form);
-      const audioUrl = resolveRadioAudioUrl(data.audioUrl);
-      socket.emit(
-        'tx:broadcast',
-        { channelId, audioUrl, durationMs, id: `tx_${Date.now()}` },
-        (res: { ok?: boolean; tx?: RadioTx; reason?: string }) => {
-          if (res?.tx) {
-            const clip = applyTx(res.tx);
-            setState((prev) => mergeRadioTx(prev, clip, channelId));
-            return;
-          }
-          if (res?.reason) onNotice(res.reason);
-        },
+      const audioUrl = resolveRadioAudioUrl(
+        await uploadRadioClip(blob, recorder.mimeType || blob.type),
       );
-    } catch {
+      if (!audioUrl) throw new Error('El servidor no devolvió audio');
+      const ack = await new Promise<{ ok?: boolean; tx?: RadioTx; reason?: string }>((resolve) => {
+        const timer = window.setTimeout(() => resolve({ ok: false, reason: 'Sin respuesta del canal' }), 8000);
+        socket.emit(
+          'tx:broadcast',
+          { channelId, audioUrl, durationMs: Math.max(durationMs, 800), id: `tx_${Date.now()}` },
+          (res: { ok?: boolean; tx?: RadioTx; reason?: string }) => {
+            window.clearTimeout(timer);
+            resolve(res || { ok: false });
+          },
+        );
+      });
+      if (ack?.tx) {
+        const clip = applyTx(ack.tx);
+        setState((prev) => mergeRadioTx(prev, clip, channelId));
+      } else {
+        stopPtt();
+        onNotice(ack?.reason || 'No se pudo publicar en el canal');
+      }
+    } catch (err) {
       stopPtt();
-      onNotice('No se pudo enviar la transmisión');
+      onNotice(errorMessage(err) || 'No se pudo enviar la transmisión');
     } finally {
       setUploading(false);
+      ptt.finishing = false;
     }
   }, [channelId, onNotice]);
 
   const startPtt = useCallback(async () => {
-    if (!channelId || !canTalk || holding || uploading) return;
+    const ptt = pttRef.current;
+    if (!channelId || !canTalk || ptt.starting || ptt.recording || ptt.finishing || uploading) return;
+    ptt.starting = true;
+    ptt.stopQueued = false;
     const token = await getSessionToken();
-    if (!token) return;
+    if (!token) {
+      ptt.starting = false;
+      return;
+    }
     const socket = getRadioSocket(token);
     if (!audioRef.current) audioRef.current = new Audio();
     await unlockRadioAudio(audioRef.current);
@@ -305,39 +332,54 @@ export function RadioScreen({
       void playTx(pending, true);
     }
 
-    const ack = await new Promise<{ ok?: boolean; reason?: string; talker?: { speakerName: string } }>((resolve) => {
-      socket.emit('ptt:start', { channelId }, (res: { ok?: boolean; reason?: string; talker?: { speakerName: string } }) => {
-        resolve(res || { ok: false });
-      });
-    });
-    if (!ack?.ok) {
-      onNotice(ack?.talker ? `Habla: ${ack.talker.speakerName}` : ack?.reason || 'Canal ocupado');
-      return;
-    }
-
     try {
       const stream = await navigator.mediaDevices.getUserMedia({
         audio: { echoCancellation: true, noiseSuppression: true },
       });
       streamRef.current = stream;
       const mime = pickRecorderMime();
-      const recorder = mime ? new MediaRecorder(stream, { mimeType: mime }) : new MediaRecorder(stream);
+      let recorder: MediaRecorder;
+      try {
+        recorder = mime ? new MediaRecorder(stream, { mimeType: mime }) : new MediaRecorder(stream);
+      } catch {
+        recorder = new MediaRecorder(stream);
+      }
       chunksRef.current = [];
       recorder.ondataavailable = (event) => {
         if (event.data.size > 0) chunksRef.current.push(event.data);
       };
       mediaRecorderRef.current = recorder;
       startedAtRef.current = Date.now();
-      recorder.start(250);
+      recorder.start();
+
+      const ack = await new Promise<{ ok?: boolean; reason?: string; talker?: { speakerName: string } }>((resolve) => {
+        socket.emit('ptt:start', { channelId }, (res: { ok?: boolean; reason?: string; talker?: { speakerName: string } }) => {
+          resolve(res || { ok: false });
+        });
+      });
+      if (!ack?.ok) {
+        try { recorder.stop(); } catch { /* */ }
+        stopTracks();
+        ptt.starting = false;
+        onNotice(ack?.talker ? `Habla: ${ack.talker.speakerName}` : ack?.reason || 'Canal ocupado');
+        return;
+      }
+
+      ptt.recording = true;
+      ptt.starting = false;
       setHolding(true);
       window.setTimeout(() => {
         if (mediaRecorderRef.current === recorder && recorder.state === 'recording') void finishPtt();
       }, MAX_MS);
+      if (ptt.stopQueued) void finishPtt();
     } catch {
+      ptt.starting = false;
+      ptt.recording = false;
       socket.emit('ptt:stop', { channelId });
+      stopTracks();
       onNotice('No se pudo acceder al micrófono');
     }
-  }, [canTalk, channelId, finishPtt, holding, onNotice, playTx, uploading]);
+  }, [canTalk, channelId, finishPtt, onNotice, playTx, uploading]);
 
   const talker = state?.talker;
   const busyOther = Boolean(talker && !holding);
@@ -391,9 +433,15 @@ export function RadioScreen({
           onClick={() => {
             const audio = audioRef.current ?? new Audio();
             audioRef.current = audio;
-            void unlockRadioAudio(audio).then(() => {
+            void unlockRadioAudio(audio).then(async () => {
               audioReadyRef.current = true;
               setAudioReady(true);
+              try {
+                const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+                stream.getTracks().forEach((track) => track.stop());
+              } catch {
+                onNotice('Activá el micrófono para hablar por radio');
+              }
               const pending = pendingTxRef.current;
               pendingTxRef.current = null;
               if (pending) void playTx(pending, true);
@@ -426,13 +474,19 @@ export function RadioScreen({
             onNotice('Marcá VOY para hablar en el canal de emergencia');
             return;
           }
-          (event.currentTarget as HTMLButtonElement).setPointerCapture(event.pointerId);
+          try {
+            (event.currentTarget as HTMLButtonElement).setPointerCapture(event.pointerId);
+          } catch { /* */ }
           void startPtt();
         }}
-        onPointerUp={() => void finishPtt()}
+        onPointerUp={(event) => {
+          event.preventDefault();
+          void finishPtt();
+        }}
         onPointerCancel={() => void finishPtt()}
-        onPointerLeave={() => {
-          if (holding) void finishPtt();
+        onTouchEnd={(event) => {
+          event.preventDefault();
+          void finishPtt();
         }}
       >
         {holding ? <Mic /> : uploading ? <MicOff /> : <Mic />}

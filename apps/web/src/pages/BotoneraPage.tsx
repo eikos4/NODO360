@@ -213,6 +213,15 @@ function AudioPreviewButton({
   );
 }
 
+function formatDispatchClock(value: unknown) {
+  const date =
+    value instanceof Date ? value
+      : typeof value === 'string' || typeof value === 'number' ? new Date(value)
+        : null;
+  if (!date || Number.isNaN(date.getTime())) return '';
+  return date.toLocaleTimeString('es-CL', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+}
+
 export default function BotoneraPage() {
   const navigate = useNavigate();
   const qc = useQueryClient();
@@ -427,7 +436,19 @@ export default function BotoneraPage() {
       qc.invalidateQueries({ queryKey: ['operational-map'] });
       qc.invalidateQueries({ queryKey: ['guard-log-dashboard'] });
       qc.invalidateQueries({ queryKey: ['emergency-response-active'] });
-      setLastDispatch((prev: any) => ({ ...prev, incident: d }));
+      setLastDispatch((prev: any) => ({
+        type: prev?.type ?? (d.code ? `${d.code} — ${d.type}` : d.type),
+        code: prev?.code ?? d.code,
+        address: prev?.address ?? d.address,
+        vehicles: prev?.vehicles ?? [],
+        participants: prev?.participants ?? [],
+        company: prev?.company,
+        time: prev?.time ?? (d.dispatchedAt ? new Date(d.dispatchedAt) : new Date()),
+        notes: prev?.notes,
+        latitude: prev?.latitude,
+        longitude: prev?.longitude,
+        incident: d,
+      }));
       if (d.locationPinToken && locationPinPhone.trim().length >= 8) {
         setTimeout(() => sendLocationPinWhatsApp(d), 500);
       }
@@ -604,18 +625,19 @@ export default function BotoneraPage() {
     const doDispatch = async (remaining: number) => {
       if (remaining <= 0) {
         setDispatching(false);
-        setLastDispatch({
+        setLastDispatch((prev: any) => ({
           type: `${emerg.code} — ${emerg.label}`,
           code: emerg.code,
           address,
           vehicles: vehicleIds.map(id => (vehicles ?? []).find((x: any) => x.id === id)).filter(Boolean),
           participants: selectedParticipants.map(id => (users ?? []).find((x: any) => x.id === id)).filter(Boolean),
           company,
-          time: new Date(),
+          time: prev?.time ?? new Date(),
           notes,
           latitude,
           longitude,
-        });
+          incident: prev?.incident,
+        }));
         return;
       }
 
@@ -1808,7 +1830,7 @@ export default function BotoneraPage() {
               Último Despacho Emitido
             </h3>
             <div className="flex items-center gap-2">
-              <span className="text-xs text-slate-500">{lastDispatch.time.toLocaleTimeString('es-CL')}</span>
+              <span className="text-xs text-slate-500">{formatDispatchClock(lastDispatch.time ?? lastDispatch.incident?.dispatchedAt)}</span>
               <button type="button" onClick={() => setLastDispatch(null)} className="p-1 rounded-lg text-slate-500 hover:text-slate-200 hover:bg-slate-800">
                 <X className="w-4 h-4" />
               </button>

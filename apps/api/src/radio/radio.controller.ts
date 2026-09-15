@@ -1,5 +1,6 @@
 import {
   BadRequestException,
+  Body,
   Controller,
   ForbiddenException,
   Get,
@@ -16,6 +17,7 @@ import { memoryUpload } from '../storage/upload.interceptor';
 import { RadioService } from './radio.service';
 import { PrismaService } from '../prisma/prisma.service';
 import { Actor, assertCompanyAccess } from '../common/cuerpo-scope';
+import { UploadRadioBase64Dto } from './dto/upload-radio-base64.dto';
 
 @Controller('radio')
 @UseGuards(JwtAuthGuard)
@@ -30,6 +32,7 @@ export class RadioController {
   async recent(@Param('channelId') channelId: string, @Req() req: { user: Actor }) {
     const id = decodeURIComponent(channelId);
     await this.assertChannelAccess(req.user, id);
+    await this.radio.hydrate(id);
     return {
       channelId: id,
       recent: this.radio.recent(id),
@@ -46,6 +49,23 @@ export class RadioController {
       originalname: file.originalname || `radio-${Date.now()}.webm`,
     };
     const audioUrl = await this.storage.uploadFile(named, publicOrigin(req), 'nodo360/radio');
+    return { audioUrl };
+  }
+
+  @Post('upload-base64')
+  async uploadBase64(@Body() body: UploadRadioBase64Dto, @Req() req: any) {
+    const raw = String(body?.audio || '').replace(/^data:[^;]+;base64,/, '');
+    if (!raw) throw new BadRequestException('Audio requerido');
+    const buffer = Buffer.from(raw, 'base64');
+    if (!buffer.length) throw new BadRequestException('Audio requerido');
+    if (buffer.length > 3 * 1024 * 1024) throw new BadRequestException('Audio demasiado grande');
+    const mime = body.mimeType || 'audio/webm';
+    const filename = body.filename || `radio-${Date.now()}.${extFromMime(mime)}`;
+    const audioUrl = await this.storage.uploadFile(
+      { buffer, originalname: filename, mimetype: mime },
+      publicOrigin(req),
+      'nodo360/radio',
+    );
     return { audioUrl };
   }
 
@@ -84,4 +104,13 @@ function publicOrigin(req: { protocol?: string; get: (name: string) => string | 
   const proto = forwarded || req.protocol || 'https';
   const host = req.get('host') || '';
   return `${proto}://${host}`;
+}
+
+function extFromMime(mime: string) {
+  const m = (mime || '').toLowerCase();
+  if (m.includes('mp4') || m.includes('m4a') || m.includes('aac')) return 'm4a';
+  if (m.includes('mpeg') || m.includes('mp3')) return 'mp3';
+  if (m.includes('3gp')) return '3gp';
+  if (m.includes('ogg')) return 'ogg';
+  return 'webm';
 }

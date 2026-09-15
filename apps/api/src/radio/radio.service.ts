@@ -1,4 +1,5 @@
 import { Injectable, Logger } from '@nestjs/common';
+import { PrismaService } from '../prisma/prisma.service';
 
 export type RadioChannelKind = 'incident' | 'company';
 
@@ -38,6 +39,9 @@ export class RadioService {
   private readonly talkers = new Map<string, ChannelTalker>();
   /** channelId → recent clips */
   private readonly history = new Map<string, RadioTransmission[]>();
+  private readonly hydrated = new Set<string>();
+
+  constructor(private readonly prisma: PrismaService) {}
 
   static channelId(kind: RadioChannelKind, id: string) {
     return `${kind}:${id}`;
@@ -109,8 +113,58 @@ export class RadioService {
   addTransmission(tx: RadioTransmission) {
     const list = this.history.get(tx.channelId) ?? [];
     list.unshift(tx);
-    this.history.set(tx.channelId, list.slice(0, 40));
+    this.history.set(tx.channelId, list.filter((item, idx) => idx === 0 || item.id !== tx.id).slice(0, 40));
     this.logger.log(`TX ${tx.channelId} ← ${tx.speakerName} (${tx.durationMs}ms)`);
+    void this.prisma.radioClip.upsert({
+      where: { id: tx.id },
+      create: {
+        id: tx.id,
+        channelId: tx.channelId,
+        userId: tx.userId,
+        speakerName: tx.speakerName,
+        role: tx.role,
+        audioUrl: tx.audioUrl,
+        durationMs: tx.durationMs,
+        createdAt: new Date(tx.at || Date.now()),
+      },
+      update: {},
+    }).catch((err) => {
+      this.logger.warn(`No se pudo persistir clip de radio: ${(err as Error).message}`);
+    });
+  }
+
+  async hydrate(channelId: string) {
+    if (this.hydrated.has(channelId)) return;
+    this.hydrated.add(channelId);
+    try {
+      const rows = await this.prisma.radioClip.findMany({
+        where: { channelId },
+        orderBy: { createdAt: 'desc' },
+        take: 40,
+      });
+      const existing = this.history.get(channelId) ?? [];
+      const byId = new Map(existing.map((item) => [item.id, item]));
+      for (const row of rows) {
+        if (byId.has(row.id)) continue;
+        byId.set(row.id, {
+          id: row.id,
+          channelId: row.channelId,
+          userId: row.userId,
+          speakerName: row.speakerName,
+          role: row.role,
+          audioUrl: row.audioUrl,
+          durationMs: row.durationMs,
+          at: row.createdAt.getTime(),
+        });
+      }
+      this.history.set(
+        channelId,
+        [...byId.values()].sort((a, b) => b.at - a.at).slice(0, 40),
+      );
+    } catch (err) {
+      this.hydrated.delete(channelId);
+      this.logger.warn(`Radio hydrate falló: ${(err as Error).message}`);
+    }
   }
 
   recent(channelId: string) {
