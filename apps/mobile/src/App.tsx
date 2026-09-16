@@ -791,6 +791,10 @@ export default function App() {
     window.setTimeout(() => setNotice(''), 3500);
   }, []);
 
+  useEffect(() => {
+    if (!user) disconnectRadioSocket();
+  }, [user]);
+
   if (booting) {
     return (
       <main className={`splash ${theme}`}>
@@ -799,9 +803,6 @@ export default function App() {
       </main>
     );
   }
-  useEffect(() => {
-    if (!user) disconnectRadioSocket();
-  }, [user]);
 
   if (!user) return <Login onLogin={setUser} />;
   if (!activated) return <Activation onReady={() => setActivated(true)} />;
