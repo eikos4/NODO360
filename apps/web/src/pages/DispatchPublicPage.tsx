@@ -13,6 +13,7 @@ import PublicEmergencyBanner from '../components/dispatch/PublicEmergencyBanner'
 import EmergencyReturnCelebration from '../components/dispatch/EmergencyReturnCelebration';
 import EmergencyBitacoraFinalizeModal from '../components/dispatch/EmergencyBitacoraFinalizeModal';
 import PublicCompanyModernView from '../components/companies/PublicCompanyModernView';
+import SalaSalidaBoard from '../components/companies/SalaSalidaBoard';
 import SalaPinGate, { type SalaLockPreview } from '../components/dispatch/SalaPinGate';
 import { usePublicDispatchAlarm } from '../hooks/usePublicDispatchAlarm';
 import {
@@ -237,8 +238,8 @@ function CardPhoto({
 
 export default function DispatchPublicPage() {
   const { slug } = useParams<{ slug: string }>();
-  const { look, night, isNodo, isVerde, isAzul, cycle: cycleLook, label: lookLabel } = useSalaNightMode();
-  const th = look === 'night' ? SALA_NIGHT_THEME : DISPATCH_PUBLIC_THEMES[look];
+  const { look, night, isNodo, isVerde, isAzul, isSalida, cycle: cycleLook, label: lookLabel } = useSalaNightMode();
+  const th = look === 'night' ? SALA_NIGHT_THEME : DISPATCH_PUBLIC_THEMES[look === 'salida' ? 'nodo' : look];
   const [data, setData] = useState<PublicCentral | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
@@ -805,11 +806,11 @@ export default function DispatchPublicPage() {
 
   const { roster, maquinistas, fleet, emergencyStats } = data;
   const hqImage = data.headquartersImageUrl || DEFAULT_HQ;
-  const darkChrome = night || isNodo || isVerde || isAzul;
+  const darkChrome = night || isNodo || isVerde || isAzul || isSalida;
   const qrUrl = `https://api.qrserver.com/v1/create-qr-code/?size=100x100&data=${encodeURIComponent(publicUrl)}&bgcolor=${th.qrBg}&color=${darkChrome ? 'ffffff' : '0f172a'}`;
   const floatBtn = night
     ? 'bg-[#16101c]/90 border border-amber-500/30 text-amber-100 shadow-xl shadow-amber-950/40'
-    : isNodo
+    : isNodo || isSalida
       ? 'bg-[#0d1924] border border-[#38bdf8]/50 text-[#67c8ff] shadow-xl shadow-sky-950/50'
       : isVerde
         ? 'bg-[#062016] border border-[#1ce783]/50 text-[#1ce783] shadow-xl shadow-emerald-950/50'
@@ -818,7 +819,7 @@ export default function DispatchPublicPage() {
           : 'bg-white border border-slate-200 text-slate-800 shadow-xl';
 
   return (
-    <div className={`sala-public h-screen overflow-hidden flex flex-col transition-colors relative ${night ? 'sala-guardia' : ''} ${onEmergency ? th.pageEmergency : th.page}`}>
+    <div className={`sala-public h-screen overflow-hidden flex flex-col transition-colors relative ${night ? 'sala-guardia' : ''} ${isSalida ? 'bg-[#071019] text-[#e7edf4]' : onEmergency ? th.pageEmergency : th.page}`}>
       {night && <SalaNightAtmosphere />}
       {/* Audio + alarma activa */}
       {!audioEnabled && (
@@ -852,7 +853,7 @@ export default function DispatchPublicPage() {
         </div>
       )}
 
-      {visibleActiveEmergency && (
+      {visibleActiveEmergency && !isSalida && (
         <PublicEmergencyBanner
           emergency={visibleActiveEmergency}
           onFinalize={() => finalizeEmergency(visibleActiveEmergency)}
@@ -884,7 +885,7 @@ export default function DispatchPublicPage() {
           title="Bloquear sala"
           aria-label="Bloquear sala"
         >
-          <Lock className={`w-5 h-5 ${night ? 'text-amber-300' : isNodo ? 'text-[#67c8ff]' : isVerde ? 'text-[#1ce783]' : isAzul ? 'text-white' : 'text-slate-700'}`} />
+          <Lock className={`w-5 h-5 ${night ? 'text-amber-300' : isNodo || isSalida ? 'text-[#67c8ff]' : isVerde ? 'text-[#1ce783]' : isAzul ? 'text-white' : 'text-slate-700'}`} />
         </button>
         <button
           type="button"
@@ -895,6 +896,8 @@ export default function DispatchPublicPage() {
         >
           {night ? (
             <Moon className="w-5 h-5 text-amber-300" />
+          ) : isSalida ? (
+            <Truck className="w-5 h-5 text-[#67c8ff]" />
           ) : isNodo ? (
             <Radio className="w-5 h-5 text-[#67c8ff]" />
           ) : isVerde ? (
@@ -906,12 +909,13 @@ export default function DispatchPublicPage() {
           )}
           <span className={`absolute -top-1 -right-1 text-[8px] font-semibold uppercase px-1 rounded ${
             night ? 'bg-amber-400 text-amber-950'
-              : isNodo ? 'bg-[#38bdf8] text-[#071019]'
-                : isVerde ? 'bg-[#1ce783] text-[#00140e]'
-                  : isAzul ? 'keep-on-color bg-white text-[#0918e3]'
-                    : 'bg-slate-200 text-slate-700'
+              : isSalida ? 'bg-[#38bdf8] text-[#071019]'
+                : isNodo ? 'bg-[#38bdf8] text-[#071019]'
+                  : isVerde ? 'bg-[#1ce783] text-[#00140e]'
+                    : isAzul ? 'keep-on-color bg-white text-[#0918e3]'
+                      : 'bg-slate-200 text-slate-700'
           }`}>
-            {night ? 'Noche' : isNodo ? 'Nodo' : isVerde ? 'Verde' : isAzul ? 'Azul' : 'Claro'}
+            {night ? 'Noche' : isSalida ? 'Salida' : isNodo ? 'Nodo' : isVerde ? 'Verde' : isAzul ? 'Azul' : 'Claro'}
           </span>
         </button>
         <button
@@ -922,9 +926,10 @@ export default function DispatchPublicPage() {
           aria-label={isFullscreen ? 'Salir de pantalla completa' : 'Pantalla completa'}
         >
           {isFullscreen
-            ? <Minimize2 className={`w-5 h-5 ${night ? 'text-amber-100' : isNodo ? 'text-[#67c8ff]' : isVerde ? 'text-[#1ce783]' : isAzul ? 'text-white' : 'text-slate-800'}`} />
-            : <Maximize2 className={`w-5 h-5 ${night ? 'text-amber-100' : isNodo ? 'text-[#67c8ff]' : isVerde ? 'text-[#1ce783]' : isAzul ? 'text-white' : 'text-slate-800'}`} />}
+            ? <Minimize2 className={`w-5 h-5 ${night ? 'text-amber-100' : isNodo || isSalida ? 'text-[#67c8ff]' : isVerde ? 'text-[#1ce783]' : isAzul ? 'text-white' : 'text-slate-800'}`} />
+            : <Maximize2 className={`w-5 h-5 ${night ? 'text-amber-100' : isNodo || isSalida ? 'text-[#67c8ff]' : isVerde ? 'text-[#1ce783]' : isAzul ? 'text-white' : 'text-slate-800'}`} />}
         </button>
+        {!isSalida && (
         <button
           type="button"
           onClick={toggleLayout}
@@ -932,12 +937,24 @@ export default function DispatchPublicPage() {
           title="Cambiar diseño"
           aria-label="Cambiar diseño"
         >
-          <SlidersHorizontal className={`w-4 h-4 ${night ? 'text-amber-300' : isNodo ? 'text-[#67c8ff]' : isVerde ? 'text-[#1ce783]' : isAzul ? 'text-white' : 'text-blue-600'}`} />
+          <SlidersHorizontal className={`w-4 h-4 ${night ? 'text-amber-300' : isNodo || isSalida ? 'text-[#67c8ff]' : isVerde ? 'text-[#1ce783]' : isAzul ? 'text-white' : 'text-blue-600'}`} />
         </button>
+        )}
       </div>
 
       {/* RENDERIZADO CONDICIONAL DE VISTAS */}
-      {layout === 'modern' ? (
+      {isSalida ? (
+        <SalaSalidaBoard
+          data={data}
+          emergency={visibleActiveEmergency}
+          operativeNumber={operativeQuick}
+          onOperativeNumber={setOperativeQuick}
+          onToggleByNumber={toggleByOperativeNumber}
+          onToggleMember={toggleMember}
+          togglingId={togglingId}
+          inputRef={operativeInputRef}
+        />
+      ) : layout === 'modern' ? (
         <PublicCompanyModernView 
           data={data} 
           onToggleMember={toggleMember}

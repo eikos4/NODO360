@@ -8,7 +8,7 @@ import {
 } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
 import * as bcrypt from 'bcryptjs';
-import { EquipmentStatus, FleetLogType, DispatchSource, IncidentStatus } from '@prisma/client';
+import { EquipmentStatus, FleetLogType, DispatchSource, IncidentStatus, EmergencyResponseStatus } from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
 import { StandbyAlertService } from './standby-alert.service';
 import { UpdateDispatchCentralDto } from './dto/update-dispatch-central.dto';
@@ -401,15 +401,58 @@ export class DispatchCentralService {
           },
         },
         participants: {
-          take: 5,
+          take: 40,
           select: {
-            user: { select: { firstName: true, lastName: true, role: true } },
+            user: {
+              select: {
+                id: true,
+                firstName: true,
+                lastName: true,
+                role: true,
+                photoUrl: true,
+                operativeNumber: true,
+                isMaquinista: true,
+              },
+            },
+          },
+        },
+        emergencyResponses: {
+          where: {
+            status: {
+              in: [
+                EmergencyResponseStatus.GOING,
+                EmergencyResponseStatus.ON_SCENE,
+                EmergencyResponseStatus.LOCATION_MARKED,
+              ],
+            },
+          },
+          select: {
+            status: true,
+            user: {
+              select: {
+                id: true,
+                firstName: true,
+                lastName: true,
+                role: true,
+                photoUrl: true,
+                operativeNumber: true,
+                isMaquinista: true,
+              },
+            },
           },
         },
         vehicles: {
           select: {
             vehicle: {
-              select: { id: true, patent: true, type: true, brand: true, companyId: true },
+              select: {
+                id: true,
+                patent: true,
+                type: true,
+                brand: true,
+                model: true,
+                imageUrl: true,
+                companyId: true,
+              },
             },
           },
         },
@@ -445,10 +488,43 @@ export class DispatchCentralService {
       }
 
       const vehicles = companyVehicleRows.map((v) => ({
+        id: v.vehicle.id,
         patent: v.vehicle.patent,
         type: v.vehicle.type,
         brand: v.vehicle.brand,
+        model: v.vehicle.model,
+        imageUrl: v.vehicle.imageUrl,
       }));
+
+      const mapCrew = (user: {
+        id: string;
+        firstName: string;
+        lastName: string;
+        role: string;
+        photoUrl: string | null;
+        operativeNumber: number | null;
+        isMaquinista?: boolean;
+      }, status?: string | null) => ({
+        id: user.id,
+        name: `${user.firstName} ${user.lastName}`.trim(),
+        firstName: user.firstName,
+        lastName: user.lastName,
+        role: user.role,
+        roleLabel: ROLE_LABELS[user.role] ?? user.role,
+        photoUrl: user.photoUrl,
+        operativeNumber: user.operativeNumber,
+        isMaquinista: user.isMaquinista ?? false,
+        status: status ?? null,
+      });
+
+      const crewById = new Map<string, ReturnType<typeof mapCrew>>();
+      for (const p of inc.participants ?? []) {
+        if (p.user) crewById.set(p.user.id, mapCrew(p.user));
+      }
+      for (const r of inc.emergencyResponses ?? []) {
+        if (!r.user) continue;
+        crewById.set(r.user.id, mapCrew(r.user, r.status));
+      }
 
       const hasFieldGps = inc.confirmedLatitude != null && inc.confirmedLongitude != null;
       const hasDispatchGps = inc.latitude != null && inc.longitude != null;
@@ -486,9 +562,12 @@ export class DispatchCentralService {
         alarmBy,
         dispatchSource: inc.dispatchSource,
         vehicles,
-        participants: (inc.participants ?? []).map((p: any) => ({
-          name: `${p.user.firstName} ${p.user.lastName}`.trim(),
-          role: p.user.role,
+        crew: [...crewById.values()],
+        participants: [...crewById.values()].map((p) => ({
+          name: p.name,
+          role: p.role,
+          firstName: p.firstName,
+          lastName: p.lastName,
         })),
         involvedAsSupport: !isDispatchOwner,
         dispatchCompanyName: isDispatchOwner ? null : inc.company.name,
@@ -506,8 +585,13 @@ export class DispatchCentralService {
   }
 
   private parseEmergencyCodeId(incidentType: string): string | null {
-    const head = incidentType.split(' — ')[0]?.trim();
-    if (head && /^10(-\d+)+$/.test(head)) return head;
+    const head = incidentType.split(' — ')[0]?.trim() ?? '';
+    if (/^10(-\d+)+\s+por\s+10(-\d+)+$/i.test(head)) return head;
+    if (/^10-\d+x10-\d+$/i.test(head)) {
+      const [left, right] = head.split(/x/i);
+      return `${left} por ${right}`;
+    }
+    if (/^10(-\d+)+$/.test(head)) return head;
     return null;
   }
 
@@ -1152,15 +1236,58 @@ export class DispatchCentralService {
           },
         },
         participants: {
-          take: 5,
+          take: 40,
           select: {
-            user: { select: { firstName: true, lastName: true, role: true } },
+            user: {
+              select: {
+                id: true,
+                firstName: true,
+                lastName: true,
+                role: true,
+                photoUrl: true,
+                operativeNumber: true,
+                isMaquinista: true,
+              },
+            },
+          },
+        },
+        emergencyResponses: {
+          where: {
+            status: {
+              in: [
+                EmergencyResponseStatus.GOING,
+                EmergencyResponseStatus.ON_SCENE,
+                EmergencyResponseStatus.LOCATION_MARKED,
+              ],
+            },
+          },
+          select: {
+            status: true,
+            user: {
+              select: {
+                id: true,
+                firstName: true,
+                lastName: true,
+                role: true,
+                photoUrl: true,
+                operativeNumber: true,
+                isMaquinista: true,
+              },
+            },
           },
         },
         vehicles: {
           select: {
             vehicle: {
-              select: { id: true, patent: true, type: true, brand: true, companyId: true },
+              select: {
+                id: true,
+                patent: true,
+                type: true,
+                brand: true,
+                model: true,
+                imageUrl: true,
+                companyId: true,
+              },
             },
           },
         },

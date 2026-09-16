@@ -949,3 +949,165 @@ html:not(.dark) .sala-guardia .text-slate-600 {
 .sala-guardia .leaflet-container {
   background: #08060c;
 }
+
+/* ── Sala Salida · animación de emergencia ── */
+.sala-salida-siren-sweep {
+  position: absolute;
+  inset: -20% -40%;
+  background: linear-gradient(
+    90deg,
+    transparent 0%,
+    rgba(220, 38, 38, 0) 28%,
+    rgba(239, 68, 68, 0.42) 50%,
+    rgba(220, 38, 38, 0) 72%,
+    transparent 100%
+  );
+  animation: sala-salida-sweep 1.05s ease-in-out infinite;
+  pointer-events: none;
+}
+
+@keyframes sala-salida-sweep {
+  0% { transform: translateX(-28%); opacity: 0.4; }
+  50% { transform: translateX(0); opacity: 1; }
+  100% { transform: translateX(28%); opacity: 0.4; }
+}
+
+.sala-salida-frame,
+.sala-salida-frame-hold {
+  position: absolute;
+  inset: 0;
+  z-index: 30;
+  pointer-events: none;
+}
+
+.sala-salida-frame {
+  box-shadow:
+    inset 0 0 0 6px rgba(239, 52, 63, 0.92),
+    inset 0 0 90px rgba(220, 38, 38, 0.38);
+  animation: sala-salida-frame-pulse 0.7s ease-in-out infinite;
+}
+
+.sala-salida-frame-hold {
+  box-shadow:
+    inset 0 0 0 4px rgba(239, 52, 63, 0.58),
+    inset 0 0 70px rgba(220, 38, 38, 0.2);
+  animation: sala-salida-frame-pulse 2s ease-in-out infinite;
+}
+
+@keyframes sala-salida-frame-pulse {
+  0%, 100% { opacity: 0.55; }
+  50% { opacity: 1; }
+}
+
+.sala-salida-pop {
+  animation: sala-salida-pop 0.7s cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+@keyframes sala-salida-pop {
+  0% { transform: scale(0.72) translateY(28px); opacity: 0; }
+  60% { transform: scale(1.04) translateY(0); opacity: 1; }
+  100% { transform: scale(1); opacity: 1; }
+}
+
+.sala-salida-hold-glow {
+  animation: sala-salida-hold-glow 2s ease-in-out infinite;
+}
+
+@keyframes sala-salida-hold-glow {
+  0%, 100% { text-shadow: 0 0 10px rgba(239, 68, 68, 0.32); }
+  50% { text-shadow: 0 0 24px rgba(239, 68, 68, 0.78); }
+}
+
+.sala-salida-chip-flash {
+  animation: sala-salida-chip-flash 0.9s ease-in-out 4;
+}
+
+@keyframes sala-salida-chip-flash {
+  0%, 100% { box-shadow: 0 0 0 0 rgba(239, 68, 68, 0); }
+  50% { box-shadow: 0 0 28px rgba(239, 68, 68, 0.55); }
+}
+
+.sala-salida-chip-hold {
+  animation: sala-salida-chip-hold 2s ease-in-out infinite;
+}
+
+@keyframes sala-salida-chip-hold {
+  0%, 100% { box-shadow: 0 0 12px rgba(239, 68, 68, 0.18); }
+  50% { box-shadow: 0 0 24px rgba(239, 68, 68, 0.42); }
+}
+
+.sala-salida-hero-live {
+  opacity: 0.7 !important;
+  filter: grayscale(8%) contrast(1.12);
+}
+
+.sala-salida-vignette {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background: radial-gradient(ellipse at center, transparent 38%, rgba(80, 8, 12, 0.48) 100%);
+}
+
+.sala-salida-overlay {
+  position: absolute;
+  inset: 0;
+  z-index: 20;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  pointer-events: none;
+  background: rgba(7, 16, 25, 0.42);
+  animation: sala-salida-overlay-fade 10s ease-in-out both;
+}
+
+@keyframes sala-salida-overlay-fade {
+  0% { opacity: 0; }
+  8% { opacity: 1; }
+  78% { opacity: 1; }
+  100% { opacity: 0; }
+}
+
+.sala-salida-ring {
+  position: absolute;
+  inset: 0;
+  border-radius: 9999px;
+  border: 3px solid #dc2626;
+  animation: sala-salida-ring 1.2s ease-out infinite;
+}
+
+.sala-salida-ring-delay { animation-delay: 0.4s; }
+
+@keyframes sala-salida-ring {
+  0% { transform: scale(0.7); opacity: 0.55; }
+  100% { transform: scale(1.75); opacity: 0; }
+}
+
+.sala-salida-siren-icon {
+  animation: sala-salida-siren-icon 0.55s ease-in-out infinite;
+}
+
+@keyframes sala-salida-siren-icon {
+  0%, 100% { transform: rotate(-10deg); }
+  50% { transform: rotate(10deg); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .sala-salida-siren-sweep,
+  .sala-salida-frame,
+  .sala-salida-frame-hold,
+  .sala-salida-pop,
+  .sala-salida-hold-glow,
+  .sala-salida-chip-flash,
+  .sala-salida-chip-hold,
+  .sala-salida-overlay,
+  .sala-salida-ring,
+  .sala-salida-siren-icon {
+    animation: none !important;
+  }
+  .sala-salida-overlay {
+    display: none;
+  }
+  .sala-salida-frame-hold {
+    opacity: 0.85;
+  }
+}

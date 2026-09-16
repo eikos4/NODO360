@@ -4,7 +4,7 @@ import type { SalaLook } from '../lib/dispatch-public-theme';
 const LOOK_KEY = 'nodo360_sala_look';
 const LEGACY_KEY = 'nodo360_sala_night';
 
-const LOOKS: SalaLook[] = ['light', 'nodo', 'verde', 'azul', 'night'];
+const LOOKS: SalaLook[] = ['light', 'nodo', 'verde', 'azul', 'night', 'salida'];
 
 export type SalaNightPref = 'auto' | 'day' | 'night';
 
@@ -40,13 +40,15 @@ export function useSalaNightMode() {
   const isNodo = look === 'nodo';
   const isVerde = look === 'verde';
   const isAzul = look === 'azul';
+  const isSalida = look === 'salida';
   const pref: SalaNightPref = look === 'night' ? 'night' : 'day';
   const label =
     look === 'light' ? 'Tema claro'
       : look === 'nodo' ? 'Tema Nodo'
         : look === 'verde' ? 'Tema verde'
           : look === 'azul' ? 'Tema azul'
-            : 'Guardia nocturna';
+            : look === 'salida' ? 'Tema salida'
+              : 'Guardia nocturna';
 
-  return { look, night, isNodo, isVerde, isAzul, pref, cycle, label };
+  return { look, night, isNodo, isVerde, isAzul, isSalida, pref, cycle, label };
 }

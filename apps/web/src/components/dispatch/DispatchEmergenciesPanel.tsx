@@ -26,11 +26,23 @@ export type PublicEmergency = {
   radioMessage?: string;
   emergencyCodeId?: string | null;
   hasBitacora?: boolean;
-  vehicles?: { patent: string; type: string; brand?: string }[];
+  vehicles?: { id?: string; patent: string; type: string; brand?: string; model?: string; imageUrl?: string | null }[];
   involvedAsSupport?: boolean;
   dispatchCompanyName?: string | null;
   dispatchCompanyNumber?: number | null;
   participants?: { name?: string; role?: string; firstName?: string; lastName?: string }[];
+  crew?: {
+    id: string;
+    name: string;
+    firstName?: string;
+    lastName?: string;
+    role: string;
+    roleLabel?: string;
+    photoUrl?: string | null;
+    operativeNumber?: number | null;
+    isMaquinista?: boolean;
+    status?: string | null;
+  }[];
 };
 
 function formatWhen(iso: string) {
