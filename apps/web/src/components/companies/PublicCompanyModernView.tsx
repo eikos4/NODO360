@@ -111,7 +111,7 @@ interface Props {
   onEmergency?: boolean;
   padActive?: boolean;
   night?: boolean;
-  look?: 'light' | 'nodo' | 'verde' | 'azul' | 'night' | 'salida';
+  look?: 'light' | 'nodo' | 'verde' | 'azul' | 'night' | 'salida' | 'comando';
   requestHeaders?: Record<string, string>;
 }
 
