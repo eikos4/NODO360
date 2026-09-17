@@ -1,4 +1,5 @@
 import { findEmergencyEntry } from './emergency-codes';
+import { vehicleTypeAbbrev } from './vehicle-types';
 
 type DispatchVehicle = {
   id: string;
@@ -8,24 +9,7 @@ type DispatchVehicle = {
   brand?: string;
 };
 
-/** Abreviatura radial del tipo de carro (ej. Escala → BR) */
-function vehicleTypeAbbrev(type?: string): string {
-  if (!type) return 'C';
-  const t = type.toLowerCase();
-  if (t.includes('aérea') || t.includes('aerea')) return 'EA';
-  if (t.includes('escala')) return 'BR';
-  if (t.includes('bomba')) return 'AB';
-  if (t.includes('rescate')) return 'R';
-  if (t.includes('tanque')) return 'BT';
-  return type
-    .split(/\s+/)
-    .map((w) => w[0])
-    .join('')
-    .toUpperCase()
-    .slice(0, 3);
-}
-
-/** Designación radial del carro para pantalla (ej. BR-12) */
+/** Designación radial del carro para pantalla (ej. B-12, Q-1) */
 export function getVehicleRadioDesignation(v: DispatchVehicle): string {
   const abbrev = vehicleTypeAbbrev(v.type);
   const num = v.patent.match(/(\d+)/)?.[1] ?? '';

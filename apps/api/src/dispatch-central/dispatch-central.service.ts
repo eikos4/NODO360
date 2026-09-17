@@ -52,6 +52,18 @@ const TANK_CAPACITY_L: Record<string, number> = {
   'Auto Bomba': 250,
   Rescate: 80,
   'Escala Aérea': 400,
+  B: 250,
+  'BF / F': 200,
+  BF: 200,
+  F: 200,
+  Q: 300,
+  R: 80,
+  S: 40,
+  Z: 8000,
+  H: 150,
+  'K / J': 60,
+  K: 60,
+  J: 60,
 };
 
 function slugify(text: string) {
@@ -141,7 +153,10 @@ export class DispatchCentralService {
     latestFuel: { fuelLiters: number | null; fullTank: boolean } | undefined,
   ): number | null {
     if (!latestFuel) return null;
-    const capacity = TANK_CAPACITY_L[vehicleType] ?? 200;
+    const capacity =
+      TANK_CAPACITY_L[vehicleType] ??
+      TANK_CAPACITY_L[this.vehicleTypeAbbrev(vehicleType)] ??
+      200;
     if (latestFuel.fullTank) return 100;
     if (latestFuel.fuelLiters != null && latestFuel.fuelLiters > 0) {
       return Math.min(100, Math.round((latestFuel.fuelLiters / capacity) * 100));
@@ -595,6 +610,28 @@ export class DispatchCentralService {
     return null;
   }
 
+  private vehicleTypeAbbrev(type?: string): string {
+    if (!type) return 'B';
+    const raw = type.trim();
+    if (raw === 'B' || raw === 'Q' || raw === 'R' || raw === 'S' || raw === 'Z' || raw === 'H') {
+      return raw;
+    }
+    if (raw.startsWith('BF')) return 'BF';
+    if (raw.startsWith('K')) return 'K';
+    const coded = raw.match(/^(BF|RX|B|F|Q|R|S|Z|H|K|J)\b/i);
+    if (coded) return coded[1].toUpperCase();
+    const t = raw.toLowerCase();
+    if (t.includes('forestal') || t.includes('pastizal')) return 'BF';
+    if (t.includes('haz') || t.includes('peligro')) return 'H';
+    if (t.includes('aljibe') || t.includes('cisterna') || t.includes('tanque')) return 'Z';
+    if (t.includes('ambul')) return 'S';
+    if (t.includes('rescate')) return 'R';
+    if (t.includes('escala') || t.includes('aére') || t.includes('aere') || t.includes('altura')) return 'Q';
+    if (t.includes('comando') || t.includes('transporte') || t.includes('liviano') || t.includes('utilitario')) return 'K';
+    if (t.includes('bomba')) return 'B';
+    return raw.replace(/[^a-z0-9]/gi, '').slice(0, 3).toUpperCase() || 'B';
+  }
+
   private extractRadioMessage(inc: {
     description: string;
     type: string;
@@ -615,13 +652,7 @@ export class DispatchCentralService {
       ?.toUpperCase() ?? inc.address.toUpperCase();
 
     const callsigns = inc.vehicles.map((v) => {
-      const t = (v.vehicle.type ?? '').toLowerCase();
-      let abbrev = 'C';
-      if (t.includes('aérea') || t.includes('aerea')) abbrev = 'EA';
-      else if (t.includes('escala')) abbrev = 'BR';
-      else if (t.includes('bomba')) abbrev = 'AB';
-      else if (t.includes('rescate')) abbrev = 'R';
-      else if (t.includes('tanque')) abbrev = 'BT';
+      const abbrev = this.vehicleTypeAbbrev(v.vehicle.type);
       const num = v.vehicle.patent.match(/(\d+)/)?.[1] ?? '';
       return num ? `${abbrev} ${num}` : abbrev;
     });

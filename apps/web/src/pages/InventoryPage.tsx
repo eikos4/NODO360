@@ -12,6 +12,7 @@ import toast from 'react-hot-toast';
 import { createElement } from 'react';
 import { InventoryReport } from '../lib/pdf/InventoryReport';
 import { downloadPdf } from '../lib/pdf/usePdfDownload';
+import { VEHICLE_TYPES, isKnownVehicleType, vehicleTypeShortLabel } from '../lib/vehicle-types';
 
 const STATUS_META: Record<string, { label: string; color: string; border: string; dot: string }> = {
   OPERATIVO:         { label: 'Operativo',        color: 'bg-emerald-500/15 text-emerald-400', border: 'border-emerald-500/30', dot: 'bg-emerald-400' },
@@ -19,7 +20,6 @@ const STATUS_META: Record<string, { label: string; color: string; border: string
   FUERA_DE_SERVICIO: { label: 'Fuera de servicio', color: 'bg-red-500/15 text-red-400',        border: 'border-red-500/30',     dot: 'bg-red-400' },
 };
 const STATUSES = ['OPERATIVO', 'EN_REPARACION', 'FUERA_DE_SERVICIO'];
-const VEHICLE_TYPES = ['Carro Bomba', 'Autobomba', 'Carro Escala', 'Carro Rescate', 'Carro HazMat', 'Ambulancia', 'Vehículo Liviano', 'Otro'];
 const EQUIPMENT_CATEGORIES = ['EPP', 'ERA', 'Herramienta', 'Material Médico', 'Material HazMat', 'Comunicaciones', 'Rescate', 'Otro'];
 
 const CAT_COLORS: Record<string, string> = {
@@ -30,7 +30,7 @@ const CAT_COLORS: Record<string, string> = {
 };
 
 type Tab = 'vehicles' | 'equipment';
-const EMPTY_V = { patent: '', brand: '', model: '', year: new Date().getFullYear(), type: 'Carro Bomba', status: 'OPERATIVO', kilometers: 0, lastMaintenanceAt: '', nextMaintenanceAt: '', companyId: '', imageUrl: '' };
+const EMPTY_V = { patent: '', brand: '', model: '', year: new Date().getFullYear(), type: 'B', status: 'OPERATIVO', kilometers: 0, lastMaintenanceAt: '', nextMaintenanceAt: '', companyId: '', imageUrl: '' };
 const EMPTY_E = { name: '', code: '', category: 'EPP', status: 'OPERATIVO', serial: '', purchaseDate: '', expiresAt: '', notes: '', companyId: '', imageUrl: '', quantity: 1 };
 
 const fmtDate = (d?: string) => d ? new Date(d).toLocaleDateString('es-CL', { day: '2-digit', month: 'short', year: 'numeric' }) : '—';
@@ -104,7 +104,7 @@ export default function InventoryPage() {
   const filtered = rawItems.filter((item: any) => {
     const q = search.toLowerCase();
     const matchSearch = tab === 'vehicles'
-      ? (`${item.patent} ${item.brand} ${item.model} ${item.type}`).toLowerCase().includes(q)
+      ? (`${item.patent} ${item.brand} ${item.model} ${item.type} ${vehicleTypeShortLabel(item.type)}`).toLowerCase().includes(q)
       : (`${item.name} ${item.code} ${item.category}`).toLowerCase().includes(q);
     const matchStatus = !filterStatus || item.status === filterStatus;
     const matchCia = !filterCia || item.companyId === filterCia;
@@ -269,9 +269,18 @@ export default function InventoryPage() {
                     ))}
                     <div><label className="block text-xs font-medium text-slate-400 mb-1.5">Año *</label>
                       <input type="number" value={vForm.year} onChange={setV('year')} required min={1900} max={2100} className={inp} /></div>
-                    <div><label className="block text-xs font-medium text-slate-400 mb-1.5">Tipo *</label>
+                    <div className="sm:col-span-2 lg:col-span-3"><label className="block text-xs font-medium text-slate-400 mb-1.5">Tipo *</label>
                       <select value={vForm.type} onChange={setV('type')} className={inp}>
-                        {VEHICLE_TYPES.map(t => <option key={t}>{t}</option>)}</select></div>
+                        {!isKnownVehicleType(vForm.type) && vForm.type && (
+                          <option value={vForm.type}>{vForm.type}</option>
+                        )}
+                        <optgroup label="Categorías principales de unidades">
+                          {VEHICLE_TYPES.map((t) => (
+                            <option key={t.value} value={t.value}>{t.label}</option>
+                          ))}
+                        </optgroup>
+                      </select>
+                    </div>
                     <div><label className="block text-xs font-medium text-slate-400 mb-1.5">Estado</label>
                       <select value={vForm.status} onChange={setV('status')} className={inp}>
                         {STATUSES.map(s => <option key={s} value={s}>{STATUS_META[s].label}</option>)}</select></div>
@@ -362,7 +371,7 @@ export default function InventoryPage() {
               <div className="grid grid-cols-2 gap-3">
                 {tab === 'vehicles' ? (
                   <>
-                    <div className="bg-slate-800/60 rounded-xl p-3"><p className="text-[10px] text-slate-500 mb-1 flex items-center gap-1"><Tag className="w-3 h-3" />Tipo</p><p className="text-sm font-semibold text-slate-200">{detail.type}</p></div>
+                    <div className="bg-slate-800/60 rounded-xl p-3"><p className="text-[10px] text-slate-500 mb-1 flex items-center gap-1"><Tag className="w-3 h-3" />Tipo</p><p className="text-sm font-semibold text-slate-200">{vehicleTypeShortLabel(detail.type)}</p></div>
                     <div className="bg-slate-800/60 rounded-xl p-3"><p className="text-[10px] text-slate-500 mb-1 flex items-center gap-1"><CalendarDays className="w-3 h-3" />Año</p><p className="text-sm font-semibold text-slate-200">{detail.year}</p></div>
                     <div className="bg-slate-800/60 rounded-xl p-3"><p className="text-[10px] text-slate-500 mb-1 flex items-center gap-1"><Gauge className="w-3 h-3" />Kilómetros</p><p className="text-sm font-semibold text-slate-200">{detail.kilometers?.toLocaleString('es-CL')} km</p></div>
                     <div className="bg-slate-800/60 rounded-xl p-3"><p className="text-[10px] text-slate-500 mb-1 flex items-center gap-1"><Building2 className="w-3 h-3" />Compañía</p><p className="text-sm font-semibold text-slate-200">Cía. {detail.company?.number}</p></div>
@@ -460,7 +469,7 @@ export default function InventoryPage() {
                   <div className="flex items-center justify-between">
                     {tab === 'vehicles' ? (
                       <>
-                        <span className="text-[11px] bg-slate-800 border border-slate-700 text-slate-400 px-2 py-0.5 rounded-lg">{item.type}</span>
+                        <span className="text-[11px] bg-slate-800 border border-slate-700 text-slate-400 px-2 py-0.5 rounded-lg">{vehicleTypeShortLabel(item.type)}</span>
                         <span className="text-[11px] text-slate-500">{item.year} · {item.kilometers?.toLocaleString() ?? 0} km</span>
                       </>
                     ) : (

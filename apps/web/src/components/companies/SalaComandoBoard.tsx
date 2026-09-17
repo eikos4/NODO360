@@ -5,7 +5,7 @@ import {
 } from 'lucide-react';
 import PublicOsmMap, { PARRAL_CENTER, type OsmMarker } from '../map/PublicOsmMap';
 import type { PublicEmergency } from '../dispatch/DispatchEmergenciesPanel';
-import type { FleetVehicle, PublicCentral } from '../../pages/DispatchPublicPage';
+import { vehicleTypeAbbrev } from '../../lib/vehicle-types';
 
 function publicMediaUrl(url?: string | null) {
   if (!url) return null;
@@ -44,12 +44,7 @@ function elapsedHms(from: string | undefined, now: Date) {
 }
 
 function typeCode(type: string, idx: number) {
-  const t = type.toUpperCase();
-  const n = idx + 1;
-  if (/QUIM|HAZ|Q-/.test(t)) return `Q-${n}`;
-  if (/RESC|R-/.test(t)) return `R-${n}`;
-  if (/ESCAL|AERIAL|E-/.test(t)) return `E-${n}`;
-  return `B-${n}`;
+  return `${vehicleTypeAbbrev(type)}-${idx + 1}`;
 }
 
 type Kind = 'salida' | 'cuartel' | 'disponible' | 'sin';
