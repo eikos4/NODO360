@@ -106,8 +106,8 @@ function CrewPhoto({
       onClick={onClick}
       disabled={disabled || !onClick}
       title="Sacar de disponible"
-      className={`relative aspect-[3/4] w-full overflow-hidden rounded-2xl border bg-[#0b1824] disabled:cursor-default enabled:cursor-pointer enabled:hover:border-red-400/70 enabled:hover:opacity-90 ${
-        live ? 'border-[#ef343f]/50 shadow-[0_0_14px_rgba(239,52,63,0.22)]' : 'border-white/10'
+      className={`relative aspect-square w-full overflow-hidden rounded-full border bg-[#0b1824] disabled:cursor-default enabled:cursor-pointer enabled:hover:border-red-400/70 enabled:hover:opacity-90 ${
+        live ? 'border-[#ef343f]/50 shadow-[0_0_14px_rgba(239,52,63,0.22)]' : 'border-white/15'
       }`}
     >
       {show ? (
@@ -120,13 +120,6 @@ function CrewPhoto({
       ) : (
         <FirefighterPlaceholder className="h-full w-full" />
       )}
-      <div className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black via-black/70 to-transparent px-1.5 pb-1.5 pt-8">
-        {person.operativeNumber != null && (
-          <p className="text-center text-xl font-semibold tabular-nums leading-none text-white">
-            {person.operativeNumber}
-          </p>
-        )}
-      </div>
       {person.isMaquinista && (
         <span className="absolute left-1.5 top-1.5 rounded bg-amber-400 px-1 py-0.5 text-[8px] font-black uppercase tracking-wide text-amber-950">
           Maq.
@@ -321,24 +314,23 @@ export default function SalaSalidaBoard({
   }, [emergencyId]);
 
   return (
-    <section className="relative flex min-h-0 flex-1 overflow-hidden bg-[#071019] text-[#e7edf4]">
-      <div className="pointer-events-none absolute inset-0">
+    <section className="sala-salida relative flex min-h-0 flex-1 overflow-hidden bg-[#0b0d10] text-[#e7edf4]">
+      <div className="pointer-events-none absolute inset-0 overflow-hidden">
         {heroSrc ? (
           <img
             key={hero?.id}
             src={heroSrc}
             alt={hero?.patent}
             onError={() => hero && setBrokenHero((prev) => ({ ...prev, [hero.id]: true }))}
-            className={`h-full w-full object-cover object-center scale-105 contrast-110 transition-opacity duration-700 ${
-              live ? 'sala-salida-hero-live' : 'opacity-55 grayscale-[25%]'
+            className={`sala-salida-hero-move h-full w-full object-cover object-center contrast-110 ${
+              live ? 'sala-salida-hero-live' : 'opacity-60 grayscale-[18%]'
             }`}
           />
         ) : (
-          <div className="h-full w-full bg-[radial-gradient(circle_at_70%_40%,#12324a_0%,#071019_62%)]" />
+          <div className="h-full w-full bg-[radial-gradient(circle_at_70%_40%,#2a3038_0%,#0b0d10_62%)]" />
         )}
-        <div className="absolute inset-0 bg-gradient-to-r from-[#071019] via-[#071019]/82 to-[#071019]/25" />
-        <div className="absolute inset-0 bg-gradient-to-t from-[#071019] via-transparent to-[#071019]/55" />
-        <div className="absolute inset-0 bg-[radial-gradient(circle_at_20%_80%,rgba(56,189,248,0.12),transparent_42%)]" />
+        <div className="absolute inset-0 bg-gradient-to-r from-black/60 via-slate-800/28 to-transparent" />
+        <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-transparent to-black/30" />
         {live && <div className="sala-salida-vignette" />}
       </div>
 
@@ -419,7 +411,8 @@ export default function SalaSalidaBoard({
                 value={operativeNumber}
                 onChange={(e) => onOperativeNumber(e.target.value.replace(/\D/g, '').slice(0, 4))}
                 placeholder="528"
-                className="mb-2 w-full rounded-xl border border-[#38bdf8]/40 bg-[#07111a] px-3 py-2 text-center font-mono text-2xl font-semibold text-[#e7edf4] placeholder-[#1879ac] outline-none focus:border-[#67c8ff]"
+                className="keep-on-color mb-2 w-full rounded-xl border border-[#38bdf8]/40 bg-[#07111a] px-3 py-2 text-center font-mono text-2xl font-semibold text-white placeholder-[#1879ac] outline-none focus:border-[#67c8ff]"
+                style={{ color: '#ffffff' }}
               />
               <div className="grid grid-cols-3 gap-1.5">
                 <button
@@ -487,7 +480,7 @@ export default function SalaSalidaBoard({
               >
                 <Truck className={`h-6 w-6 ${live && active ? 'text-[#ef343f]' : active ? 'text-[#67c8ff]' : 'text-[#89a0b3]'}`} />
                 <div className="text-left">
-                  <p className="font-mono text-2xl font-semibold leading-none">{v.patent}</p>
+                  <p className="keep-on-color font-mono text-2xl font-semibold leading-none text-white">{v.patent}</p>
                   <p className="mt-1 text-xs uppercase tracking-wide text-[#89a0b3]">
                     {v.type}{v.brand ? ` · ${v.brand}` : ''}{v.model ? ` ${v.model}` : ''}
                   </p>
@@ -505,16 +498,16 @@ export default function SalaSalidaBoard({
           </div>
         </div>
 
-        <div className="mt-auto min-h-0 pt-6">
+        <div className="mt-auto min-h-0 overflow-y-auto pt-8 pb-2">
           {crew.length === 0 ? (
             <div className="flex items-center gap-3 rounded-2xl border border-white/10 bg-black/30 px-5 py-6 text-[#89a0b3]">
               <Radio className="h-5 w-5 text-[#67c8ff]" />
               Sin dotación marcada. Ingresá el N° operativo arriba para marcarte en sala.
             </div>
           ) : (
-            <div className="grid grid-cols-4 gap-2 sm:grid-cols-6 md:grid-cols-8 xl:grid-cols-10 2xl:grid-cols-12">
+            <div className="grid grid-cols-4 gap-x-4 gap-y-7 sm:grid-cols-6 md:grid-cols-8 xl:grid-cols-10 2xl:grid-cols-12">
               {crew.map((person) => (
-                <article key={person.id} className="min-w-0">
+                <article key={person.id} className="flex min-w-0 flex-col items-center text-center">
                   <CrewPhoto
                     person={person}
                     live={live}
@@ -528,8 +521,13 @@ export default function SalaSalidaBoard({
                       if (person.operativeNumber != null) onToggleByNumber(false, person.operativeNumber);
                     }}
                   />
-                  <p className="mt-1.5 truncate text-xs font-semibold leading-tight">{person.name}</p>
-                  <div className="mt-0.5 flex flex-wrap items-center gap-1">
+                  {person.operativeNumber != null && (
+                    <p className="keep-on-color mt-2.5 text-lg font-semibold tabular-nums leading-none text-white" style={{ color: '#ffffff' }}>
+                      {person.operativeNumber}
+                    </p>
+                  )}
+                  <p className="keep-on-color mt-1.5 w-full truncate text-xs font-semibold leading-tight text-white" style={{ color: '#ffffff' }}>{person.name}</p>
+                  <div className="mt-1 flex flex-wrap items-center justify-center gap-1">
                     <RoleBadge role={person.role} size="xs" contrast />
                     {person.isMaquinista && person.duty === 'maquinista' && (
                       <span className="rounded bg-amber-400/15 px-1 py-0.5 text-[8px] font-semibold uppercase text-amber-200">
@@ -548,7 +546,7 @@ export default function SalaSalidaBoard({
           )}
         </div>
 
-        <footer className="mt-5 flex items-center justify-between text-[10px] uppercase tracking-[0.22em] text-[#698297]">
+        <footer className="mt-4 shrink-0 flex items-center justify-between text-[10px] uppercase tracking-[0.22em] text-[#698297]">
           <span className="inline-flex items-center gap-2">
             <Siren className="h-3.5 w-3.5 text-[#67c8ff]" />
             Pantalla de sala · Tema Salida

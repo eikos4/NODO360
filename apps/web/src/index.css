@@ -835,8 +835,24 @@ html:not(.dark) .leaflet-popup-tip {
 .sala-public .operative-num,
 html:not(.dark) .sala-public .operative-num,
 html:not(.dark) .sala-public .keep-on-color,
-html:not(.dark) .sala-public .keep-on-color * {
+html:not(.dark) .sala-public .keep-on-color *,
+html:not(.dark) .sala-salida .text-white,
+html:not(.dark) .sala-salida .keep-on-color,
+html:not(.dark) .sala-salida .keep-on-color *,
+.sala-salida .text-white,
+.sala-salida .keep-on-color {
   color: #ffffff !important;
+}
+
+html:not(.dark) .sala-salida input {
+  color: #ffffff !important;
+  color-scheme: dark;
+}
+
+html:not(.dark) .sala-salida .from-slate-800,
+html:not(.dark) .sala-salida .via-slate-900,
+html:not(.dark) .sala-salida .to-slate-950 {
+  background-image: linear-gradient(to bottom right, #1f2937, #111827, #020617) !important;
 }
 .sala-public,
 .sala-public main {
@@ -1047,8 +1063,19 @@ html:not(.dark) .sala-guardia .text-slate-600 {
 }
 
 .sala-salida-hero-live {
-  opacity: 0.7 !important;
+  opacity: 0.78 !important;
   filter: grayscale(8%) contrast(1.12);
+}
+
+.sala-salida-hero-move {
+  animation: sala-salida-kenburns 32s ease-in-out infinite alternate;
+  will-change: transform;
+  transform-origin: 42% 40%;
+}
+
+@keyframes sala-salida-kenburns {
+  0% { transform: scale(1.08) translate3d(0, 0, 0); }
+  100% { transform: scale(1.22) translate3d(-3.2%, -2.2%, 0); }
 }
 
 .sala-salida-vignette {
@@ -1111,8 +1138,12 @@ html:not(.dark) .sala-guardia .text-slate-600 {
   .sala-salida-chip-hold,
   .sala-salida-overlay,
   .sala-salida-ring,
-  .sala-salida-siren-icon {
+  .sala-salida-siren-icon,
+  .sala-salida-hero-move {
     animation: none !important;
+  }
+  .sala-salida-hero-move {
+    transform: scale(1.06);
   }
   .sala-salida-overlay {
     display: none;
