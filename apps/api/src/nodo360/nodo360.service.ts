@@ -1,19 +1,26 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
+import { Actor, assertCompanyAccess, isPlatformOwner, cuerpoIdForUser } from '../common/cuerpo-scope';
 
 @Injectable()
 export class Nodo360Service {
   constructor(private readonly prisma: PrismaService) {}
 
-  async getCompanies() {
+  async getCompanies(actor?: Actor) {
+    const where: { isActive: boolean; cuerpoId?: string } = { isActive: true };
+    if (actor && !isPlatformOwner(actor.role, actor.roles)) {
+      const cuerpoId = await cuerpoIdForUser(this.prisma, actor);
+      if (cuerpoId) where.cuerpoId = cuerpoId;
+    }
     return this.prisma.company.findMany({
-      where: { isActive: true },
+      where,
       orderBy: { number: 'asc' },
       select: { id: true, name: true, number: true, city: true, region: true, logoUrl: true },
     });
   }
 
-  async getCompanyPanel(companyId: string) {
+  async getCompanyPanel(companyId: string, actor?: Actor) {
+    if (actor) await assertCompanyAccess(this.prisma, actor, companyId);
     const company = await this.prisma.company.findUnique({
       where: { id: companyId },
     });

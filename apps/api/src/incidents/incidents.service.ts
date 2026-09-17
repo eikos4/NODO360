@@ -107,20 +107,31 @@ export class IncidentsService {
   }
 
   async findByIdAuthorized(id: string, user: IncidentAuthUser) {
-    if (!hasAnyRole(user, 'SUPER_ADMIN', 'KODESK')) {
-      const or: Prisma.IncidentWhereInput[] = [
-        { emergencyResponses: { some: { userId: user.id } } },
-      ];
-      if (user.companyId) {
-        or.push({ companyId: user.companyId });
-        or.push({ vehicles: { some: { vehicle: { companyId: user.companyId } } } });
-      }
-      const permitted = await this.prisma.incident.findFirst({
-        where: { id, OR: or },
-        select: { id: true },
+    if (hasAnyRole(user, 'KODESK')) return this.findById(id);
+    if (hasAnyRole(user, 'SUPER_ADMIN', 'COMANDANTE', 'OPERADOR_CENTRAL')) {
+      const incident = await this.prisma.incident.findUnique({
+        where: { id },
+        select: { company: { select: { cuerpoId: true } } },
       });
-      if (!permitted) throw new NotFoundException('Emergencia no encontrada');
+      if (!incident) throw new NotFoundException('Emergencia no encontrada');
+      const cuerpoId = await this.actorCuerpoId(user);
+      if (cuerpoId && cuerpoId !== incident.company.cuerpoId) {
+        throw new NotFoundException('Emergencia no encontrada');
+      }
+      return this.findById(id);
     }
+    const or: Prisma.IncidentWhereInput[] = [
+      { emergencyResponses: { some: { userId: user.id } } },
+    ];
+    if (user.companyId) {
+      or.push({ companyId: user.companyId });
+      or.push({ vehicles: { some: { vehicle: { companyId: user.companyId } } } });
+    }
+    const permitted = await this.prisma.incident.findFirst({
+      where: { id, OR: or },
+      select: { id: true },
+    });
+    if (!permitted) throw new NotFoundException('Emergencia no encontrada');
     return this.findById(id);
   }
 

@@ -9,6 +9,7 @@ import { CreateIncidentDto } from './dto/create-incident.dto';
 import { UpdateIncidentDto } from './dto/update-incident.dto';
 import { DispatchIncidentDto } from './dto/dispatch-incident.dto';
 import { UpdateIncidentChecklistDto } from './dto/update-incident-checklist.dto';
+import { hasAnyRole } from '../common/user-roles';
 
 @Controller('incidents')
 @UseGuards(JwtAuthGuard, RolesGuard)
@@ -20,7 +21,7 @@ export class IncidentsController {
 
   @Get('stats')
   async getStats(@Req() req: { user: IncidentAuthUser }, @Query('companyId') companyId?: string) {
-    if (req.user.role !== 'SUPER_ADMIN' && req.user.role !== 'KODESK') {
+    if (!hasAnyRole(req.user, 'SUPER_ADMIN', 'KODESK')) {
       await this.service.assertCanCreateFor(companyId ?? req.user.companyId ?? '', req.user);
       return this.service.getStats(companyId ?? req.user.companyId!);
     }

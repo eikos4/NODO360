@@ -8,6 +8,7 @@ import {
 import { api } from '../lib/api';
 import { useAuthStore } from '../store/authStore';
 import toast from 'react-hot-toast';
+import { hasAnyRole } from '../lib/roles';
 import { createElement } from 'react';
 import { CompanyReport } from '../lib/pdf/CompanyReport';
 import { downloadPdf } from '../lib/pdf/usePdfDownload';
@@ -72,7 +73,7 @@ export default function CompaniesPage() {
   const { data: onboarding } = useQuery({
     queryKey: ['onboarding-status'],
     queryFn: () => api.get('/onboarding/status').then((r) => r.data),
-    enabled: currentUser?.role === 'KODESK',
+    enabled: hasAnyRole(currentUser, 'KODESK'),
   });
 
   const createMutation = useMutation({
@@ -265,7 +266,7 @@ export default function CompaniesPage() {
                   <div className="relative"><Building2 className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
                     <input value={form.name} onChange={set('name')} required placeholder="Ej: Primera Compañía 'Bomba Germania'" className={inpIcon} /></div>
                 </div>
-                {currentUser?.role === 'KODESK' && (
+                {hasAnyRole(currentUser, 'KODESK') && (
                   <div className="md:col-span-2">
                     <label className="block text-xs font-bold text-slate-600 dark:text-slate-400 mb-1.5 uppercase tracking-wider">Cuerpo *</label>
                     <select value={form.cuerpoId} onChange={set('cuerpoId')} required className={`${inpIcon} appearance-none pl-4`}>

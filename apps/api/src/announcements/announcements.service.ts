@@ -1,12 +1,15 @@
 import { ForbiddenException, Injectable, NotFoundException } from '@nestjs/common';
 import { Prisma } from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
+import { isPlatformOwner } from '../common/cuerpo-scope';
+import { hasAnyRole } from '../common/user-roles';
 import { CreateAnnouncementDto } from './dto/create-announcement.dto';
 import { UpdateAnnouncementDto } from './dto/update-announcement.dto';
 
 export type AnnouncementActor = {
   id: string;
   role?: string;
+  roles?: string[] | null;
   companyId?: string | null;
   cuerpoId?: string | null;
 };
@@ -24,8 +27,8 @@ const OFFICER_ROLES = new Set([
 export class AnnouncementsService {
   constructor(private prisma: PrismaService) {}
 
-  private isPlatform(role?: string) {
-    return role === 'KODESK';
+  private isPlatform(actor: AnnouncementActor) {
+    return isPlatformOwner(actor.role, actor.roles);
   }
 
   private async resolveCuerpoId(actor: AnnouncementActor): Promise<string | null> {
@@ -41,7 +44,7 @@ export class AnnouncementsService {
   private async assertAccess(id: string, actor: AnnouncementActor) {
     const announcement = await this.prisma.announcement.findUnique({ where: { id } });
     if (!announcement) throw new NotFoundException('Anuncio no encontrado');
-    if (this.isPlatform(actor.role)) return announcement;
+    if (this.isPlatform(actor)) return announcement;
     const cuerpoId = await this.resolveCuerpoId(actor);
     if (announcement.cuerpoId && cuerpoId && announcement.cuerpoId !== cuerpoId) {
       throw new ForbiddenException('Sin permiso para este comunicado');
@@ -85,11 +88,11 @@ export class AnnouncementsService {
       where.targetAudience = filters.targetAudience as Prisma.AnnouncementWhereInput['targetAudience'];
     }
 
-    if (!this.isPlatform(actor.role)) {
+    if (!this.isPlatform(actor)) {
       const cuerpoId = await this.resolveCuerpoId(actor);
       if (!cuerpoId) return [];
       where.cuerpoId = cuerpoId;
-      if (!OFFICER_ROLES.has(actor.role ?? '')) {
+      if (!hasAnyRole(actor, ...Array.from(OFFICER_ROLES))) {
         where.targetAudience = { in: ['ALL', 'ALL_PERSONNEL'] };
       }
     }

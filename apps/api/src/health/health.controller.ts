@@ -8,6 +8,7 @@ import {
   Body,
   Param,
   Query,
+  Req,
   UseGuards,
 } from '@nestjs/common';
 import { HealthService } from './health.service';
@@ -26,8 +27,10 @@ import { CreateMedicationDto } from './dto/create-medication.dto';
 import { UpdateMedicationDto } from './dto/update-medication.dto';
 import { CreateVaccinationDto } from './dto/create-vaccination.dto';
 import { UpdateVaccinationDto } from './dto/update-vaccination.dto';
+import { Actor } from '../common/cuerpo-scope';
 
 const EDIT_ROLES = ['SUPER_ADMIN', 'COMANDANTE', 'CAPITAN', 'SECRETARIO'] as const;
+const READ_ROLES = [...EDIT_ROLES] as const;
 
 @Controller('health')
 @UseGuards(JwtAuthGuard, RolesGuard)
@@ -35,29 +38,30 @@ export class HealthController {
   constructor(private readonly healthService: HealthService) {}
 
   @Get('summary')
-  getSummary(@Query('companyId') companyId?: string) {
-    return this.healthService.getSummary(companyId);
+  @Roles(...READ_ROLES)
+  getSummary(@Query('companyId') companyId: string | undefined, @Req() req: { user: Actor }) {
+    return this.healthService.getSummary(req.user, companyId);
   }
 
   @Get('expiring')
+  @Roles(...READ_ROLES)
   getExpiring(
-    @Query('companyId') companyId?: string,
-    @Query('days') days?: string,
+    @Query('companyId') companyId: string | undefined,
+    @Query('days') days: string | undefined,
+    @Req() req: { user: Actor },
   ) {
-    return this.healthService.findExpiring(
-      companyId,
-      days ? Number(days) : undefined,
-    );
+    return this.healthService.findExpiring(req.user, companyId, days ? Number(days) : undefined);
   }
 
   @Get('roster')
-  getRoster(@Query('companyId') companyId: string) {
-    return this.healthService.rosterByCompany(companyId);
+  @Roles(...READ_ROLES)
+  getRoster(@Query('companyId') companyId: string, @Req() req: { user: Actor }) {
+    return this.healthService.rosterByCompany(req.user, companyId);
   }
 
   @Get('records/:userId')
-  getRecord(@Param('userId') userId: string) {
-    return this.healthService.getRecordByUserId(userId);
+  getRecord(@Param('userId') userId: string, @Req() req: { user: Actor & { id: string } }) {
+    return this.healthService.getRecordByUserId(userId, req.user);
   }
 
   @Post('records/:userId')
@@ -65,8 +69,9 @@ export class HealthController {
   createRecord(
     @Param('userId') userId: string,
     @Body() dto: CreateHealthRecordDto,
+    @Req() req: { user: Actor },
   ) {
-    return this.healthService.upsertRecord(userId, dto);
+    return this.healthService.upsertRecord(userId, dto, req.user);
   }
 
   @Patch('records/:userId')
@@ -74,14 +79,15 @@ export class HealthController {
   updateRecord(
     @Param('userId') userId: string,
     @Body() dto: UpdateHealthRecordDto,
+    @Req() req: { user: Actor },
   ) {
-    return this.healthService.updateRecord(userId, dto);
+    return this.healthService.updateRecord(userId, dto, req.user);
   }
 
   @Delete('records/:userId')
   @Roles(...EDIT_ROLES)
-  deleteRecord(@Param('userId') userId: string) {
-    return this.healthService.deleteRecord(userId);
+  deleteRecord(@Param('userId') userId: string, @Req() req: { user: Actor }) {
+    return this.healthService.deleteRecord(userId, req.user);
   }
 
   @Post('records/:userId/ensure')
@@ -89,26 +95,27 @@ export class HealthController {
   ensureRecord(
     @Param('userId') userId: string,
     @Body('companyId') companyId: string,
+    @Req() req: { user: Actor },
   ) {
-    return this.healthService.ensureRecordForUser(userId, companyId);
+    return this.healthService.ensureRecordForUser(userId, companyId, req.user);
   }
 
   @Post('records/:userId/exams')
   @Roles(...EDIT_ROLES)
-  addExam(@Param('userId') userId: string, @Body() dto: CreateMedicalExamDto) {
-    return this.healthService.addExam(userId, dto);
+  addExam(@Param('userId') userId: string, @Body() dto: CreateMedicalExamDto, @Req() req: { user: Actor }) {
+    return this.healthService.addExam(userId, dto, req.user);
   }
 
   @Patch('exams/:id')
   @Roles(...EDIT_ROLES)
-  updateExam(@Param('id') id: string, @Body() dto: UpdateMedicalExamDto) {
-    return this.healthService.updateExam(id, dto);
+  updateExam(@Param('id') id: string, @Body() dto: UpdateMedicalExamDto, @Req() req: { user: Actor }) {
+    return this.healthService.updateExam(id, dto, req.user);
   }
 
   @Delete('exams/:id')
   @Roles(...EDIT_ROLES)
-  removeExam(@Param('id') id: string) {
-    return this.healthService.removeExam(id);
+  removeExam(@Param('id') id: string, @Req() req: { user: Actor }) {
+    return this.healthService.removeExam(id, req.user);
   }
 
   @Post('records/:userId/conditions')
@@ -116,8 +123,9 @@ export class HealthController {
   addCondition(
     @Param('userId') userId: string,
     @Body() dto: CreateMedicalConditionDto,
+    @Req() req: { user: Actor },
   ) {
-    return this.healthService.addCondition(userId, dto);
+    return this.healthService.addCondition(userId, dto, req.user);
   }
 
   @Patch('conditions/:id')
@@ -125,32 +133,33 @@ export class HealthController {
   updateCondition(
     @Param('id') id: string,
     @Body() dto: UpdateMedicalConditionDto,
+    @Req() req: { user: Actor },
   ) {
-    return this.healthService.updateCondition(id, dto);
+    return this.healthService.updateCondition(id, dto, req.user);
   }
 
   @Delete('conditions/:id')
   @Roles(...EDIT_ROLES)
-  removeCondition(@Param('id') id: string) {
-    return this.healthService.removeCondition(id);
+  removeCondition(@Param('id') id: string, @Req() req: { user: Actor }) {
+    return this.healthService.removeCondition(id, req.user);
   }
 
   @Post('records/:userId/allergies')
   @Roles(...EDIT_ROLES)
-  addAllergy(@Param('userId') userId: string, @Body() dto: CreateAllergyDto) {
-    return this.healthService.addAllergy(userId, dto);
+  addAllergy(@Param('userId') userId: string, @Body() dto: CreateAllergyDto, @Req() req: { user: Actor }) {
+    return this.healthService.addAllergy(userId, dto, req.user);
   }
 
   @Patch('allergies/:id')
   @Roles(...EDIT_ROLES)
-  updateAllergy(@Param('id') id: string, @Body() dto: UpdateAllergyDto) {
-    return this.healthService.updateAllergy(id, dto);
+  updateAllergy(@Param('id') id: string, @Body() dto: UpdateAllergyDto, @Req() req: { user: Actor }) {
+    return this.healthService.updateAllergy(id, dto, req.user);
   }
 
   @Delete('allergies/:id')
   @Roles(...EDIT_ROLES)
-  removeAllergy(@Param('id') id: string) {
-    return this.healthService.removeAllergy(id);
+  removeAllergy(@Param('id') id: string, @Req() req: { user: Actor }) {
+    return this.healthService.removeAllergy(id, req.user);
   }
 
   @Post('records/:userId/medications')
@@ -158,8 +167,9 @@ export class HealthController {
   addMedication(
     @Param('userId') userId: string,
     @Body() dto: CreateMedicationDto,
+    @Req() req: { user: Actor },
   ) {
-    return this.healthService.addMedication(userId, dto);
+    return this.healthService.addMedication(userId, dto, req.user);
   }
 
   @Patch('medications/:id')
@@ -167,14 +177,15 @@ export class HealthController {
   updateMedication(
     @Param('id') id: string,
     @Body() dto: UpdateMedicationDto,
+    @Req() req: { user: Actor },
   ) {
-    return this.healthService.updateMedication(id, dto);
+    return this.healthService.updateMedication(id, dto, req.user);
   }
 
   @Delete('medications/:id')
   @Roles(...EDIT_ROLES)
-  removeMedication(@Param('id') id: string) {
-    return this.healthService.removeMedication(id);
+  removeMedication(@Param('id') id: string, @Req() req: { user: Actor }) {
+    return this.healthService.removeMedication(id, req.user);
   }
 
   @Post('records/:userId/vaccinations')
@@ -182,8 +193,9 @@ export class HealthController {
   addVaccination(
     @Param('userId') userId: string,
     @Body() dto: CreateVaccinationDto,
+    @Req() req: { user: Actor },
   ) {
-    return this.healthService.addVaccination(userId, dto);
+    return this.healthService.addVaccination(userId, dto, req.user);
   }
 
   @Patch('vaccinations/:id')
@@ -191,13 +203,14 @@ export class HealthController {
   updateVaccination(
     @Param('id') id: string,
     @Body() dto: UpdateVaccinationDto,
+    @Req() req: { user: Actor },
   ) {
-    return this.healthService.updateVaccination(id, dto);
+    return this.healthService.updateVaccination(id, dto, req.user);
   }
 
   @Delete('vaccinations/:id')
   @Roles(...EDIT_ROLES)
-  removeVaccination(@Param('id') id: string) {
-    return this.healthService.removeVaccination(id);
+  removeVaccination(@Param('id') id: string, @Req() req: { user: Actor }) {
+    return this.healthService.removeVaccination(id, req.user);
   }
 }

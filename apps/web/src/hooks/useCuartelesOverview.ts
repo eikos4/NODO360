@@ -2,6 +2,7 @@ import { useQuery } from '@tanstack/react-query';
 import { api } from '../lib/api';
 import { useAuthStore } from '../store/authStore';
 import type { CuartelItem } from '../components/botonera/CuartelOverviewPanel';
+import { hasAnyRole } from '../lib/roles';
 
 const OVERVIEW_ROLES = new Set([
   'SUPER_ADMIN',
@@ -10,13 +11,15 @@ const OVERVIEW_ROLES = new Set([
   'OPERADOR_CENTRAL',
 ]);
 
-export function canViewCuartelesOverview(role?: string | null) {
-  return !!role && OVERVIEW_ROLES.has(role);
+export function canViewCuartelesOverview(user?: { role?: string | null; roles?: string[] | null } | string | null) {
+  if (!user) return false;
+  if (typeof user === 'string') return OVERVIEW_ROLES.has(user);
+  return hasAnyRole(user, ...[...OVERVIEW_ROLES]);
 }
 
 export function useCuartelesOverview() {
-  const role = useAuthStore((s) => s.user?.role);
-  const enabled = canViewCuartelesOverview(role);
+  const user = useAuthStore((s) => s.user);
+  const enabled = canViewCuartelesOverview(user);
 
   return useQuery<CuartelItem[]>({
     queryKey: ['dispatch-cuarteles-overview'],

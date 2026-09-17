@@ -8,6 +8,7 @@ import { api } from '../lib/api';
 import toast from 'react-hot-toast';
 import { useAuthStore } from '../store/authStore';
 import LeucodeBadge from '../components/LeucodeBadge';
+import { hasAnyRole } from '../lib/roles';
 
 type Tab = 'resumen' | 'fichas';
 type DetailTab = 'general' | 'examenes' | 'alergias' | 'medicamentos' | 'condiciones' | 'vacunas';
@@ -45,7 +46,7 @@ const fmt = (d?: string | null) =>
 export default function HealthPage() {
   const qc = useQueryClient();
   const user = useAuthStore(s => s.user);
-  const canEdit = ['SUPER_ADMIN', 'COMANDANTE', 'CAPITAN', 'SECRETARIO'].includes(user?.role ?? '');
+  const canEdit = hasAnyRole(user, 'SUPER_ADMIN', 'COMANDANTE', 'CAPITAN', 'SECRETARIO');
 
   const [tab, setTab] = useState<Tab>('resumen');
   const [companyFilter, setCompanyFilter] = useState(user?.companyId ?? '');

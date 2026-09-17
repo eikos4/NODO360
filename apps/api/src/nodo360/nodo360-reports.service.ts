@@ -1,6 +1,7 @@
 import { Injectable } from '@nestjs/common';
 import { FleetLogType } from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
+import { Actor, companyIdsForActor } from '../common/cuerpo-scope';
 
 const MONTHS_ES = ['Ene', 'Feb', 'Mar', 'Abr', 'May', 'Jun', 'Jul', 'Ago', 'Sep', 'Oct', 'Nov', 'Dic'];
 
@@ -19,15 +20,19 @@ type FleetLogRow = {
 export class Nodo360ReportsService {
   constructor(private readonly prisma: PrismaService) {}
 
-  async getReports(year?: number, companyId?: string) {
+  async getReports(year?: number, companyId?: string, actor?: Actor) {
     const y = year ?? new Date().getFullYear();
     const now = new Date();
     const startOfYear = new Date(y, 0, 1);
     const endOfYear = new Date(y + 1, 0, 1);
     const in30days = new Date(now.getTime() + 30 * 24 * 60 * 60 * 1000);
 
+    const ids = actor ? await companyIdsForActor(this.prisma, actor, companyId) : (companyId ? [companyId] : null);
     const companies = await this.prisma.company.findMany({
-      where: { isActive: true, ...(companyId ? { id: companyId } : {}) },
+      where: {
+        isActive: true,
+        ...(ids ? { id: { in: ids } } : companyId ? { id: companyId } : {}),
+      },
       orderBy: { number: 'asc' },
     });
 

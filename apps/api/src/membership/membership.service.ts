@@ -6,6 +6,7 @@ import { CreateContributionDto } from './dto/create-contribution.dto';
 import { UpdateContributionDto } from './dto/update-contribution.dto';
 import { UpsertMemberProfileDto } from './dto/upsert-member-profile.dto';
 import { ContributionStatus, MembershipStatus, Prisma } from '@prisma/client';
+import { Actor, assertCompanyAccess, companyIdWhere, companyIdsForActor } from '../common/cuerpo-scope';
 
 const userSelect = {
   id: true,
@@ -25,10 +26,11 @@ export class MembershipService {
 
   /* ── Cuotas / períodos ── */
 
-  async findFees(companyId?: string, year?: number) {
+  async findFees(companyId?: string, year?: number, actor?: Actor) {
+    const scope = actor ? companyIdWhere(await companyIdsForActor(this.prisma, actor, companyId)) : (companyId ? { companyId } : {});
     return this.prisma.membershipFee.findMany({
       where: {
-        ...(companyId ? { companyId } : {}),
+        ...scope,
         ...(year ? { year } : {}),
       },
       include: {
@@ -39,7 +41,7 @@ export class MembershipService {
     });
   }
 
-  async findFeeById(id: string) {
+  async findFeeById(id: string, actor?: Actor) {
     const fee = await this.prisma.membershipFee.findUnique({
       where: { id },
       include: {
@@ -51,10 +53,12 @@ export class MembershipService {
       },
     });
     if (!fee) throw new NotFoundException('Cuota no encontrada');
+    if (actor) await assertCompanyAccess(this.prisma, actor, fee.companyId);
     return fee;
   }
 
-  async createFee(dto: CreateMembershipFeeDto) {
+  async createFee(dto: CreateMembershipFeeDto, actor?: Actor) {
+    if (actor) await assertCompanyAccess(this.prisma, actor, dto.companyId);
     return this.prisma.membershipFee.create({
       data: {
         ...dto,
@@ -177,7 +181,8 @@ export class MembershipService {
 
   /* ── Socios / nómina ── */
 
-  async getMembersRoster(companyId: string, feeId?: string, year?: number, month?: number) {
+  async getMembersRoster(companyId: string, feeId?: string, year?: number, month?: number, actor?: Actor) {
+    if (actor) await assertCompanyAccess(this.prisma, actor, companyId);
     const fee = feeId
       ? await this.prisma.membershipFee.findUnique({ where: { id: feeId } })
       : await this.resolveFee(companyId, year, month);
@@ -271,11 +276,13 @@ export class MembershipService {
 
   /* ── Dashboard ── */
 
-  async getDashboard(companyId?: string, year?: number, month?: number) {
+  async getDashboard(companyId?: string, year?: number, month?: number, actor?: Actor) {
     const y = year ?? new Date().getFullYear();
     const m = month ?? new Date().getMonth() + 1;
 
-    const companyWhere = companyId ? { companyId } : {};
+    const companyWhere = actor
+      ? companyIdWhere(await companyIdsForActor(this.prisma, actor, companyId))
+      : companyId ? { companyId } : {};
 
     const [fees, contributionsYtd, contributionsMonth, companies] = await Promise.all([
       this.prisma.membershipFee.findMany({

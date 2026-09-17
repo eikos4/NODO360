@@ -1,4 +1,4 @@
-import { Controller, Get, Post, Put, Delete, Param, Body, Query, UseGuards } from '@nestjs/common';
+import { Controller, Get, Post, Put, Delete, Param, Body, Query, UseGuards, Req } from '@nestjs/common';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { RolesGuard } from '../auth/guards/roles.guard';
 import { Roles } from '../auth/decorators/roles.decorator';
@@ -17,14 +17,16 @@ export class MembershipController {
   @Get('dashboard')
   @Roles('SUPER_ADMIN', 'TESORERO', 'SECRETARIO', 'COMANDANTE', 'AUDITOR', 'CAPITAN')
   getDashboard(
-    @Query('companyId') companyId?: string,
-    @Query('year') year?: string,
-    @Query('month') month?: string,
+    @Query('companyId') companyId: string | undefined,
+    @Query('year') year: string | undefined,
+    @Query('month') month: string | undefined,
+    @Req() req: any,
   ) {
     return this.service.getDashboard(
       companyId,
       year ? Number(year) : undefined,
       month ? Number(month) : undefined,
+      req.user,
     );
   }
 
@@ -32,15 +34,17 @@ export class MembershipController {
   @Roles('SUPER_ADMIN', 'TESORERO', 'SECRETARIO', 'COMANDANTE', 'AUDITOR', 'CAPITAN')
   getMembers(
     @Query('companyId') companyId: string,
-    @Query('feeId') feeId?: string,
-    @Query('year') year?: string,
-    @Query('month') month?: string,
+    @Query('feeId') feeId: string | undefined,
+    @Query('year') year: string | undefined,
+    @Query('month') month: string | undefined,
+    @Req() req: any,
   ) {
     return this.service.getMembersRoster(
       companyId,
       feeId,
       year ? Number(year) : undefined,
       month ? Number(month) : undefined,
+      req.user,
     );
   }
 
@@ -52,20 +56,20 @@ export class MembershipController {
 
   @Get('fees')
   @Roles('SUPER_ADMIN', 'TESORERO', 'SECRETARIO', 'COMANDANTE', 'AUDITOR', 'CAPITAN')
-  findFees(@Query('companyId') companyId?: string, @Query('year') year?: string) {
-    return this.service.findFees(companyId, year ? Number(year) : undefined);
+  findFees(@Query('companyId') companyId: string | undefined, @Query('year') year: string | undefined, @Req() req: any) {
+    return this.service.findFees(companyId, year ? Number(year) : undefined, req.user);
   }
 
   @Get('fees/:id')
   @Roles('SUPER_ADMIN', 'TESORERO', 'SECRETARIO', 'COMANDANTE', 'AUDITOR', 'CAPITAN')
-  findFee(@Param('id') id: string) {
-    return this.service.findFeeById(id);
+  findFee(@Param('id') id: string, @Req() req: any) {
+    return this.service.findFeeById(id, req.user);
   }
 
   @Post('fees')
   @Roles('SUPER_ADMIN', 'TESORERO', 'COMANDANTE')
-  createFee(@Body() dto: CreateMembershipFeeDto) {
-    return this.service.createFee(dto);
+  createFee(@Body() dto: CreateMembershipFeeDto, @Req() req: any) {
+    return this.service.createFee(dto, req.user);
   }
 
   @Put('fees/:id')

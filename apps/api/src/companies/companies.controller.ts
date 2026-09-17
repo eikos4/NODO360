@@ -45,8 +45,8 @@ export class CompaniesController {
   }
 
   @Get(':id')
-  findOne(@Param('id') id: string) {
-    return this.companiesService.findById(id);
+  findOne(@Param('id') id: string, @Req() req: any) {
+    return this.companiesService.findById(id, req.user);
   }
 
   @Post()
@@ -57,13 +57,13 @@ export class CompaniesController {
 
   @Put(':id')
   @Roles('SUPER_ADMIN', 'COMANDANTE')
-  update(@Param('id') id: string, @Body() dto: UpdateCompanyDto) {
-    return this.companiesService.update(id, dto);
+  update(@Param('id') id: string, @Body() dto: UpdateCompanyDto, @Req() req: any) {
+    return this.companiesService.update(id, dto, req.user);
   }
 
   @Delete(':id')
   @Roles('SUPER_ADMIN')
-  deactivate(@Param('id') id: string) {
-    return this.companiesService.deactivate(id);
+  deactivate(@Param('id') id: string, @Req() req: any) {
+    return this.companiesService.deactivate(id, req.user);
   }
 }

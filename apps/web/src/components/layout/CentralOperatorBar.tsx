@@ -26,7 +26,7 @@ export default function CentralOperatorBar() {
   const { user, logout } = useAuthStore();
   const { theme, toggleTheme } = useThemeStore();
   const isDark = theme === 'dark';
-  const showOverview = canViewCuartelesOverview(user?.role);
+  const showOverview = canViewCuartelesOverview(user);
 
   const handleLogout = () => {
     logout();

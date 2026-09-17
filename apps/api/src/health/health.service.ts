@@ -1,10 +1,13 @@
-import {
+﻿import {
   BadRequestException,
+  ForbiddenException,
   Injectable,
   NotFoundException,
 } from '@nestjs/common';
 import { MedicalExamStatus, Prisma } from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
+import { Actor, assertCompanyAccess, companyIdWhere, companyIdsForActor } from '../common/cuerpo-scope';
+import { hasAnyRole } from '../common/user-roles';
 import { CreateHealthRecordDto } from './dto/create-health-record.dto';
 import { UpdateHealthRecordDto } from './dto/update-health-record.dto';
 import { CreateMedicalExamDto } from './dto/create-medical-exam.dto';
@@ -60,11 +63,34 @@ function enrichRecord<T extends { nextCheckupAt: Date | null }>(record: T) {
 export class HealthService {
   constructor(private prisma: PrismaService) {}
 
+  private async scopedCompanyWhere(actor: Actor, companyId?: string) {
+    const ids = await companyIdsForActor(this.prisma, actor, companyId);
+    return companyIdWhere(ids);
+  }
+
+  private async assertUserInScope(userId: string, actor: Actor) {
+    const user = await this.prisma.user.findUnique({
+      where: { id: userId },
+      select: { companyId: true },
+    });
+    if (!user?.companyId) throw new NotFoundException('Bombero no encontrado');
+    await assertCompanyAccess(this.prisma, actor, user.companyId);
+  }
+
+  private async assertHealthRecordInScope(healthRecordId: string, actor: Actor) {
+    const record = await this.prisma.healthRecord.findUnique({
+      where: { id: healthRecordId },
+      select: { companyId: true },
+    });
+    if (!record) throw new NotFoundException('Ficha de salud no encontrada');
+    await assertCompanyAccess(this.prisma, actor, record.companyId);
+  }
+
   private async ensureUserInCompany(userId: string, companyId: string) {
     const user = await this.prisma.user.findFirst({
       where: { id: userId, companyId },
     });
-    if (!user) throw new NotFoundException('Bombero no encontrado en la compañía');
+    if (!user) throw new NotFoundException('Bombero no encontrado en la compaÃ±Ã­a');
     return user;
   }
 
@@ -86,16 +112,17 @@ export class HealthService {
     return record.id;
   }
 
-  async getSummary(companyId?: string) {
+  async getSummary(actor: Actor, companyId?: string) {
+    const scope = await this.scopedCompanyWhere(actor, companyId);
     const userWhere: Prisma.UserWhereInput = {
       isActive: true,
-      ...(companyId ? { companyId } : {}),
+      ...scope,
     };
 
     const [members, records] = await Promise.all([
       this.prisma.user.count({ where: userWhere }),
       this.prisma.healthRecord.findMany({
-        where: companyId ? { companyId } : {},
+        where: scope,
         include: {
           allergies: { where: { isActive: true } },
           medications: { where: { isActive: true } },
@@ -146,13 +173,14 @@ export class HealthService {
     };
   }
 
-  async findExpiring(companyId?: string, days = SOON_DAYS) {
+  async findExpiring(actor: Actor, companyId?: string, days = SOON_DAYS) {
     const horizon = new Date();
     horizon.setDate(horizon.getDate() + days);
+    const scope = await this.scopedCompanyWhere(actor, companyId);
 
     const records = await this.prisma.healthRecord.findMany({
       where: {
-        ...(companyId ? { companyId } : {}),
+        ...scope,
         OR: [
           { nextCheckupAt: { lte: horizon } },
           {
@@ -227,7 +255,8 @@ export class HealthService {
     };
   }
 
-  async rosterByCompany(companyId: string) {
+  async rosterByCompany(actor: Actor, companyId: string) {
+    await assertCompanyAccess(this.prisma, actor, companyId);
     const users = await this.prisma.user.findMany({
       where: { companyId, isActive: true },
       select: {
@@ -268,11 +297,18 @@ export class HealthService {
     });
   }
 
-  async getRecordByUserId(userId: string) {
+  async getRecordByUserId(userId: string, actor: Actor) {
+    if (actor.id === userId) return this.getRecordOrThrow(userId);
+    if (!hasAnyRole(actor, 'SUPER_ADMIN', 'COMANDANTE', 'CAPITAN', 'SECRETARIO')) {
+      throw new ForbiddenException('Sin permiso para esta ficha');
+    }
+    await this.assertUserInScope(userId, actor);
     return this.getRecordOrThrow(userId);
   }
 
-  async upsertRecord(userId: string, dto: CreateHealthRecordDto) {
+  async upsertRecord(userId: string, dto: CreateHealthRecordDto, actor: Actor) {
+    await this.assertUserInScope(userId, actor);
+    await assertCompanyAccess(this.prisma, actor, dto.companyId);
     await this.ensureUserInCompany(userId, dto.companyId);
 
     const data = {
@@ -297,7 +333,8 @@ export class HealthService {
     return enrichRecord(record);
   }
 
-  async updateRecord(userId: string, dto: UpdateHealthRecordDto) {
+  async updateRecord(userId: string, dto: UpdateHealthRecordDto, actor: Actor) {
+    await this.assertUserInScope(userId, actor);
     await this.getRecordIdByUser(userId);
     const record = await this.prisma.healthRecord.update({
       where: { userId },
@@ -324,14 +361,16 @@ export class HealthService {
     return enrichRecord(record);
   }
 
-  async deleteRecord(userId: string) {
+  async deleteRecord(userId: string, actor: Actor) {
+    await this.assertUserInScope(userId, actor);
     await this.getRecordIdByUser(userId);
     return this.prisma.healthRecord.delete({ where: { userId } });
   }
 
-  // ─── Medical exams ────────────────────────────────────────────────────────
+  // â”€â”€â”€ Medical exams â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
-  async addExam(userId: string, dto: CreateMedicalExamDto) {
+  async addExam(userId: string, dto: CreateMedicalExamDto, actor: Actor) {
+    await this.assertUserInScope(userId, actor);
     const healthRecordId = await this.getRecordIdByUser(userId);
     return this.prisma.medicalExam.create({
       data: {
@@ -348,9 +387,10 @@ export class HealthService {
     });
   }
 
-  async updateExam(id: string, dto: UpdateMedicalExamDto) {
+  async updateExam(id: string, dto: UpdateMedicalExamDto, actor: Actor) {
     const row = await this.prisma.medicalExam.findUnique({ where: { id } });
     if (!row) throw new NotFoundException('Examen no encontrado');
+    await this.assertHealthRecordInScope(row.healthRecordId, actor);
     return this.prisma.medicalExam.update({
       where: { id },
       data: {
@@ -366,15 +406,17 @@ export class HealthService {
     });
   }
 
-  async removeExam(id: string) {
+  async removeExam(id: string, actor: Actor) {
     const row = await this.prisma.medicalExam.findUnique({ where: { id } });
     if (!row) throw new NotFoundException('Examen no encontrado');
+    await this.assertHealthRecordInScope(row.healthRecordId, actor);
     return this.prisma.medicalExam.delete({ where: { id } });
   }
 
-  // ─── Conditions ───────────────────────────────────────────────────────────
+  // â”€â”€â”€ Conditions â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
-  async addCondition(userId: string, dto: CreateMedicalConditionDto) {
+  async addCondition(userId: string, dto: CreateMedicalConditionDto, actor: Actor) {
+    await this.assertUserInScope(userId, actor);
     const healthRecordId = await this.getRecordIdByUser(userId);
     return this.prisma.medicalCondition.create({
       data: {
@@ -389,9 +431,10 @@ export class HealthService {
     });
   }
 
-  async updateCondition(id: string, dto: UpdateMedicalConditionDto) {
+  async updateCondition(id: string, dto: UpdateMedicalConditionDto, actor: Actor) {
     const row = await this.prisma.medicalCondition.findUnique({ where: { id } });
-    if (!row) throw new NotFoundException('Condición no encontrada');
+    if (!row) throw new NotFoundException('CondiciÃ³n no encontrada');
+    await this.assertHealthRecordInScope(row.healthRecordId, actor);
     return this.prisma.medicalCondition.update({
       where: { id },
       data: {
@@ -405,15 +448,15 @@ export class HealthService {
     });
   }
 
-  async removeCondition(id: string) {
+  async removeCondition(id: string, actor: Actor) {
     const row = await this.prisma.medicalCondition.findUnique({ where: { id } });
-    if (!row) throw new NotFoundException('Condición no encontrada');
+    if (!row) throw new NotFoundException('CondiciÃ³n no encontrada');
+    await this.assertHealthRecordInScope(row.healthRecordId, actor);
     return this.prisma.medicalCondition.delete({ where: { id } });
   }
 
-  // ─── Allergies ────────────────────────────────────────────────────────────
-
-  async addAllergy(userId: string, dto: CreateAllergyDto) {
+  async addAllergy(userId: string, dto: CreateAllergyDto, actor: Actor) {
+    await this.assertUserInScope(userId, actor);
     const healthRecordId = await this.getRecordIdByUser(userId);
     return this.prisma.allergy.create({
       data: {
@@ -428,9 +471,10 @@ export class HealthService {
     });
   }
 
-  async updateAllergy(id: string, dto: UpdateAllergyDto) {
+  async updateAllergy(id: string, dto: UpdateAllergyDto, actor: Actor) {
     const row = await this.prisma.allergy.findUnique({ where: { id } });
     if (!row) throw new NotFoundException('Alergia no encontrada');
+    await this.assertHealthRecordInScope(row.healthRecordId, actor);
     return this.prisma.allergy.update({
       where: { id },
       data: {
@@ -444,15 +488,15 @@ export class HealthService {
     });
   }
 
-  async removeAllergy(id: string) {
+  async removeAllergy(id: string, actor: Actor) {
     const row = await this.prisma.allergy.findUnique({ where: { id } });
     if (!row) throw new NotFoundException('Alergia no encontrada');
+    await this.assertHealthRecordInScope(row.healthRecordId, actor);
     return this.prisma.allergy.delete({ where: { id } });
   }
 
-  // ─── Medications ──────────────────────────────────────────────────────────
-
-  async addMedication(userId: string, dto: CreateMedicationDto) {
+  async addMedication(userId: string, dto: CreateMedicationDto, actor: Actor) {
+    await this.assertUserInScope(userId, actor);
     const healthRecordId = await this.getRecordIdByUser(userId);
     return this.prisma.medication.create({
       data: {
@@ -468,9 +512,10 @@ export class HealthService {
     });
   }
 
-  async updateMedication(id: string, dto: UpdateMedicationDto) {
+  async updateMedication(id: string, dto: UpdateMedicationDto, actor: Actor) {
     const row = await this.prisma.medication.findUnique({ where: { id } });
     if (!row) throw new NotFoundException('Medicamento no encontrado');
+    await this.assertHealthRecordInScope(row.healthRecordId, actor);
     return this.prisma.medication.update({
       where: { id },
       data: {
@@ -485,15 +530,15 @@ export class HealthService {
     });
   }
 
-  async removeMedication(id: string) {
+  async removeMedication(id: string, actor: Actor) {
     const row = await this.prisma.medication.findUnique({ where: { id } });
     if (!row) throw new NotFoundException('Medicamento no encontrado');
+    await this.assertHealthRecordInScope(row.healthRecordId, actor);
     return this.prisma.medication.delete({ where: { id } });
   }
 
-  // ─── Vaccinations ─────────────────────────────────────────────────────────
-
-  async addVaccination(userId: string, dto: CreateVaccinationDto) {
+  async addVaccination(userId: string, dto: CreateVaccinationDto, actor: Actor) {
+    await this.assertUserInScope(userId, actor);
     const healthRecordId = await this.getRecordIdByUser(userId);
     return this.prisma.vaccination.create({
       data: {
@@ -510,9 +555,10 @@ export class HealthService {
     });
   }
 
-  async updateVaccination(id: string, dto: UpdateVaccinationDto) {
+  async updateVaccination(id: string, dto: UpdateVaccinationDto, actor: Actor) {
     const row = await this.prisma.vaccination.findUnique({ where: { id } });
     if (!row) throw new NotFoundException('Vacuna no encontrada');
+    await this.assertHealthRecordInScope(row.healthRecordId, actor);
     return this.prisma.vaccination.update({
       where: { id },
       data: {
@@ -528,17 +574,20 @@ export class HealthService {
     });
   }
 
-  async removeVaccination(id: string) {
+  async removeVaccination(id: string, actor: Actor) {
     const row = await this.prisma.vaccination.findUnique({ where: { id } });
     if (!row) throw new NotFoundException('Vacuna no encontrada');
+    await this.assertHealthRecordInScope(row.healthRecordId, actor);
     return this.prisma.vaccination.delete({ where: { id } });
   }
 
-  async ensureRecordForUser(userId: string, companyId: string) {
+  async ensureRecordForUser(userId: string, companyId: string, actor: Actor) {
+    await this.assertUserInScope(userId, actor);
+    await assertCompanyAccess(this.prisma, actor, companyId);
     const existing = await this.prisma.healthRecord.findUnique({
       where: { userId },
     });
     if (existing) return enrichRecord(await this.getRecordOrThrow(userId));
-    return this.upsertRecord(userId, { companyId });
+    return this.upsertRecord(userId, { companyId }, actor);
   }
 }

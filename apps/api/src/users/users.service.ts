@@ -1,7 +1,7 @@
 import { Injectable, NotFoundException, ConflictException, BadRequestException, ForbiddenException } from '@nestjs/common';
 import * as bcrypt from 'bcryptjs';
 import { PrismaService } from '../prisma/prisma.service';
-import { Actor, cuerpoIdForUser, isPlatformOwner } from '../common/cuerpo-scope';
+import { Actor, cuerpoIdForUser, isPlatformOwner, assertCompanyAccess } from '../common/cuerpo-scope';
 import { assignedRoles, hasAnyRole, normalizePhone, pickPrimaryRole } from '../common/user-roles';
 import { CreateUserDto, Role } from './dto/create-user.dto';
 import { UpdateUserDto } from './dto/update-user.dto';
@@ -40,6 +40,7 @@ export class UsersService {
   constructor(private prisma: PrismaService) {}
 
   async findAll(companyId?: string, actor?: Actor) {
+    if (actor && companyId) await assertCompanyAccess(this.prisma, actor, companyId);
     const where: Record<string, unknown> = companyId ? { companyId } : {};
     if (actor && !isPlatformOwner(actor.role, actor.roles) && !companyId) {
       const cuerpoId = await cuerpoIdForUser(this.prisma, actor);
@@ -52,12 +53,13 @@ export class UsersService {
     });
   }
 
-  async findById(id: string) {
+  async findById(id: string, actor?: UserActor) {
     const user = await this.prisma.user.findUnique({
       where: { id },
       select: USER_SELECT,
     });
     if (!user) throw new NotFoundException('Usuario no encontrado');
+    if (actor) await this.assertCanAccessUser(user, actor);
     return user;
   }
 
@@ -124,7 +126,10 @@ export class UsersService {
     };
   }
 
-  async create(dto: CreateUserDto) {
+  async create(dto: CreateUserDto, actor?: UserActor) {
+    if (dto.companyId && actor) {
+      await assertCompanyAccess(this.prisma, actor, dto.companyId);
+    }
     const exists = await this.prisma.user.findFirst({
       where: { OR: [{ email: dto.email }, { rut: dto.rut }] },
     });
@@ -146,8 +151,8 @@ export class UsersService {
     });
   }
 
-  async update(id: string, dto: UpdateUserDto) {
-    const current = await this.findById(id);
+  async update(id: string, dto: UpdateUserDto, actor?: UserActor) {
+    const current = await this.findById(id, actor);
     const { password, operativeNumber, role, roles, phone, companyId, isMaquinista, ...rest } = dto;
     const data: Record<string, unknown> = { ...rest };
     if (companyId !== undefined) {
@@ -185,6 +190,9 @@ export class UsersService {
     }
 
     const nextCompanyId = (companyId !== undefined ? companyId || null : current.companyId) as string | null;
+    if (actor && nextCompanyId) {
+      await assertCompanyAccess(this.prisma, actor, nextCompanyId);
+    }
     const nextNumber =
       operativeNumber !== undefined ? operativeNumber : current.operativeNumber;
     await this.assertOperativeNumber(nextCompanyId, nextNumber ?? undefined, id);
@@ -194,6 +202,21 @@ export class UsersService {
       data,
       select: USER_SELECT,
     });
+  }
+
+  private async assertCanAccessUser(
+    target: { id: string; companyId?: string | null; role: string; roles?: string[] },
+    actor: UserActor,
+  ) {
+    if (actor.id && actor.id === target.id) return;
+    if (isPlatformOwner(actor.role, actor.roles)) return;
+    if (target.companyId) {
+      await assertCompanyAccess(this.prisma, actor, target.companyId);
+      return;
+    }
+    if (!hasAnyRole(actor, 'SUPER_ADMIN', 'KODESK')) {
+      throw new ForbiddenException('Sin permiso para este usuario');
+    }
   }
 
   private assertCanManage(target: { id: string; role: string; roles?: string[] }, actor?: UserActor, mode: 'deactivate' | 'delete' = 'deactivate') {
@@ -213,13 +236,13 @@ export class UsersService {
   }
 
   async deactivate(id: string, actor?: UserActor) {
-    const target = await this.findById(id);
+    const target = await this.findById(id, actor);
     this.assertCanManage(target, actor, 'deactivate');
     return this.prisma.user.update({ where: { id }, data: { isActive: false }, select: USER_SELECT });
   }
 
   async remove(id: string, actor?: UserActor) {
-    const target = await this.findById(id);
+    const target = await this.findById(id, actor);
     this.assertCanManage(target, actor, 'delete');
 
     const fallbackId = actor?.id && actor.id !== id ? actor.id : null;

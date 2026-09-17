@@ -9,7 +9,7 @@ import { CreateCentralistasDto } from './dto/create-centralistas.dto';
 import { AddCompanyDto } from './dto/add-company.dto';
 import { mergeDuplicateCuerpos } from './dedupe-cuerpos';
 import { PARRAL_COMPANIES, PARRAL_CUERPO } from './parral-cuerpo';
-import { assignedRoles, normalizePhone, parseRoles, pickPrimaryRole, prismaHasRole } from '../common/user-roles';
+import { assignedRoles, hasAnyRole, normalizePhone, parseRoles, pickPrimaryRole, prismaHasRole } from '../common/user-roles';
 
 const DEFAULT_PASSWORD = 'Demo1234!';
 
@@ -504,7 +504,7 @@ export class OnboardingService {
 
   async resetUserPassword(userId: string, password: string) {
     const user = await this.prisma.user.findUnique({ where: { id: userId } });
-    if (!user || user.role === Role.KODESK) {
+    if (!user || hasAnyRole(user, Role.KODESK)) {
       throw new BadRequestException('Usuario no encontrado');
     }
     const passwordHash = await bcrypt.hash(password, 10);

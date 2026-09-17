@@ -5,7 +5,7 @@ import Header from './Header';
 import CentralOperatorBar from './CentralOperatorBar';
 import OnboardingTour from '../OnboardingTour';
 import { useAuthStore } from '../../store/authStore';
-import { isCentralOperator, isCentralOperatorRoute } from '../../lib/roleAccess';
+import { canAccessNavRoles, isCentralOperator, isCentralOperatorRoute } from '../../lib/roleAccess';
 import { useThemeStore } from '../../store/themeStore';
 import { LogOut, Sun, Moon, HelpCircle, Menu, X, Building2, Flame } from 'lucide-react';
 import UserIdentityBlock from './UserIdentityBlock';
@@ -30,7 +30,6 @@ export default function AppLayout() {
   const location = useLocation();
   const navigate = useNavigate();
   const { user, logout } = useAuthStore();
-  const role = user?.role ?? '';
   const centralOperator = isCentralOperator(user?.role);
   const isImmersive = IMMERSIVE_ROUTES.some((r) => location.pathname.startsWith(r));
   const hideSidebar = centralOperator && isCentralOperatorRoute(location.pathname);
@@ -78,9 +77,7 @@ export default function AppLayout() {
   };
 
   // Filter items visible to user based on role
-  const visibleItems = navItems.filter(
-    (item) => item.roles.includes('ALL') || item.roles.includes(role)
-  );
+  const visibleItems = navItems.filter((item) => canAccessNavRoles(user, item.roles));
 
   // Dynamic Mobile Bottom Bar items
   const PREFERRED_BOTTOM_ROUTES = ['/emergencia-respuesta', '/operational-map', '/nodo360', '/alerts'];

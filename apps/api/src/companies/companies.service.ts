@@ -2,7 +2,7 @@ import { Injectable, NotFoundException, ConflictException, BadRequestException }
 import { PrismaService } from '../prisma/prisma.service';
 import { CreateCompanyDto } from './dto/create-company.dto';
 import { UpdateCompanyDto } from './dto/update-company.dto';
-import { Actor, cuerpoIdForUser, isPlatformOwner } from '../common/cuerpo-scope';
+import { Actor, cuerpoIdForUser, isPlatformOwner, assertCompanyAccess } from '../common/cuerpo-scope';
 
 const CUERPO_SELECT = { id: true, name: true, city: true, slug: true } as const;
 
@@ -26,7 +26,7 @@ export class CompaniesService {
     });
   }
 
-  async findById(id: string) {
+  async findById(id: string, actor?: Actor) {
     const company = await this.prisma.company.findUnique({
       where: { id },
       include: {
@@ -40,6 +40,7 @@ export class CompaniesService {
       },
     });
     if (!company) throw new NotFoundException('Compañía no encontrada');
+    if (actor) await assertCompanyAccess(this.prisma, actor, id);
     return company;
   }
 
@@ -59,8 +60,8 @@ export class CompaniesService {
     });
   }
 
-  async update(id: string, dto: UpdateCompanyDto) {
-    const current = await this.findById(id);
+  async update(id: string, dto: UpdateCompanyDto, actor?: Actor) {
+    const current = await this.findById(id, actor);
     if (dto.number) {
       const exists = await this.prisma.company.findFirst({
         where: { cuerpoId: current.cuerpoId, number: dto.number, id: { not: id } },
@@ -70,8 +71,8 @@ export class CompaniesService {
     return this.prisma.company.update({ where: { id }, data: dto });
   }
 
-  async deactivate(id: string) {
-    await this.findById(id);
+  async deactivate(id: string, actor?: Actor) {
+    await this.findById(id, actor);
     return this.prisma.company.update({ where: { id }, data: { isActive: false } });
   }
 }

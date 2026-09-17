@@ -35,8 +35,8 @@ export class UsersController {
 
   @Get(':id')
   @Roles('KODESK', 'SUPER_ADMIN', 'COMANDANTE', 'CAPITAN')
-  findOne(@Param('id') id: string) {
-    return this.usersService.findById(id);
+  findOne(@Param('id') id: string, @Req() req: any) {
+    return this.usersService.findById(id, req.user);
   }
 
   @Post()
@@ -45,7 +45,7 @@ export class UsersController {
     if (assignedRoles(dto.role, dto.roles).includes('KODESK') && !hasAnyRole(req.user, 'KODESK')) {
       throw new ForbiddenException('El perfil Kodesk solo lo asigna Kodesk');
     }
-    return this.usersService.create(dto);
+    return this.usersService.create(dto, req.user);
   }
 
   @Put(':id')
@@ -54,7 +54,7 @@ export class UsersController {
     if (assignedRoles(dto.role, dto.roles).includes('KODESK') && !hasAnyRole(req.user, 'KODESK')) {
       throw new ForbiddenException('El perfil Kodesk solo lo asigna Kodesk');
     }
-    return this.usersService.update(id, dto);
+    return this.usersService.update(id, dto, req.user);
   }
 
   @Post(':id/deactivate')

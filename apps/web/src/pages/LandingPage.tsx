@@ -551,7 +551,7 @@ function CarrosAndroidSection() {
             </p>
             <h2 className="text-4xl md:text-5xl font-black text-white leading-[1.1] tracking-tight">
               NODO <span className="text-emerald-400">360</span>
-              <span className="block text-white">para carros</span>
+              <span className="block text-white">para vehículos de emergencia</span>
             </h2>
             <p className="mt-5 text-lg text-slate-300 font-light leading-relaxed max-w-xl">
               Una plataforma para <span className="text-white font-semibold">Android</span>.
