@@ -111,6 +111,7 @@ export type MaquinistaMember = {
   role: string;
   roleLabel: string;
   photoUrl: string | null;
+  operativeNumber?: number | null;
   maquinistaAvailable: boolean;
   maquinistaPrincipal: boolean;
 };
@@ -561,6 +562,52 @@ export default function DispatchPublicPage() {
     load();
   };
 
+  const unmarkFromSala = async (userId: string) => {
+    if (!slug || togglingId || !data) return;
+    const member = data.roster.members.find((m) => m.id === userId);
+    const maq = data.maquinistas.members.find((m) => m.id === userId);
+    const stationOn = Boolean(member?.stationAvailable);
+    const maqOn = Boolean(maq?.maquinistaAvailable);
+    if (!stationOn && !maqOn) {
+      const num = member?.operativeNumber ?? maq?.operativeNumber;
+      if (num != null) {
+        await toggleByOperativeNumber(false, num);
+      }
+      return;
+    }
+
+    setTogglingId(userId);
+    try {
+      let updated = data;
+      if (stationOn) {
+        const res = await fetch(`${apiBase}/dispatch/public/${slug}/availability`, {
+          method: 'PATCH',
+          headers: salaAuthHeaders(slug),
+          body: JSON.stringify({ userId, available: false }),
+        });
+        if (!res.ok) throw new Error();
+        updated = await res.json();
+      }
+      if (maqOn) {
+        const res = await fetch(`${apiBase}/dispatch/public/${slug}/maquinista`, {
+          method: 'PATCH',
+          headers: salaAuthHeaders(slug),
+          body: JSON.stringify({ userId, available: false }),
+        });
+        if (!res.ok) throw new Error();
+        updated = await res.json();
+      }
+      setData(updated);
+      const name = member?.firstName ?? maq?.firstName ?? 'Bombero';
+      const num = member?.operativeNumber ?? maq?.operativeNumber;
+      toast.success(num != null ? `${name} N°${num} no disponible` : `${name} no disponible`, { duration: 2000 });
+    } catch {
+      toast.error('Error al desmarcar disponibilidad');
+    } finally {
+      setTogglingId(null);
+    }
+  };
+
   const toggleMember = async (member: RosterMember) => {
     if (!slug || togglingId) return;
     setTogglingId(member.id);
@@ -829,8 +876,8 @@ export default function DispatchPublicPage() {
       {/* Audio + alarma activa */}
       {!audioEnabled && (
         <div className="bg-amber-950/90 border-b border-amber-600/40 px-4 py-3">
-          <div className="max-w-[1600px] mx-auto flex flex-col sm:flex-row items-center justify-between gap-3">
-            <p className="text-sm text-amber-100 text-center sm:text-left">
+          <div className="flex flex-col sm:flex-row items-center justify-center gap-3">
+            <p className="text-sm text-amber-100 text-center">
               Activa el audio para escuchar las alarmas igual que en la central de despachos.
             </p>
             <button
@@ -958,7 +1005,7 @@ export default function DispatchPublicPage() {
           operativeNumber={operativeQuick}
           onOperativeNumber={setOperativeQuick}
           onToggleByNumber={toggleByOperativeNumber}
-          onToggleMember={toggleMember}
+          onUnmarkCrew={unmarkFromSala}
           togglingId={togglingId}
           inputRef={operativeInputRef}
         />

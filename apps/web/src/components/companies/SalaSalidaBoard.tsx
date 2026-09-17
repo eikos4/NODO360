@@ -2,7 +2,6 @@ import { useEffect, useMemo, useState, type RefObject } from 'react';
 import { Calendar, Check, Hash, MapPin, Radio, Siren, Truck, Users, X } from 'lucide-react';
 import RoleBadge from '../RoleBadge';
 import { FirefighterPlaceholder } from '../FirefighterAvatar';
-import { roleInfo } from '../../lib/roles';
 import type { PublicEmergency } from '../dispatch/DispatchEmergenciesPanel';
 import type { FleetVehicle, PublicCentral, RosterMember } from '../../pages/DispatchPublicPage';
 
@@ -105,7 +104,7 @@ function CrewPhoto({
       type="button"
       onClick={onClick}
       disabled={disabled || !onClick}
-      title="Sacar de disponible"
+      title="Marcar no disponible"
       className={`relative aspect-square w-full overflow-hidden rounded-full border bg-[#0b1824] disabled:cursor-default enabled:cursor-pointer enabled:hover:border-red-400/70 enabled:hover:opacity-90 ${
         live ? 'border-[#ef343f]/50 shadow-[0_0_14px_rgba(239,52,63,0.22)]' : 'border-white/15'
       }`}
@@ -133,7 +132,18 @@ function buildCrew(data: PublicCentral, emergency: PublicEmergency | null): Crew
   const byId = new Map<string, CrewCard>();
   const add = (card: CrewCard) => {
     const prev = byId.get(card.id);
-    byId.set(card.id, prev ? { ...prev, ...card, status: card.status ?? prev.status } : card);
+    if (!prev) {
+      byId.set(card.id, card);
+      return;
+    }
+    byId.set(card.id, {
+      ...prev,
+      ...card,
+      operativeNumber: card.operativeNumber ?? prev.operativeNumber,
+      photoUrl: card.photoUrl ?? prev.photoUrl,
+      status: card.status ?? prev.status,
+      isMaquinista: Boolean(prev.isMaquinista || card.isMaquinista),
+    });
   };
 
   const dutyFor = (role: string, isMaquinista?: boolean): CrewCard['duty'] => {
@@ -144,6 +154,7 @@ function buildCrew(data: PublicCentral, emergency: PublicEmergency | null): Crew
 
   if (emergency?.crew?.length) {
     for (const c of emergency.crew) {
+      const roster = data.roster.members.find((m) => m.id === c.id);
       add({
         id: c.id,
         name: c.name,
@@ -152,10 +163,10 @@ function buildCrew(data: PublicCentral, emergency: PublicEmergency | null): Crew
         role: c.role,
         roleLabel: c.roleLabel,
         photoUrl: c.photoUrl,
-        operativeNumber: c.operativeNumber,
-        isMaquinista: c.isMaquinista,
+        operativeNumber: c.operativeNumber ?? roster?.operativeNumber,
+        isMaquinista: c.isMaquinista || roster?.isMaquinista,
         status: c.status,
-        duty: dutyFor(c.role, c.isMaquinista),
+        duty: dutyFor(c.role, c.isMaquinista || roster?.isMaquinista),
       });
     }
   } else if (emergency?.participants?.length) {
@@ -194,12 +205,14 @@ function buildCrew(data: PublicCentral, emergency: PublicEmergency | null): Crew
       });
     }
     for (const m of data.maquinistas.members.filter((x) => x.maquinistaAvailable)) {
+      const roster = data.roster.members.find((r) => r.id === m.id);
       add({
         id: m.id,
         name: m.fullName,
         role: m.role,
         roleLabel: m.roleLabel,
         photoUrl: m.photoUrl,
+        operativeNumber: m.operativeNumber ?? roster?.operativeNumber,
         isMaquinista: true,
         duty: 'maquinista',
       });
@@ -251,7 +264,7 @@ type Props = {
   operativeNumber: string;
   onOperativeNumber: (value: string) => void;
   onToggleByNumber: (markAvailableOrNum?: boolean | number, explicitNum?: number) => void;
-  onToggleMember: (member: RosterMember) => void;
+  onUnmarkCrew: (userId: string) => void;
   togglingId?: string | null;
   inputRef?: RefObject<HTMLInputElement | null>;
 };
@@ -262,7 +275,7 @@ export default function SalaSalidaBoard({
   operativeNumber,
   onOperativeNumber,
   onToggleByNumber,
-  onToggleMember,
+  onUnmarkCrew,
   togglingId,
   inputRef,
 }: Props) {
@@ -359,7 +372,7 @@ export default function SalaSalidaBoard({
         </div>
       )}
 
-      <div className="relative z-10 flex min-h-0 flex-1 flex-col px-6 py-5 lg:px-10 lg:py-7">
+      <div className="relative z-10 flex min-h-0 flex-1 flex-col px-6 py-5 pb-24 lg:px-10 lg:py-7">
         <p className={`mb-3 text-lg font-black uppercase tracking-[0.18em] lg:text-2xl ${
           live
             ? 'sala-salida-hold-glow text-red-400 drop-shadow-[0_0_18px_rgba(239,68,68,0.55)]'
@@ -512,14 +525,7 @@ export default function SalaSalidaBoard({
                     person={person}
                     live={live}
                     disabled={busy}
-                    onClick={() => {
-                      const member = data.roster.members.find((m) => m.id === person.id);
-                      if (member?.stationAvailable) {
-                        onToggleMember(member);
-                        return;
-                      }
-                      if (person.operativeNumber != null) onToggleByNumber(false, person.operativeNumber);
-                    }}
+                    onClick={() => onUnmarkCrew(person.id)}
                   />
                   {person.operativeNumber != null && (
                     <p className="keep-on-color mt-2.5 text-lg font-semibold tabular-nums leading-none text-white" style={{ color: '#ffffff' }}>
@@ -546,12 +552,11 @@ export default function SalaSalidaBoard({
           )}
         </div>
 
-        <footer className="mt-4 shrink-0 flex items-center justify-between text-[10px] uppercase tracking-[0.22em] text-[#698297]">
+        <footer className="mt-4 shrink-0 flex items-center justify-center text-[10px] uppercase tracking-[0.22em] text-[#698297]">
           <span className="inline-flex items-center gap-2">
             <Siren className="h-3.5 w-3.5 text-[#67c8ff]" />
-            Pantalla de sala · Tema Salida
+            NODO360
           </span>
-          <span>{roleInfo('BOMBERO').short} · Nodo360</span>
         </footer>
       </div>
     </section>

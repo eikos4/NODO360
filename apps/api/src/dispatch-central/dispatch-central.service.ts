@@ -170,6 +170,7 @@ export class DispatchCentralService {
     lastName: string;
     role: string;
     photoUrl: string | null;
+    operativeNumber?: number | null;
     maquinistaAvailable: boolean;
     maquinistaPrincipal: boolean;
   }) {
@@ -181,6 +182,7 @@ export class DispatchCentralService {
       role: user.role,
       roleLabel: ROLE_LABELS[user.role] ?? user.role,
       photoUrl: user.photoUrl,
+      operativeNumber: user.operativeNumber ?? null,
       maquinistaAvailable: user.maquinistaAvailable,
       maquinistaPrincipal: user.maquinistaPrincipal,
     };
@@ -195,6 +197,7 @@ export class DispatchCentralService {
         lastName: true,
         role: true,
         photoUrl: true,
+        operativeNumber: true,
         maquinistaAvailable: true,
         maquinistaPrincipal: true,
       },
