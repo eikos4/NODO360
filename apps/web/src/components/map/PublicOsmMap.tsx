@@ -6,7 +6,7 @@ export const PARRAL_CENTER: [number, number] = [-36.1415, -71.8228];
 
 export type OsmBaseStyle = 'osm' | 'voyager' | 'dark';
 
-export type OsmMarkerTone = 'active' | 'idle' | 'dispatch' | 'field' | 'you';
+export type OsmMarkerTone = 'active' | 'idle' | 'dispatch' | 'field' | 'you' | 'hydrant' | 'truck' | 'poi';
 
 export type OsmMarker = {
   id: string;

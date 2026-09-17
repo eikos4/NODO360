@@ -539,7 +539,17 @@ html:not(.dark) .sala-modern-azul .fleet-photo {
 .osm-pin-dot-idle { background: #64748b; }
 .osm-pin-dot-dispatch { background: #f97316; }
 .osm-pin-dot-field { background: #22c55e; }
-.osm-pin-dot-you { background: #3b82f6; }
+.osm-pin-dot-hydrant { background: #22d3ee; }
+.osm-pin-dot-truck { background: #34d399; }
+.osm-pin-dot-poi { background: #fbbf24; }
+.osm-pin-pulse-hydrant {
+  background: rgba(34, 211, 238, 0.35);
+  animation: osm-pin-pulse 1.6s ease-out infinite;
+}
+.osm-pin-pulse-truck {
+  background: rgba(52, 211, 153, 0.35);
+  animation: osm-pin-pulse 1.6s ease-out infinite;
+}
 .osm-pin-pulse-dispatch {
   background: rgba(249, 115, 22, 0.4);
   animation: osm-pin-pulse 1.6s ease-out infinite;

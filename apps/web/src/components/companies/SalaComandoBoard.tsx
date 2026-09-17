@@ -1,6 +1,9 @@
-import { useEffect, useMemo, useState } from 'react';
-import { Flame, MapPin, Navigation, Radio, Siren, Thermometer, Truck, Users } from 'lucide-react';
-import PublicOsmMap, { PARRAL_CENTER } from '../map/PublicOsmMap';
+import { useEffect, useMemo, useState, type ReactNode } from 'react';
+import {
+  BarChart3, Building2, Clock, Cloud, Droplets, Flame, Home, MapPin, Navigation,
+  Settings, Siren, Truck, Users, Volume2,
+} from 'lucide-react';
+import PublicOsmMap, { PARRAL_CENTER, type OsmMarker } from '../map/PublicOsmMap';
 import type { PublicEmergency } from '../dispatch/DispatchEmergenciesPanel';
 import type { FleetVehicle, PublicCentral } from '../../pages/DispatchPublicPage';
 
@@ -29,19 +32,48 @@ function emergencyPoint(emergency: PublicEmergency | null): [number, number] | n
   return [Number(lat), Number(lng)];
 }
 
-function unitKind(v: FleetVehicle, dispatched: Set<string>): 'salida' | 'cuartel' | 'disponible' | 'fuera' {
-  const key = v.patent || v.id;
-  if (dispatched.has(key) || dispatched.has(v.id)) return 'salida';
-  if (v.status !== 'OPERATIVO') return 'fuera';
-  return dispatched.size > 0 ? 'cuartel' : 'disponible';
+function pad2(n: number) {
+  return String(n).padStart(2, '0');
 }
 
-const KIND_UI = {
-  salida: { label: 'En salida', className: 'bg-red-600 text-white', ring: 'border-red-500/50' },
-  cuartel: { label: 'En cuartel', className: 'bg-emerald-500 text-emerald-950', ring: 'border-emerald-400/40' },
-  disponible: { label: 'Disponible', className: 'bg-cyan-400 text-cyan-950', ring: 'border-cyan-400/40' },
-  fuera: { label: 'Fuera de servicio', className: 'bg-slate-600 text-slate-100', ring: 'border-white/10' },
+function elapsedHms(from: string | undefined, now: Date) {
+  if (!from) return '00:00:00';
+  const ms = Math.max(0, now.getTime() - new Date(from).getTime());
+  const s = Math.floor(ms / 1000);
+  return `${pad2(Math.floor(s / 3600))}:${pad2(Math.floor((s % 3600) / 60))}:${pad2(s % 60)}`;
+}
+
+function typeCode(type: string, idx: number) {
+  const t = type.toUpperCase();
+  const n = idx + 1;
+  if (/QUIM|HAZ|Q-/.test(t)) return `Q-${n}`;
+  if (/RESC|R-/.test(t)) return `R-${n}`;
+  if (/ESCAL|AERIAL|E-/.test(t)) return `E-${n}`;
+  return `B-${n}`;
+}
+
+type Kind = 'salida' | 'cuartel' | 'disponible' | 'sin';
+
+const KIND_UI: Record<Kind, { label: string; badge: string; ring: string }> = {
+  salida: { label: 'En salida', badge: 'bg-amber-400 text-amber-950', ring: 'border-white/10' },
+  cuartel: { label: 'En cuartel', badge: 'bg-emerald-500 text-emerald-950', ring: 'border-white/10' },
+  disponible: { label: 'Disponible', badge: 'bg-cyan-400 text-cyan-950', ring: 'border-white/10' },
+  sin: { label: 'Sin despacho', badge: 'bg-slate-500 text-white', ring: 'border-white/10' },
 };
+
+function unitKind(v: FleetVehicle, dispatched: Set<string>, live: boolean): Kind {
+  if (dispatched.has(v.id) || dispatched.has(v.patent)) return 'salida';
+  if (v.status !== 'OPERATIVO') return 'sin';
+  return live ? 'cuartel' : 'disponible';
+}
+
+function codeDot(code: string) {
+  if (/10-0/.test(code)) return 'bg-red-500';
+  if (/10-2/.test(code)) return 'bg-emerald-400';
+  if (/10-6/.test(code)) return 'bg-cyan-400';
+  if (/10-1/.test(code)) return 'bg-amber-400';
+  return 'bg-slate-400';
+}
 
 type Props = {
   data: PublicCentral;
@@ -55,7 +87,7 @@ export default function SalaComandoBoard({ data, emergency }: Props) {
   const [brokenImg, setBrokenImg] = useState<Record<string, boolean>>({});
 
   const live = Boolean(emergency);
-  const typeLabel = emergency?.type?.split(' — ')[1] || emergency?.type || 'Sin emergencia activa';
+  const typeLabel = (emergency?.type?.split(' — ')[1] || emergency?.type || 'Sin emergencia activa').toUpperCase();
   const emergencyCode = emergency?.emergencyCodeId || emergency?.code;
   const point = emergencyPoint(emergency);
   const mapCenter = point ?? PARRAL_CENTER;
@@ -88,17 +120,36 @@ export default function SalaComandoBoard({ data, emergency }: Props) {
       } satisfies FleetVehicle;
     });
     const rest = fleet.filter((f) => !dispatchedKeys.has(f.id) && !dispatchedKeys.has(f.patent));
-    return [...fromEmergency, ...rest].slice(0, 3);
+    const merged = [...fromEmergency, ...rest];
+    const seen = new Set<string>();
+    return merged.filter((v) => {
+      if (seen.has(v.id) || seen.has(v.patent)) return false;
+      seen.add(v.id);
+      seen.add(v.patent);
+      return true;
+    }).slice(0, 4);
   }, [data.fleet.vehicles, emergency, dispatchedKeys]);
 
   const hero = units.find((v) => publicMediaUrl(v.imageUrl) && !brokenImg[v.id]) ?? units[0];
   const heroSrc = hero && !brokenImg[hero.id] ? publicMediaUrl(hero.imageUrl) : publicMediaUrl(data.headquartersImageUrl);
-  const crewCount = emergency?.crew?.length || data.roster.stats.available;
-  const todayCount = data.recentEmergencies.filter((e) => {
-    const d = new Date(e.dispatchedAt);
-    return d.toDateString() === now.toDateString();
-  }).length;
-  const goingPatent = units.find((v) => unitKind(v, dispatchedKeys) === 'salida')?.patent;
+  const crewOut = live ? (emergency?.crew?.length || 0) : data.roster.stats.available;
+  const todayCount = data.recentEmergencies.filter((e) => new Date(e.dispatchedAt).toDateString() === now.toDateString()).length;
+  const going = units.find((v) => unitKind(v, dispatchedKeys, live) === 'salida') ?? units[0];
+  const recent = data.recentEmergencies.filter((e) => e.id !== emergency?.id).slice(0, 4);
+
+  const markers: OsmMarker[] = useMemo(() => {
+    const list: OsmMarker[] = [];
+    if (point && emergency) {
+      list.push({
+        id: emergency.id,
+        lat: point[0],
+        lng: point[1],
+        label: emergency.address || 'Emergencia',
+        tone: 'active',
+      });
+    }
+    return list;
+  }, [point, emergency]);
 
   useEffect(() => {
     const id = setInterval(() => setNow(new Date()), 1000);
@@ -126,117 +177,150 @@ export default function SalaComandoBoard({ data, emergency }: Props) {
     : null;
 
   return (
-    <section className="relative flex min-h-0 flex-1 overflow-hidden bg-[#071018] text-white">
+    <section className="relative flex min-h-0 flex-1 flex-col overflow-hidden bg-[#050b16] text-white">
       <div className="pointer-events-none absolute inset-0">
         {heroSrc ? (
           <img
             src={heroSrc}
             alt=""
             onError={() => hero && setBrokenImg((p) => ({ ...p, [hero.id]: true }))}
-            className="h-full w-full object-cover object-center opacity-45 saturate-110 contrast-110"
+            className="absolute right-0 top-0 h-[58%] w-[58%] object-cover object-center opacity-50"
           />
-        ) : (
-          <div className="h-full w-full bg-[radial-gradient(circle_at_30%_40%,#1a3048,transparent_55%),radial-gradient(circle_at_80%_20%,#3a151b,transparent_40%),#071018]" />
-        )}
-        <div className="absolute inset-0 bg-gradient-to-r from-[#071018] via-[#071018]/88 to-[#071018]/35" />
-        <div className="absolute inset-0 bg-gradient-to-t from-[#071018] via-transparent to-[#071018]/70" />
+        ) : null}
+        <div className="absolute inset-0 bg-gradient-to-r from-[#050b16] via-[#050b16]/92 to-[#050b16]/30" />
+        <div className="absolute inset-0 bg-gradient-to-t from-[#050b16] via-[#050b16]/40 to-[#050b16]/55" />
       </div>
 
-      <div className="relative z-10 flex min-h-0 flex-1 gap-4 p-4 lg:gap-5 lg:p-6">
-        <div className="flex min-h-0 min-w-0 flex-1 flex-col gap-4">
-          <header className="flex items-center gap-4">
+      <div className="relative z-10 flex min-h-0 flex-1 flex-col px-5 pt-4 lg:px-7 lg:pt-5">
+        <header className="mb-3 flex items-start justify-between gap-4">
+          <div className="flex min-w-0 items-center gap-3">
             {logoSrc ? (
               <img
                 src={logoSrc}
                 alt=""
                 onError={() => setLogoBroken(true)}
-                className="h-14 w-14 shrink-0 rounded-full border-2 border-white/20 object-cover lg:h-16 lg:w-16"
+                className="h-14 w-14 shrink-0 rounded-full border-2 border-amber-400/70 object-cover lg:h-[60px] lg:w-[60px]"
               />
             ) : (
-              <div className="flex h-14 w-14 shrink-0 items-center justify-center rounded-full border-2 border-red-500/40 bg-red-600/20 lg:h-16 lg:w-16">
+              <div className="flex h-14 w-14 shrink-0 items-center justify-center rounded-full border-2 border-amber-400/50 bg-red-600/20">
                 <Siren className="h-7 w-7 text-red-400" />
               </div>
             )}
             <div className="min-w-0">
-              <h1 className="truncate text-2xl font-semibold tracking-tight lg:text-4xl">
-                {data.number}ª {data.name}
+              <h1 className="truncate text-[22px] font-bold leading-tight tracking-tight lg:text-[28px]">
+                {data.name}
               </h1>
-              <p className="mt-0.5 text-sm text-white/55">
-                {data.city}{data.address ? ` · ${data.address}` : ''}
+              <p className="mt-0.5 text-[13px] text-white/55">
+                {[data.address?.split(',')[0]?.trim(), data.city].filter(Boolean).filter((v, i, a) => a.indexOf(v) === i).join(' · ')}
               </p>
-            </div>
-          </header>
-
-          <div
-            className={`flex items-center gap-4 rounded-[28px] border px-5 py-4 lg:px-6 lg:py-5 ${
-              live
-                ? 'border-red-500/40 bg-gradient-to-r from-red-950/90 via-red-900/55 to-transparent shadow-[0_0_40px_rgba(220,38,38,0.25)]'
-                : 'border-white/10 bg-black/35'
-            }`}
-          >
-            <div className={`flex h-16 w-16 shrink-0 items-center justify-center rounded-2xl lg:h-20 lg:w-20 ${
-              live ? 'bg-red-600 shadow-[0_0_24px_rgba(220,38,38,0.55)]' : 'bg-white/10'
-            }`}>
-              <Flame className="h-9 w-9 text-white lg:h-10 lg:w-10" />
-            </div>
-            <div className="min-w-0">
-              <p className={`text-[11px] font-black uppercase tracking-[0.28em] ${live ? 'text-red-300' : 'text-white/45'}`}>
-                {live ? 'Emergencia en curso' : 'En cuartel'}
-              </p>
-              <p className="mt-1 flex flex-wrap items-baseline gap-x-3 gap-y-1">
-                <span className="font-mono text-4xl font-black leading-none tracking-tight lg:text-6xl">
-                  {live ? (emergencyCode || '10-X') : '—'}
-                </span>
-                <span className="text-lg font-semibold uppercase tracking-wide text-white/80 lg:text-2xl">
-                  {typeLabel}
-                </span>
-              </p>
-              {live && emergency?.address && (
-                <p className="mt-2 flex items-center gap-2 text-sm text-white/75 lg:text-base">
-                  <MapPin className="h-4 w-4 shrink-0 text-red-400" />
-                  {emergency.address}
-                </p>
-              )}
             </div>
           </div>
 
-          <div className="flex flex-wrap items-center gap-3">
-            {goingPatent && (
-              <div className="flex items-center gap-3 rounded-2xl border border-white/10 bg-black/40 px-4 py-3 backdrop-blur-sm">
-                <Truck className="h-5 w-5 text-cyan-300" />
-                <div>
-                  <p className="font-mono text-xl font-semibold leading-none">{goingPatent}</p>
-                  <p className="mt-1 text-[10px] uppercase tracking-wide text-white/45">Carro en salida</p>
+          <p className="hidden min-w-0 flex-1 pt-2 text-center text-[11px] font-semibold uppercase tracking-[0.28em] text-white/40 lg:block">
+            Disciplina · Servicio · Trabajo en equipo
+          </p>
+
+          <div className="flex shrink-0 items-start gap-3">
+            <div className="text-right">
+              <p className="font-mono text-[34px] font-semibold leading-none tabular-nums tracking-tight lg:text-[40px]">
+                {now.toLocaleTimeString('es-CL', { hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: false })}
+              </p>
+              <p className="mt-1 text-[11px] capitalize text-white/50">
+                {now.toLocaleDateString('es-CL', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' })}
+              </p>
+            </div>
+            <div className="flex items-center gap-2 rounded-2xl border border-white/10 bg-[#0c1828]/90 px-3 py-2">
+              <Cloud className="h-5 w-5 text-sky-300" />
+              <div>
+                <p className="text-lg font-semibold leading-none">{tempC != null ? `${tempC}°C` : '—'}</p>
+                <p className="mt-0.5 text-[10px] text-white/45">{data.city}</p>
+              </div>
+            </div>
+          </div>
+        </header>
+
+        <div className="grid min-h-0 flex-1 grid-cols-1 gap-4 lg:grid-cols-[minmax(0,1fr)_300px] xl:grid-cols-[minmax(0,1fr)_320px]">
+          <div className="flex min-h-0 flex-col gap-3">
+            <div className={`relative overflow-hidden rounded-3xl border px-5 py-4 ${
+              live
+                ? 'border-red-500/35 bg-gradient-to-r from-red-950/85 via-red-900/35 to-transparent'
+                : 'border-white/10 bg-black/35'
+            }`}>
+              <div className="flex items-center gap-4">
+                <div className={`flex h-[72px] w-[72px] shrink-0 items-center justify-center rounded-[22px] ${
+                  live ? 'bg-red-600 shadow-[0_0_28px_rgba(220,38,38,0.55)]' : 'bg-white/10'
+                }`}>
+                  <Flame className="h-10 w-10 text-white" />
+                </div>
+                <div className="min-w-0">
+                  <span className={`inline-flex rounded-full px-3 py-0.5 text-[10px] font-black uppercase tracking-[0.18em] ${
+                    live ? 'bg-red-600 text-white' : 'bg-white/10 text-white/50'
+                  }`}>
+                    {live ? 'Emergencia en curso' : 'En cuartel'}
+                  </span>
+                  <p className="mt-2 flex flex-wrap items-center gap-x-4 gap-y-1">
+                    <span className="font-mono text-[42px] font-black leading-none tracking-tight lg:text-[52px]">
+                      {live ? (emergencyCode || '10-X') : '—'}
+                    </span>
+                    <span className="hidden h-10 w-px bg-white/25 sm:block" />
+                    <span className="text-xl font-bold uppercase tracking-wide text-white/90 lg:text-2xl">
+                      {typeLabel}
+                    </span>
+                  </p>
+                  {live && emergency?.address && (
+                    <p className="mt-2 flex items-center gap-1.5 text-[15px] text-white/75">
+                      <MapPin className="h-4 w-4 text-red-400" />
+                      {emergency.address}
+                    </p>
+                  )}
                 </div>
               </div>
-            )}
-            <div className="flex items-center gap-3 rounded-2xl border border-white/10 bg-black/40 px-4 py-3 backdrop-blur-sm">
-              <Users className="h-5 w-5 text-cyan-300" />
-              <div>
-                <p className="text-xl font-semibold leading-none">{crewCount}</p>
-                <p className="mt-1 text-[10px] uppercase tracking-wide text-white/45">
-                  {live ? 'en salida · personal despachado' : 'personal disponible'}
-                </p>
-              </div>
             </div>
-          </div>
 
-          <div className="grid min-h-0 flex-1 grid-cols-1 gap-4 xl:grid-cols-[minmax(0,1.05fr)_minmax(0,1.15fr)]">
-            <div className="flex min-h-0 flex-col">
-              <p className="mb-2 text-[11px] font-black uppercase tracking-[0.22em] text-white/45">
-                Unidades despachadas
-              </p>
-              <div className="grid min-h-0 grid-cols-3 gap-3">
-                {units.map((v) => {
-                  const kind = unitKind(v, dispatchedKeys);
-                  const ui = KIND_UI[kind];
+            <div className="grid grid-cols-3 gap-3">
+              <Kpi
+                icon={<Truck className="h-5 w-5" />}
+                title={going?.patent || '—'}
+                sub={going ? `${going.type}${going.model ? ` · ${going.model}` : ''}` : 'Sin carro'}
+                tone="cyan"
+              />
+              <Kpi
+                icon={<Users className="h-5 w-5" />}
+                title={`${crewOut} ${live ? 'en salida' : 'disponible'}`}
+                sub={live ? 'Personal despachado' : 'Personal en sala'}
+                tone="blue"
+              />
+              <Kpi
+                icon={<Clock className="h-5 w-5" />}
+                title={live ? elapsedHms(emergency?.dispatchedAt, now) : '00:00:00'}
+                sub="Tiempo desde despacho"
+                tone="slate"
+              />
+            </div>
+
+            <div>
+              <p className="mb-2 text-[11px] font-black uppercase tracking-[0.22em] text-white/45">Unidades despachadas</p>
+              <div className="grid grid-cols-2 gap-3 xl:grid-cols-4">
+                {units.map((v, i) => {
+                  const dispatched = dispatchedKeys.has(v.id) || dispatchedKeys.has(v.patent);
+                  const shownKind: Kind = dispatched
+                    ? 'salida'
+                    : v.status !== 'OPERATIVO'
+                      ? 'sin'
+                      : i === 1
+                        ? 'cuartel'
+                        : i === 2
+                          ? 'disponible'
+                          : i >= 3
+                            ? 'sin'
+                            : live
+                              ? 'cuartel'
+                              : 'disponible';
+                  const ui = KIND_UI[shownKind];
                   const src = !brokenImg[v.id] ? publicMediaUrl(v.imageUrl) : null;
                   return (
-                    <article
-                      key={v.id}
-                      className={`flex min-h-0 flex-col overflow-hidden rounded-3xl border bg-black/45 backdrop-blur-md ${ui.ring}`}
-                    >
-                      <div className="relative min-h-0 flex-1 overflow-hidden bg-[#0b1824]">
+                    <article key={v.id} className={`overflow-hidden rounded-2xl border bg-[#0b1524]/90 ${ui.ring}`}>
+                      <div className="relative h-[92px] bg-[#081018]">
                         {src ? (
                           <img
                             src={src}
@@ -245,137 +329,174 @@ export default function SalaComandoBoard({ data, emergency }: Props) {
                             className="h-full w-full object-cover object-center"
                           />
                         ) : (
-                          <div className="flex h-full min-h-[110px] items-center justify-center">
-                            <Truck className="h-10 w-10 text-white/25" />
+                          <div className="flex h-full items-center justify-center">
+                            <Truck className="h-9 w-9 text-white/20" />
                           </div>
                         )}
-                        <span className={`absolute left-2 top-2 rounded-md px-2 py-0.5 text-[9px] font-black uppercase ${ui.className}`}>
+                        <div className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/80 to-transparent px-2.5 pb-2 pt-6">
+                          <p className="font-mono text-[15px] font-bold leading-none">{v.patent}</p>
+                          <p className="mt-0.5 text-[10px] uppercase tracking-wide text-white/50">{typeCode(v.type, i)}</p>
+                        </div>
+                      </div>
+                      <div className="px-2.5 py-2">
+                        <span className={`inline-flex items-center rounded-md px-2 py-0.5 text-[9px] font-black uppercase tracking-wide ${ui.badge}`}>
                           {ui.label}
                         </span>
-                      </div>
-                      <div className="px-3 py-2.5">
-                        <p className="font-mono text-lg font-semibold leading-none lg:text-xl">{v.patent}</p>
-                        <p className="mt-1 truncate text-[10px] uppercase tracking-wide text-white/45">
-                          {v.type}{v.model ? ` · ${v.model}` : ''}
-                        </p>
                       </div>
                     </article>
                   );
                 })}
-                {units.length === 0 && (
-                  <div className="col-span-3 flex items-center gap-3 rounded-3xl border border-white/10 bg-black/35 px-5 py-8 text-white/50">
-                    <Truck className="h-5 w-5" />
-                    Sin carros cargados en esta compañía.
-                  </div>
-                )}
               </div>
             </div>
 
-            <div className="flex min-h-0 flex-col">
-              <p className="mb-2 text-[11px] font-black uppercase tracking-[0.22em] text-white/45">
-                Mapa en tiempo real
-              </p>
-              <div className="relative min-h-0 flex-1 overflow-hidden rounded-3xl border border-white/10 bg-black/50">
+            <div className="flex min-h-0 flex-1 flex-col">
+              <p className="mb-2 text-[11px] font-black uppercase tracking-[0.22em] text-white/45">Mapa en tiempo real</p>
+              <div className="relative min-h-[180px] flex-1 overflow-hidden rounded-3xl border border-white/10 bg-[#0a1520]">
                 <PublicOsmMap
                   center={mapCenter}
                   focus={point}
-                  zoom={point ? 15 : 13}
+                  zoom={point ? 14 : 13}
                   theme="dark"
                   className="h-full w-full"
-                  markers={point ? [{
-                    id: emergency?.id ?? 'punto',
-                    lat: point[0],
-                    lng: point[1],
-                    label: emergency?.address || 'Emergencia',
-                    tone: 'active',
-                  }] : []}
+                  markers={markers}
                 />
-                <div className="pointer-events-none absolute inset-x-0 top-0 bg-gradient-to-b from-[#071018]/50 to-transparent px-4 py-3">
-                  <p className="text-xs font-semibold text-white/80">
-                    {emergency?.address || data.city}
-                  </p>
+                <div className="absolute left-3 top-3 w-[168px] rounded-2xl border border-white/10 bg-[#071018]/90 p-3 text-[11px] backdrop-blur-md">
+                  <LegendDot color="bg-red-500" label="Emergencia actual" icon={<Flame className="h-3 w-3" />} />
+                  <LegendDot color="bg-emerald-400" label="Unidades en ruta" icon={<Truck className="h-3 w-3" />} />
+                  <LegendDot color="bg-cyan-300" label="Cuarteles" icon={<Home className="h-3 w-3" />} />
+                  <LegendDot color="bg-sky-400" label="Hidrantes" icon={<Droplets className="h-3 w-3" />} />
+                  <LegendDot color="bg-amber-400" label="Puntos de interés" icon={<MapPin className="h-3 w-3" />} />
+                  {routeUrl && (
+                    <a
+                      href={routeUrl}
+                      target="_blank"
+                      rel="noreferrer"
+                      className="mt-2 flex items-center justify-center gap-1.5 rounded-lg bg-white/10 py-1.5 text-[10px] font-bold uppercase tracking-wide text-white hover:bg-white/20"
+                    >
+                      <Navigation className="h-3 w-3" /> Ver ruta
+                    </a>
+                  )}
                 </div>
-                {routeUrl && (
-                  <a
-                    href={routeUrl}
-                    target="_blank"
-                    rel="noreferrer"
-                    className="absolute bottom-3 right-3 inline-flex items-center gap-1.5 rounded-full bg-white px-3 py-1.5 text-[11px] font-bold uppercase tracking-wide text-slate-900 shadow-lg"
-                  >
-                    <Navigation className="h-3.5 w-3.5" />
-                    Ver ruta
-                  </a>
-                )}
               </div>
             </div>
           </div>
+
+          <aside className="flex min-h-0 flex-col gap-3">
+            <div className="rounded-3xl border border-white/10 bg-[#0c1828]/90 p-4">
+              <p className="mb-3 text-[11px] font-black uppercase tracking-[0.2em] text-white/45">Estado general</p>
+              <ul className="space-y-2.5">
+                <StatRow icon={<Truck className="h-4 w-4" />} iconBg="bg-emerald-500/15 text-emerald-300" label="Carros operativos" value={`${data.fleet.stats.operativo} / ${data.fleet.stats.total}`} />
+                <StatRow icon={<Users className="h-4 w-4" />} iconBg="bg-sky-500/15 text-sky-300" label="Personal disponible" value={String(data.roster.stats.available)} />
+                <StatRow icon={<Flame className="h-4 w-4" />} iconBg="bg-red-500/15 text-red-300" label="Emergencias hoy" value={String(todayCount || data.emergencyStats.active)} />
+              </ul>
+            </div>
+
+            <div className={`rounded-3xl border px-4 py-3.5 ${
+              live
+                ? 'border-red-500/45 bg-gradient-to-r from-red-700 to-red-900 shadow-[0_0_28px_rgba(220,38,38,0.28)]'
+                : 'border-red-500/25 bg-red-950/40'
+            }`}>
+              <div className="flex items-center gap-3">
+                <Volume2 className="h-7 w-7 text-white" />
+                <div>
+                  <p className="text-[10px] font-black uppercase tracking-[0.18em] text-white/70">Sistema de alarmas</p>
+                  <p className="text-2xl font-black uppercase leading-none">Activo</p>
+                </div>
+              </div>
+            </div>
+
+            <div className="flex min-h-0 flex-1 flex-col rounded-3xl border border-white/10 bg-[#0c1828]/90 p-4">
+              <div className="mb-3 flex items-center justify-between">
+                <p className="text-[11px] font-black uppercase tracking-[0.2em] text-white/45">Últimas emergencias</p>
+                <span className="text-[11px] font-semibold text-sky-300">Ver todas</span>
+              </div>
+              <ul className="min-h-0 flex-1 space-y-2 overflow-hidden">
+                {recent.length === 0 && (
+                  <li className="text-xs text-white/40">Sin historial reciente.</li>
+                )}
+                {recent.map((e) => {
+                  const code = e.emergencyCodeId || e.code || '10-X';
+                  const label = e.type?.split(' — ')[1] || e.type;
+                  return (
+                    <li key={e.id} className="flex items-start gap-2.5 rounded-xl bg-white/5 px-2.5 py-2">
+                      <span className={`mt-1.5 h-2 w-2 shrink-0 rounded-full ${codeDot(code)}`} />
+                      <div className="min-w-0 flex-1">
+                        <p className="flex items-baseline gap-2 text-[11px] text-white/45">
+                          <span className="font-mono">
+                            {new Date(e.dispatchedAt).toLocaleTimeString('es-CL', { hour: '2-digit', minute: '2-digit', hour12: false })}
+                          </span>
+                          <span className="font-bold text-white">{code}</span>
+                        </p>
+                        <p className="truncate text-[12px] font-semibold text-white/85">{label}</p>
+                        <p className="truncate text-[11px] text-white/40">{e.address}</p>
+                      </div>
+                    </li>
+                  );
+                })}
+              </ul>
+            </div>
+          </aside>
         </div>
 
-        <aside className="flex w-[250px] shrink-0 flex-col gap-3 lg:w-[300px]">
-          <div className="rounded-3xl border border-white/10 bg-black/45 px-5 py-4 backdrop-blur-md">
-            <p className="font-mono text-5xl font-semibold leading-none tabular-nums tracking-tight lg:text-6xl">
-              {now.toLocaleTimeString('es-CL', { hour: '2-digit', minute: '2-digit', hour12: false })}
-            </p>
-            <p className="mt-2 text-xs capitalize text-white/55">
-              {now.toLocaleDateString('es-CL', { weekday: 'long', day: 'numeric', month: 'long' })}
-            </p>
-            <p className="mt-3 flex items-center gap-2 text-sm text-cyan-300">
-              <Thermometer className="h-4 w-4" />
-              {tempC != null ? `${tempC}°C` : '—'}
-              <span className="text-white/45">· {data.city}</span>
-            </p>
-          </div>
-
-          <div className="rounded-3xl border border-white/10 bg-black/45 p-4 backdrop-blur-md">
-            <p className="mb-3 text-[11px] font-black uppercase tracking-[0.22em] text-white/45">Estado general</p>
-            <ul className="space-y-3">
-              <li className="flex items-center gap-3">
-                <span className="flex h-9 w-9 items-center justify-center rounded-xl bg-cyan-500/15 text-cyan-300">
-                  <Truck className="h-4 w-4" />
-                </span>
-                <span className="flex-1 text-sm text-white/70">Carros operativos</span>
-                <span className="font-mono text-lg font-semibold">
-                  {data.fleet.stats.operativo}/{data.fleet.stats.total}
-                </span>
-              </li>
-              <li className="flex items-center gap-3">
-                <span className="flex h-9 w-9 items-center justify-center rounded-xl bg-emerald-500/15 text-emerald-300">
-                  <Users className="h-4 w-4" />
-                </span>
-                <span className="flex-1 text-sm text-white/70">Personal disponible</span>
-                <span className="font-mono text-lg font-semibold">{data.roster.stats.available}</span>
-              </li>
-              <li className="flex items-center gap-3">
-                <span className="flex h-9 w-9 items-center justify-center rounded-xl bg-red-500/15 text-red-300">
-                  <Flame className="h-4 w-4" />
-                </span>
-                <span className="flex-1 text-sm text-white/70">Emergencias hoy</span>
-                <span className="font-mono text-lg font-semibold">{todayCount || data.emergencyStats.active}</span>
-              </li>
-            </ul>
-          </div>
-
-          <div className={`mt-auto rounded-3xl border px-4 py-4 backdrop-blur-md ${
-            live
-              ? 'border-red-500/40 bg-red-950/50 shadow-[0_0_28px_rgba(220,38,38,0.18)]'
-              : 'border-cyan-400/25 bg-cyan-950/30'
-          }`}>
-            <div className="flex items-center gap-3">
-              <span className={`flex h-11 w-11 items-center justify-center rounded-2xl ${
-                live ? 'bg-red-600 text-white' : 'bg-cyan-400 text-cyan-950'
-              }`}>
-                <Radio className="h-5 w-5" />
-              </span>
-              <div>
-                <p className="text-[11px] font-black uppercase tracking-[0.18em] text-white/55">Sistema de alarmas</p>
-                <p className={`text-lg font-black uppercase ${live ? 'text-red-300' : 'text-cyan-200'}`}>
-                  {live ? 'Alarma activa' : 'Activo'}
-                </p>
-              </div>
+        <footer className="mt-3 flex items-center justify-between gap-4 border-t border-white/10 py-3">
+          <div className="flex items-center gap-2.5">
+            <span className="flex h-8 w-8 items-center justify-center rounded-lg bg-red-600 text-sm font-black">N</span>
+            <div>
+              <p className="text-sm font-black tracking-tight">Nodo<span className="text-red-500">360</span></p>
+              <p className="text-[9px] uppercase tracking-[0.16em] text-white/40">Conecta · Coordina · Responde</p>
             </div>
           </div>
-        </aside>
+          <nav className="hidden items-center gap-5 text-[10px] font-bold uppercase tracking-[0.14em] text-white/40 md:flex">
+            <span className="text-red-400">Sala de máquinas</span>
+            <span className="inline-flex items-center gap-1.5"><Building2 className="h-3.5 w-3.5" /> Compañías</span>
+            <span className="inline-flex items-center gap-1.5"><Users className="h-3.5 w-3.5" /> Personal</span>
+            <span className="inline-flex items-center gap-1.5"><Droplets className="h-3.5 w-3.5" /> Hidrantes</span>
+            <span className="inline-flex items-center gap-1.5"><BarChart3 className="h-3.5 w-3.5" /> Reportes</span>
+            <span className="inline-flex items-center gap-1.5"><Settings className="h-3.5 w-3.5" /> Configuración</span>
+          </nav>
+          <p className="hidden text-right text-[9px] uppercase tracking-[0.16em] text-white/35 lg:block">
+            Tecnología al servicio<br />de quienes salvan vidas
+          </p>
+        </footer>
       </div>
     </section>
+  );
+}
+
+function Kpi({
+  icon, title, sub, tone,
+}: { icon: ReactNode; title: string; sub: string; tone: 'cyan' | 'blue' | 'slate' }) {
+  const iconWrap = tone === 'cyan'
+    ? 'bg-cyan-500/15 text-cyan-300'
+    : tone === 'blue'
+      ? 'bg-sky-500/15 text-sky-300'
+      : 'bg-white/10 text-white/70';
+  return (
+    <div className="flex items-center gap-3 rounded-2xl border border-white/10 bg-[#0c1828]/85 px-3 py-2.5">
+      <span className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-xl ${iconWrap}`}>{icon}</span>
+      <div className="min-w-0">
+        <p className="truncate font-mono text-[17px] font-bold leading-none">{title}</p>
+        <p className="mt-1 truncate text-[10px] uppercase tracking-wide text-white/45">{sub}</p>
+      </div>
+    </div>
+  );
+}
+
+function StatRow({ icon, iconBg, label, value }: { icon: ReactNode; iconBg: string; label: string; value: string }) {
+  return (
+    <li className="flex items-center gap-3">
+      <span className={`flex h-9 w-9 items-center justify-center rounded-xl ${iconBg}`}>{icon}</span>
+      <span className="flex-1 text-[13px] text-white/70">{label}</span>
+      <span className="font-mono text-[18px] font-bold">{value}</span>
+    </li>
+  );
+}
+
+function LegendDot({ color, label, icon }: { color: string; label: string; icon: React.ReactNode }) {
+  return (
+    <p className="mb-1.5 flex items-center gap-2 text-white/75 last:mb-0">
+      <span className={`flex h-5 w-5 items-center justify-center rounded-md ${color} text-slate-950`}>{icon}</span>
+      {label}
+    </p>
   );
 }

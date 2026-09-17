@@ -342,8 +342,6 @@ export default function SalaSalidaBoard({
         {live && <div className="sala-salida-vignette" />}
       </div>
 
-      {live && <div className={burst ? 'sala-salida-frame' : 'sala-salida-frame-hold'} />}
-
       {burst && emergency && (
         <div className="sala-salida-overlay" aria-hidden>
           <div className="sala-salida-siren-sweep" />
