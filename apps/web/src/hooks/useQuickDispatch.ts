@@ -11,8 +11,10 @@ import {
   findEmergencyMainType,
   getActiveMainWithSubdivisions,
   isEmergencyTypeReadyForDispatch,
+  familyHasPanel,
   type EmergencyMainType,
   type EmergencySubdivision,
+  type EmergencyVia,
 } from '../lib/emergency-codes';
 import { loadDispatchSoundMode, type DispatchSoundMode } from '../lib/emergency-sounds';
 import { useDispatchAudio } from './useDispatchAudio';
@@ -113,6 +115,7 @@ export function useQuickDispatch(options: QuickDispatchOptions = {}) {
     ciaVehicles: [] as { id: string }[],
     handleEmergencyTypeClick: (_m: EmergencyMainType) => {},
     handleSubdivisionClick: (_s: EmergencySubdivision, _m: EmergencyMainType) => {},
+    handleViaClick: (_v: EmergencyVia, _m: EmergencyMainType) => {},
     handleDispatch: () => {},
     handleStop: () => {},
     toggleVehicle: (_id: string) => {},
@@ -485,7 +488,9 @@ export function useQuickDispatch(options: QuickDispatchOptions = {}) {
 
   const handleEmergencyTypeClick = (main: EmergencyMainType) => {
     if (dispatching) return;
-    const childSelected = main.subdivisions?.some((s) => s.id === selectedType);
+    const childSelected =
+      main.subdivisions?.some((s) => s.id === selectedType)
+      || main.vias?.some((v) => v.id === selectedType);
     const isSelected = selectedType === main.id || childSelected;
 
     if (isSelected && !childSelected) {
@@ -497,7 +502,7 @@ export function useQuickDispatch(options: QuickDispatchOptions = {}) {
     setSelectedType(main.id);
     if (!muted) void playEmergencyKeyTone(main.id);
 
-    if (main.subdivisions?.length) return;
+    if (familyHasPanel(main)) return;
     if (autoDispatchOnKey) tryAutoDispatch(main.id);
   };
 
@@ -510,6 +515,17 @@ export function useQuickDispatch(options: QuickDispatchOptions = {}) {
     setSelectedType(sub.id);
     if (!muted) void playEmergencyKeyTone(sub.id);
     if (autoDispatchOnKey) tryAutoDispatch(sub.id);
+  };
+
+  const handleViaClick = (via: EmergencyVia, main: EmergencyMainType) => {
+    if (dispatching) return;
+    if (selectedType === via.id) {
+      setSelectedType(main.id);
+      return;
+    }
+    setSelectedType(via.id);
+    if (!muted) void playEmergencyKeyTone(via.id);
+    if (autoDispatchOnKey) tryAutoDispatch(via.id);
   };
 
   const resetDraft = useCallback(() => {
@@ -555,6 +571,7 @@ export function useQuickDispatch(options: QuickDispatchOptions = {}) {
       ciaVehicles,
       handleEmergencyTypeClick,
       handleSubdivisionClick,
+      handleViaClick,
       handleDispatch: () => runDispatch(),
       handleStop,
       toggleVehicle,
@@ -683,6 +700,7 @@ export function useQuickDispatch(options: QuickDispatchOptions = {}) {
     searchAddress,
     handleEmergencyTypeClick,
     handleSubdivisionClick,
+    handleViaClick,
     handleDispatch: () => runDispatch(),
     handleStop,
     refetchLive,

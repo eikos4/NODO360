@@ -24,10 +24,11 @@ import { ProfileScreen } from './ProfileScreen';
 import { EmergencyRecapScreen } from './EmergencyRecapScreen';
 import { OperationalBitacora } from './OperationalBitacora';
 import { HelpMenuButton, HelpScreen } from './HelpScreen';
+import { RadioCodesScreen } from './RadioCodesScreen';
 import { useAppTheme } from './theme';
 import type { ActiveIncident, AuthUser } from './types';
 
-type Screen = 'alarms' | 'radio' | 'history' | 'settings' | 'announcements' | 'help' | 'recap';
+type Screen = 'alarms' | 'radio' | 'history' | 'settings' | 'announcements' | 'help' | 'recap' | 'codes';
 
 function ThemeToggle({ compact = false }: { compact?: boolean }) {
   const { theme, toggleTheme } = useAppTheme();
@@ -836,10 +837,12 @@ export default function App() {
       {notice && <div className="toast"><Check /> {notice}</div>}
       {sync.lastError && <div className="warning"><AlertTriangle /> {sync.lastError}</div>}
       <main className="content">
-        {screen !== 'history' && screen !== 'radio' && screen !== 'announcements' && screen !== 'settings' && screen !== 'help' && screen !== 'recap' && (
+        {screen !== 'history' && screen !== 'radio' && screen !== 'announcements' && screen !== 'settings' && screen !== 'help' && screen !== 'recap' && screen !== 'codes' && (
           <>
             <RadioAvailability available={stationAvailable} busy={stationBusy} onToggle={toggleStation} />
-            <MaquinistaAvailability available={maqAvailable} busy={maqBusy} onToggle={toggleMaquinista} />
+            {(sync.snapshot?.user.isMaquinista ?? user.isMaquinista ?? false) && (
+              <MaquinistaAvailability available={maqAvailable} busy={maqBusy} onToggle={toggleMaquinista} />
+            )}
           </>
         )}
         {selected && (
@@ -852,11 +855,13 @@ export default function App() {
             />
           </div>
         )}
-        {screen === 'help' ? (
-          <HelpScreen onBack={() => setScreen('settings')} />
+        {screen === 'codes' ? (
+          <RadioCodesScreen onBack={() => setScreen('help')} />
+        ) : screen === 'help' ? (
+          <HelpScreen onBack={() => setScreen('settings')} onOpenCodes={() => setScreen('codes')} />
         ) : screen === 'settings' ? (
           settingsHelp ? (
-            <HelpScreen onBack={() => setSettingsHelp(false)} />
+            <HelpScreen onBack={() => setSettingsHelp(false)} onOpenCodes={() => setScreen('codes')} />
           ) : (
             <ProfileScreen
               onOpenEmergency={(incidentId) => {
@@ -933,7 +938,7 @@ export default function App() {
         <button className={screen === 'radio' ? 'active' : ''} onClick={() => setScreen('radio')}><Radio />Radio{incidents.length > 0 && <i className="radio-live-dot" />}</button>
         <button className={screen === 'history' || (screen === 'recap' && recapFrom === 'history') ? 'active' : ''} onClick={() => setScreen('history')}><History />Historial</button>
         <button className={screen === 'settings' || (screen === 'recap' && recapFrom === 'settings') ? 'active' : ''} onClick={() => { setSettingsHelp(false); setScreen('settings'); }}><UserRound />Perfil</button>
-        <button className={screen === 'help' || settingsHelp ? 'active' : ''} onClick={() => { setSettingsHelp(false); setScreen('help'); }}><HelpCircle />Ayuda</button>
+        <button className={screen === 'help' || screen === 'codes' || settingsHelp ? 'active' : ''} onClick={() => { setSettingsHelp(false); setScreen('help'); }}><HelpCircle />Ayuda</button>
       </nav>
     </div>
   );

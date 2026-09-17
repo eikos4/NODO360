@@ -5,7 +5,7 @@ import {
 import toast from 'react-hot-toast';
 import { useQuickDispatch } from '../hooks/useQuickDispatch';
 import { useThemeStore } from '../store/themeStore';
-import { EMERGENCY_MAIN_TYPES } from '../lib/emergency-codes';
+import { EMERGENCY_MAIN_TYPES, familyHasPanel, viaDisplayCode } from '../lib/emergency-codes';
 import { api } from '../lib/api';
 import {
   buildLocationPinUrl,
@@ -165,7 +165,9 @@ export default function Nodo360AlarmsPage() {
           </p>
           <div className="flex-1 min-h-0 overflow-y-auto p-2 space-y-1 scrollbar-thin">
             {EMERGENCY_MAIN_TYPES.map((main) => {
-              const childSel = main.subdivisions?.some((s) => s.id === d.selectedType);
+              const childSel =
+                main.subdivisions?.some((s) => s.id === d.selectedType)
+                || main.vias?.some((v) => v.id === d.selectedType);
               const active = d.selectedType === main.id || childSel;
               return (
                 <button
@@ -189,24 +191,48 @@ export default function Nodo360AlarmsPage() {
               );
             })}
           </div>
-          {d.activeMainWithSubs?.subdivisions?.length ? (
-            <div className={`shrink-0 p-2 border-t flex flex-wrap gap-1.5 ${isDark ? 'border-white/10 bg-amber-500/10' : 'border-amber-200 bg-amber-50'}`}>
-              {d.activeMainWithSubs.subdivisions.map((sub) => (
-                <button
-                  key={sub.id}
-                  type="button"
-                  onClick={() => d.handleSubdivisionClick(sub, d.activeMainWithSubs!)}
-                  className={`px-2 py-1 rounded-lg text-[11px] font-bold border ${
-                    d.selectedType === sub.id
-                      ? 'keep-on-color bg-orange-600 border-orange-500 text-white'
-                      : isDark
-                        ? 'border-amber-500/30 text-amber-200'
-                        : 'border-amber-400 text-amber-950 bg-white'
-                  }`}
-                >
-                  {sub.code}
-                </button>
-              ))}
+          {d.activeMainWithSubs && familyHasPanel(d.activeMainWithSubs) ? (
+            <div className={`shrink-0 p-2 border-t space-y-1.5 ${isDark ? 'border-white/10 bg-amber-500/10' : 'border-amber-200 bg-amber-50'}`}>
+              {d.activeMainWithSubs.subdivisions?.length ? (
+                <div className="flex flex-wrap gap-1.5">
+                  {d.activeMainWithSubs.subdivisions.map((sub) => (
+                    <button
+                      key={sub.id}
+                      type="button"
+                      onClick={() => d.handleSubdivisionClick(sub, d.activeMainWithSubs!)}
+                      className={`px-2 py-1 rounded-lg text-[11px] font-bold border ${
+                        d.selectedType === sub.id
+                          ? 'keep-on-color bg-orange-600 border-orange-500 text-white'
+                          : isDark
+                            ? 'border-amber-500/30 text-amber-200'
+                            : 'border-amber-400 text-amber-950 bg-white'
+                      }`}
+                    >
+                      {sub.code}
+                    </button>
+                  ))}
+                </div>
+              ) : null}
+              {d.activeMainWithSubs.vias?.length ? (
+                <div className="flex flex-wrap gap-1.5">
+                  {d.activeMainWithSubs.vias.map((via) => (
+                    <button
+                      key={via.id}
+                      type="button"
+                      onClick={() => d.handleViaClick(via, d.activeMainWithSubs!)}
+                      className={`px-2 py-1 rounded-lg text-[11px] font-bold border ${
+                        d.selectedType === via.id
+                          ? 'keep-on-color bg-orange-600 border-orange-500 text-white'
+                          : isDark
+                            ? 'border-amber-500/30 text-amber-200'
+                            : 'border-amber-400 text-amber-950 bg-white'
+                      }`}
+                    >
+                      {viaDisplayCode(via)}
+                    </button>
+                  ))}
+                </div>
+              ) : null}
             </div>
           ) : null}
         </aside>

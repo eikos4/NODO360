@@ -1,6 +1,7 @@
 import {
   BellRing, Building2, ChevronLeft, ChevronRight, ExternalLink, Flame, HelpCircle, Radio, Siren, Truck,
 } from 'lucide-react';
+import { RadioCodesMenuButton } from './RadioCodesScreen';
 
 const KODESK_WEB = 'https://www.kodesk.cl';
 const KODESK_MAIL = 'mailto:nodo360@kodesk.cl';
@@ -18,7 +19,7 @@ export function HelpMenuButton({ onOpen }: { onOpen: () => void }) {
   );
 }
 
-export function HelpScreen({ onBack }: { onBack: () => void }) {
+export function HelpScreen({ onBack, onOpenCodes }: { onBack: () => void; onOpenCodes?: () => void }) {
   return (
     <article className="help-screen">
       <button type="button" className="announce-back" onClick={onBack}>
@@ -88,6 +89,17 @@ export function HelpScreen({ onBack }: { onBack: () => void }) {
           En Configuraciones revisa notificaciones, No molestar y batería para que la alarma suene aunque el celular esté bloqueado.
         </p>
       </section>
+
+      {onOpenCodes && (
+        <section className="help-card">
+          <h2><Radio /> Códigos radiales</h2>
+          <p>
+            Referencia rápida con las claves más usadas por radio (0-X, 1-X, 6-X, 7-X, 10-X y letras del material mayor).
+            Se saca de la nomenclatura del Cuerpo.
+          </p>
+          <RadioCodesMenuButton onOpen={onOpenCodes} />
+        </section>
+      )}
 
       <section className="help-kodesk">
         <small>Plataforma creada por</small>

@@ -26,7 +26,7 @@ import {
   BookOpen,
 } from 'lucide-react';
 import { useQuickDispatch } from '../hooks/useQuickDispatch';
-import { EMERGENCY_MAIN_TYPES } from '../lib/emergency-codes';
+import { EMERGENCY_MAIN_TYPES, familyHasPanel, viaDisplayCode } from '../lib/emergency-codes';
 import DispatchMapPicker from '../components/map/DispatchMapPicker';
 import DispatchVoiceConfigToggle from '../components/dispatch/DispatchVoiceConfigToggle';
 import CompanyMaquinistaAlert from '../components/dispatch/CompanyMaquinistaAlert';
@@ -226,7 +226,9 @@ export default function DespachoNodo360Page() {
             </div>
             <div className="grid grid-cols-2 sm:grid-cols-5 gap-2 sm:gap-3">
               {EMERGENCY_MAIN_TYPES.map((main) => {
-                const childSel = main.subdivisions?.some((s) => s.id === d.selectedType);
+                const childSel =
+                  main.subdivisions?.some((s) => s.id === d.selectedType)
+                  || main.vias?.some((v) => v.id === d.selectedType);
                 const active = d.selectedType === main.id || childSel;
                 return (
                   <button
@@ -244,7 +246,7 @@ export default function DespachoNodo360Page() {
                     <span className={`text-[10px] sm:text-xs mt-1 text-center leading-tight ${active ? (isDark ? 'text-red-200' : 'text-red-700') : th.subtitle}`}>
                       {main.label}
                     </span>
-                    {main.subdivisions?.length ? (
+                    {familyHasPanel(main) ? (
                       <span className="absolute top-1.5 right-1.5 h-1.5 w-1.5 rounded-full bg-amber-400" title="Tiene subdivisiones" />
                     ) : null}
                   </button>
@@ -252,24 +254,48 @@ export default function DespachoNodo360Page() {
               })}
             </div>
 
-            {d.activeMainWithSubs?.subdivisions?.length ? (
-              <div className="mt-3 flex flex-wrap gap-2">
-                {d.activeMainWithSubs.subdivisions.map((sub) => {
-                  const on = d.selectedType === sub.id;
-                  return (
-                    <button
-                      key={sub.id}
-                      type="button"
-                      disabled={d.dispatching}
-                      onClick={() => d.handleSubdivisionClick(sub, d.activeMainWithSubs!)}
-                      className={`px-4 py-2 rounded-full text-sm font-medium border transition ${
-                        on ? th.subKeyActive : th.subKeyIdle
-                      }`}
-                    >
-                      {sub.code} — {sub.label}
-                    </button>
-                  );
-                })}
+            {d.activeMainWithSubs && familyHasPanel(d.activeMainWithSubs) ? (
+              <div className="mt-3 space-y-2">
+                {d.activeMainWithSubs.subdivisions?.length ? (
+                  <div className="flex flex-wrap gap-2">
+                    {d.activeMainWithSubs.subdivisions.map((sub) => {
+                      const on = d.selectedType === sub.id;
+                      return (
+                        <button
+                          key={sub.id}
+                          type="button"
+                          disabled={d.dispatching}
+                          onClick={() => d.handleSubdivisionClick(sub, d.activeMainWithSubs!)}
+                          className={`px-4 py-2 rounded-full text-sm font-medium border transition ${
+                            on ? th.subKeyActive : th.subKeyIdle
+                          }`}
+                        >
+                          {sub.code} — {sub.label}
+                        </button>
+                      );
+                    })}
+                  </div>
+                ) : null}
+                {d.activeMainWithSubs.vias?.length ? (
+                  <div className="flex flex-wrap gap-2">
+                    {d.activeMainWithSubs.vias.map((via) => {
+                      const on = d.selectedType === via.id;
+                      return (
+                        <button
+                          key={via.id}
+                          type="button"
+                          disabled={d.dispatching}
+                          onClick={() => d.handleViaClick(via, d.activeMainWithSubs!)}
+                          className={`px-4 py-2 rounded-full text-sm font-medium border transition ${
+                            on ? th.subKeyActive : th.subKeyIdle
+                          }`}
+                        >
+                          {viaDisplayCode(via)} — {via.shortLabel}
+                        </button>
+                      );
+                    })}
+                  </div>
+                ) : null}
               </div>
             ) : null}
           </section>

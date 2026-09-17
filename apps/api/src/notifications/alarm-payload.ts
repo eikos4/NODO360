@@ -15,7 +15,10 @@ export function resolveAlarmTone(...values: Array<string | undefined>): AlarmTon
       sound: 'tone_nodo360',
     };
   }
-  const match = text.match(/\b10[-_ ]?(1[0-2]|\d)(?:-\d+)?\b/i);
+  const viaTone =
+    text.match(/\bpor\s+10[-_ ]?(\d+)\b/i) ||
+    text.match(/\b10[-_ ]?\d+\s*x\s*10[-_ ]?(\d+)\b/i);
+  const match = viaTone ?? text.match(/\b10[-_ ]?(1[0-2]|\d)(?:-\d+)?\b/i);
   const code = `10-${match?.[1] ?? '0'}`;
   const suffix = code.replace('-', '_');
   return {

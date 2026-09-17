@@ -42,11 +42,19 @@ export function isStandbyAlarm(input: Pick<AlarmAnnounceInput, 'kind' | 'code' |
 export function normalizeAlarmCode(...values: Array<string | null | undefined>) {
   const text = values.filter(Boolean).join(' ');
   if (/\b(NODO|STANDBY|PREAVISO)\b/i.test(text)) return 'NODO';
+  const viaTone =
+    text.match(/\bpor\s+10[-_ ]?(\d+)\b/i) ||
+    text.match(/\b10[-_ ]?\d+\s*x\s*10[-_ ]?(\d+)\b/i);
+  if (viaTone) return `10-${viaTone[1]}`;
   const match = text.match(/\b10[-_ ]?(1[0-2]|\d)\b/i);
   return `10-${match?.[1] ?? '0'}`;
 }
 
 export function spokenCode(code: string) {
+  const via = code.match(/10[-_ ]?(\d+)\s+por\s+10[-_ ]?(\d+)/i);
+  if (via) {
+    return `diez ${DIGITS[Number(via[1])] ?? via[1]} por diez ${DIGITS[Number(via[2])] ?? via[2]}`;
+  }
   const match = code.match(/10[-_ ]?(\d+)/i);
   const n = Number(match?.[1] ?? 0);
   return `diez ${DIGITS[n] ?? n}`;
@@ -69,15 +77,20 @@ export function buildAlarmSpeech(input: AlarmAnnounceInput) {
     };
   }
   const code = normalizeAlarmCode(input.emergencyCodeId, input.code, input.type, input.title);
+  const displayMatch = [input.emergencyCodeId, input.code, input.type, input.title]
+    .filter(Boolean)
+    .join(' ')
+    .match(/\b10[-_ ]?\d+\s+por\s+10[-_ ]?\d+\b/i);
+  const displayCode = displayMatch?.[0]?.replace(/_/g, '-') ?? code;
   const label = alarmLabel(code, input.type);
   const address = input.address?.trim();
   const radio = input.radioMessage?.trim();
   const spoken = radio
-    ? `Atención. ${spokenCode(code)}. ${radio}`
-    : ['Atención.', spokenCode(code) + '.', label + '.', address].filter(Boolean).join(' ');
+    ? `Atención. ${spokenCode(displayCode)}. ${radio}`
+    : ['Atención.', spokenCode(displayCode) + '.', label + '.', address].filter(Boolean).join(' ');
   return {
     code,
-    title: input.title || `ALARMA ${code}`,
+    title: input.title || `ALARMA ${displayCode.toUpperCase()}`,
     body: input.body || [label, address].filter(Boolean).join(' · ') || 'Despacho operativo Nodo360',
     spoken,
   };

@@ -13,6 +13,15 @@ describe('alarm payload mapping', () => {
     },
   );
 
+  it('recycles the parent tone for 10-10 por 10-0 and 10-10x10-4', () => {
+    expect(resolveAlarmTone('10-10 por 10-0 — Apoyo a otros cuerpos')).toMatchObject({
+      code: '10-0',
+      sound: 'tone_10_0',
+    });
+    expect(resolveAlarmTone('10-10x10-4')).toMatchObject({ code: '10-4', sound: 'tone_10_4' });
+    expect(resolveAlarmTone('ALARMA 10-11 POR 10-0')).toMatchObject({ code: '10-0' });
+  });
+
   it('extracts the operational code from noisy dispatch text and falls back safely', () => {
     expect(resolveAlarmTone('ALARMA', '10_12-1 incendio')).toMatchObject({ code: '10-12' });
     expect(resolveAlarmTone('sin código')).toMatchObject({ code: '10-0' });

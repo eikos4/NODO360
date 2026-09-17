@@ -3,7 +3,7 @@ import {
   ExternalLink, Loader2, MapPin,
   Mic, MicOff, Radio, Search, Square, Truck, Volume2, VolumeX, Zap,
 } from 'lucide-react';
-import { EMERGENCY_MAIN_TYPES } from '../../lib/emergency-codes';
+import { EMERGENCY_MAIN_TYPES, familyHasPanel, viaDisplayCode } from '../../lib/emergency-codes';
 import { BOTONERA_THEMES, type BotoneraTheme } from '../../lib/botonera-themes';
 import type { useSimpleDispatch } from '../../hooks/useQuickDispatch';
 import DispatchMapPicker from '../map/DispatchMapPicker';
@@ -56,7 +56,9 @@ function EmergencyKeys({
     <>
       <div className={gridClass}>
         {EMERGENCY_MAIN_TYPES.filter((m) => /^10-[0-9]$/.test(m.id)).map((main) => {
-          const childSel = main.subdivisions?.some((s) => s.id === d.selectedType);
+          const childSel =
+            main.subdivisions?.some((s) => s.id === d.selectedType)
+            || main.vias?.some((v) => v.id === d.selectedType);
           const active = d.selectedType === main.id || childSel;
           const Icon = main.icon;
           return (
@@ -80,24 +82,48 @@ function EmergencyKeys({
           );
         })}
       </div>
-      {d.activeMainWithSubs?.subdivisions?.length ? (
-        <div className="mt-2 flex flex-wrap gap-1.5">
-          {d.activeMainWithSubs.subdivisions.map((sub) => {
-            const on = d.selectedType === sub.id;
-            return (
-              <button
-                key={sub.id}
-                type="button"
-                disabled={d.dispatching}
-                onClick={() => d.handleSubdivisionClick(sub, d.activeMainWithSubs!)}
-                className={`px-3 py-1.5 rounded-full text-xs font-medium border transition ${
-                  on ? `${theme.accent} text-white border-transparent` : theme.keyIdle
-                }`}
-              >
-                {sub.code} — {sub.label}
-              </button>
-            );
-          })}
+      {d.activeMainWithSubs && familyHasPanel(d.activeMainWithSubs) ? (
+        <div className="mt-2 space-y-2">
+          {d.activeMainWithSubs.subdivisions?.length ? (
+            <div className="flex flex-wrap gap-1.5">
+              {d.activeMainWithSubs.subdivisions.map((sub) => {
+                const on = d.selectedType === sub.id;
+                return (
+                  <button
+                    key={sub.id}
+                    type="button"
+                    disabled={d.dispatching}
+                    onClick={() => d.handleSubdivisionClick(sub, d.activeMainWithSubs!)}
+                    className={`px-3 py-1.5 rounded-full text-xs font-medium border transition ${
+                      on ? `${theme.accent} text-white border-transparent` : theme.keyIdle
+                    }`}
+                  >
+                    {sub.code} — {sub.label}
+                  </button>
+                );
+              })}
+            </div>
+          ) : null}
+          {d.activeMainWithSubs.vias?.length ? (
+            <div className="flex flex-wrap gap-1.5">
+              {d.activeMainWithSubs.vias.map((via) => {
+                const on = d.selectedType === via.id;
+                return (
+                  <button
+                    key={via.id}
+                    type="button"
+                    disabled={d.dispatching}
+                    onClick={() => d.handleViaClick(via, d.activeMainWithSubs!)}
+                    className={`px-3 py-1.5 rounded-full text-xs font-medium border transition ${
+                      on ? `${theme.accent} text-white border-transparent` : theme.keyIdle
+                    }`}
+                  >
+                    {viaDisplayCode(via)} — {via.shortLabel}
+                  </button>
+                );
+              })}
+            </div>
+          ) : null}
         </div>
       ) : null}
     </>

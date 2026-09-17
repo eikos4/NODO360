@@ -21,8 +21,10 @@ import {
   findEmergencyMainType,
   getActiveMainWithSubdivisions,
   isEmergencyTypeReadyForDispatch,
+  familyHasPanel,
   type EmergencyMainType,
   type EmergencySubdivision,
+  type EmergencyVia,
 } from '../lib/emergency-codes';
 import DispatchTutorialOverlay from '../components/dispatch/DispatchTutorialOverlay';
 import DispatchMapPicker from '../components/map/DispatchMapPicker';
@@ -98,7 +100,6 @@ async function reverseGeocode(lat: number, lng: number): Promise<string | null> 
    COMPONENTE BOTONERA
 ══════════════════════════════════════════ */
 const PRIMARY_EMERGENCY_KEYS = EMERGENCY_MAIN_TYPES.filter((m) => /^10-[0-9]$/.test(m.id));
-const EXTENDED_EMERGENCY_KEYS = EMERGENCY_MAIN_TYPES.filter((m) => /^10-1[0-2]$/.test(m.id));
 
 const COLOR_HEX: Record<string, string> = {
   'bg-red-600': '#ef4444', 'bg-orange-600': '#f97316', 'bg-amber-600': '#f59e0b',
@@ -124,7 +125,9 @@ function EmergencyKeyButton({
   isDark: boolean;
 }) {
   const Icon = main.icon;
-  const childSelected = main.subdivisions?.some((s) => s.id === selectedType);
+  const childSelected =
+    main.subdivisions?.some((s) => s.id === selectedType)
+    || main.vias?.some((v) => v.id === selectedType);
   const isSelected = selectedType === main.id || childSelected;
   const hasAudio = hasEmergencyAudioFile(main.id);
   const hex = COLOR_HEX[main.color] ?? '#64748b';
@@ -169,7 +172,7 @@ function EmergencyKeyButton({
       )}
       <Icon className="w-5 h-5 mt-2" style={!isSelected ? { color: hex } : undefined} />
       <span className={`text-center leading-tight line-clamp-2 px-0.5 ${isSelected ? '' : isDark ? 'text-slate-300' : 'text-slate-700'}`}>{main.shortLabel}</span>
-      {main.subdivisions?.length ? (
+      {familyHasPanel(main) ? (
         <span
           className={`text-[8px] font-bold uppercase tracking-wide ${isSelected ? 'text-white/80' : ''}`}
           style={!isSelected ? { color: `${hex}aa` } : undefined}
@@ -196,7 +199,7 @@ function AudioPreviewButton({
     <button
       type="button"
       onClick={() => { if (!muted) void onPlay(); }}
-      className={`flex items-center gap-2 p-2.5 rounded-lg border text-left transition-colors ${entry.isSubdivision ? bt.audioPreviewBtnSub : bt.audioPreviewBtn
+      className={`flex items-center gap-2 p-2.5 rounded-lg border text-left transition-colors ${entry.isSubdivision || entry.isVia ? bt.audioPreviewBtnSub : bt.audioPreviewBtn
         }`}
     >
       <span className="shrink-0 w-7 h-7 rounded-md bg-amber-600/20 border border-amber-500/30 flex items-center justify-center">
@@ -206,7 +209,7 @@ function AudioPreviewButton({
         <span className="font-mono font-bold text-xs text-amber-400">{entry.code}</span>
         <span className="block text-[10px] text-slate-400 truncate">
           {entry.file ?? 'sin archivo'}
-          {entry.isSubdivision && entry.parentCode ? ` ← ${entry.parentCode}` : ''}
+          {entry.isVia && entry.parentCode ? ` tono ${entry.parentCode}` : ''}
         </span>
       </span>
     </button>
@@ -690,7 +693,9 @@ export default function BotoneraPage() {
 
   const handleEmergencyTypeClick = (main: EmergencyMainType) => {
     if (dispatching) return;
-    const childSelected = main.subdivisions?.some((s) => s.id === selectedType);
+    const childSelected =
+      main.subdivisions?.some((s) => s.id === selectedType)
+      || main.vias?.some((v) => v.id === selectedType);
     const isSelected = selectedType === main.id || childSelected;
 
     if (isSelected && !childSelected) {
@@ -702,8 +707,8 @@ export default function BotoneraPage() {
     setSelectedType(main.id);
     if (!muted) void playEmergencyKeyTone(main.id);
 
-    if (main.subdivisions?.length) {
-      toast(`Clave ${main.code} — elige el detalle abajo`, { icon: '🔖' });
+    if (familyHasPanel(main)) {
+      toast(`Clave ${main.code} — elige detalle o 10-10 / 10-12 por este tono`, { icon: '🔖' });
       return;
     }
 
@@ -722,6 +727,18 @@ export default function BotoneraPage() {
     setSelectedType(sub.id);
     if (!muted) void playEmergencyKeyTone(sub.id);
     tryAutoDispatch(sub.id);
+  };
+
+  const handleViaClick = (via: EmergencyVia, main: EmergencyMainType) => {
+    if (dispatching) return;
+    if (selectedType === via.id) {
+      setSelectedType(main.id);
+      if (!muted) void playEmergencyKeyTone(main.id);
+      return;
+    }
+    setSelectedType(via.id);
+    if (!muted) void playEmergencyKeyTone(via.id);
+    tryAutoDispatch(via.id);
   };
 
   /* DESPACHO manual */
@@ -1134,16 +1151,16 @@ export default function BotoneraPage() {
               <div>
                 <p className="text-[10px] font-bold text-slate-500 uppercase mb-1.5">Claves 10-0 … 10-9</p>
                 <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2">
-                  {listBotoneraAudioEntries().filter((e) => !e.isSubdivision && /^10-[0-9]$/.test(e.id)).map((entry) => (
+                  {listBotoneraAudioEntries().filter((e) => !e.isSubdivision && !e.isVia && /^10-[0-9]$/.test(e.id)).map((entry) => (
                     <AudioPreviewButton key={entry.id} entry={entry} muted={muted} onPlay={() => playEmergencyKeyTone(entry.id)} bt={bt} />
                   ))}
                 </div>
               </div>
 
               <div>
-                <p className="text-[10px] font-bold text-slate-500 uppercase mb-1.5">Claves 10-10 … 10-12</p>
-                <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
-                  {listBotoneraAudioEntries().filter((e) => !e.isSubdivision && /^10-1[0-2]$/.test(e.id)).map((entry) => (
+                <p className="text-[10px] font-bold text-slate-500 uppercase mb-1.5">Reciclados (mismo tono, dicen “por”)</p>
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2">
+                  {listBotoneraAudioEntries().filter((e) => e.isVia).map((entry) => (
                     <AudioPreviewButton key={entry.id} entry={entry} muted={muted} onPlay={() => playEmergencyKeyTone(entry.id)} bt={bt} />
                   ))}
                 </div>
@@ -1707,22 +1724,6 @@ export default function BotoneraPage() {
                 ))}
               </div>
             </div>
-            <div>
-              <p className="text-[10px] font-bold text-amber-600 uppercase tracking-wider mb-1.5">Claves 10-10 a 10-12</p>
-              <div className="grid grid-cols-3 sm:grid-cols-3 gap-1.5 sm:gap-2">
-                {EXTENDED_EMERGENCY_KEYS.map((main) => (
-                  <EmergencyKeyButton
-                    key={main.id}
-                    main={main}
-                    selectedType={selectedType}
-                    dispatching={dispatching}
-                    onClick={() => handleEmergencyTypeClick(main)}
-                    bt={bt}
-                    isDark={isDark}
-                  />
-                ))}
-              </div>
-            </div>
             <button
               type="button"
               onClick={() => void handleStandbyAlert()}
@@ -1737,37 +1738,75 @@ export default function BotoneraPage() {
               Para emergencias grandes: avisa a la compañía elegida por teléfono y sala de radio. No crea 10-X.
             </p>
           </div>
-          {activeMainWithSubs?.subdivisions && (
-            <div className={`rounded-xl border p-3 space-y-2 ${bt.subPanel}`}>
+          {activeMainWithSubs && familyHasPanel(activeMainWithSubs) && (
+            <div className={`rounded-xl border p-3 space-y-3 ${bt.subPanel}`}>
               <p className="text-[10px] font-bold text-amber-400 uppercase tracking-wider flex flex-wrap items-center gap-2">
-                Detalle — clave {activeMainWithSubs.code}
+                Tono {activeMainWithSubs.code}
                 <span className="font-normal text-slate-500 normal-case">{activeMainWithSubs.label}</span>
               </p>
-              <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 gap-1.5 sm:gap-2">
-                {activeMainWithSubs.subdivisions.map((sub) => {
-                  const SubIcon = findEmergencyEntry(sub.id)?.icon ?? activeMainWithSubs.icon;
-                  const isSubSelected = selectedType === sub.id;
-                  return (
-                    <button
-                      key={sub.id}
-                      type="button"
-                      onClick={() => handleSubdivisionClick(sub, activeMainWithSubs)}
-                      disabled={dispatching}
-                      title={`${sub.code} — ${sub.label}`}
-                      className={`relative flex flex-col items-center justify-center gap-1 p-2 rounded-lg border-2 text-[10px] font-semibold transition-all active:scale-95 min-h-[60px] sm:min-h-0 ${isSubSelected
-                          ? `${activeMainWithSubs.color} ${activeMainWithSubs.text} border-transparent ring-2 ${activeMainWithSubs.ring}/50`
-                          : bt.subKeyIdle
-                        }`}
-                    >
-                      <span className={`font-mono font-bold text-[9px] ${isSubSelected ? 'text-white' : 'text-amber-400'}`}>
-                        {sub.code}
-                      </span>
-                      <SubIcon className={`w-4 h-4 ${isSubSelected ? activeMainWithSubs.text : bt.emergencyKeyIcon}`} />
-                      <span className="text-center leading-tight line-clamp-2">{sub.shortLabel}</span>
-                    </button>
-                  );
-                })}
-              </div>
+              {activeMainWithSubs.subdivisions?.length ? (
+                <div className="space-y-1.5">
+                  <p className={`text-[9px] font-bold uppercase tracking-wider ${bt.hint}`}>Detalle de la clave</p>
+                  <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 gap-1.5 sm:gap-2">
+                    {activeMainWithSubs.subdivisions.map((sub) => {
+                      const SubIcon = findEmergencyEntry(sub.id)?.icon ?? activeMainWithSubs.icon;
+                      const isSubSelected = selectedType === sub.id;
+                      return (
+                        <button
+                          key={sub.id}
+                          type="button"
+                          onClick={() => handleSubdivisionClick(sub, activeMainWithSubs)}
+                          disabled={dispatching}
+                          title={`${sub.code} — ${sub.label}`}
+                          className={`relative flex flex-col items-center justify-center gap-1 p-2 rounded-lg border-2 text-[10px] font-semibold transition-all active:scale-95 min-h-[60px] sm:min-h-0 ${isSubSelected
+                              ? `${activeMainWithSubs.color} ${activeMainWithSubs.text} border-transparent ring-2 ${activeMainWithSubs.ring}/50`
+                              : bt.subKeyIdle
+                            }`}
+                        >
+                          <span className={`font-mono font-bold text-[9px] ${isSubSelected ? 'text-white' : 'text-amber-400'}`}>
+                            {sub.code}
+                          </span>
+                          <SubIcon className={`w-4 h-4 ${isSubSelected ? activeMainWithSubs.text : bt.emergencyKeyIcon}`} />
+                          <span className="text-center leading-tight line-clamp-2">{sub.shortLabel}</span>
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
+              ) : null}
+              {activeMainWithSubs.vias?.length ? (
+                <div className="space-y-1.5">
+                  <p className={`text-[9px] font-bold uppercase tracking-wider ${bt.hint}`}>
+                    Por {activeMainWithSubs.code} · mismo tono
+                  </p>
+                  <div className="grid grid-cols-2 sm:grid-cols-3 gap-1.5 sm:gap-2">
+                    {activeMainWithSubs.vias.map((via) => {
+                      const ViaIcon = findEmergencyEntry(via.id)?.icon ?? activeMainWithSubs.icon;
+                      const isViaSelected = selectedType === via.id;
+                      const shown = `${via.code} por ${via.viaCode}`;
+                      return (
+                        <button
+                          key={via.id}
+                          type="button"
+                          onClick={() => handleViaClick(via, activeMainWithSubs)}
+                          disabled={dispatching}
+                          title={`${shown} — ${via.label} · tono ${via.viaCode}`}
+                          className={`relative flex flex-col items-center justify-center gap-1 p-2 rounded-lg border-2 text-[10px] font-semibold transition-all active:scale-95 min-h-[60px] sm:min-h-0 ${isViaSelected
+                              ? `${activeMainWithSubs.color} ${activeMainWithSubs.text} border-transparent ring-2 ${activeMainWithSubs.ring}/50`
+                              : bt.subKeyIdle
+                            }`}
+                        >
+                          <span className={`font-mono font-bold text-[9px] ${isViaSelected ? 'text-white' : 'text-amber-400'}`}>
+                            {shown}
+                          </span>
+                          <ViaIcon className={`w-4 h-4 ${isViaSelected ? activeMainWithSubs.text : bt.emergencyKeyIcon}`} />
+                          <span className="text-center leading-tight line-clamp-2">{via.shortLabel}</span>
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
+              ) : null}
             </div>
           )}
         </div>

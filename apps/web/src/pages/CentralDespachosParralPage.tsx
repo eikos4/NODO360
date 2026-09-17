@@ -15,6 +15,8 @@ import {
   EMERGENCY_MAIN_TYPES,
   EMERGENCY_MAIN_DIGIT_KEY,
   findEmergencyEntry,
+  familyHasPanel,
+  viaDisplayCode,
 } from '../lib/emergency-codes';
 import { loadDispatchTtsSettings, useDispatchTTS } from '../hooks/useDispatchTTS';
 import DispatchMapPicker from '../components/map/DispatchMapPicker';
@@ -526,7 +528,9 @@ export default function CentralDespachosParralPage() {
         <Card title="Claves de emergencia" th={th}>
           <div className="grid grid-cols-2 sm:grid-cols-5 xl:grid-cols-10 gap-2">
             {PRIMARY_KEYS.map((main) => {
-              const childSel = main.subdivisions?.some((s) => s.id === d.selectedType);
+              const childSel =
+                main.subdivisions?.some((s) => s.id === d.selectedType)
+                || main.vias?.some((v) => v.id === d.selectedType);
               const active = d.selectedType === main.id || childSel;
               const Icon = main.icon;
               const digit = EMERGENCY_MAIN_DIGIT_KEY[main.id];
@@ -577,22 +581,44 @@ export default function CentralDespachosParralPage() {
             })}
           </div>
 
-          {d.activeMainWithSubs?.subdivisions?.length ? (
-            <div className="mt-3 flex flex-wrap gap-2">
-              {d.activeMainWithSubs.subdivisions.map((sub) => (
-                <button
-                  key={sub.id}
-                  type="button"
-                  onClick={() => d.handleSubdivisionClick(sub, d.activeMainWithSubs!)}
-                  className={`px-3 py-1.5 rounded-full text-xs font-medium border ${
-                    d.selectedType === sub.id
-                      ? 'keep-on-color bg-orange-600 border-orange-500 text-white'
-                      : th.keySubIdle
-                  }`}
-                >
-                  {sub.code} — {sub.label}
-                </button>
-              ))}
+          {d.activeMainWithSubs && familyHasPanel(d.activeMainWithSubs) ? (
+            <div className="mt-3 space-y-2">
+              {d.activeMainWithSubs.subdivisions?.length ? (
+                <div className="flex flex-wrap gap-2">
+                  {d.activeMainWithSubs.subdivisions.map((sub) => (
+                    <button
+                      key={sub.id}
+                      type="button"
+                      onClick={() => d.handleSubdivisionClick(sub, d.activeMainWithSubs!)}
+                      className={`px-3 py-1.5 rounded-full text-xs font-medium border ${
+                        d.selectedType === sub.id
+                          ? 'keep-on-color bg-orange-600 border-orange-500 text-white'
+                          : th.keySubIdle
+                      }`}
+                    >
+                      {sub.code} — {sub.label}
+                    </button>
+                  ))}
+                </div>
+              ) : null}
+              {d.activeMainWithSubs.vias?.length ? (
+                <div className="flex flex-wrap gap-2">
+                  {d.activeMainWithSubs.vias.map((via) => (
+                    <button
+                      key={via.id}
+                      type="button"
+                      onClick={() => d.handleViaClick(via, d.activeMainWithSubs!)}
+                      className={`px-3 py-1.5 rounded-full text-xs font-medium border ${
+                        d.selectedType === via.id
+                          ? 'keep-on-color bg-orange-600 border-orange-500 text-white'
+                          : th.keySubIdle
+                      }`}
+                    >
+                      {viaDisplayCode(via)} — {via.shortLabel}
+                    </button>
+                  ))}
+                </div>
+              ) : null}
             </div>
           ) : null}
 

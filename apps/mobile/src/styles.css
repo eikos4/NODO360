@@ -660,6 +660,104 @@ header small { color: var(--muted); font-size: 10px; margin-top: 4px; }
 }
 .help-kodesk-links svg { width: 14px; height: 14px; }
 
+.radio-codes-screen { display: grid; gap: 12px; }
+.radio-codes-search {
+  display: grid;
+  grid-template-columns: 18px 1fr auto;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 12px;
+  border-radius: 14px;
+  border: 1px solid var(--line);
+  background: var(--panel);
+}
+.radio-codes-search svg { width: 16px; height: 16px; color: var(--muted); }
+.radio-codes-search input {
+  width: 100%;
+  border: none;
+  outline: none;
+  background: transparent;
+  color: inherit;
+  font-size: 14px;
+  font-weight: 700;
+}
+.radio-codes-search button {
+  border: none;
+  background: transparent;
+  color: var(--muted);
+  padding: 4px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+}
+.radio-codes-search button svg { width: 16px; height: 16px; }
+.radio-codes-hint {
+  margin: 0;
+  color: var(--muted);
+  font-size: 12px;
+  line-height: 1.45;
+}
+.radio-codes-empty {
+  margin: 0;
+  padding: 16px;
+  border-radius: 14px;
+  border: 1px dashed var(--line);
+  background: var(--panel);
+  color: var(--muted);
+  font-size: 13px;
+  text-align: center;
+}
+.radio-codes-card {
+  padding: 14px;
+  border-radius: 18px;
+  border: 1px solid var(--line);
+  background: var(--panel);
+  display: grid;
+  gap: 10px;
+}
+.radio-codes-card > header { display: grid; gap: 4px; }
+.radio-codes-card h2 {
+  margin: 0;
+  font-size: 14px;
+  font-weight: 800;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+.radio-codes-card > header p {
+  margin: 0;
+  color: var(--muted);
+  font-size: 12px;
+  line-height: 1.4;
+}
+.radio-codes-card ul {
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: 4px;
+}
+.radio-codes-card li {
+  list-style: none;
+  display: grid;
+  grid-template-columns: 78px 1fr;
+  gap: 10px;
+  align-items: baseline;
+  padding: 8px 0;
+  border-top: 1px solid var(--line);
+  font-size: 13px;
+  line-height: 1.4;
+}
+.radio-codes-card li:first-child { border-top: none; }
+.radio-codes-code {
+  font-weight: 800;
+  color: #16a34a;
+  font-variant-numeric: tabular-nums;
+  letter-spacing: 0.02em;
+}
+[data-theme="nodo"] .radio-codes-code { color: #4ade80; }
+.radio-codes-label { color: inherit; font-weight: 600; }
+
 .alarm-settings { display: grid; gap: 12px; }
 .settings-card { padding: 18px; border: 1px solid var(--line); border-radius: 19px; background: var(--panel); }
 .settings-card h2, .settings-card h3 { margin: 0 0 6px; }

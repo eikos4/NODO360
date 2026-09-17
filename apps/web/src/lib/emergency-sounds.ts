@@ -153,12 +153,15 @@ function subdivisionBeeps(code: string): EmergencyBeep[] {
 export function getMainCodeForSound(code: string): string {
   const entry = findEmergencyEntry(code);
   if (!entry) return code;
+  if (entry.kind === 'via' || entry.kind === 'subtype') return entry.parentCode ?? entry.code;
+  const spoken = entry.code.match(/por\s+(10-\d+)/i);
+  if (spoken) return spoken[1];
   return entry.parentCode ?? entry.code;
 }
 
 /**
  * Tonos oficiales de central — archivos en apps/web/public/Audio/
- * Nombres 10_0 … 10_9 para claves principales; extras para 10-10 … 10-12.
+ * Nombres 10_0 … 10_9 para familias de tono. 10-10/11/12 reciclan el padre.
  */
 export const EMERGENCY_AUDIO_FILES: Record<string, { file: string; label: string }> = {
   '10-0': { file: '10_0.mp3', label: 'Incendio estructural' },
@@ -171,9 +174,6 @@ export const EMERGENCY_AUDIO_FILES: Record<string, { file: string; label: string
   '10-7': { file: '10_7.mp3', label: 'Ferroviaria' },
   '10-8': { file: '10_8.mp3', label: 'Otros' },
   '10-9': { file: '10_9.mp3', label: 'Falsa alarma' },
-  '10-10': { file: 'Alarma general 001.mp3', label: 'Apoyo cuerpos' },
-  '10-11': { file: 'tone_10_11.mp3', label: 'Derrumbe' },
-  '10-12': { file: 'Llamado de comandancia 001.mp3', label: 'Apoyo externo' },
 };
 
 /** Ident de marca — suena antes de la clave 10-X en despacho y alarmas */
@@ -198,6 +198,7 @@ export type BotoneraAudioEntry = {
   label: string;
   file: string | null;
   isSubdivision: boolean;
+  isVia?: boolean;
   parentCode?: string;
 };
 
@@ -220,6 +221,17 @@ export function listBotoneraAudioEntries(): BotoneraAudioEntry[] {
         label: sub.shortLabel,
         file: mainFile,
         isSubdivision: true,
+        parentCode: main.code,
+      });
+    }
+    for (const via of main.vias ?? []) {
+      rows.push({
+        id: via.id,
+        code: `${via.code} por ${via.viaCode}`,
+        label: via.shortLabel,
+        file: mainFile,
+        isSubdivision: false,
+        isVia: true,
         parentCode: main.code,
       });
     }
@@ -255,7 +267,7 @@ export function getEmergencySoundPattern(code: string): EmergencyBeep[] {
     { freq: 880, durationMs: 180, wave: 'square' as OscillatorType },
   ];
   const entry = findEmergencyEntry(code);
-  if (entry?.parentCode) {
+  if (entry?.kind === 'subtype' && entry.parentCode) {
     return [...base, ...subdivisionBeeps(code)];
   }
   return base;

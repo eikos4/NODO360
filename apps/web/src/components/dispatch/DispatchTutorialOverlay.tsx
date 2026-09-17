@@ -11,7 +11,7 @@ const TUTORIAL_STEPS: Step[] = [
   {
     targetId: 'step-claves',
     title: '1. Identificar la Emergencia',
-    description: 'Haz clic en una clave de emergencia principal (ej: 10-0 para Fuego o 10-3 para Rescate). Si tiene subdivisiones (indicadas con un círculo amarillo), se desplegarán abajo para mayor precisión.',
+    description: 'Haz clic en una clave 10-0 a 10-9. Abajo aparecen el detalle y las claves que reciclan ese tono (10-10 por 10-0, 10-12 por 10-4, 10-11 por 10-0).',
   },
   {
     targetId: 'step-ubicacion',

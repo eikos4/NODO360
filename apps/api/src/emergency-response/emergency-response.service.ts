@@ -960,8 +960,13 @@ export class EmergencyResponseService {
   }
 
   private parseEmergencyCodeId(incidentType: string): string | null {
-    const head = incidentType.split(' — ')[0]?.trim();
-    if (head && /^10(-\d+)+$/.test(head)) return head;
+    const head = incidentType.split(' — ')[0]?.trim() ?? '';
+    if (/^10(-\d+)+\s+por\s+10(-\d+)+$/i.test(head)) return head;
+    if (/^10-\d+x10-\d+$/i.test(head)) {
+      const [left, right] = head.split(/x/i);
+      return `${left} por ${right}`;
+    }
+    if (/^10(-\d+)+$/.test(head)) return head;
     return null;
   }
 }

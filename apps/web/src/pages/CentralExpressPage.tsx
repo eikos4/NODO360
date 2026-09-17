@@ -12,7 +12,7 @@ import { useAuthStore } from '../store/authStore';
 import { useSimpleDispatch } from '../hooks/useQuickDispatch';
 import { useCentralExpressTheme } from '../hooks/useCentralExpressTheme';
 import type { CentralExpressThemeTokens } from '../lib/central-express-theme';
-import { EMERGENCY_MAIN_TYPES } from '../lib/emergency-codes';
+import { listEmergencyDispatchOptions } from '../lib/emergency-codes';
 import type { CuartelItem } from '../components/botonera/CuartelOverviewPanel';
 import CentralExpressMap from '../components/central-express/CentralExpressMap';
 import CompanyMaquinistaAlert from '../components/dispatch/CompanyMaquinistaAlert';
@@ -350,8 +350,8 @@ export default function CentralExpressPage() {
                 className={`w-full rounded-lg border px-3 py-2 text-sm ${th.select}`}
               >
                 <option value="">— Seleccionar clave —</option>
-                {EMERGENCY_MAIN_TYPES.map((m) => (
-                  <option key={m.id} value={m.id}>{m.code} — {m.label}</option>
+                {listEmergencyDispatchOptions().map((m) => (
+                  <option key={m.id} value={m.id}>{m.label}</option>
                 ))}
               </select>
             </div>
