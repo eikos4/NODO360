@@ -21,12 +21,22 @@ export async function cuerpoIdForUser(
   user: Actor,
 ): Promise<string | null> {
   if (user.cuerpoId) return user.cuerpoId;
-  if (!user.companyId) return null;
-  const company = await prisma.company.findUnique({
-    where: { id: user.companyId },
-    select: { cuerpoId: true },
-  });
-  return company?.cuerpoId ?? null;
+  if (user.companyId) {
+    const company = await prisma.company.findUnique({
+      where: { id: user.companyId },
+      select: { cuerpoId: true },
+    });
+    if (company?.cuerpoId) return company.cuerpoId;
+  }
+  if (isPlatformOwner(user.role, user.roles) || hasAnyRole(user, ...CUERPO_WIDE_ROLES)) {
+    const cuerpos = await prisma.cuerpo.findMany({
+      where: { isActive: true },
+      select: { id: true },
+      take: 2,
+    });
+    if (cuerpos.length === 1) return cuerpos[0].id;
+  }
+  return null;
 }
 
 export async function assertCompanyAccess(

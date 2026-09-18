@@ -4,6 +4,7 @@ import { ExtractJwt, Strategy } from 'passport-jwt';
 import { ConfigService } from '@nestjs/config';
 import { PrismaService } from '../../prisma/prisma.service';
 import { assignedRoles } from '../../common/user-roles';
+import { cuerpoIdForUser } from '../../common/cuerpo-scope';
 
 @Injectable()
 export class JwtStrategy extends PassportStrategy(Strategy) {
@@ -39,14 +40,23 @@ export class JwtStrategy extends PassportStrategy(Strategy) {
       throw new UnauthorizedException('Usuario inactivo o inexistente');
     }
 
+    const roles = assignedRoles(user.role, user.roles);
+    const cuerpoId = user.company?.cuerpoId
+      ?? await cuerpoIdForUser(this.prisma, {
+        id: user.id,
+        role: user.role,
+        roles,
+        companyId: user.companyId,
+      });
+
     return {
       id: user.id,
       sub: user.id,
       email: user.email,
       role: user.role,
-      roles: assignedRoles(user.role, user.roles),
+      roles,
       companyId: user.companyId,
-      cuerpoId: user.company?.cuerpoId ?? null,
+      cuerpoId,
     };
   }
 }

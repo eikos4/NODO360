@@ -44,6 +44,17 @@ export class EmergencyBitacoraController {
     return this.service.closeFromPublic(slug, dto.incidentId);
   }
 
+  /** Informe completo para PDF desde sala de máquinas (PIN o JWT) */
+  @Get('public/:slug/report/:incidentId')
+  async publicReport(
+    @Param('slug') slug: string,
+    @Param('incidentId') incidentId: string,
+    @Req() req: HeaderRequest,
+  ) {
+    await this.dispatch.assertPublicSalaAccess(slug, req);
+    return this.service.getPublicReportPack(slug, incidentId);
+  }
+
   @Get()
   @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles(...READ_ROLES)

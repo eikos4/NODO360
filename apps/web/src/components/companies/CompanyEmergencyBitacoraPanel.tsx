@@ -2,11 +2,12 @@ import { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import {
   BookOpen, Plus, Pencil, Trash2, X, CheckCircle2, MapPin, Calendar,
-  ShieldAlert, Loader2, ChevronDown, ChevronUp,
+  ShieldAlert, Loader2, ChevronDown, ChevronUp, FileDown,
 } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { api } from '../../lib/api';
 import { useAuthStore } from '../../store/authStore';
+import { downloadEmergencyReport } from '../../lib/pdf/downloadEmergencyReport';
 
 type BitacoraEntry = {
   id: string;
@@ -290,20 +291,29 @@ export default function CompanyEmergencyBitacoraPanel({ companyId, companyName }
                     {entry.author && (
                       <p className="text-[10px] text-slate-600">Registrado por {entry.author.firstName} {entry.author.lastName}</p>
                     )}
-                    {canEdit && (
-                      <div className="flex gap-2 pt-1">
+                    <div className="flex gap-2 pt-1">
+                      {entry.incident?.id && (
+                        <button
+                          type="button"
+                          onClick={() => downloadEmergencyReport(entry.incident!.id)}
+                          className="flex items-center gap-1 text-[11px] text-red-300 hover:text-white px-2 py-1 rounded-lg hover:bg-red-950/40"
+                        >
+                          <FileDown className="w-3 h-3" />Informe PDF
+                        </button>
+                      )}
+                      {canEdit && (
                         <button type="button" onClick={() => openEdit(entry)}
                           className="flex items-center gap-1 text-[11px] text-slate-400 hover:text-white px-2 py-1 rounded-lg hover:bg-slate-700">
                           <Pencil className="w-3 h-3" />Editar
                         </button>
-                        {['SUPER_ADMIN', 'COMANDANTE', 'CAPITAN'].includes(user?.role ?? '') && (
-                          <button type="button" onClick={() => { if (confirm('¿Eliminar este registro?')) deleteMut.mutate(entry.id); }}
-                            className="flex items-center gap-1 text-[11px] text-red-400 hover:text-red-300 px-2 py-1 rounded-lg hover:bg-red-950/40">
-                            <Trash2 className="w-3 h-3" />Eliminar
-                          </button>
-                        )}
-                      </div>
-                    )}
+                      )}
+                      {canEdit && ['SUPER_ADMIN', 'COMANDANTE', 'CAPITAN'].includes(user?.role ?? '') && (
+                        <button type="button" onClick={() => { if (confirm('¿Eliminar este registro?')) deleteMut.mutate(entry.id); }}
+                          className="flex items-center gap-1 text-[11px] text-red-400 hover:text-red-300 px-2 py-1 rounded-lg hover:bg-red-950/40">
+                          <Trash2 className="w-3 h-3" />Eliminar
+                        </button>
+                      )}
+                    </div>
                   </div>
                 )}
               </div>

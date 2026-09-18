@@ -130,6 +130,13 @@ export function useQuickDispatch(options: QuickDispatchOptions = {}) {
     queryFn: () => api.get('/vehicles').then((r) => r.data),
   });
 
+  useEffect(() => {
+    if (selectedCia || !companies.length) return;
+    const list = companies as { id: string }[];
+    const preferred = list.find((c) => c.id === user?.companyId);
+    setSelectedCiaState(preferred?.id ?? list[0].id);
+  }, [companies, selectedCia, user?.companyId]);
+
   const company = (companies as { id: string; name: string; number: number; address?: string; city?: string }[])
     .find((c) => c.id === selectedCia);
 

@@ -2,13 +2,13 @@ import { useEffect, useMemo, useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { Link, useSearchParams } from 'react-router-dom';
 import {
-  BookOpen, Clock, Loader2, MapPin, MessageSquarePlus, Radio, Siren,
+  BookOpen, CheckCircle2, Clock, FileDown, Loader2, MapPin, MessageSquarePlus, Radio, Siren,
 } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { api } from '../lib/api';
-import { useAuthStore } from '../store/authStore';
 import { useCentralParralTheme } from '../hooks/useCentralParralTheme';
 import IncidentOperationalTimeline from '../components/dispatch/IncidentOperationalTimeline';
+import { downloadEmergencyReport } from '../lib/pdf/downloadEmergencyReport';
 import {
   INCIDENT_TIMELINE_CRITICAL,
   INCIDENT_TIMELINE_GROUPS,
@@ -61,16 +61,20 @@ function elapsed(iso: string) {
 
 export default function CentralBitacoraPage() {
   const { tokens: th } = useCentralParralTheme();
-  const user = useAuthStore((s) => s.user);
-  const companyId = user?.companyId ?? '';
   const qc = useQueryClient();
   const [params, setParams] = useSearchParams();
   const [note, setNote] = useState('');
+  const [filterCia, setFilterCia] = useState('');
   const [selectedId, setSelectedId] = useState(params.get('incidente') ?? '');
 
+  const { data: companies = [] } = useQuery<{ id: string; number: number; name: string }[]>({
+    queryKey: ['companies'],
+    queryFn: () => api.get('/companies').then((r) => r.data),
+  });
+
   const { data: incidents = [], isLoading } = useQuery<IncidentRow[]>({
-    queryKey: ['incidents', companyId],
-    queryFn: () => api.get('/incidents', { params: companyId ? { companyId } : {} }).then((r) => r.data),
+    queryKey: ['incidents', 'central-bitacora', filterCia],
+    queryFn: () => api.get('/incidents', { params: filterCia ? { companyId: filterCia } : {} }).then((r) => r.data),
     refetchInterval: 10000,
   });
 
@@ -111,6 +115,17 @@ export default function CentralBitacoraPage() {
     onError: (e: any) => toast.error(e.response?.data?.message ?? 'No se pudo registrar'),
   });
 
+  const closeIncident = useMutation({
+    mutationFn: (id: string) => api.post(`/incidents/${id}/close`),
+    onSuccess: async (res, id) => {
+      toast.success('Emergencia cerrada');
+      qc.invalidateQueries({ queryKey: ['incidents'] });
+      qc.invalidateQueries({ queryKey: ['incident-timeline', id] });
+      await downloadEmergencyReport(id, { pack: res.data });
+    },
+    onError: (e: any) => toast.error(e.response?.data?.message ?? 'No se pudo cerrar'),
+  });
+
   const pushKind = (kind: IncidentTimelineKind) => {
     if (!selected) {
       toast.error('Selecciona una emergencia');
@@ -146,7 +161,7 @@ export default function CentralBitacoraPage() {
               Bitácora operacional
             </h1>
             <p className={`text-xs mt-0.5 ${th.subtitle}`}>
-              Línea de tiempo de la emergencia — cada botón queda guardado en el incidente
+              Línea de tiempo de cada emergencia del Cuerpo — despacho y registro en cualquier compañía
             </p>
           </div>
           <div className="flex items-center gap-2">
@@ -165,6 +180,23 @@ export default function CentralBitacoraPage() {
       <div className="flex-1 min-h-0 grid grid-cols-1 lg:grid-cols-[280px_1fr] overflow-hidden">
         <aside className={`border-b lg:border-b-0 lg:border-r overflow-y-auto ${th.borderSubtle} ${th.panelAside}`}>
           <div className="p-3 space-y-4">
+            <section>
+              <label className={`text-[10px] font-bold uppercase tracking-widest mb-1.5 block ${th.sectionLabel}`}>
+                Compañía
+              </label>
+              <select
+                value={filterCia}
+                onChange={(e) => setFilterCia(e.target.value)}
+                className={`w-full rounded-xl border px-3 py-2 text-xs font-semibold ${th.incidentRowIdle}`}
+              >
+                <option value="">Todas las compañías</option>
+                {companies.map((c) => (
+                  <option key={c.id} value={c.id}>
+                    {c.number}ª — {c.name}
+                  </option>
+                ))}
+              </select>
+            </section>
             <section>
               <p className={`text-[10px] font-bold uppercase tracking-widest mb-2 ${th.sectionLabel}`}>
                 Emergencias activas
@@ -197,6 +229,9 @@ export default function CentralBitacoraPage() {
                         </span>
                       </div>
                       <p className={`text-sm font-semibold truncate mt-0.5 ${th.title}`}>{inc.type}</p>
+                      <p className={`text-[10px] font-semibold mt-0.5 ${th.sectionLabel}`}>
+                        {inc.company ? `${inc.company.number}ª ${inc.company.name}` : 'Compañía'}
+                      </p>
                       <p className={`text-[11px] truncate flex items-center gap-1 ${th.subtitle}`}>
                         <MapPin className="w-3 h-3 shrink-0" />
                         {inc.address}
@@ -228,7 +263,7 @@ export default function CentralBitacoraPage() {
                         }`}
                       >
                         <span className="font-bold">{inc.code}</span>
-                        <span className={`ml-2 ${th.subtitle}`}>{inc.type}</span>
+                        <span className={`ml-2 ${th.subtitle}`}>{inc.company ? `${inc.company.number}ª` : ''} {inc.type}</span>
                       </button>
                     );
                   })}
@@ -258,14 +293,46 @@ export default function CentralBitacoraPage() {
                       )}
                     </p>
                     <h2 className={`text-base font-bold ${th.title}`}>{selected.type}</h2>
-                    <p className={`text-xs ${th.subtitle}`}>{selected.address}</p>
+                    <p className={`text-xs ${th.subtitle}`}>
+                      {selected.company ? `${selected.company.number}ª ${selected.company.name} · ` : ''}
+                      {selected.address}
+                    </p>
                   </div>
-                  <Link
-                    to="/incidents"
-                    className={`text-[11px] underline-offset-2 hover:underline ${th.linkMuted}`}
-                  >
-                    Ver ficha de emergencia
-                  </Link>
+                  <div className="flex flex-col items-end gap-2">
+                    {selected.closedAt && (
+                      <span className="px-1.5 py-0.5 rounded bg-slate-600 text-white text-[9px] uppercase tracking-wider">
+                        Cerrada
+                      </span>
+                    )}
+                    <button
+                      type="button"
+                      onClick={() => downloadEmergencyReport(selected.id)}
+                      className="inline-flex items-center gap-1.5 text-[11px] font-bold px-3 py-1.5 rounded-lg bg-red-600 keep-on-color text-white hover:bg-red-500"
+                    >
+                      <FileDown className="w-3.5 h-3.5" />
+                      {selected.closedAt ? 'Informe PDF' : 'Exportar PDF'}
+                    </button>
+                    {!selected.closedAt && (
+                      <button
+                        type="button"
+                        disabled={closeIncident.isPending}
+                        onClick={() => {
+                          if (!confirm(`¿Cerrar ${selected.code} y generar el informe PDF?`)) return;
+                          closeIncident.mutate(selected.id);
+                        }}
+                        className="inline-flex items-center gap-1.5 text-[11px] font-bold px-3 py-1.5 rounded-lg bg-emerald-600 keep-on-color text-white hover:bg-emerald-500 disabled:opacity-50"
+                      >
+                        {closeIncident.isPending ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <CheckCircle2 className="w-3.5 h-3.5" />}
+                        Cerrar e informar
+                      </button>
+                    )}
+                    <Link
+                      to="/incidents"
+                      className={`text-[11px] underline-offset-2 hover:underline ${th.linkMuted}`}
+                    >
+                      Ver ficha de emergencia
+                    </Link>
+                  </div>
                 </div>
               </div>
 

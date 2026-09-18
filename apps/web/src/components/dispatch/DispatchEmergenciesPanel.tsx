@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Siren, MapPin, Clock, Radio, BookOpen, CheckCircle2, AlertTriangle, Navigation } from 'lucide-react';
+import { Siren, MapPin, Clock, Radio, BookOpen, CheckCircle2, AlertTriangle, Navigation, FileDown } from 'lucide-react';
 import EmergencyLocationUpdater from './EmergencyLocationUpdater';
 import PublicOsmMap, { PARRAL_CENTER } from '../map/PublicOsmMap';
 import PublicEmergencySummaryModal, { type EmergencyOpen } from './PublicEmergencySummaryModal';
@@ -60,6 +60,7 @@ type Props = {
   pendingBitacoraIds?: string[];
   highlightEmergencyId?: string | null;
   onCompleteBitacora?: (emergency: PublicEmergency) => void;
+  onDownloadPdf?: (emergency: PublicEmergency) => void;
   theme?: 'light' | 'dark';
 };
 
@@ -102,6 +103,7 @@ export default function DispatchEmergenciesPanel({
   pendingBitacoraIds = [],
   highlightEmergencyId,
   onCompleteBitacora,
+  onDownloadPdf,
   theme = 'dark',
 }: Props) {
   const s = PANEL_STYLES[theme];
@@ -238,6 +240,16 @@ export default function DispatchEmergenciesPanel({
                   Registro guardado en perfil de compañía
                 </p>
               )}
+              {e.status !== 'ACTIVA' && onDownloadPdf && (
+                <button
+                  type="button"
+                  onClick={(ev) => { ev.stopPropagation(); onDownloadPdf(e); }}
+                  className="w-full flex items-center justify-center gap-1.5 mt-1.5 px-3 py-2 rounded-xl bg-red-600 hover:bg-red-500 keep-on-color !text-white text-[11px] font-bold transition-colors"
+                >
+                  <FileDown className="w-3.5 h-3.5" />
+                  Informe PDF
+                </button>
+              )}
 
               <p className={`text-[10px] font-semibold mt-2 ${theme === 'dark' ? 'text-sky-300' : 'text-blue-600'}`}>
                 Ver resumen
@@ -273,6 +285,7 @@ export default function DispatchEmergenciesPanel({
         emergencies={emergencies}
         onClose={() => setSummaryOpen(null)}
         onSelect={setSummaryOpen}
+        onDownloadPdf={onDownloadPdf}
         dark={theme === 'dark'}
       />
     </div>

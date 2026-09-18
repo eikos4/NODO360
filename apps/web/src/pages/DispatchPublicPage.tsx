@@ -31,6 +31,7 @@ import {
 } from '../lib/dispatch-public-theme';
 import SalaNightAtmosphere from '../components/companies/SalaNightAtmosphere';
 import { clearSalaToken, readSalaToken, salaAuthHeaders, writeSalaToken } from '../lib/sala-auth';
+import { downloadEmergencyReport } from '../lib/pdf/downloadEmergencyReport';
 
 const DISMISSED_KEY = 'nodo360_public_emergency_dismissed';
 const AUDIO_KEY = 'nodo360_public_audio_enabled';
@@ -557,8 +558,6 @@ export default function DispatchPublicPage() {
       const next = removePendingBitacora(bitacoraEmergency.id);
       setPendingBitacoraIds(next);
     }
-    setShowBitacoraModal(false);
-    setBitacoraEmergency(null);
     load();
   };
 
@@ -924,7 +923,10 @@ export default function DispatchPublicPage() {
         emergency={bitacoraEmergency}
         apiBase={apiBase}
         requestHeaders={slug ? salaAuthHeaders(slug) : { 'Content-Type': 'application/json' }}
-        onClose={() => setShowBitacoraModal(false)}
+        onClose={() => {
+          setShowBitacoraModal(false);
+          setBitacoraEmergency(null);
+        }}
         onOmit={handleBitacoraOmit}
         onSaved={handleBitacoraSaved}
       />
@@ -1026,6 +1028,10 @@ export default function DispatchPublicPage() {
           night={night}
           look={look}
           requestHeaders={slug ? salaAuthHeaders(slug) : undefined}
+          onDownloadPdf={(emergency) => {
+            if (!slug) return;
+            void downloadEmergencyReport(emergency.id, { slug });
+          }}
         />
       ) : (
         <>
@@ -1362,6 +1368,10 @@ export default function DispatchPublicPage() {
               pendingBitacoraIds={pendingBitacoraIds}
               highlightEmergencyId={highlightEmergencyId}
               onCompleteBitacora={openBitacoraForEmergency}
+              onDownloadPdf={(emergency) => {
+                if (!slug) return;
+                void downloadEmergencyReport(emergency.id, { slug });
+              }}
               theme={darkChrome ? 'dark' : 'light'}
             />
           </div>

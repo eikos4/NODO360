@@ -1,4 +1,4 @@
-import { Clock, MapPin, Radio, Siren, Truck, Users, X, CheckCircle2 } from 'lucide-react';
+import { Clock, MapPin, Radio, Siren, Truck, Users, X, CheckCircle2, FileDown } from 'lucide-react';
 import type { PublicEmergency } from './DispatchEmergenciesPanel';
 
 export type EmergencyOpen = PublicEmergency | 'all' | null;
@@ -31,10 +31,11 @@ type Props = {
   emergencies: PublicEmergency[];
   onClose: () => void;
   onSelect: (item: PublicEmergency | 'all') => void;
+  onDownloadPdf?: (emergency: PublicEmergency) => void;
   dark?: boolean;
 };
 
-export default function PublicEmergencySummaryModal({ open, emergencies, onClose, onSelect, dark }: Props) {
+export default function PublicEmergencySummaryModal({ open, emergencies, onClose, onSelect, onDownloadPdf, dark }: Props) {
   if (!open) return null;
 
   const card = dark
@@ -102,7 +103,16 @@ export default function PublicEmergencySummaryModal({ open, emergencies, onClose
             })}
           </div>
         ) : (
-          <EmergencyDetail emergency={open} dark={dark} muted={muted} title={title} onBack={() => onSelect('all')} onClose={onClose} closeBtn={closeBtn} />
+          <EmergencyDetail
+            emergency={open}
+            dark={dark}
+            muted={muted}
+            title={title}
+            onBack={() => onSelect('all')}
+            onClose={onClose}
+            onDownloadPdf={onDownloadPdf}
+            closeBtn={closeBtn}
+          />
         )}
       </div>
     </div>
@@ -116,6 +126,7 @@ function EmergencyDetail({
   title,
   onBack,
   onClose,
+  onDownloadPdf,
   closeBtn,
 }: {
   emergency: PublicEmergency;
@@ -124,6 +135,7 @@ function EmergencyDetail({
   title: string;
   onBack: () => void;
   onClose: () => void;
+  onDownloadPdf?: (emergency: PublicEmergency) => void;
   closeBtn: string;
 }) {
   const active = e.status === 'ACTIVA';
@@ -182,6 +194,16 @@ function EmergencyDetail({
       </div>
 
       <div className="flex gap-2 pt-1">
+        {onDownloadPdf && (
+          <button
+            type="button"
+            onClick={() => onDownloadPdf(e)}
+            className="flex-1 flex items-center justify-center gap-1.5 py-2.5 rounded-xl text-sm font-semibold bg-red-600 keep-on-color text-white hover:bg-red-500"
+          >
+            <FileDown className="w-4 h-4" />
+            Informe PDF
+          </button>
+        )}
         <button type="button" onClick={onBack} className={`flex-1 py-2.5 rounded-xl text-sm font-semibold ${dark ? 'bg-white/10 text-white hover:bg-white/15' : 'bg-slate-100 text-slate-700 hover:bg-slate-200'}`}>
           Ver todas
         </button>

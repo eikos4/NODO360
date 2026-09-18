@@ -4,13 +4,11 @@ import { PrismaService } from '../prisma/prisma.service';
 import { IncidentAuthUser, IncidentsService } from '../incidents/incidents.service';
 import { CreateIncidentTimelineEventDto } from './dto/create-incident-timeline-event.dto';
 import { INCIDENT_TIMELINE_LABELS } from './incident-timeline.kinds';
+import { hasAnyRole } from '../common/user-roles';
 
 const INCLUDE = {
   author: { select: { id: true, firstName: true, lastName: true, role: true } },
 } satisfies Prisma.IncidentTimelineEventInclude;
-
-const WRITE_ROLES = new Set(['SUPER_ADMIN', 'COMANDANTE', 'CAPITAN', 'SECRETARIO', 'OPERADOR_CENTRAL']);
-const DELETE_ANY_ROLES = new Set(['SUPER_ADMIN', 'COMANDANTE', 'CAPITAN']);
 
 @Injectable()
 export class IncidentTimelineService {
@@ -29,7 +27,7 @@ export class IncidentTimelineService {
   }
 
   async create(dto: CreateIncidentTimelineEventDto, user: IncidentAuthUser) {
-    if (!WRITE_ROLES.has(user.role)) {
+    if (!hasAnyRole(user, 'SUPER_ADMIN', 'COMANDANTE', 'CAPITAN', 'SECRETARIO', 'OPERADOR_CENTRAL')) {
       throw new ForbiddenException('No puede registrar en la bitácora operacional');
     }
     await this.incidents.assertCanManage(dto.incidentId, user);
@@ -71,7 +69,7 @@ export class IncidentTimelineService {
 
     await this.incidents.assertCanManage(row.incidentId, user);
 
-    const canDeleteAny = DELETE_ANY_ROLES.has(user.role);
+    const canDeleteAny = hasAnyRole(user, 'SUPER_ADMIN', 'COMANDANTE', 'CAPITAN', 'OPERADOR_CENTRAL');
     const isAuthor = row.authorId === user.id;
     if (!canDeleteAny && !isAuthor) {
       throw new ForbiddenException('Solo puede borrar sus propios registros');

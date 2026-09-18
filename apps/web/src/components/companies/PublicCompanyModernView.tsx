@@ -113,6 +113,7 @@ interface Props {
   night?: boolean;
   look?: 'light' | 'nodo' | 'verde' | 'azul' | 'night' | 'salida' | 'comando';
   requestHeaders?: Record<string, string>;
+  onDownloadPdf?: (emergency: PublicEmergency) => void;
 }
 
 function LiveClock({ night, nodo, verde, azul }: { night?: boolean; nodo?: boolean; verde?: boolean; azul?: boolean }) {
@@ -204,7 +205,7 @@ function StatCard({ icon: Icon, value, label, subtext, colorClass, isAlert = fal
   );
 }
 
-export default function PublicCompanyModernView({ data, onToggleMember, onToggleMaquinista, onToggleByNumber, togglingId, onEmergency, padActive, night, look, requestHeaders }: Props) {
+export default function PublicCompanyModernView({ data, onToggleMember, onToggleMaquinista, onToggleByNumber, togglingId, onEmergency, padActive, night, look, requestHeaders, onDownloadPdf }: Props) {
   const isNodo = look === 'nodo';
   const isVerde = look === 'verde';
   const isAzul = look === 'azul';
@@ -814,6 +815,7 @@ export default function PublicCompanyModernView({ data, onToggleMember, onToggle
         emergencies={data.recentEmergencies}
         onClose={() => setEmergencyOpen(null)}
         onSelect={setEmergencyOpen}
+        onDownloadPdf={onDownloadPdf}
         dark={Boolean(night || inkDark)}
       />
 

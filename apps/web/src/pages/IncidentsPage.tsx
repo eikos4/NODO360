@@ -16,6 +16,7 @@ import toast from 'react-hot-toast';
 import { createElement } from 'react';
 import { IncidentsReport } from '../lib/pdf/IncidentsReport';
 import { downloadPdf } from '../lib/pdf/usePdfDownload';
+import { downloadEmergencyReport } from '../lib/pdf/downloadEmergencyReport';
 
 const INCIDENT_TYPES = [
   'Incendio Estructural','Incendio Vehicular','Incendio Forestal','Rescate Vehicular',
@@ -113,7 +114,16 @@ export default function IncidentsPage() {
     },
     onError: (e: any) => toast.error(e.response?.data?.message ?? 'Error'),
   });
-  const update = useMutation({ mutationFn: ({ id, d }: any) => api.put(`/incidents/${id}`, d), onSuccess: () => { qc.invalidateQueries({ queryKey: ['incidents'] }); toast.success('Actualizado'); reset(); }, onError: (e: any) => toast.error(e.response?.data?.message ?? 'Error') });
+  const update = useMutation({
+    mutationFn: ({ id, d }: any) => api.put(`/incidents/${id}`, d),
+    onSuccess: async (_res, { id, d }) => {
+      qc.invalidateQueries({ queryKey: ['incidents'] });
+      toast.success('Actualizado');
+      reset();
+      if (d?.closedAt) await downloadEmergencyReport(id);
+    },
+    onError: (e: any) => toast.error(e.response?.data?.message ?? 'Error'),
+  });
   const remove = useMutation({ mutationFn: (id: string) => api.delete(`/incidents/${id}`), onSuccess: () => { qc.invalidateQueries({ queryKey: ['incidents'] }); toast.success('Eliminado'); setSelected(null); }, onError: () => toast.error('Error al eliminar') });
   const updateChecklist = useMutation({
     mutationFn: ({ id, items }: { id: string; items: { id: string; checked?: boolean; notes?: string }[] }) =>
@@ -563,7 +573,14 @@ export default function IncidentsPage() {
                     </div>
                     <div className="flex flex-col items-end gap-2">
                       <button onClick={() => setSelected(null)} className="p-1.5 bg-white dark:bg-slate-800 hover:bg-slate-100 dark:hover:bg-slate-700 text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white rounded-lg transition-colors border border-slate-200 dark:border-slate-700 shadow-sm"><X className="w-4 h-4" /></button>
-                      {dur && <span className="text-[10px] font-mono text-slate-600 dark:text-slate-400 mt-2 bg-slate-50 dark:bg-slate-900 px-2 py-1 rounded border border-slate-200 dark:border-slate-800"><Timer className="w-3 h-3 inline mr-1" />{dur}</span>}
+                      <button
+                        type="button"
+                        onClick={() => downloadEmergencyReport(selected.id)}
+                        className="inline-flex items-center gap-1 text-[10px] font-bold uppercase tracking-wide px-2 py-1 rounded-lg bg-red-600 keep-on-color text-white hover:bg-red-500"
+                      >
+                        <FileDown className="w-3 h-3" /> PDF
+                      </button>
+                      {dur && <span className="text-[10px] font-mono text-slate-600 dark:text-slate-400 bg-slate-50 dark:bg-slate-900 px-2 py-1 rounded border border-slate-200 dark:border-slate-800"><Timer className="w-3 h-3 inline mr-1" />{dur}</span>}
                     </div>
                   </div>
                 </div>
@@ -758,8 +775,15 @@ export default function IncidentsPage() {
 
               {/* Acciones */}
               <div className="flex gap-3 pt-3 border-t border-slate-200 dark:border-slate-800/80">
+                <button
+                  type="button"
+                  onClick={() => downloadEmergencyReport(selected.id)}
+                  className="flex-1 flex items-center justify-center gap-2 bg-red-600 hover:bg-red-500 keep-on-color text-white text-sm font-bold py-3 rounded-xl transition-colors shadow-sm"
+                >
+                  <FileDown className="w-4 h-4" /> {selected.closedAt ? 'Informe PDF' : 'Exportar PDF'}
+                </button>
                 <button onClick={() => handleEdit(selected)}
-                  className="flex-1 flex items-center justify-center gap-2 bg-white dark:bg-slate-800 hover:bg-slate-100 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 text-sm font-bold py-3 rounded-xl transition-colors border border-slate-300 dark:border-slate-700 shadow-sm">
+                  className="flex items-center justify-center gap-2 bg-white dark:bg-slate-800 hover:bg-slate-100 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 text-sm font-bold px-4 py-3 rounded-xl transition-colors border border-slate-300 dark:border-slate-700 shadow-sm">
                   <Pencil className="w-4 h-4" /> Editar
                 </button>
                 <button onClick={() => { if (confirm(`¿Eliminar ${selected.code}?`)) remove.mutate(selected.id); }}

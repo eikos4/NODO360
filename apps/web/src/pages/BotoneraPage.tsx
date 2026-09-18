@@ -362,6 +362,12 @@ export default function BotoneraPage() {
   const { data: vehicles } = useQuery({ queryKey: ['vehicles'], queryFn: () => api.get('/vehicles').then(r => r.data) });
   const { data: users } = useQuery({ queryKey: ['users'], queryFn: () => api.get('/users').then(r => r.data) });
 
+  useEffect(() => {
+    if (selectedCia || !companies?.length) return;
+    const preferred = companies.find((c: { id: string }) => c.id === user?.companyId);
+    setSelectedCia(preferred?.id ?? companies[0].id);
+  }, [companies, selectedCia, user?.companyId]);
+
   const { data: dispatchConfig, refetch: refetchDispatch } = useQuery({
     queryKey: ['dispatch-central-config', selectedCia],
     queryFn: () => api.get('/dispatch/central/config', { params: { companyId: selectedCia } }).then(r => r.data),

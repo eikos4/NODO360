@@ -3,9 +3,10 @@ import { RolesGuard } from '../auth/guards/roles.guard';
 import { EmergencyBitacoraController } from './emergency-bitacora.controller';
 import { EmergencyBitacoraService } from './emergency-bitacora.service';
 import { DispatchCentralModule } from '../dispatch-central/dispatch-central.module';
+import { IncidentsModule } from '../incidents/incidents.module';
 
 @Module({
-  imports: [DispatchCentralModule],
+  imports: [DispatchCentralModule, IncidentsModule],
   controllers: [EmergencyBitacoraController],
   providers: [EmergencyBitacoraService, RolesGuard],
   exports: [EmergencyBitacoraService],

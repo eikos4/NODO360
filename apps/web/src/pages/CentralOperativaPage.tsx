@@ -3,7 +3,7 @@ import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { Link } from 'react-router-dom';
 import {
   Siren, Users, Truck, RefreshCw, Radio, MapPin, Clock,
-  ExternalLink, AlertTriangle, CheckCircle2, Flame, Moon, Sun, BookOpen, Layers,
+  ExternalLink, AlertTriangle, CheckCircle2, Flame, Moon, Sun, BookOpen, Layers, FileDown,
 } from 'lucide-react';
 import { api } from '../lib/api';
 import { useAuthStore } from '../store/authStore';
@@ -13,6 +13,7 @@ import PublicEmergencyBanner from '../components/dispatch/PublicEmergencyBanner'
 import RadioPttPanel from '../components/radio/RadioPttPanel';
 import PublicOsmMap, { PARRAL_CENTER, type OsmBaseStyle } from '../components/map/PublicOsmMap';
 import { useEmergencyLiveSocket } from '../hooks/useEmergencyLiveSocket';
+import { downloadEmergencyReport } from '../lib/pdf/downloadEmergencyReport';
 
 const POLL_MS = 10_000;
 const apiBase = import.meta.env.VITE_API_URL?.replace(/\/$/, '') || '/api';
@@ -83,7 +84,6 @@ export default function CentralOperativaPage() {
   const token = useAuthStore((s) => s.token);
   const qc = useQueryClient();
   const { tokens: th, toggleTheme, isDark } = useCentralParralTheme();
-  const companyId = user?.companyId ?? '';
   const [dismissedBannerId, setDismissedBannerId] = useState<string | null>(null);
   const [focusId, setFocusId] = useState<string | null>(null);
   const [mapStyle, setMapStyle] = useState<OsmBaseStyle>(isDark ? 'dark' : 'osm');
@@ -92,10 +92,16 @@ export default function CentralOperativaPage() {
     setMapStyle(isDark ? 'dark' : 'osm');
   }, [isDark]);
 
+  const { data: companies = [] } = useQuery<{ id: string; dispatchSlug?: string }[]>({
+    queryKey: ['companies'],
+    queryFn: () => api.get('/companies').then((r) => r.data),
+  });
+  const homeCompanyId = user?.companyId || companies[0]?.id || '';
+
   const { data: config } = useQuery({
-    queryKey: ['dispatch-config', companyId],
-    queryFn: () => api.get('/dispatch/central/config', { params: { companyId } }).then((r) => r.data),
-    enabled: !!companyId,
+    queryKey: ['dispatch-config', homeCompanyId],
+    queryFn: () => api.get('/dispatch/central/config', { params: { companyId: homeCompanyId } }).then((r) => r.data),
+    enabled: !!homeCompanyId,
   });
 
   const slug = config?.dispatchSlug as string | undefined;
@@ -119,14 +125,13 @@ export default function CentralOperativaPage() {
     slug,
     onEvent: () => {
       void refetch();
-      void qc.invalidateQueries({ queryKey: ['incidents', companyId] });
+      void qc.invalidateQueries({ queryKey: ['incidents'] });
     },
   });
 
   const { data: incidents = [] } = useQuery({
-    queryKey: ['incidents', companyId],
-    queryFn: () => api.get('/incidents', { params: { companyId } }).then((r) => r.data),
-    enabled: !!companyId,
+    queryKey: ['incidents', 'central-operativa'],
+    queryFn: () => api.get('/incidents').then((r) => r.data),
     refetchInterval: POLL_MS,
   });
 
@@ -136,11 +141,11 @@ export default function CentralOperativaPage() {
   );
 
   const mapEmergencies = useMemo(() => {
-    if (live?.recentEmergencies?.length) return live.recentEmergencies;
-    return (incidents as Parameters<typeof mapIncidentToPublic>[0][])
+    const fromAll = (incidents as Parameters<typeof mapIncidentToPublic>[0][])
       .map(mapIncidentToPublic)
-      .filter((e): e is PublicEmergency => e != null)
-      .slice(0, 8);
+      .filter((e): e is PublicEmergency => e != null);
+    if (fromAll.length) return fromAll.slice(0, 24);
+    return live?.recentEmergencies ?? [];
   }, [live, incidents]);
 
   const activeForBanner = mapEmergencies.find((e) => e.status === 'ACTIVA' && e.id !== dismissedBannerId) ?? null;
@@ -387,6 +392,18 @@ export default function CentralOperativaPage() {
                       <p className={`relative z-10 text-[10px] mt-2 ${th.subtitle}`}>
                         {new Date(inc.dispatchedAt).toLocaleString('es-CL')}
                       </p>
+                      {!active && (
+                        <button
+                          type="button"
+                          onClick={(ev) => {
+                            ev.stopPropagation();
+                            void downloadEmergencyReport(inc.id);
+                          }}
+                          className="relative z-10 mt-2 inline-flex items-center gap-1 text-[10px] font-bold uppercase tracking-wide px-2 py-1 rounded-lg bg-red-600 keep-on-color text-white hover:bg-red-500"
+                        >
+                          <FileDown className="w-3 h-3" /> Informe PDF
+                        </button>
+                      )}
                     </button>
                   );
                 })

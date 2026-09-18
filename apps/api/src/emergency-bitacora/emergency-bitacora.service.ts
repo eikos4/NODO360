@@ -5,6 +5,7 @@ import { CreateEmergencyBitacoraDto } from './dto/create-emergency-bitacora.dto'
 import { UpdateEmergencyBitacoraDto } from './dto/update-emergency-bitacora.dto';
 import { FinalizePublicEmergencyDto } from './dto/finalize-public-emergency.dto';
 import { Actor, assertCompanyAccess, companyIdWhere, companyIdsForActor } from '../common/cuerpo-scope';
+import { IncidentsService } from '../incidents/incidents.service';
 
 const INCLUDE = {
   company: { select: { id: true, name: true, number: true } },
@@ -18,7 +19,10 @@ const INCLUDE = {
 
 @Injectable()
 export class EmergencyBitacoraService {
-  constructor(private prisma: PrismaService) {}
+  constructor(
+    private prisma: PrismaService,
+    private incidents: IncidentsService,
+  ) {}
 
   async findAll(params: {
     companyId?: string;
@@ -157,7 +161,13 @@ export class EmergencyBitacoraService {
       }),
     ]);
 
-    return bitacora;
+    const reportPack = await this.incidents.buildReportPack(incident.id);
+    return { ...bitacora, reportPack };
+  }
+
+  async getPublicReportPack(slug: string, incidentId: string) {
+    const { incident } = await this.resolvePublicIncident(slug, incidentId);
+    return this.incidents.buildReportPack(incident.id);
   }
 
   async closeFromPublic(slug: string, incidentId: string) {

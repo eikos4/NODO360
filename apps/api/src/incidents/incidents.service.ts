@@ -188,6 +188,84 @@ export class IncidentsService {
     return this.withChecklistMeta(inc);
   }
 
+  async getReportPack(id: string, user: IncidentAuthUser) {
+    await this.findByIdAuthorized(id, user);
+    return this.buildReportPack(id);
+  }
+
+  async buildReportPack(id: string) {
+    const incident = await this.prisma.incident.findUnique({
+      where: { id },
+      include: {
+        company: {
+          select: {
+            id: true,
+            name: true,
+            number: true,
+            city: true,
+            cuerpo: { select: { name: true } },
+          },
+        },
+        emergencyPlan: {
+          select: { title: true, emergencyType: true, severity: true },
+        },
+        participants: {
+          include: {
+            user: {
+              select: { firstName: true, lastName: true, role: true, operativeNumber: true },
+            },
+          },
+        },
+        vehicles: {
+          include: {
+            vehicle: {
+              select: {
+                patent: true,
+                brand: true,
+                model: true,
+                type: true,
+                company: { select: { number: true, name: true } },
+              },
+            },
+          },
+        },
+        timelineEvents: {
+          include: { author: { select: { firstName: true, lastName: true } } },
+          orderBy: [{ occurredAt: 'asc' }, { createdAt: 'asc' }],
+        },
+        bitacoraEntry: {
+          include: { author: { select: { firstName: true, lastName: true } } },
+        },
+        emergencyResponses: {
+          include: {
+            user: {
+              select: { firstName: true, lastName: true, role: true, operativeNumber: true },
+            },
+          },
+          orderBy: { respondedAt: 'asc' },
+        },
+      },
+    });
+    if (!incident) throw new NotFoundException('Emergencia no encontrada');
+    return this.withChecklistMeta(incident);
+  }
+
+  async close(id: string, user: IncidentAuthUser) {
+    await this.assertCanManage(id, user);
+    const current = await this.prisma.incident.findUnique({
+      where: { id },
+      select: { closedAt: true },
+    });
+    if (!current) throw new NotFoundException('Emergencia no encontrada');
+    if (!current.closedAt) {
+      await this.update(id, {
+        status: 'CLOSED',
+        closedAt: new Date().toISOString(),
+      });
+    }
+    return this.buildReportPack(id);
+  }
+
   private withChecklistMeta(incident: any) {
     const items = (incident.planChecklist as PlanChecklistItem[]) ?? [];
     return {
@@ -594,8 +672,34 @@ export class IncidentsService {
     return this.prisma.incident.delete({ where: { id } });
   }
 
-  async getStats(companyId?: string) {
-    const where = companyId ? { companyId } : {};
+  async getStatsAuthorized(user: IncidentAuthUser, requestedCompanyId?: string) {
+    if (hasAnyRole(user, 'KODESK')) return this.getStats({ companyId: requestedCompanyId });
+    if (requestedCompanyId) {
+      await this.assertCanCreateFor(requestedCompanyId, user);
+      return this.getStats({ companyId: requestedCompanyId });
+    }
+    if (hasAnyRole(user, 'SUPER_ADMIN', 'COMANDANTE', 'OPERADOR_CENTRAL')) {
+      const cuerpoId = await this.actorCuerpoId(user);
+      if (cuerpoId) return this.getStats({ cuerpoId });
+      if (hasAnyRole(user, 'SUPER_ADMIN')) return this.getStats({});
+      if (!user.companyId) throw new ForbiddenException('Usuario sin compañía asignada');
+      return this.getStats({ companyId: user.companyId });
+    }
+    if (!user.companyId) throw new ForbiddenException('Usuario sin compañía asignada');
+    return this.getStats({ companyId: user.companyId });
+  }
+
+  async getStats(filter: { companyId?: string; cuerpoId?: string } = {}) {
+    const where: Prisma.IncidentWhereInput = filter.companyId
+      ? { companyId: filter.companyId }
+      : filter.cuerpoId
+        ? { company: { cuerpoId: filter.cuerpoId } }
+        : {};
+    const userWhere = filter.companyId
+      ? { companyId: filter.companyId }
+      : filter.cuerpoId
+        ? { company: { cuerpoId: filter.cuerpoId } }
+        : {};
     const now = new Date();
     const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
 
@@ -613,7 +717,7 @@ export class IncidentsService {
         take: 100, // calc average of last 100
       }),
       this.prisma.user.findMany({
-        where: { stationAvailable: true, ...(companyId ? { companyId } : {}) },
+        where: { stationAvailable: true, ...userWhere },
         select: { id: true, firstName: true, lastName: true, stationAvailableAt: true, role: true },
         orderBy: { stationAvailableAt: 'asc' },
         take: 5,

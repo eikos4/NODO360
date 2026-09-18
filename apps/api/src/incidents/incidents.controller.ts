@@ -9,7 +9,6 @@ import { CreateIncidentDto } from './dto/create-incident.dto';
 import { UpdateIncidentDto } from './dto/update-incident.dto';
 import { DispatchIncidentDto } from './dto/dispatch-incident.dto';
 import { UpdateIncidentChecklistDto } from './dto/update-incident-checklist.dto';
-import { hasAnyRole } from '../common/user-roles';
 
 @Controller('incidents')
 @UseGuards(JwtAuthGuard, RolesGuard)
@@ -21,16 +20,24 @@ export class IncidentsController {
 
   @Get('stats')
   async getStats(@Req() req: { user: IncidentAuthUser }, @Query('companyId') companyId?: string) {
-    if (!hasAnyRole(req.user, 'SUPER_ADMIN', 'KODESK')) {
-      await this.service.assertCanCreateFor(companyId ?? req.user.companyId ?? '', req.user);
-      return this.service.getStats(companyId ?? req.user.companyId!);
-    }
-    return this.service.getStats(companyId);
+    return this.service.getStatsAuthorized(req.user, companyId);
   }
 
   @Get()
   findAll(@Req() req: { user: IncidentAuthUser }, @Query('companyId') companyId?: string) {
     return this.service.findAllAuthorized(req.user, companyId);
+  }
+
+  @Get(':id/report')
+  @Roles('SUPER_ADMIN', 'COMANDANTE', 'CAPITAN', 'OPERADOR_CENTRAL', 'SECRETARIO', 'KODESK')
+  getReport(@Param('id') id: string, @Req() req: { user: IncidentAuthUser }) {
+    return this.service.getReportPack(id, req.user);
+  }
+
+  @Post(':id/close')
+  @Roles('SUPER_ADMIN', 'COMANDANTE', 'CAPITAN', 'OPERADOR_CENTRAL')
+  async close(@Param('id') id: string, @Req() req: { user: IncidentAuthUser }) {
+    return this.service.close(id, req.user);
   }
 
   @Get(':id')
