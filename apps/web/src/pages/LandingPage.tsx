@@ -149,6 +149,13 @@ function HeroSection() {
               <Play className="w-4 h-4" />
               Ver Plataforma
             </Link>
+            <Link
+              to="/carro"
+              className="inline-flex items-center justify-center gap-2 border border-slate-600 hover:border-slate-400 text-white font-bold px-8 py-3.5 rounded-lg transition-all"
+            >
+              <Truck className="w-4 h-4" />
+              Tablet de carro
+            </Link>
           </div>
 
           <div className="mt-20 flex items-center gap-4">

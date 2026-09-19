@@ -930,6 +930,14 @@ export default function DispatchPublicPage() {
       />
 
       <div className="fixed bottom-6 right-6 z-[100] flex items-center gap-2">
+        <Link
+          to={`/carro/${data.slug}`}
+          className={`${floatBtn} p-3 rounded-full hover:scale-105 transition-all`}
+          title="Tablet de carro"
+          aria-label="Tablet de carro"
+        >
+          <Truck className={`w-5 h-5 ${night ? 'text-amber-300' : isComando ? 'text-red-300' : isNodo || isSalida ? 'text-[#67c8ff]' : isVerde ? 'text-[#1ce783]' : 'text-slate-700'}`} />
+        </Link>
         <button
           type="button"
           onClick={lockSala}

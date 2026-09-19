@@ -33,6 +33,7 @@ export function getAllowedCorsOrigins(): string[] {
       : []),
     'capacitor://localhost',
     'ionic://localhost',
+    'https://localhost',
     'https://nodo360.net',
     'https://www.nodo360.net',
     'https://nodo360-web.onrender.com',

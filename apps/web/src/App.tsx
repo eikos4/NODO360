@@ -47,6 +47,7 @@ import CompanyPublicProfilePage from './pages/CompanyPublicProfilePage';
 import Vision360CuartelesPage from './pages/Vision360CuartelesPage';
 import SuperAdminImplementacionPage from './pages/SuperAdminImplementacionPage';
 import Nodo360AlarmsPage from './pages/Nodo360AlarmsPage';
+import CarroTabletPage from './pages/CarroTabletPage';
 
 function RequireRoles({ roles, children }: { roles: string[]; children: React.ReactNode }) {
   const user = useAuthStore((s) => s.user);
@@ -82,6 +83,11 @@ function PrivateRoute({ children }: { children: React.ReactNode }) {
 }
 
 export default function App() {
+  const location = useLocation();
+  if (import.meta.env.VITE_CARRO_KIOSK === '1' && !location.pathname.startsWith('/carro')) {
+    return <Navigate to="/carro" replace />;
+  }
+
   return (
     <ErrorBoundary>
       <Routes>
@@ -91,6 +97,8 @@ export default function App() {
       <Route path="/central/:slug" element={<DispatchPublicPage />} />
       <Route path="/cuartel/:slug" element={<CompanyPublicProfilePage />} />
       <Route path="/localizar/:token" element={<IncidentLocationPinPage />} />
+      <Route path="/carro" element={<CarroTabletPage />} />
+      <Route path="/carro/:slug" element={<CarroTabletPage />} />
       <Route
         element={
           <PrivateRoute>
