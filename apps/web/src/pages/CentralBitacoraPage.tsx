@@ -8,6 +8,7 @@ import toast from 'react-hot-toast';
 import { api } from '../lib/api';
 import { useCentralParralTheme } from '../hooks/useCentralParralTheme';
 import IncidentOperationalTimeline from '../components/dispatch/IncidentOperationalTimeline';
+import RadioPttPanel from '../components/radio/RadioPttPanel';
 import { downloadEmergencyReport } from '../lib/pdf/downloadEmergencyReport';
 import {
   INCIDENT_TIMELINE_CRITICAL,
@@ -60,7 +61,7 @@ function elapsed(iso: string) {
 }
 
 export default function CentralBitacoraPage() {
-  const { tokens: th } = useCentralParralTheme();
+  const { tokens: th, isDark } = useCentralParralTheme();
   const qc = useQueryClient();
   const [params, setParams] = useSearchParams();
   const [note, setNote] = useState('');
@@ -161,10 +162,14 @@ export default function CentralBitacoraPage() {
               Bitácora operacional
             </h1>
             <p className={`text-xs mt-0.5 ${th.subtitle}`}>
-              Línea de tiempo de cada emergencia del Cuerpo — despacho y registro en cualquier compañía
+              Coordina por radio, registra lo que ocurre y cierra con informe — cualquier compañía del Cuerpo
             </p>
           </div>
           <div className="flex items-center gap-2">
+            <Link to="/bitacora360" className={`text-xs px-3 py-2 rounded-lg ${th.navLink}`}>
+              <BookOpen className="w-3.5 h-3.5 inline mr-1" />
+              Bitácora360
+            </Link>
             <Link to="/central-operativa" className={`text-xs px-3 py-2 rounded-lg ${th.navLink}`}>
               <Radio className="w-3.5 h-3.5 inline mr-1" />
               En vivo
@@ -334,6 +339,17 @@ export default function CentralBitacoraPage() {
                     </Link>
                   </div>
                 </div>
+              </div>
+
+              <div className={`shrink-0 px-4 pt-3 ${selected.closedAt ? 'pb-3 border-b' : ''} ${th.borderSubtle}`}>
+                <RadioPttPanel
+                  incidentId={selected.id}
+                  incidentLabel={`${selected.code} · ${selected.type}`}
+                  enabled
+                  canTalk={!selected.closedAt}
+                  isDark={isDark}
+                  talkHint={selected.closedAt ? 'Solo escucha — emergencia cerrada' : undefined}
+                />
               </div>
 
               {!selected.closedAt && (

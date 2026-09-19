@@ -6,6 +6,7 @@ import {
 import PublicOsmMap, { PARRAL_CENTER, type OsmMarker } from '../map/PublicOsmMap';
 import type { PublicEmergency } from '../dispatch/DispatchEmergenciesPanel';
 import { vehicleTypeAbbrev } from '../../lib/vehicle-types';
+import type { FleetVehicle, PublicCentral } from '../../pages/DispatchPublicPage';
 
 function publicMediaUrl(url?: string | null) {
   if (!url) return null;
@@ -172,18 +173,19 @@ export default function SalaComandoBoard({ data, emergency }: Props) {
     : null;
 
   return (
-    <section className="relative flex min-h-0 flex-1 flex-col overflow-hidden bg-[#050b16] text-white">
-      <div className="pointer-events-none absolute inset-0">
+    <section className="sala-comando relative flex min-h-0 flex-1 flex-col overflow-hidden bg-[#050b16] text-white">
+      <div className="pointer-events-none absolute inset-0 overflow-hidden">
         {heroSrc ? (
           <img
             src={heroSrc}
             alt=""
             onError={() => hero && setBrokenImg((p) => ({ ...p, [hero.id]: true }))}
-            className="absolute right-0 top-0 h-[58%] w-[58%] object-cover object-center opacity-50"
+            className="sala-comando-hero absolute -right-[6%] top-0 h-[78%] w-[68%] object-cover object-[70%_40%]"
           />
         ) : null}
-        <div className="absolute inset-0 bg-gradient-to-r from-[#050b16] via-[#050b16]/92 to-[#050b16]/30" />
-        <div className="absolute inset-0 bg-gradient-to-t from-[#050b16] via-[#050b16]/40 to-[#050b16]/55" />
+        <div className="sala-comando-hero-shade" />
+        <div className="sala-comando-hero-grade" />
+        <div className="sala-comando-hero-vignette" />
       </div>
 
       <div className="relative z-10 flex min-h-0 flex-1 flex-col px-5 pt-4 lg:px-7 lg:pt-5">
@@ -315,22 +317,24 @@ export default function SalaComandoBoard({ data, emergency }: Props) {
                   const src = !brokenImg[v.id] ? publicMediaUrl(v.imageUrl) : null;
                   return (
                     <article key={v.id} className={`overflow-hidden rounded-2xl border bg-[#0b1524]/90 ${ui.ring}`}>
-                      <div className="relative h-[92px] bg-[#081018]">
+                      <div className="relative h-[92px] overflow-hidden bg-[#081018]">
                         {src ? (
                           <img
                             src={src}
                             alt={v.patent}
                             onError={() => setBrokenImg((p) => ({ ...p, [v.id]: true }))}
-                            className="h-full w-full object-cover object-center"
+                            className="h-full w-full object-cover object-center contrast-125 saturate-[1.12] brightness-110"
                           />
                         ) : (
                           <div className="flex h-full items-center justify-center">
                             <Truck className="h-9 w-9 text-white/20" />
                           </div>
                         )}
-                        <div className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/80 to-transparent px-2.5 pb-2 pt-6">
-                          <p className="font-mono text-[15px] font-bold leading-none">{v.patent}</p>
-                          <p className="mt-0.5 text-[10px] uppercase tracking-wide text-white/50">{typeCode(v.type, i)}</p>
+                        <div className="absolute inset-0 bg-gradient-to-t from-[#050b16] via-[#050b16]/35 to-transparent" />
+                        <div className="absolute inset-0 bg-gradient-to-tr from-red-950/45 via-transparent to-amber-300/10" />
+                        <div className="absolute inset-x-0 bottom-0 px-2.5 pb-2 pt-6">
+                          <p className="font-mono text-[15px] font-bold leading-none drop-shadow-[0_1px_8px_rgba(0,0,0,0.85)]">{v.patent}</p>
+                          <p className="mt-0.5 text-[10px] uppercase tracking-wide text-white/70">{typeCode(v.type, i)}</p>
                         </div>
                       </div>
                       <div className="px-2.5 py-2">

@@ -4,7 +4,7 @@ import {
   LayoutDashboard, Building2, Users, Package,
   Truck, FileText, ShieldAlert, Wrench, DollarSign,
   Flame, Bell, ShoppingCart, Zap, Gauge, Network, Siren, Megaphone, Droplets, Shield, HandCoins, Signpost,
-  GraduationCap, Map, BookOpen, ClipboardCheck, Fuel, HeartPulse, PanelLeftClose, PanelLeft, Radio, Globe, Eye, Crown
+  GraduationCap, Map, BookOpen, ClipboardCheck, ClipboardList, Fuel, HeartPulse, PanelLeftClose, PanelLeft, Radio, Globe, Eye, Crown
 } from 'lucide-react';
 import { useAuthStore } from '../../store/authStore';
 import { cn } from '../../lib/utils';
@@ -19,9 +19,10 @@ export type NavItem = { to: string; label: string; icon: React.ElementType; role
 export const navItems: NavItem[] = [
   { to: '/implementacion', label: 'Kodesk Console', icon: Crown, roles: ['KODESK'] },
   { to: '/emergencia-respuesta', label: 'Mi emergencia', icon: Siren, roles: ['SUPER_ADMIN', 'COMANDANTE', 'CAPITAN', 'BOMBERO', 'BOMBERO_HONORARIO', 'BOMBERO_INICIAL', 'BOMBERO_PROFESIONAL', 'ENCARGADO_MATERIAL'] },
-  { to: '/nodo360',    label: 'NODO360',      icon: Zap,             roles: ['ALL'] },
+  { to: '/nodo360',    label: 'NODO360',      icon: Zap,             roles: ['SUPER_ADMIN', 'COMANDANTE', 'CAPITAN', 'OPERADOR_CENTRAL'] },
   { to: '/central-operativa', label: 'Central en vivo', icon: Radio, roles: ['OPERADOR_CENTRAL', 'SUPER_ADMIN', 'COMANDANTE', 'CAPITAN'] },
-  { to: '/central-bitacora', label: 'Bitácora operacional', icon: BookOpen, roles: ['OPERADOR_CENTRAL', 'SUPER_ADMIN', 'COMANDANTE', 'CAPITAN'] },
+  { to: '/bitacora360', label: 'Bitácora360', icon: BookOpen, roles: ['OPERADOR_CENTRAL', 'SUPER_ADMIN', 'COMANDANTE', 'CAPITAN'] },
+  { to: '/central-bitacora/registro', label: 'Bitácora botonera', icon: ClipboardList, roles: ['OPERADOR_CENTRAL', 'SUPER_ADMIN', 'COMANDANTE', 'CAPITAN'] },
   { to: '/despacho360', label: 'Despacho360', icon: Siren, roles: ['SUPER_ADMIN', 'COMANDANTE', 'CAPITAN', 'OPERADOR_CENTRAL'] },
   { to: '/nodo360-alarms', label: 'Nodo360 Alarms', icon: Bell, roles: ['SUPER_ADMIN', 'COMANDANTE', 'CAPITAN', 'OPERADOR_CENTRAL'] },
   { to: '/central-express', label: 'Central Express', icon: Zap, roles: ['SUPER_ADMIN', 'COMANDANTE', 'CAPITAN', 'OPERADOR_CENTRAL'] },

@@ -1,5 +1,5 @@
 import { Link, useLocation, useNavigate } from 'react-router-dom';
-import { Flame, LogOut, Moon, Siren, Map, ShieldAlert, Radio, Sun, Zap, Droplets, Globe, Eye, BookOpen, Bell } from 'lucide-react';
+import { Flame, LogOut, Moon, Siren, Map, ShieldAlert, Radio, Sun, Zap, Droplets, Globe, Eye, BookOpen, Bell, ClipboardList } from 'lucide-react';
 import { useAuthStore } from '../../store/authStore';
 import { useThemeStore } from '../../store/themeStore';
 import { cn } from '../../lib/utils';
@@ -13,7 +13,8 @@ const TABS = [
   { to: '/vision360-cuarteles', label: 'Vision360', icon: Eye },
   { to: '/central-despachos-parral', label: 'Central Parral', icon: Flame },
   { to: '/central-operativa', label: 'En vivo', icon: Radio },
-  { to: '/central-bitacora', label: 'Bitácora', icon: BookOpen },
+  { to: '/bitacora360', label: 'Bitácora360', icon: BookOpen },
+  { to: '/central-bitacora/registro', label: 'Bitácora botonera', icon: ClipboardList },
   { to: '/dispatch/global', label: 'Global', icon: Globe },
   { to: '/operational-map', label: 'Mapa', icon: Map },
   { to: '/hydrants', label: 'Hidrantes', icon: Droplets },

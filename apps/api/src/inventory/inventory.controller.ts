@@ -12,6 +12,7 @@ import { CreateVehicleDto } from './dto/create-vehicle.dto';
 import { UpdateVehicleDto } from './dto/update-vehicle.dto';
 import { StorageService } from '../storage/storage.service';
 import { memoryUpload } from '../storage/upload.interceptor';
+import { Actor } from '../common/cuerpo-scope';
 
 @Controller()
 @UseGuards(JwtAuthGuard, RolesGuard)
@@ -24,15 +25,15 @@ export class InventoryController {
   // ─── Dashboard ────────────────────────────────────────────────────────────
 
   @Get('dashboard/stats')
-  getDashboardStats(@Query('companyId') companyId?: string) {
-    return this.inventoryService.getDashboardStats(companyId);
+  getDashboardStats(@Query('companyId') companyId?: string, @Req() req?: { user: Actor }) {
+    return this.inventoryService.getDashboardStats(req!.user, companyId);
   }
 
   // ─── Alerts ───────────────────────────────────────────────────────────────
 
   @Get('alerts')
-  getAlerts(@Query('companyId') companyId?: string) {
-    return this.inventoryService.getAlerts(companyId);
+  getAlerts(@Query('companyId') companyId?: string, @Req() req?: { user: Actor }) {
+    return this.inventoryService.getAlerts(req!.user, companyId);
   }
 
   // ─── Image Upload ─────────────────────────────────────────────────────────
@@ -61,60 +62,61 @@ export class InventoryController {
   findAllEquipment(
     @Query('companyId') companyId?: string,
     @Query('category') category?: string,
+    @Req() req?: { user: Actor },
   ) {
-    return this.inventoryService.findAllEquipment(companyId, category);
+    return this.inventoryService.findAllEquipment(req!.user, companyId, category);
   }
 
   @Get('equipment/:id')
-  findEquipmentById(@Param('id') id: string) {
-    return this.inventoryService.findEquipmentById(id);
+  findEquipmentById(@Param('id') id: string, @Req() req: { user: Actor }) {
+    return this.inventoryService.findEquipmentById(id, req.user);
   }
 
   @Post('equipment')
   @Roles('SUPER_ADMIN', 'COMANDANTE', 'ENCARGADO_MATERIAL')
-  createEquipment(@Body() dto: CreateEquipmentDto) {
-    return this.inventoryService.createEquipment(dto);
+  createEquipment(@Body() dto: CreateEquipmentDto, @Req() req: { user: Actor }) {
+    return this.inventoryService.createEquipment(dto, req.user);
   }
 
   @Put('equipment/:id')
   @Roles('SUPER_ADMIN', 'COMANDANTE', 'ENCARGADO_MATERIAL')
-  updateEquipment(@Param('id') id: string, @Body() dto: UpdateEquipmentDto) {
-    return this.inventoryService.updateEquipment(id, dto);
+  updateEquipment(@Param('id') id: string, @Body() dto: UpdateEquipmentDto, @Req() req: { user: Actor }) {
+    return this.inventoryService.updateEquipment(id, dto, req.user);
   }
 
   @Delete('equipment/:id')
   @Roles('SUPER_ADMIN', 'ENCARGADO_MATERIAL')
-  deleteEquipment(@Param('id') id: string) {
-    return this.inventoryService.deleteEquipment(id);
+  deleteEquipment(@Param('id') id: string, @Req() req: { user: Actor }) {
+    return this.inventoryService.deleteEquipment(id, req.user);
   }
 
   // ─── Vehicles ─────────────────────────────────────────────────────────────
 
   @Get('vehicles')
-  findAllVehicles(@Query('companyId') companyId?: string) {
-    return this.inventoryService.findAllVehicles(companyId);
+  findAllVehicles(@Query('companyId') companyId?: string, @Req() req?: { user: Actor }) {
+    return this.inventoryService.findAllVehicles(req!.user, companyId);
   }
 
   @Get('vehicles/:id')
-  findVehicleById(@Param('id') id: string) {
-    return this.inventoryService.findVehicleById(id);
+  findVehicleById(@Param('id') id: string, @Req() req: { user: Actor }) {
+    return this.inventoryService.findVehicleById(id, req.user);
   }
 
   @Post('vehicles')
   @Roles('SUPER_ADMIN', 'COMANDANTE', 'ENCARGADO_MATERIAL')
-  createVehicle(@Body() dto: CreateVehicleDto) {
-    return this.inventoryService.createVehicle(dto);
+  createVehicle(@Body() dto: CreateVehicleDto, @Req() req: { user: Actor }) {
+    return this.inventoryService.createVehicle(dto, req.user);
   }
 
   @Put('vehicles/:id')
   @Roles('SUPER_ADMIN', 'COMANDANTE', 'ENCARGADO_MATERIAL')
-  updateVehicle(@Param('id') id: string, @Body() dto: UpdateVehicleDto) {
-    return this.inventoryService.updateVehicle(id, dto);
+  updateVehicle(@Param('id') id: string, @Body() dto: UpdateVehicleDto, @Req() req: { user: Actor }) {
+    return this.inventoryService.updateVehicle(id, dto, req.user);
   }
 
   @Delete('vehicles/:id')
   @Roles('SUPER_ADMIN', 'ENCARGADO_MATERIAL')
-  deleteVehicle(@Param('id') id: string) {
-    return this.inventoryService.deleteVehicle(id);
+  deleteVehicle(@Param('id') id: string, @Req() req: { user: Actor }) {
+    return this.inventoryService.deleteVehicle(id, req.user);
   }
 }

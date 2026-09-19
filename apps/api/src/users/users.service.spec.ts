@@ -25,6 +25,23 @@ function makeService(prisma: Record<string, unknown>) {
 }
 
 describe('UsersService.create', () => {
+  it('rejects a Comandante assigning Super Admin', async () => {
+    const service = makeService({
+      user: { findFirst: vi.fn() },
+    });
+
+    await expect(service.create({
+      rut: '22.222.222-2',
+      firstName: 'Admin',
+      lastName: 'Cuerpo',
+      email: 'admin@cuerpo.cl',
+      password: 'Demo1234!',
+      role: 'SUPER_ADMIN' as never,
+      companyId: 'cia-1',
+    }, { id: 'cmd', role: 'COMANDANTE', companyId: 'cia-1' }))
+      .rejects.toBeInstanceOf(ForbiddenException);
+  });
+
   it('lets Super Admin keep a platform number without a company', async () => {
     const created = { ...bombero, id: 'admin-1', role: 'SUPER_ADMIN', companyId: null, operativeNumber: 666 };
     const prisma = {
@@ -78,18 +95,22 @@ describe('UsersService.remove', () => {
   it('rejects deleting a Kodesk profile', async () => {
     const service = makeService({
       user: { findUnique: vi.fn().mockResolvedValue({ ...bombero, role: 'KODESK' }) },
+      company: { findUnique: vi.fn().mockResolvedValue({ id: 'cia-1', cuerpoId: 'c-1' }) },
+      cuerpo: { findMany: vi.fn().mockResolvedValue([{ id: 'c-1' }]) },
     });
 
-    await expect(service.remove(bombero.id, { id: 'admin', role: 'SUPER_ADMIN' }))
+    await expect(service.remove(bombero.id, { id: 'admin', role: 'SUPER_ADMIN', companyId: 'cia-1' }))
       .rejects.toBeInstanceOf(ForbiddenException);
   });
 
   it('rejects a Super Admin deleting another Super Admin', async () => {
     const service = makeService({
       user: { findUnique: vi.fn().mockResolvedValue({ ...bombero, role: 'SUPER_ADMIN' }) },
+      company: { findUnique: vi.fn().mockResolvedValue({ id: 'cia-1', cuerpoId: 'c-1' }) },
+      cuerpo: { findMany: vi.fn().mockResolvedValue([{ id: 'c-1' }]) },
     });
 
-    await expect(service.remove(bombero.id, { id: 'admin-2', role: 'SUPER_ADMIN' }))
+    await expect(service.remove(bombero.id, { id: 'admin-2', role: 'SUPER_ADMIN', companyId: 'cia-1' }))
       .rejects.toBeInstanceOf(ForbiddenException);
   });
 

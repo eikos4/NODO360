@@ -7,6 +7,7 @@ import {
   AlertTriangle, Link2, FileText, Banknote,
 } from 'lucide-react';
 import { api } from '../lib/api';
+import { safeHref } from '../lib/safe-url';
 import toast from 'react-hot-toast';
 
 type Tab = 'purchases' | 'invoices';
@@ -456,7 +457,7 @@ export default function PurchasesPage() {
                       </div>
                     )}
                     {inv.fileUrl && (
-                      <a href={inv.fileUrl} target="_blank" rel="noopener noreferrer"
+                      <a href={safeHref(inv.fileUrl)} target="_blank" rel="noopener noreferrer"
                         className="flex items-center gap-2 bg-slate-800/60 hover:bg-slate-700/60 rounded-xl px-4 py-3 transition-colors">
                         <FileText className="w-3.5 h-3.5 text-blue-400" />
                         <p className="text-xs text-blue-400 truncate">Ver archivo adjunto</p>

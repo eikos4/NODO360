@@ -742,7 +742,7 @@ function PricingAndAnalyticsSection() {
               <div className="border border-slate-200 rounded-2xl p-5 bg-white flex flex-col hover:border-red-200 transition-colors">
                 <h3 className="font-bold text-slate-900 text-sm mb-2">Compañía</h3>
                 <div className="mb-4">
-                  <span className="text-xl font-black text-slate-900">10.45 UFs</span>
+                  <span className="text-xl font-black text-slate-900">$*UFs</span>
                   <span className="text-[10px] text-slate-500"> /mes</span>
                 </div>
                 <ul className="space-y-3 mb-6 flex-grow">
@@ -760,7 +760,7 @@ function PricingAndAnalyticsSection() {
                 </div>
                 <h3 className="font-bold text-slate-900 text-sm mb-2 mt-2">Cuerpo</h3>
                 <div className="mb-4">
-                  <span className="text-xl font-black text-slate-900">$14 UF</span>
+                  <span className="text-xl font-black text-slate-900">$** UF</span>
                   <span className="text-[10px] text-slate-500"> /mes</span>
                 </div>
                 <ul className="space-y-3 mb-6 flex-grow">

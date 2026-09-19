@@ -3,7 +3,7 @@ import { Truck, Users, Siren, Loader2 } from 'lucide-react';
 import { cn } from '../../lib/utils';
 import { useThemeStore } from '../../store/themeStore';
 import { useCuartelesOverview } from '../../hooks/useCuartelesOverview';
-import type { CuartelItem } from '../botonera/CuartelOverviewPanel';
+import type { CuartelItem } from '../../lib/cuartel';
 
 type Props = {
   compact?: boolean;

@@ -19,6 +19,7 @@ const IMMERSIVE_ROUTES = [
   '/central-despachos',
   '/central-operativa',
   '/central-bitacora',
+  '/bitacora360',
   '/central-despachos-parral',
   '/central-express',
   '/dispatch/global',
@@ -37,12 +38,17 @@ export default function AppLayout() {
   const toggleTheme = useThemeStore((s) => s.toggleTheme);
   const isDark = globalTheme === 'dark';
   const isDespacho360 = location.pathname.startsWith('/despacho360');
+  const isBitacora360 =
+    location.pathname === '/bitacora360' ||
+    location.pathname.startsWith('/bitacora360/') ||
+    location.pathname === '/central-bitacora';
   
   const [showOnboarding, setShowOnboarding] = useState(false);
   const [menuOpen, setMenuOpen] = useState(false);
 
-  const shellBg =
-    isImmersive && globalTheme === 'light'
+  const shellBg = isBitacora360
+    ? 'bg-slate-100'
+    : isImmersive && globalTheme === 'light'
       ? isDespacho360
         ? 'bg-white'
         : 'bg-slate-100'

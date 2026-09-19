@@ -1,6 +1,7 @@
 import { Plus, Trash2, Paperclip, History, ListChecks } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { api } from '../../lib/api';
+import { safeHref } from '../../lib/safe-url';
 
 export type ChecklistItem = { id: string; text: string; required: boolean; order: number };
 
@@ -161,7 +162,7 @@ export function PlanDepthFields({ form, setForm, inputCls, planId, attachments =
             <ul className="mt-2 space-y-1">
               {attachments.map(a => (
                 <li key={a.id} className="flex items-center justify-between gap-2 text-xs bg-slate-50 dark:bg-slate-800 rounded-lg px-3 py-2">
-                  <a href={a.fileUrl} target="_blank" rel="noreferrer" className="text-sky-400 hover:underline truncate">{a.name}</a>
+                  <a href={safeHref(a.fileUrl)} target="_blank" rel="noopener noreferrer" className="text-sky-400 hover:underline truncate">{a.name}</a>
                   <button type="button" onClick={() => deleteAttachment(a.id)} className="text-red-400 shrink-0">
                     <Trash2 className="w-3.5 h-3.5" />
                   </button>

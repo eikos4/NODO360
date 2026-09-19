@@ -419,96 +419,6 @@ html:not(.dark) .sala-modern-verde .qr-plate {
   color: #1ce783 !important;
 }
 
-/* Sala pública · tema azul eléctrico Kodesk */
-.sala-azul,
-.sala-modern-azul {
-  color: #ffffff;
-  background: linear-gradient(155deg, #0918e3 0%, #2a3af0 46%, #050d7a 100%);
-  -webkit-font-smoothing: antialiased;
-}
-.sala-azul,
-.sala-modern-azul,
-.sala-modern-azul * {
-  font-synthesis: none;
-  letter-spacing: normal;
-  text-shadow: none;
-}
-html:not(.dark) .sala-azul .text-slate-800,
-html:not(.dark) .sala-azul .text-slate-900,
-html:not(.dark) .sala-azul .text-slate-700,
-html:not(.dark) .sala-azul h1,
-html:not(.dark) .sala-azul h2 {
-  color: #ffffff !important;
-}
-html:not(.dark) .sala-azul .text-slate-500,
-html:not(.dark) .sala-azul .text-slate-400,
-html:not(.dark) .sala-azul .text-slate-600 {
-  color: rgba(255, 255, 255, 0.75) !important;
-}
-.sala-azul .text-white,
-.sala-modern-azul .text-white,
-html:not(.dark) .sala-azul .text-white,
-html:not(.dark) .sala-modern-azul .text-white,
-html:not(.dark) .sala-azul .keep-on-color,
-html:not(.dark) .sala-azul .keep-on-color *,
-html:not(.dark) .sala-modern-azul .keep-on-color,
-html:not(.dark) .sala-modern-azul .keep-on-color * {
-  color: #ffffff !important;
-}
-.sala-modern-azul header.bg-white,
-.sala-modern-azul .bg-white {
-  background-color: rgba(7, 18, 184, 0.42) !important;
-  border-color: rgba(255, 255, 255, 0.22) !important;
-}
-.sala-modern-azul .text-slate-800,
-.sala-modern-azul .text-slate-900,
-.sala-modern-azul h1,
-.sala-modern-azul h2,
-.sala-modern-azul h3,
-.sala-modern-azul h4,
-html:not(.dark) .sala-modern-azul .text-slate-800,
-html:not(.dark) .sala-modern-azul .text-slate-900,
-html:not(.dark) .sala-modern-azul h1,
-html:not(.dark) .sala-modern-azul h2,
-html:not(.dark) .sala-modern-azul h3,
-html:not(.dark) .sala-modern-azul h4 {
-  color: #ffffff !important;
-}
-.sala-modern-azul .text-slate-700,
-.sala-modern-azul .text-slate-600,
-.sala-modern-azul .text-slate-500,
-.sala-modern-azul .text-slate-400,
-html:not(.dark) .sala-modern-azul .text-slate-700,
-html:not(.dark) .sala-modern-azul .text-slate-600,
-html:not(.dark) .sala-modern-azul .text-slate-500,
-html:not(.dark) .sala-modern-azul .text-slate-400 {
-  color: rgba(255, 255, 255, 0.75) !important;
-}
-.sala-modern-azul .border-slate-200,
-.sala-modern-azul .border-slate-200\/60,
-.sala-modern-azul .border-slate-100,
-.sala-modern-azul .border-slate-50 {
-  border-color: rgba(255, 255, 255, 0.2) !important;
-}
-.sala-modern-azul .bg-slate-50,
-.sala-modern-azul .bg-slate-100 {
-  background-color: rgba(255, 255, 255, 0.12) !important;
-}
-.sala-modern-azul .text-blue-600 {
-  color: #ffffff !important;
-}
-.sala-modern-azul .fleet-photo,
-html:not(.dark) .sala-modern-azul .fleet-photo {
-  background: #e8eef4 !important;
-}
-.sala-modern-azul .qr-plate {
-  background: #ffffff !important;
-}
-.sala-modern-azul .nodo-on-color,
-.sala-modern-azul .nodo-on-color * {
-  color: #ffffff !important;
-}
-
 .osm-pin-wrap {
   position: relative;
   width: 28px;
@@ -839,8 +749,13 @@ html:not(.dark) .sala-public .keep-on-color *,
 html:not(.dark) .sala-salida .text-white,
 html:not(.dark) .sala-salida .keep-on-color,
 html:not(.dark) .sala-salida .keep-on-color *,
+html:not(.dark) .sala-comando .text-white,
+html:not(.dark) .sala-comando .keep-on-color,
+html:not(.dark) .sala-comando .keep-on-color *,
 .sala-salida .text-white,
-.sala-salida .keep-on-color {
+.sala-salida .keep-on-color,
+.sala-comando .text-white,
+.sala-comando .keep-on-color {
   color: #ffffff !important;
 }
 
@@ -1128,6 +1043,51 @@ html:not(.dark) .sala-guardia .text-slate-600 {
   50% { transform: rotate(10deg); }
 }
 
+.sala-comando-hero {
+  opacity: 0.88;
+  filter: contrast(1.22) saturate(1.18) brightness(1.08);
+  transform-origin: 72% 38%;
+  animation: sala-comando-kenburns 38s ease-in-out infinite alternate;
+  will-change: transform;
+  -webkit-mask-image:
+    linear-gradient(to left, #000 38%, transparent 96%),
+    linear-gradient(to bottom, #000 52%, transparent 100%);
+  mask-image:
+    linear-gradient(to left, #000 38%, transparent 96%),
+    linear-gradient(to bottom, #000 52%, transparent 100%);
+  -webkit-mask-composite: source-in;
+  mask-composite: intersect;
+}
+
+.sala-comando-hero-shade {
+  position: absolute;
+  inset: 0;
+  background:
+    linear-gradient(to right, #050b16 0%, #050b16 28%, rgba(5, 11, 22, 0.72) 48%, rgba(5, 11, 22, 0.18) 72%, transparent 100%),
+    linear-gradient(to top, #050b16 0%, rgba(5, 11, 22, 0.55) 28%, transparent 62%, rgba(5, 11, 22, 0.42) 100%);
+}
+
+.sala-comando-hero-grade {
+  position: absolute;
+  inset: 0;
+  background:
+    radial-gradient(ellipse 58% 52% at 84% 18%, rgba(220, 38, 38, 0.32), transparent 64%),
+    radial-gradient(ellipse 36% 30% at 90% 6%, rgba(251, 191, 36, 0.14), transparent 52%),
+    linear-gradient(115deg, transparent 46%, rgba(12, 24, 40, 0.22) 100%);
+  mix-blend-mode: soft-light;
+}
+
+.sala-comando-hero-vignette {
+  position: absolute;
+  inset: 0;
+  background: radial-gradient(ellipse at 78% 22%, transparent 22%, rgba(5, 11, 22, 0.42) 78%);
+}
+
+@keyframes sala-comando-kenburns {
+  0% { transform: scale(1.06) translate3d(0, 0, 0); }
+  100% { transform: scale(1.18) translate3d(-2.4%, -1.6%, 0); }
+}
+
 @media (prefers-reduced-motion: reduce) {
   .sala-salida-siren-sweep,
   .sala-salida-frame,
@@ -1139,10 +1099,12 @@ html:not(.dark) .sala-guardia .text-slate-600 {
   .sala-salida-overlay,
   .sala-salida-ring,
   .sala-salida-siren-icon,
-  .sala-salida-hero-move {
+  .sala-salida-hero-move,
+  .sala-comando-hero {
     animation: none !important;
   }
-  .sala-salida-hero-move {
+  .sala-salida-hero-move,
+  .sala-comando-hero {
     transform: scale(1.06);
   }
   .sala-salida-overlay {

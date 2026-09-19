@@ -19,13 +19,18 @@ function wwwTwin(origin: string): string | null {
 }
 
 export function getAllowedCorsOrigins(): string[] {
+  const allowLocal = process.env.NODE_ENV !== 'production' || process.env.ALLOW_LOCAL_CORS === '1';
   const origins = new Set<string>([
-    'http://localhost:5173',
-    'http://localhost:5174',
-    'http://localhost:5175',
-    'http://localhost:5176',
-    'http://localhost',
-    'https://localhost',
+    ...(allowLocal
+      ? [
+          'http://localhost:5173',
+          'http://localhost:5174',
+          'http://localhost:5175',
+          'http://localhost:5176',
+          'http://localhost',
+          'https://localhost',
+        ]
+      : []),
     'capacitor://localhost',
     'ionic://localhost',
     'https://nodo360.net',

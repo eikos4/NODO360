@@ -1,9 +1,13 @@
-import { Controller, Get, Post, Put, Delete, Param, Body, Query, UseGuards } from '@nestjs/common';
+import { Controller, Get, Post, Put, Delete, Param, Body, Query, UseGuards, Req } from '@nestjs/common';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { RolesGuard } from '../auth/guards/roles.guard';
 import { Roles } from '../auth/decorators/roles.decorator';
 import { FinanceService } from './finance.service';
 import { CreateBudgetDto } from './dto/create-budget.dto';
+import { Actor } from '../common/cuerpo-scope';
+
+const READ_ROLES = ['SUPER_ADMIN', 'TESORERO', 'AUDITOR', 'COMANDANTE'] as const;
+const WRITE_ROLES = ['SUPER_ADMIN', 'TESORERO', 'COMANDANTE'] as const;
 
 @Controller('finance')
 @UseGuards(JwtAuthGuard, RolesGuard)
@@ -11,27 +15,42 @@ export class FinanceController {
   constructor(private service: FinanceService) {}
 
   @Get('dashboard')
-  getDashboard(@Query('companyId') companyId?: string) { return this.service.getDashboard(companyId); }
+  @Roles(...READ_ROLES)
+  getDashboard(@Query('companyId') companyId: string | undefined, @Req() req: { user: Actor }) {
+    return this.service.getDashboard(req.user, companyId);
+  }
 
   @Get('budgets')
-  findBudgets(@Query('companyId') companyId?: string, @Query('year') year?: string) {
-    return this.service.findBudgets(companyId, year ? Number(year) : undefined);
+  @Roles(...READ_ROLES)
+  findBudgets(
+    @Query('companyId') companyId: string | undefined,
+    @Query('year') year: string | undefined,
+    @Req() req: { user: Actor },
+  ) {
+    return this.service.findBudgets(req.user, companyId, year ? Number(year) : undefined);
   }
 
   @Get('budgets/:id')
-  findBudgetById(@Param('id') id: string) { return this.service.findBudgetById(id); }
+  @Roles(...READ_ROLES)
+  findBudgetById(@Param('id') id: string, @Req() req: { user: Actor }) {
+    return this.service.findBudgetById(id, req.user);
+  }
 
   @Post('budgets')
-  @Roles('SUPER_ADMIN', 'TESORERO', 'COMANDANTE')
-  createBudget(@Body() dto: CreateBudgetDto) { return this.service.createBudget(dto); }
+  @Roles(...WRITE_ROLES)
+  createBudget(@Body() dto: CreateBudgetDto, @Req() req: { user: Actor }) {
+    return this.service.createBudget(dto, req.user);
+  }
 
   @Put('budgets/:id')
-  @Roles('SUPER_ADMIN', 'TESORERO', 'COMANDANTE')
-  updateBudget(@Param('id') id: string, @Body() dto: Partial<CreateBudgetDto>) {
-    return this.service.updateBudget(id, dto);
+  @Roles(...WRITE_ROLES)
+  updateBudget(@Param('id') id: string, @Body() dto: Partial<CreateBudgetDto>, @Req() req: { user: Actor }) {
+    return this.service.updateBudget(id, dto, req.user);
   }
 
   @Delete('budgets/:id')
   @Roles('SUPER_ADMIN', 'TESORERO')
-  deleteBudget(@Param('id') id: string) { return this.service.deleteBudget(id); }
+  deleteBudget(@Param('id') id: string, @Req() req: { user: Actor }) {
+    return this.service.deleteBudget(id, req.user);
+  }
 }

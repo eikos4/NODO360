@@ -2,7 +2,7 @@ import { useState, useMemo, useEffect, useCallback } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import {
   Plus, Trash2, Edit2, Droplets, MapPin, Filter, X,
-  Map as MapIcon, List, Layers, Maximize2, Satellite, Moon, Mountain, Crosshair, Sun,
+  Map as MapIcon, List, Layers, Maximize2, Satellite, Moon, Mountain, Crosshair,
 } from 'lucide-react';
 import { api } from '../lib/api';
 import toast from 'react-hot-toast';
@@ -68,7 +68,7 @@ function MapFitBounds({ points }: { points: [number, number][] }) {
     if (map && points.length > 0) {
       const bounds = new google.maps.LatLngBounds();
       points.forEach(p => bounds.extend({ lat: p[0], lng: p[1] }));
-      map.fitBounds(bounds, { bottom: 56, left: 56, right: 56, top: 56 });
+      map.fitBounds(bounds, { bottom: 32, left: 32, right: 32, top: 32 });
     }
   }, [points, map]);
   return null;
@@ -122,7 +122,7 @@ type LocationPickerMapProps = {
 
 function LocationPickerMap({ center, pickOnMap, onPick, form, hydrantsOnMap, th, statusColors }: LocationPickerMapProps) {
   return (
-    <div className={`relative rounded-xl overflow-hidden border h-[min(380px,55vh)] ${th.mapPickerWrap}`}>
+    <div className={`relative rounded-xl overflow-hidden border h-[min(240px,42vh)] sm:h-[min(380px,55vh)] ${th.mapPickerWrap}`}>
       <Map
         defaultCenter={{ lat: center[0], lng: center[1] }}
         defaultZoom={15}
@@ -150,8 +150,8 @@ function LocationPickerMap({ center, pickOnMap, onPick, form, hydrantsOnMap, th,
         ))}
       </Map>
       {pickOnMap && (
-        <div className="absolute top-3 left-1/2 -translate-x-1/2 z-[1000] pointer-events-none">
-          <span className="bg-sky-600 !text-white text-xs font-bold px-4 py-2 rounded-full shadow-lg animate-pulse">
+        <div className="absolute top-2 left-1/2 -translate-x-1/2 z-[1000] pointer-events-none max-w-[calc(100%-1rem)]">
+          <span className="block bg-sky-600 !text-white text-[11px] sm:text-xs font-bold px-3 py-1.5 rounded-full shadow-lg animate-pulse text-center">
             Clic en el mapa para marcar el hidrante
           </span>
         </div>
@@ -183,7 +183,7 @@ const EMPTY = {
 export default function HydrantsPage() {
   const qc = useQueryClient();
   const user = useAuthStore(s => s.user);
-  const { tokens: th, toggleTheme, isDark, statusColors } = useHydrantsTheme();
+  const { tokens: th, statusColors } = useHydrantsTheme();
   const [showForm, setShowForm] = useState(false);
   const [form, setForm] = useState<any>(EMPTY);
   const [filterType, setFilterType] = useState<string>('all');
@@ -344,77 +344,71 @@ export default function HydrantsPage() {
   const base = BASE_LAYERS[baseLayer];
 
   return (
-    <div className="space-y-4">
+    <div className="flex flex-col h-full min-h-0 overflow-hidden px-3 pt-3 sm:px-5 sm:pt-4 pb-20 md:pb-4">
+      <div className="shrink-0 space-y-3">
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-        <div>
-          <h1 className={`text-xl font-bold ${th.title}`}>Hidrantes y red de agua</h1>
-          <p className={`text-sm mt-0.5 ${th.subtitle}`}>Inventario georreferenciado con mapa por capas e iconos</p>
+        <div className="min-w-0">
+          <h1 className={`text-lg sm:text-xl font-bold truncate ${th.title}`}>Hidrantes y red de agua</h1>
+          <p className={`text-xs sm:text-sm mt-0.5 ${th.subtitle}`}>Inventario georreferenciado con mapa por capas e iconos</p>
         </div>
-        <div className="flex flex-wrap items-center gap-2">
-          <div className={`flex border rounded-xl p-1 ${th.viewToggleWrap}`}>
+        <div className="flex items-center gap-2">
+          <div className={`flex border rounded-xl p-1 shrink-0 ${th.viewToggleWrap}`}>
             <button
               type="button"
               onClick={() => setViewMode('list')}
-              className={`flex items-center gap-1.5 px-3 py-2 rounded-lg text-xs font-semibold transition-all ${viewMode === 'list' ? th.viewToggleActive : th.viewToggleIdle}`}
+              className={`flex items-center gap-1.5 px-2.5 sm:px-3 py-2 rounded-lg text-xs font-semibold transition-all ${viewMode === 'list' ? th.viewToggleActive : th.viewToggleIdle}`}
             >
               <List className="w-4 h-4" /> Lista
             </button>
             <button
               type="button"
               onClick={() => setViewMode('map')}
-              className={`flex items-center gap-1.5 px-3 py-2 rounded-lg text-xs font-semibold transition-all ${viewMode === 'map' ? th.viewToggleActive : th.viewToggleIdle}`}
+              className={`flex items-center gap-1.5 px-2.5 sm:px-3 py-2 rounded-lg text-xs font-semibold transition-all ${viewMode === 'map' ? th.viewToggleActive : th.viewToggleIdle}`}
             >
               <MapIcon className="w-4 h-4" /> Mapa
             </button>
           </div>
           <button
             type="button"
-            onClick={toggleTheme}
-            className={`p-2 rounded-xl border transition-colors ${th.themeBtn}`}
-            title={isDark ? 'Modo claro' : 'Modo oscuro'}
-          >
-            {isDark ? <Sun className="w-4 h-4" /> : <Moon className="w-4 h-4" />}
-          </button>
-          <button
-            type="button"
             onClick={openNewHydrant}
-            className="flex items-center gap-2 bg-red-600 hover:bg-red-700 !text-white text-sm font-medium px-4 py-2 rounded-xl"
+            className="flex-1 sm:flex-none flex items-center justify-center gap-2 bg-red-600 hover:bg-red-700 !text-white text-sm font-medium px-3 sm:px-4 py-2 rounded-xl"
           >
             <Plus className="w-4 h-4" /> Nuevo hidrante
           </button>
         </div>
       </div>
 
-      <div className="flex flex-wrap gap-2 items-center">
-        <Filter className={`w-4 h-4 ${th.filterIcon}`} />
-        <div className={`flex flex-wrap border rounded-xl p-1 gap-0.5 ${th.filterWrap}`}>
+      <div className="flex gap-2 items-center overflow-x-auto scrollbar-none -mx-1 px-1 pb-0.5">
+        <Filter className={`w-4 h-4 shrink-0 ${th.filterIcon}`} />
+        <div className={`flex shrink-0 border rounded-xl p-1 gap-0.5 ${th.filterWrap}`}>
           {(['all', 'PIBA', 'COLUMNAR', 'SUBTERRANEO', 'OTRO'] as const).map(t => (
             <button
               key={t}
               type="button"
               onClick={() => setFilterType(t)}
-              className={`px-2.5 py-1 rounded-lg text-xs font-medium transition-all ${filterType === t ? th.filterTypeActive : th.filterTypeIdle}`}
+              className={`whitespace-nowrap px-2.5 py-1 rounded-lg text-xs font-medium transition-all ${filterType === t ? th.filterTypeActive : th.filterTypeIdle}`}
             >
               {t === 'all' ? 'Tipo: todos' : TYPE_LABELS[t]}
             </button>
           ))}
         </div>
-        <div className={`flex flex-wrap border rounded-xl p-1 gap-0.5 ${th.filterWrap}`}>
+        <div className={`flex shrink-0 border rounded-xl p-1 gap-0.5 ${th.filterWrap}`}>
           {(['all', 'OPERATIVO', 'NO_OPERATIVO', 'EN_MANTENCION'] as const).map(s => (
             <button
               key={s}
               type="button"
               onClick={() => setFilterStatus(s)}
-              className={`px-2.5 py-1 rounded-lg text-xs font-medium transition-all ${filterStatus === s ? th.filterStatusActive : th.filterStatusIdle}`}
+              className={`whitespace-nowrap px-2.5 py-1 rounded-lg text-xs font-medium transition-all ${filterStatus === s ? th.filterStatusActive : th.filterStatusIdle}`}
             >
               {s === 'all' ? 'Estado: todos' : STATUS_LABELS[s]}
             </button>
           ))}
         </div>
       </div>
+      </div>
 
       {showForm && (
-        <div className={`border rounded-2xl overflow-hidden ${th.formCard}`}>
+        <div className={`mt-3 shrink-0 max-h-[min(52vh,560px)] overflow-y-auto border rounded-2xl ${th.formCard}`}>
           <div className={`flex flex-wrap items-center justify-between gap-3 p-4 border-b ${th.formHeader}`}>
             <div>
               <h2 className={`text-sm font-semibold ${th.formTitle}`}>{editing ? 'Editar hidrante' : 'Nuevo hidrante'}</h2>
@@ -437,7 +431,7 @@ export default function HydrantsPage() {
             </div>
           </div>
 
-          <div className={`grid grid-cols-1 xl:grid-cols-2 gap-0 xl:divide-x ${th.formDivider}`}>
+          <div className={`flex flex-col-reverse xl:grid xl:grid-cols-2 gap-0 xl:divide-x ${th.formDivider}`}>
             <form onSubmit={handleSubmit} className="p-4 sm:p-6 space-y-4">
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div className="sm:col-span-2">
@@ -514,6 +508,7 @@ export default function HydrantsPage() {
         </div>
       )}
 
+      <div className={`flex-1 min-h-0 mt-3 ${viewMode === 'map' && hydrants?.length ? 'overflow-hidden flex flex-col' : 'overflow-y-auto'}`}>
       {isLoading ? (
         <p className={`text-sm ${th.loading}`}>Cargando hidrantes...</p>
       ) : !hydrants?.length && !showForm ? (
@@ -529,8 +524,8 @@ export default function HydrantsPage() {
           </button>
         </div>
       ) : !hydrants?.length && showForm ? null : viewMode === 'map' ? (
-        <div className={`flex flex-col lg:flex-row gap-0 min-h-[min(680px,75vh)] border rounded-2xl overflow-hidden ${th.mapShell}`}>
-          <aside className={`lg:w-64 shrink-0 border-b lg:border-b-0 lg:border-r p-4 space-y-4 ${th.aside}`}>
+        <div className={`flex flex-col lg:flex-row flex-1 min-h-0 border rounded-2xl overflow-hidden ${th.mapShell}`}>
+          <aside className={`hidden lg:block lg:w-64 shrink-0 border-r p-4 space-y-4 overflow-y-auto ${th.aside}`}>
             <div>
               <p className={`text-[10px] font-bold uppercase tracking-wide flex items-center gap-1 mb-2 ${th.asideLabel}`}>
                 <Layers className="w-3.5 h-3.5" /> Mapa base
@@ -621,14 +616,68 @@ export default function HydrantsPage() {
             </p>
           </aside>
 
-          <div className="flex-1 relative min-h-[400px]">
+          <div className={`lg:hidden shrink-0 border-b p-2 space-y-2 ${th.aside}`}>
+            <div className="flex gap-1.5 overflow-x-auto scrollbar-none">
+              {(Object.keys(BASE_LAYERS) as BaseLayerKey[]).map(key => {
+                const cfg = BASE_LAYERS[key];
+                const Icon = cfg.icon;
+                return (
+                  <button
+                    key={key}
+                    type="button"
+                    onClick={() => setBaseLayer(key)}
+                    className={`flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-[10px] font-semibold border whitespace-nowrap ${
+                      baseLayer === key ? th.baseLayerOn : th.baseLayerOff
+                    }`}
+                  >
+                    <Icon className="w-3.5 h-3.5" />
+                    {cfg.label}
+                  </button>
+                );
+              })}
+            </div>
+            <div className="flex gap-1.5 overflow-x-auto scrollbar-none">
+              {(Object.keys(STATUS_LABELS) as StatusKey[]).map(status => {
+                const meta = statusColors[status];
+                const on = statusLayers[status];
+                return (
+                  <button
+                    key={status}
+                    type="button"
+                    onClick={() => toggleStatusLayer(status)}
+                    className={`flex items-center gap-1.5 px-2 py-1.5 rounded-lg text-[10px] font-medium border whitespace-nowrap ${
+                      on ? th.statusLayerOn : th.statusLayerOff
+                    }`}
+                  >
+                    <span
+                      className="w-3.5 h-3.5 rounded-full shrink-0"
+                      style={{ backgroundColor: on ? meta.markerColor : '#94a3b8' }}
+                    />
+                    {STATUS_LABELS[status]}
+                  </button>
+                );
+              })}
+              <select
+                value={companyFilter}
+                onChange={e => setCompanyFilter(e.target.value)}
+                className={`ml-auto border rounded-lg px-2 py-1.5 text-[10px] ${th.select}`}
+              >
+                <option value="">Todas las cías.</option>
+                {companies?.map((c: { id: string; number: number; name: string }) => (
+                  <option key={c.id} value={c.id}>{c.number}ª</option>
+                ))}
+              </select>
+            </div>
+          </div>
+
+          <div className="flex-1 relative min-h-[220px] lg:min-h-0">
             <Map
               key={baseLayer}
               defaultCenter={{ lat: mapCenter[0], lng: mapCenter[1] }}
               defaultZoom={14}
               mapId="hydrants-main-map"
               mapTypeId={base.mapTypeId}
-              style={{ height: '100%', minHeight: 'min(680px,75vh)', width: '100%' }}
+              style={{ height: '100%', width: '100%' }}
               className={`z-0 ${pickOnMap ? 'cursor-crosshair' : ''}`}
               disableDefaultUI
               onClick={pickOnMap ? (e) => onMapPick(e.detail.latLng!.lat, e.detail.latLng!.lng) : undefined}
@@ -654,7 +703,7 @@ export default function HydrantsPage() {
                     onCloseClick={() => setSelectedId(null)}
                     pixelOffset={[0, -20]}
                   >
-                    <div className="min-w-[200px] text-slate-900">
+                    <div className="min-w-[180px] max-w-[min(260px,calc(100vw-3rem))] text-slate-900">
                       <div className="flex items-center gap-2 mb-2">
                         <span
                           className="w-8 h-8 flex items-center justify-center border-2 border-white shadow"
@@ -693,13 +742,13 @@ export default function HydrantsPage() {
             </Map>
 
             {pickOnMap && (
-              <div className="absolute top-3 left-1/2 -translate-x-1/2 z-[1000] bg-sky-600 !text-white text-xs font-bold px-4 py-2 rounded-full shadow-lg animate-pulse">
+              <div className="absolute top-2 left-1/2 -translate-x-1/2 z-[1000] max-w-[calc(100%-1.5rem)] bg-sky-600 !text-white text-[11px] sm:text-xs font-bold px-3 py-1.5 rounded-full shadow-lg animate-pulse text-center">
                 Haz clic en el mapa para ubicar el hidrante
               </div>
             )}
           </div>
 
-          <aside className={`lg:w-56 shrink-0 border-t lg:border-t-0 lg:border-l overflow-y-auto max-h-[280px] lg:max-h-none ${th.listAside}`}>
+          <aside className={`lg:w-56 shrink-0 border-t lg:border-t-0 lg:border-l overflow-y-auto max-h-[28vh] lg:max-h-none ${th.listAside}`}>
             <p className={`text-[10px] font-bold uppercase tracking-wide px-3 py-2 border-b sticky top-0 ${th.listAsideHeader}`}>
               En mapa ({filteredForMap.length})
             </p>
@@ -735,7 +784,7 @@ export default function HydrantsPage() {
           </aside>
         </div>
       ) : (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+        <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-3 sm:gap-4">
           {hydrants.map((h: { id: string; code: string; type: string; status: string; address: string; location?: string; diameter?: number; pressure?: number; flowRate?: number; latitude?: number; longitude?: number; company?: { number: number; name: string } }) => {
             const colors = statusColors[h.status as StatusKey];
             const StatusIcon = colors.icon;
@@ -785,6 +834,7 @@ export default function HydrantsPage() {
           })}
         </div>
       )}
+      </div>
     </div>
   );
 }

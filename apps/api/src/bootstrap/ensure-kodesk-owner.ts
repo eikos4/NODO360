@@ -3,8 +3,14 @@ import * as bcrypt from 'bcryptjs';
 import { randomUUID } from 'crypto';
 
 const KODESK_EMAIL = 'nodo360@kodesk.cl';
-const KODESK_PASSWORD = 'Kodesk360!';
 const KODESK_RUT = '77.KDSK.001-K';
+
+function resolveCreatePassword(): string | null {
+  const fromEnv = process.env.KODESK_PASSWORD?.trim();
+  if (fromEnv) return fromEnv;
+  if (process.env.NODE_ENV === 'production') return null;
+  return 'Kodesk360!';
+}
 
 async function roleHasKodesk(prisma: PrismaClient) {
   const rows = await prisma.$queryRaw<Array<{ exists: boolean }>>`
@@ -18,7 +24,7 @@ async function roleHasKodesk(prisma: PrismaClient) {
   return Boolean(rows[0]?.exists);
 }
 
-/** Crea o repara el dueño Kodesk. No borra el resto de la BD. */
+/** Crea el dueño Kodesk si falta. Nunca pisa la contraseña de un usuario existente. */
 export async function ensureKodeskOwner(): Promise<void> {
   const prisma = new PrismaClient();
   try {
@@ -33,7 +39,6 @@ export async function ensureKodeskOwner(): Promise<void> {
 
   const db = new PrismaClient();
   try {
-    const passwordHash = await bcrypt.hash(KODESK_PASSWORD, 10);
     const existing = await db.user.findUnique({ where: { email: KODESK_EMAIL } });
 
     if (existing) {
@@ -42,14 +47,20 @@ export async function ensureKodeskOwner(): Promise<void> {
         SET role = 'KODESK'::"Role",
             "isActive" = true,
             "companyId" = NULL,
-            "passwordHash" = ${passwordHash},
             "updatedAt" = NOW()
         WHERE email = ${KODESK_EMAIL}
       `;
-      console.log('[bootstrap] Dueño Kodesk actualizado: nodo360@kodesk.cl');
+      console.log('[bootstrap] Dueño Kodesk verificado: nodo360@kodesk.cl');
       return;
     }
 
+    const password = resolveCreatePassword();
+    if (!password) {
+      console.warn('[bootstrap] Kodesk no existe y KODESK_PASSWORD no está definido — no se crea en producción');
+      return;
+    }
+
+    const passwordHash = await bcrypt.hash(password, 10);
     const rutTaken = await db.user.findUnique({ where: { rut: KODESK_RUT } });
     const rut = rutTaken ? `77.KDSK.${Date.now().toString().slice(-6)}-K` : KODESK_RUT;
 

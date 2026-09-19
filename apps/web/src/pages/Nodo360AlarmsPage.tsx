@@ -1,11 +1,11 @@
 import { useEffect, useRef, useState } from 'react';
 import {
-  Bell, Copy, Loader2, MapPin, MessageCircle, Mic, MicOff, Moon, Search, Siren, Square, Sun, Truck, Volume2, VolumeX,
+  Bell, Building2, CheckCircle2, Circle, Clock, Copy, Loader2, MapPin, MessageCircle, Mic, MicOff, Moon, Search, Siren, Square, Sun, Truck, Volume2, VolumeX, X,
 } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { useQuickDispatch } from '../hooks/useQuickDispatch';
 import { useThemeStore } from '../store/themeStore';
-import { EMERGENCY_MAIN_TYPES, familyHasPanel, viaDisplayCode } from '../lib/emergency-codes';
+import { EMERGENCY_MAIN_TYPES, familyHasPanel, isEmergencyTypeReadyForDispatch, viaDisplayCode } from '../lib/emergency-codes';
 import { api } from '../lib/api';
 import {
   buildLocationPinUrl,
@@ -19,6 +19,35 @@ import PublicOsmMap, { PARRAL_CENTER } from '../components/map/PublicOsmMap';
 
 const WA_PHONE_KEY = 'nodo360_location_pin_phone';
 
+const COLOR_HEX: Record<string, string> = {
+  'bg-red-600': '#ef4444', 'bg-orange-600': '#f97316', 'bg-amber-600': '#f59e0b',
+  'bg-cyan-600': '#06b6d4', 'bg-blue-600': '#3b82f6', 'bg-yellow-500': '#eab308',
+  'bg-indigo-600': '#6366f1', 'bg-violet-600': '#8b5cf6', 'bg-slate-600': '#64748b',
+  'bg-slate-700': '#475569', 'bg-purple-600': '#9333ea', 'bg-stone-600': '#78716c',
+  'bg-teal-700': '#0f766e',
+};
+
+function LiveClock({ isDark }: { isDark: boolean }) {
+  const [now, setNow] = useState(() => new Date());
+  useEffect(() => {
+    const t = window.setInterval(() => setNow(new Date()), 1000);
+    return () => window.clearInterval(t);
+  }, []);
+  return (
+    <div
+      className={`flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl border tabular-nums ${
+        isDark ? 'border-white/10 text-slate-200' : 'border-slate-200 text-slate-800'
+      }`}
+      title={now.toLocaleDateString('es-CL', { weekday: 'long', day: 'numeric', month: 'long' })}
+    >
+      <Clock className={`w-4 h-4 shrink-0 ${isDark ? 'text-slate-400' : 'text-slate-500'}`} />
+      <span className="font-mono text-sm font-bold tracking-tight">
+        {now.toLocaleTimeString('es-CL', { hour: '2-digit', minute: '2-digit', second: '2-digit' })}
+      </span>
+    </div>
+  );
+}
+
 export default function Nodo360AlarmsPage() {
   const d = useQuickDispatch({
     autoDispatchOnKey: false,
@@ -30,6 +59,7 @@ export default function Nodo360AlarmsPage() {
   const toggleTheme = useThemeStore((s) => s.toggleTheme);
   const isDark = theme === 'dark';
   const [confirm, setConfirm] = useState<AlarmConfirmInfo | null>(null);
+  const [preConfirm, setPreConfirm] = useState(false);
   const [waPhone, setWaPhone] = useState(() => localStorage.getItem(WA_PHONE_KEY) ?? '');
   const [preDispatchToken, setPreDispatchToken] = useState<string | null>(null);
   const seenId = useRef<string | null>(null);
@@ -115,6 +145,7 @@ export default function Nodo360AlarmsPage() {
       address: last.address ?? d.address,
       locationPinToken: last.locationPinToken,
     });
+    setPreConfirm(false);
     setPreDispatchToken(null);
     d.resetDraft();
   }, [last, d.resetDraft, d.address]);
@@ -124,6 +155,16 @@ export default function Nodo360AlarmsPage() {
   const lat = parseFloat(String(d.latitude));
   const lng = parseFloat(String(d.longitude));
   const hasPoint = Number.isFinite(lat) && Number.isFinite(lng);
+  const readiness = [
+    { ok: Boolean(d.selectedCia), label: 'Compañía' },
+    { ok: Boolean(d.address.trim()), label: 'Ubicación' },
+    { ok: isEmergencyTypeReadyForDispatch(d.selectedType), label: 'Clave' },
+    { ok: d.selectedVehicles.length > 0, label: 'Carro' },
+    { ok: Boolean(d.maquinistaReady), label: 'Maquinista' },
+  ];
+  const selectedVehicleLabels = vehicles
+    .filter((v) => d.selectedVehicles.includes(v.id))
+    .map((v) => v.patent);
 
   return (
     <div className={`nodo360-alarms-page h-full min-h-0 flex flex-col overflow-hidden ${
@@ -146,6 +187,7 @@ export default function Nodo360AlarmsPage() {
           </div>
         </div>
         <div className="flex items-center gap-1.5">
+          <LiveClock isDark={isDark} />
           <button type="button" onClick={() => d.setVoiceEnabled(!d.voiceEnabled)} className={iconBtn(isDark, d.voiceEnabled)}>
             {d.voiceEnabled ? <Mic className="w-4 h-4" /> : <MicOff className="w-4 h-4" />}
           </button>
@@ -169,6 +211,8 @@ export default function Nodo360AlarmsPage() {
                 main.subdivisions?.some((s) => s.id === d.selectedType)
                 || main.vias?.some((v) => v.id === d.selectedType);
               const active = d.selectedType === main.id || childSel;
+              const hex = COLOR_HEX[main.color] ?? '#ef4444';
+              const onColor = main.text === 'text-black' ? '#111827' : '#ffffff';
               return (
                 <button
                   key={main.id}
@@ -177,14 +221,23 @@ export default function Nodo360AlarmsPage() {
                   onClick={() => d.handleEmergencyTypeClick(main)}
                   className={`w-full px-2.5 py-2 rounded-xl border text-left transition ${
                     active
-                      ? 'keep-on-color bg-red-600 border-red-500 text-white'
-                      : isDark
-                        ? 'border-white/10 hover:border-red-500/40'
-                        : 'border-slate-200 bg-white hover:border-red-300'
+                      ? `keep-on-color ${main.color} ${main.text} border-transparent`
+                      : ''
                   }`}
+                  style={!active ? {
+                    backgroundColor: isDark ? `${hex}22` : `${hex}2e`,
+                    borderColor: hex,
+                  } : undefined}
                 >
-                  <span className="font-mono text-sm font-black">{main.code}</span>
-                  <span className={`block text-[11px] truncate ${active ? 'text-white/85' : isDark ? 'text-slate-400' : 'text-slate-600'}`}>
+                  <span
+                    className={`inline-block font-mono text-[11px] font-black px-1.5 py-0.5 rounded ${active ? 'bg-black/25 text-white' : ''}`}
+                    style={!active ? { backgroundColor: hex, color: onColor } : undefined}
+                  >
+                    {main.code}
+                  </span>
+                  <span className={`block mt-1 text-[11px] truncate ${
+                    active ? (main.text === 'text-black' ? 'text-black/80' : 'text-white/90') : isDark ? 'text-slate-200' : 'text-slate-900'
+                  }`}>
                     {main.shortLabel}
                   </span>
                 </button>
@@ -192,45 +245,59 @@ export default function Nodo360AlarmsPage() {
             })}
           </div>
           {d.activeMainWithSubs && familyHasPanel(d.activeMainWithSubs) ? (
-            <div className={`shrink-0 p-2 border-t space-y-1.5 ${isDark ? 'border-white/10 bg-amber-500/10' : 'border-amber-200 bg-amber-50'}`}>
+            <div className={`shrink-0 p-2 border-t space-y-1.5 ${isDark ? 'border-white/10 bg-black/20' : 'border-slate-200 bg-white/70'}`}>
               {d.activeMainWithSubs.subdivisions?.length ? (
                 <div className="flex flex-wrap gap-1.5">
-                  {d.activeMainWithSubs.subdivisions.map((sub) => (
+                  {d.activeMainWithSubs.subdivisions.map((sub) => {
+                    const hex = COLOR_HEX[d.activeMainWithSubs!.color] ?? '#f97316';
+                    const selected = d.selectedType === sub.id;
+                    return (
                     <button
                       key={sub.id}
                       type="button"
                       onClick={() => d.handleSubdivisionClick(sub, d.activeMainWithSubs!)}
                       className={`px-2 py-1 rounded-lg text-[11px] font-bold border ${
-                        d.selectedType === sub.id
-                          ? 'keep-on-color bg-orange-600 border-orange-500 text-white'
-                          : isDark
-                            ? 'border-amber-500/30 text-amber-200'
-                            : 'border-amber-400 text-amber-950 bg-white'
+                        selected
+                          ? `keep-on-color ${d.activeMainWithSubs!.color} ${d.activeMainWithSubs!.text} border-transparent`
+                          : ''
                       }`}
+                      style={!selected ? {
+                        backgroundColor: isDark ? `${hex}22` : `${hex}24`,
+                        borderColor: hex,
+                        color: isDark ? '#e2e8f0' : '#0f172a',
+                      } : undefined}
                     >
                       {sub.code}
                     </button>
-                  ))}
+                    );
+                  })}
                 </div>
               ) : null}
               {d.activeMainWithSubs.vias?.length ? (
                 <div className="flex flex-wrap gap-1.5">
-                  {d.activeMainWithSubs.vias.map((via) => (
+                  {d.activeMainWithSubs.vias.map((via) => {
+                    const hex = COLOR_HEX[d.activeMainWithSubs!.color] ?? '#f97316';
+                    const selected = d.selectedType === via.id;
+                    return (
                     <button
                       key={via.id}
                       type="button"
                       onClick={() => d.handleViaClick(via, d.activeMainWithSubs!)}
                       className={`px-2 py-1 rounded-lg text-[11px] font-bold border ${
-                        d.selectedType === via.id
-                          ? 'keep-on-color bg-orange-600 border-orange-500 text-white'
-                          : isDark
-                            ? 'border-amber-500/30 text-amber-200'
-                            : 'border-amber-400 text-amber-950 bg-white'
+                        selected
+                          ? `keep-on-color ${d.activeMainWithSubs!.color} ${d.activeMainWithSubs!.text} border-transparent`
+                          : ''
                       }`}
+                      style={!selected ? {
+                        backgroundColor: isDark ? `${hex}22` : `${hex}24`,
+                        borderColor: hex,
+                        color: isDark ? '#e2e8f0' : '#0f172a',
+                      } : undefined}
                     >
                       {viaDisplayCode(via)}
                     </button>
-                  ))}
+                    );
+                  })}
                 </div>
               ) : null}
             </div>
@@ -280,11 +347,47 @@ export default function Nodo360AlarmsPage() {
         <aside className="min-h-0 flex flex-col gap-3 overflow-hidden">
           <div className={`shrink-0 rounded-2xl border p-3 space-y-2 ${panel(isDark)}`}>
             <CompanyMaquinistaAlert company={d.company} availableCount={d.maquinistasAvailable} isDark={isDark} />
-            <select value={d.selectedCia} onChange={(e) => d.setSelectedCia(e.target.value)} className={selectCls(isDark)}>
-              {companies.map((c) => (
-                <option key={c.id} value={c.id}>{c.number}ª — {c.name}</option>
-              ))}
-            </select>
+            <div>
+              <p className={`text-[10px] font-black uppercase tracking-widest mb-1.5 flex items-center gap-1.5 ${
+                isDark ? 'text-slate-400' : 'text-slate-600'
+              }`}>
+                <Building2 className="w-3.5 h-3.5" />
+                Compañía despachante
+              </p>
+              <div className="grid grid-cols-2 sm:grid-cols-3 xl:grid-cols-2 gap-1.5">
+                {companies.map((c) => {
+                  const on = c.id === d.selectedCia;
+                  return (
+                    <button
+                      key={c.id}
+                      type="button"
+                      onClick={() => d.setSelectedCia(c.id)}
+                      className={`min-w-0 rounded-xl border px-2 py-2 text-left transition ${
+                        on
+                          ? 'keep-on-color bg-red-600 border-red-500 text-white shadow-sm'
+                          : isDark
+                            ? 'border-white/10 bg-white/5 text-slate-200 hover:border-red-500/40'
+                            : 'border-slate-200 bg-slate-50 text-slate-800 hover:border-red-300 hover:bg-white'
+                      }`}
+                    >
+                      <span className={`block text-sm font-black leading-none ${on ? 'text-white' : ''}`}>
+                        {c.number}ª
+                      </span>
+                      <span className={`mt-1 block text-[10px] font-semibold truncate leading-tight ${
+                        on ? 'text-white/85' : isDark ? 'text-slate-400' : 'text-slate-600'
+                      }`}>
+                        {c.name}
+                      </span>
+                    </button>
+                  );
+                })}
+              </div>
+              {d.company && (
+                <p className={`mt-1.5 text-[11px] font-semibold truncate ${isDark ? 'text-slate-300' : 'text-slate-700'}`}>
+                  Despacha: {d.company.number}ª {d.company.name}
+                </p>
+              )}
+            </div>
             <div className="flex flex-wrap gap-1.5">
               {vehicles.map((v) => {
                 const on = d.selectedVehicles.includes(v.id);
@@ -308,6 +411,23 @@ export default function Nodo360AlarmsPage() {
             <p className={`text-sm font-semibold ${isDark ? 'text-white' : 'text-slate-900'}`}>
               {d.emergType ? `${d.emergType.code} · ${d.emergType.label}` : 'Elige una clave'}
             </p>
+            <div className={`rounded-xl border p-2.5 space-y-1.5 ${
+              isDark ? 'border-white/10 bg-white/5' : 'border-slate-200 bg-slate-50'
+            }`}>
+              <p className={`text-[10px] font-black uppercase tracking-widest ${isDark ? 'text-slate-400' : 'text-slate-600'}`}>
+                Antes de despachar
+              </p>
+              {readiness.map((r) => (
+                <div key={r.label} className="flex items-center gap-2 text-sm font-semibold">
+                  {r.ok
+                    ? <CheckCircle2 className="w-4 h-4 shrink-0 text-emerald-500" />
+                    : <Circle className={`w-4 h-4 shrink-0 ${isDark ? 'text-slate-500' : 'text-slate-400'}`} />}
+                  <span className={r.ok ? (isDark ? 'text-white' : 'text-slate-900') : (isDark ? 'text-slate-500' : 'text-slate-500')}>
+                    {r.label}
+                  </span>
+                </div>
+              ))}
+            </div>
             {!d.canDispatch && !d.dispatching && (
               <p className={`text-[11px] font-semibold ${isDark ? 'text-amber-200' : 'text-amber-900'}`}>
                 {!d.emergType || d.activeMainWithSubs
@@ -386,7 +506,7 @@ export default function Nodo360AlarmsPage() {
             <button
               type="button"
               disabled={d.dispatching}
-              onClick={d.handleDispatch}
+              onClick={() => setPreConfirm(true)}
               className="alarms-dispatch-btn keep-on-color w-full flex items-center justify-center gap-2 py-3.5 rounded-2xl bg-red-600 text-white font-black uppercase tracking-wide"
             >
               {d.dispatching ? <Loader2 className="w-5 h-5 animate-spin" /> : <Siren className="w-5 h-5" />}
@@ -419,6 +539,67 @@ export default function Nodo360AlarmsPage() {
         </aside>
       </div>
 
+      {preConfirm && (
+        <div className="fixed inset-0 z-[9998] flex items-center justify-center p-4" role="dialog" aria-modal="true">
+          <div className="absolute inset-0 bg-slate-950/70 backdrop-blur-sm" onClick={() => setPreConfirm(false)} />
+          <div className={`relative w-full max-w-md rounded-3xl border shadow-2xl p-5 ${
+            isDark ? 'border-white/10 bg-[#0c1018] text-white' : 'border-slate-200 bg-white text-slate-900'
+          }`}>
+            <button
+              type="button"
+              onClick={() => setPreConfirm(false)}
+              className={`absolute top-3 right-3 p-1.5 rounded-lg ${isDark ? 'text-slate-400 hover:text-white' : 'text-slate-500 hover:text-slate-900'}`}
+            >
+              <X className="w-4 h-4" />
+            </button>
+            <p className="text-[11px] font-black uppercase tracking-[0.22em] text-red-600 mb-1">Confirmar despacho</p>
+            <h2 className="text-lg font-black mb-4">Revisa la alarma antes de enviar</h2>
+            <div className="space-y-2 mb-4">
+              {readiness.map((r) => (
+                <div key={r.label} className="flex items-center gap-2.5 text-sm font-semibold">
+                  {r.ok
+                    ? <CheckCircle2 className="w-5 h-5 shrink-0 text-emerald-500" />
+                    : <Circle className={`w-5 h-5 shrink-0 ${isDark ? 'text-slate-500' : 'text-slate-400'}`} />}
+                  <span className={r.ok ? '' : isDark ? 'text-slate-500' : 'text-slate-500'}>{r.label}</span>
+                </div>
+              ))}
+            </div>
+            <div className={`rounded-2xl border p-3 text-sm space-y-1.5 mb-4 ${isDark ? 'border-white/10 bg-white/5' : 'border-slate-200 bg-slate-50'}`}>
+              <p><span className={isDark ? 'text-slate-400' : 'text-slate-500'}>Compañía · </span>{d.company ? `${d.company.number}ª ${d.company.name}` : '—'}</p>
+              <p><span className={isDark ? 'text-slate-400' : 'text-slate-500'}>Ubicación · </span>{d.address.trim() || '—'}</p>
+              <p><span className={isDark ? 'text-slate-400' : 'text-slate-500'}>Clave · </span>{d.emergType ? `${d.emergType.code} · ${d.emergType.label}` : '—'}</p>
+              <p><span className={isDark ? 'text-slate-400' : 'text-slate-500'}>Carro · </span>{selectedVehicleLabels.join(', ') || '—'}</p>
+              <p><span className={isDark ? 'text-slate-400' : 'text-slate-500'}>Maquinista · </span>{d.maquinistaReady ? `${d.maquinistasAvailable} disponible${d.maquinistasAvailable === 1 ? '' : 's'}` : 'Sin maquinista habilitado'}</p>
+            </div>
+            {!d.maquinistaReady && (
+              <p className={`text-[12px] font-semibold mb-3 ${isDark ? 'text-amber-200' : 'text-amber-800'}`}>
+                La compañía no tiene maquinista disponible. Puedes despachar igual si lo confirmas.
+              </p>
+            )}
+            <div className="flex gap-2">
+              <button
+                type="button"
+                onClick={() => setPreConfirm(false)}
+                className={`flex-1 py-3 rounded-xl border text-sm font-bold ${isDark ? 'border-white/15 text-slate-200' : 'border-slate-300 text-slate-700'}`}
+              >
+                Volver
+              </button>
+              <button
+                type="button"
+                disabled={!d.canDispatch || d.dispatching}
+                onClick={() => {
+                  setPreConfirm(false);
+                  d.handleDispatch({ skipMaquinistaConfirm: true });
+                }}
+                className="keep-on-color flex-[1.4] py-3 rounded-xl bg-red-600 text-white text-sm font-black uppercase tracking-wide disabled:opacity-40"
+              >
+                {d.dispatching ? 'Enviando…' : 'Confirmar despacho'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
       <AlarmConfirmOverlay
         info={confirm}
         onClose={() => setConfirm(null)}
@@ -447,10 +628,4 @@ function panel(isDark: boolean) {
 function iconBtn(isDark: boolean, on = false) {
   if (on) return 'p-2 rounded-xl border border-red-500/40 bg-red-500/10 text-red-600';
   return `p-2 rounded-xl border ${isDark ? 'border-white/10 text-slate-300' : 'border-slate-200 text-slate-700'}`;
-}
-
-function selectCls(isDark: boolean) {
-  return `w-full rounded-xl border px-3 py-2 text-sm ${
-    isDark ? 'bg-white/5 border-white/10 text-white' : 'bg-white border-slate-300 text-slate-900'
-  }`;
 }

@@ -1,6 +1,8 @@
 import { useState } from 'react';
 import { MapPin, Phone, MessageSquare, Send } from 'lucide-react';
 import { notifyLocationUpdate } from '../../lib/dispatch-live-sync';
+import { buildWhatsAppShareUrl } from '../../lib/incident-location-pin';
+import { api } from '../../lib/api';
 import toast from 'react-hot-toast';
 
 interface Props {
@@ -14,18 +16,21 @@ export default function EmergencyLocationUpdater({ emergencyId, currentAddress, 
   const [lat, setLat] = useState('');
   const [lng, setLng] = useState('');
   const [phone, setPhone] = useState('');
+  const [saving, setSaving] = useState(false);
 
   const handleWhatsApp = () => {
-    let url = 'https://wa.me/';
-    if (phone) {
-      const cleanPhone = phone.replace(/\D/g, '');
-      url += `569${cleanPhone}`;
+    const url = buildWhatsAppShareUrl(
+      phone,
+      'Por favor envíe su ubicación actual respondiendo a este chat para Bomberos Parral',
+    );
+    if (!url) {
+      toast.error('Ingresa un número de teléfono');
+      return;
     }
-    url += '?text=Por%20favor%20env%C3%ADe%20su%20ubicaci%C3%B3n%20actual%20respondiendo%20a%20este%20chat%20para%20Bomberos%20Parral';
-    window.open(url, '_blank');
+    window.open(url, '_blank', 'noopener,noreferrer');
   };
 
-  const handleUpdate = () => {
+  const handleUpdate = async () => {
     const latNum = parseFloat(lat);
     const lngNum = parseFloat(lng);
 
@@ -38,15 +43,26 @@ export default function EmergencyLocationUpdater({ emergencyId, currentAddress, 
       return;
     }
 
-    notifyLocationUpdate({
-      incidentId: emergencyId,
-      newAddress: address,
-      latitude: latNum,
-      longitude: lngNum,
-    });
-    
-    toast.success('Ubicación actualizada y enviada a los cuarteles.');
-    onClose();
+    setSaving(true);
+    try {
+      await api.put(`/incidents/${emergencyId}`, {
+        address,
+        latitude: latNum,
+        longitude: lngNum,
+      });
+      notifyLocationUpdate({
+        incidentId: emergencyId,
+        newAddress: address,
+        latitude: latNum,
+        longitude: lngNum,
+      });
+      toast.success('Ubicación actualizada y enviada a los cuarteles.');
+      onClose();
+    } catch (e: any) {
+      toast.error(e.response?.data?.message ?? 'No se pudo actualizar la ubicación');
+    } finally {
+      setSaving(false);
+    }
   };
 
   return (
@@ -56,7 +72,6 @@ export default function EmergencyLocationUpdater({ emergencyId, currentAddress, 
       </h4>
       
       <div className="space-y-3">
-        {/* Solicitud por WhatsApp */}
         <div className="bg-slate-50 dark:bg-slate-800/50 p-2.5 rounded-lg border border-slate-200 dark:border-slate-700">
           <p className="text-[10px] text-slate-500 dark:text-slate-400 mb-1.5">1. Solicitar por WhatsApp (Opcional)</p>
           <div className="flex gap-2">
@@ -64,13 +79,14 @@ export default function EmergencyLocationUpdater({ emergencyId, currentAddress, 
               <Phone className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3 h-3 text-slate-400" />
               <input 
                 type="text" 
-                placeholder="N° Teléfono sin +56 (Ej: 912345678)" 
+                placeholder="N° con código país (Ej: 56912345678)" 
                 value={phone}
                 onChange={e => setPhone(e.target.value)}
                 className="w-full bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-md py-1.5 pl-7 pr-2 text-xs focus:ring-1 focus:ring-blue-500 outline-none text-slate-800 dark:text-slate-200"
               />
             </div>
             <button 
+              type="button"
               onClick={handleWhatsApp}
               className="bg-[#25D366] hover:bg-[#20bd5a] text-white px-2.5 py-1.5 rounded-md text-[10px] font-bold flex items-center gap-1 transition-colors"
             >
@@ -79,7 +95,6 @@ export default function EmergencyLocationUpdater({ emergencyId, currentAddress, 
           </div>
         </div>
 
-        {/* Actualización Manual */}
         <div className="bg-slate-50 dark:bg-slate-800/50 p-2.5 rounded-lg border border-slate-200 dark:border-slate-700">
           <p className="text-[10px] text-slate-500 dark:text-slate-400 mb-1.5">2. Ingresar Nueva Ubicación</p>
           <div className="space-y-2">
@@ -107,10 +122,12 @@ export default function EmergencyLocationUpdater({ emergencyId, currentAddress, 
               />
             </div>
             <button 
-              onClick={handleUpdate}
-              className="w-full bg-blue-600 hover:bg-blue-700 text-white py-1.5 rounded-md text-xs font-bold flex items-center justify-center gap-1.5 transition-colors mt-2 shadow-sm"
+              type="button"
+              onClick={() => void handleUpdate()}
+              disabled={saving}
+              className="w-full bg-blue-600 hover:bg-blue-700 text-white py-1.5 rounded-md text-xs font-bold flex items-center justify-center gap-1.5 transition-colors mt-2 shadow-sm disabled:opacity-50"
             >
-              <Send className="w-3.5 h-3.5" /> Actualizar Ubicación
+              <Send className="w-3.5 h-3.5" /> {saving ? 'Guardando…' : 'Actualizar Ubicación'}
             </button>
           </div>
         </div>

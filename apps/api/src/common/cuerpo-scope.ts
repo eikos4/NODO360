@@ -54,7 +54,6 @@ export async function assertCompanyAccess(
   if (actor.companyId === companyId) return company;
   if (hasAnyRole(actor, ...CUERPO_WIDE_ROLES)) {
     const cuerpoId = await cuerpoIdForUser(prisma, actor);
-    if (!cuerpoId && hasAnyRole(actor, 'SUPER_ADMIN')) return company;
     if (cuerpoId && cuerpoId === company.cuerpoId) return company;
   }
   throw new ForbiddenException('Sin permiso para esta compañía');
@@ -74,7 +73,6 @@ export async function companyIdsForActor(
   if (hasAnyRole(actor, ...CUERPO_WIDE_ROLES)) {
     const cuerpoId = await cuerpoIdForUser(prisma, actor);
     if (!cuerpoId) {
-      if (hasAnyRole(actor, 'SUPER_ADMIN')) return null;
       if (actor.companyId) return [actor.companyId];
       throw new ForbiddenException('Usuario sin Cuerpo asignado');
     }

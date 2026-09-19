@@ -5,6 +5,7 @@ import {
   ImagePlus, MapPin, User, Clock, ChevronRight, Upload,
 } from 'lucide-react';
 import { api } from '../lib/api';
+import { safeHref } from '../lib/safe-url';
 import toast from 'react-hot-toast';
 import { useAuthStore } from '../store/authStore';
 
@@ -426,7 +427,7 @@ export default function AnnouncementsPage() {
               {selected.attachments && selected.attachments.length > 0 && (
                 <div className="grid grid-cols-3 gap-2">
                   {selected.attachments.map((url) => (
-                    <a key={url} href={url} target="_blank" rel="noreferrer">
+                    <a key={url} href={safeHref(url)} target="_blank" rel="noopener noreferrer">
                       <img src={url} alt="" className="w-full h-24 object-cover rounded-lg" />
                     </a>
                   ))}

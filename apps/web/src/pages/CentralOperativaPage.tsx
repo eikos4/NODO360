@@ -427,11 +427,11 @@ export default function CentralOperativaPage() {
               Mapa 360
             </Link>
             <Link
-              to="/central-bitacora"
+              to="/bitacora360"
               className={`col-span-2 flex items-center justify-center gap-2 font-semibold text-sm py-3 rounded-xl transition-colors ${th.btnSecondary}`}
             >
               <BookOpen className={`w-4 h-4 ${isDark ? 'text-amber-400' : 'text-amber-700'}`} />
-              Bitácora operacional
+              Bitácora360
             </Link>
             {slug && (
               <a

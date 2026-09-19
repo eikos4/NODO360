@@ -43,7 +43,6 @@ export class CompaniesPublicController {
           id: true,
           code: true,
           type: true,
-          address: true,
           dispatchedAt: true,
           closedAt: true,
           arrivedAt: true,
@@ -55,16 +54,12 @@ export class CompaniesPublicController {
         orderBy: { patent: 'asc' },
         select: {
           id: true,
-          patent: true,
           brand: true,
           model: true,
           year: true,
           type: true,
           status: true,
           imageUrl: true,
-          principalMaquinista: {
-            select: { firstName: true, lastName: true, photoUrl: true },
-          },
         },
       }),
 
@@ -102,8 +97,8 @@ export class CompaniesPublicController {
       number: company.number,
       city: company.city,
       address: company.address,
-      phone: company.phone,
-      email: company.email,
+      phone: null,
+      email: null,
       logoUrl: company.logoUrl,
       headquartersImageUrl: company.headquartersImageUrl,
       stats: {
@@ -114,25 +109,20 @@ export class CompaniesPublicController {
       },
       fleet: vehiclesWithMaquinista.map((v) => ({
         id: v.id,
-        patent: v.patent,
+        patent: null,
         brand: v.brand,
         model: v.model,
         year: v.year,
         type: v.type,
         status: v.status,
         imageUrl: v.imageUrl,
-        principalMaquinista: v.principalMaquinista
-          ? {
-              name: `${v.principalMaquinista.firstName} ${v.principalMaquinista.lastName}`,
-              photoUrl: v.principalMaquinista.photoUrl,
-            }
-          : null,
+        principalMaquinista: null,
       })),
       recentIncidents: recentIncidents.map((inc) => ({
         id: inc.id,
         code: inc.code,
         type: inc.type,
-        address: inc.address,
+        address: null,
         dispatchedAt: inc.dispatchedAt,
         closedAt: inc.closedAt,
         responseMinutes:

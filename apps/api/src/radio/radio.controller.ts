@@ -59,8 +59,8 @@ export class RadioController {
     const buffer = Buffer.from(raw, 'base64');
     if (!buffer.length) throw new BadRequestException('Audio requerido');
     if (buffer.length > 3 * 1024 * 1024) throw new BadRequestException('Audio demasiado grande');
-    const mime = body.mimeType || 'audio/webm';
-    const filename = body.filename || `radio-${Date.now()}.${extFromMime(mime)}`;
+    const mime = /^audio\//i.test(body.mimeType || '') ? body.mimeType : 'audio/webm';
+    const filename = `radio-${Date.now()}.${extFromMime(mime)}`;
     const audioUrl = await this.storage.uploadFile(
       { buffer, originalname: filename, mimetype: mime },
       publicOrigin(req),

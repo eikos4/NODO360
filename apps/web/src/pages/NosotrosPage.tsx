@@ -23,8 +23,8 @@ export default function NosotrosPage() {
       description: "Coordinación y estrategia en el corazón del proyecto."
     },
     {
-      name: "Miembro 4",
-      role: "Bombero / Logística",
+      name: "Manuel Chandia",
+      role: "Ex Bombero",
       isFirefighter: true,
       description: "Asegurando que la plataforma responda cuando más se necesita."
     },
@@ -129,7 +129,7 @@ export default function NosotrosPage() {
             Tecnología al servicio de quienes salvan vidas.
           </p>
           <p className="text-xs text-slate-600">
-            © {new Date().getFullYear()} Nodo360. Todos los derechos reservados.
+            © {new Date().getFullYear()} Nodo360. Todos los derechos reservados. kodesk.cl.
           </p>
         </div>
       </footer>

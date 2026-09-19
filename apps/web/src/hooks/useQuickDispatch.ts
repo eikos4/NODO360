@@ -302,7 +302,7 @@ export function useQuickDispatch(options: QuickDispatchOptions = {}) {
   }, [address]);
 
   const runDispatch = useCallback(
-    async (opts?: { typeId?: string; vehicleIds?: string[]; keyToneAlreadyPlayed?: boolean; confirmDouble?: boolean }) => {
+    async (opts?: { typeId?: string; vehicleIds?: string[]; keyToneAlreadyPlayed?: boolean; confirmDouble?: boolean; skipMaquinistaConfirm?: boolean }) => {
       const typeId = opts?.typeId ?? selectedType;
       const emerg = findEmergencyEntry(typeId);
       const vehicleIds = getVehicleIdsForDispatch(opts?.vehicleIds);
@@ -329,7 +329,7 @@ export function useQuickDispatch(options: QuickDispatchOptions = {}) {
         return;
       }
 
-      if (!hasMaquinistaAvailable(dispatchConfig?.maquinistas)) {
+      if (!opts?.skipMaquinistaConfirm && !hasMaquinistaAvailable(dispatchConfig?.maquinistas)) {
         if (!confirmDispatchWithoutMaquinista(formatCompanyLabel(company))) return;
       }
       if (
@@ -708,7 +708,7 @@ export function useQuickDispatch(options: QuickDispatchOptions = {}) {
     handleEmergencyTypeClick,
     handleSubdivisionClick,
     handleViaClick,
-    handleDispatch: () => runDispatch(),
+    handleDispatch: (opts?: { skipMaquinistaConfirm?: boolean }) => runDispatch(opts),
     handleStop,
     refetchLive,
     cuarteles,

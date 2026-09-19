@@ -51,7 +51,7 @@ export class StorageService {
   async uploadFile(file: any, hostUrl?: string, folder = 'nodo360'): Promise<string> {
     const buffer = this.toBuffer(file);
     const original = file.originalname || `file-${Date.now()}`;
-    const uniqueName = `${Date.now()}-${randomUUID()}${extname(original)}`;
+    const uniqueName = `${Date.now()}-${randomUUID()}${safeUploadExt(original, file.mimetype)}`;
 
     if (this.cloudinaryReady) {
       return this.uploadToCloudinary(buffer, uniqueName, folder, file.mimetype);
@@ -106,4 +106,19 @@ export class StorageService {
     if (/\.(pdf|doc|docx|xls|xlsx|ppt|pptx|zip|txt|csv)$/i.test(filename)) return 'raw';
     return 'auto';
   }
+}
+
+const ALLOWED_EXT = new Set([
+  '.jpg', '.jpeg', '.png', '.gif', '.webp',
+  '.pdf', '.doc', '.docx', '.xls', '.xlsx', '.ppt', '.pptx', '.txt', '.csv', '.zip',
+  '.webm', '.ogg', '.mp3', '.m4a', '.aac', '.wav', '.mp4', '.3gp',
+]);
+
+function safeUploadExt(original: string, mime?: string) {
+  const ext = extname(original || '').toLowerCase();
+  if (ALLOWED_EXT.has(ext)) return ext;
+  if (mime?.startsWith('audio/')) return '.webm';
+  if (mime?.startsWith('image/')) return '.jpg';
+  if (mime === 'application/pdf') return '.pdf';
+  return '.bin';
 }

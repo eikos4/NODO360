@@ -16,6 +16,7 @@ import { ToggleByOperativeNumberDto } from './dto/toggle-by-operative-number.dto
 import { ToggleMaquinistaDto } from './dto/toggle-maquinista.dto';
 import { ToggleMyAvailabilityDto } from './dto/toggle-my-availability.dto';
 import { UnlockSalaDto } from './dto/unlock-sala.dto';
+import { SetVehicleStatusDto } from './dto/set-vehicle-status.dto';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { RolesGuard } from '../auth/guards/roles.guard';
 import { Roles } from '../auth/decorators/roles.decorator';
@@ -33,7 +34,7 @@ export class DispatchCentralController {
   async getPublic(@Param('slug') slug: string, @Req() req: HeaderRequest) {
     const access = await this.service.peekPublicAccess(slug, req);
     if (access === 'locked') return this.service.getPublicLocked(slug);
-    return this.service.getPublicBySlug(slug);
+    return this.service.getPublicBySlug(slug, { includePii: access === 'sala' || access === 'user' });
   }
 
   @Post('public/:slug/unlock')
@@ -47,7 +48,7 @@ export class DispatchCentralController {
     @Param('number') operativeNumber: string,
     @Req() req: HeaderRequest,
   ) {
-    await this.service.assertPublicSalaAccess(slug, req);
+    await this.service.assertPublicWriteAccess(slug, req);
     return this.service.searchOperativeGlobally(slug, parseInt(operativeNumber, 10));
   }
 
@@ -57,7 +58,7 @@ export class DispatchCentralController {
     @Body() dto: ToggleStationAvailabilityDto,
     @Req() req: HeaderRequest,
   ) {
-    await this.service.assertPublicSalaAccess(slug, req);
+    await this.service.assertPublicWriteAccess(slug, req);
     return this.service.toggleStationAvailability(slug, dto.userId, dto.available);
   }
 
@@ -67,7 +68,7 @@ export class DispatchCentralController {
     @Body() dto: ToggleByOperativeNumberDto,
     @Req() req: HeaderRequest,
   ) {
-    await this.service.assertPublicSalaAccess(slug, req);
+    await this.service.assertPublicWriteAccess(slug, req);
     return this.service.toggleStationAvailabilityByOperativeNumber(
       slug,
       dto.operativeNumber,
@@ -81,7 +82,7 @@ export class DispatchCentralController {
     @Body() dto: ToggleMaquinistaDto,
     @Req() req: HeaderRequest,
   ) {
-    await this.service.assertPublicSalaAccess(slug, req);
+    await this.service.assertPublicWriteAccess(slug, req);
     return this.service.toggleMaquinista(slug, dto.userId, {
       available: dto.available,
       principal: dto.principal,
@@ -125,6 +126,17 @@ export class DispatchCentralController {
   @Roles(...DISPATCH_ROLES)
   getGlobal(@Req() req: { user: Actor }) {
     return this.service.getGlobalDispatch(req.user);
+  }
+
+  @Patch('central/vehicles/:id/status')
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles(...DISPATCH_ROLES)
+  setVehicleStatus(
+    @Param('id') id: string,
+    @Body() dto: SetVehicleStatusDto,
+    @Req() req: { user: Actor },
+  ) {
+    return this.service.setVehicleStatus(id, dto.status, req.user);
   }
 
   @Get('central/config')

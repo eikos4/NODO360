@@ -1,7 +1,7 @@
 import { useQuery } from '@tanstack/react-query';
 import { api } from '../lib/api';
 import { useAuthStore } from '../store/authStore';
-import type { CuartelItem } from '../components/botonera/CuartelOverviewPanel';
+import type { CuartelItem } from '../lib/cuartel';
 import { hasAnyRole } from '../lib/roles';
 
 const OVERVIEW_ROLES = new Set([

@@ -63,8 +63,9 @@ async function registerNative(): Promise<PushStatus> {
   });
 
   PushNotifications.addListener('pushNotificationActionPerformed', (event) => {
-    const url = (event.notification.data as { url?: string } | undefined)?.url;
-    window.location.href = url || '/emergencia-respuesta';
+    const raw = (event.notification.data as { url?: string } | undefined)?.url || '/emergencia-respuesta';
+    const path = raw.startsWith('/') && !raw.startsWith('//') ? raw : '/emergencia-respuesta';
+    window.location.href = path;
   });
 
   return 'ready';

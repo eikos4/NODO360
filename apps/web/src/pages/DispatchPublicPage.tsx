@@ -3,7 +3,7 @@ import { useParams, Link } from 'react-router-dom';
 import {
   Siren, ShieldAlert, Users, CheckCircle2, UserX, RefreshCw, Truck, Fuel, Star,
   Search, SlidersHorizontal, Clock, Calendar, Radio, Volume2, Hash,
-  Sun, Moon, Maximize2, Minimize2, Leaf, Hexagon, Lock, LayoutDashboard,
+  Sun, Moon, Maximize2, Minimize2, Leaf, Lock, LayoutDashboard,
 } from 'lucide-react';
 import toast from 'react-hot-toast';
 import FirefighterAvatar, { FirefighterPlaceholder } from '../components/FirefighterAvatar';
@@ -241,7 +241,7 @@ function CardPhoto({
 
 export default function DispatchPublicPage() {
   const { slug } = useParams<{ slug: string }>();
-  const { look, night, isNodo, isVerde, isAzul, isSalida, isComando, cycle: cycleLook, label: lookLabel } = useSalaNightMode();
+  const { look, night, isNodo, isVerde, isSalida, isComando, cycle: cycleLook, label: lookLabel } = useSalaNightMode();
   const th = look === 'night'
     ? SALA_NIGHT_THEME
     : DISPATCH_PUBLIC_THEMES[look === 'salida' || look === 'comando' ? 'nodo' : look];
@@ -855,7 +855,7 @@ export default function DispatchPublicPage() {
 
   const { roster, maquinistas, fleet, emergencyStats } = data;
   const hqImage = data.headquartersImageUrl || DEFAULT_HQ;
-  const darkChrome = night || isNodo || isVerde || isAzul || isSalida || isComando;
+  const darkChrome = night || isNodo || isVerde || isSalida || isComando;
   const qrUrl = `https://api.qrserver.com/v1/create-qr-code/?size=100x100&data=${encodeURIComponent(publicUrl)}&bgcolor=${th.qrBg}&color=${darkChrome ? 'ffffff' : '0f172a'}`;
   const floatBtn = night
     ? 'bg-[#16101c]/90 border border-amber-500/30 text-amber-100 shadow-xl shadow-amber-950/40'
@@ -865,9 +865,7 @@ export default function DispatchPublicPage() {
         ? 'bg-[#0d1924] border border-[#38bdf8]/50 text-[#67c8ff] shadow-xl shadow-sky-950/50'
         : isVerde
           ? 'bg-[#062016] border border-[#1ce783]/50 text-[#1ce783] shadow-xl shadow-emerald-950/50'
-          : isAzul
-            ? 'bg-[#0712b8] border border-white/40 text-white shadow-xl shadow-blue-950/40'
-            : 'bg-white border border-slate-200 text-slate-800 shadow-xl';
+          : 'bg-white border border-slate-200 text-slate-800 shadow-xl';
 
   return (
     <div className={`sala-public h-screen overflow-hidden flex flex-col transition-colors relative ${night ? 'sala-guardia' : ''} ${isSalida || isComando ? 'bg-[#071019] text-[#e7edf4]' : onEmergency ? th.pageEmergency : th.page}`}>
@@ -939,7 +937,7 @@ export default function DispatchPublicPage() {
           title="Bloquear sala"
           aria-label="Bloquear sala"
         >
-          <Lock className={`w-5 h-5 ${night ? 'text-amber-300' : isComando ? 'text-red-300' : isNodo || isSalida ? 'text-[#67c8ff]' : isVerde ? 'text-[#1ce783]' : isAzul ? 'text-white' : 'text-slate-700'}`} />
+          <Lock className={`w-5 h-5 ${night ? 'text-amber-300' : isComando ? 'text-red-300' : isNodo || isSalida ? 'text-[#67c8ff]' : isVerde ? 'text-[#1ce783]' : 'text-slate-700'}`} />
         </button>
         <button
           type="button"
@@ -958,8 +956,6 @@ export default function DispatchPublicPage() {
             <Radio className="w-5 h-5 text-[#67c8ff]" />
           ) : isVerde ? (
             <Leaf className="w-5 h-5 text-[#1ce783]" />
-          ) : isAzul ? (
-            <Hexagon className="w-5 h-5 text-white" />
           ) : (
             <Sun className="w-5 h-5 text-amber-500" />
           )}
@@ -969,10 +965,9 @@ export default function DispatchPublicPage() {
               : isSalida ? 'bg-[#38bdf8] text-[#071019]'
                 : isNodo ? 'bg-[#38bdf8] text-[#071019]'
                   : isVerde ? 'bg-[#1ce783] text-[#00140e]'
-                    : isAzul ? 'keep-on-color bg-white text-[#0918e3]'
-                      : 'bg-slate-200 text-slate-700'
+                    : 'bg-slate-200 text-slate-700'
           }`}>
-            {night ? 'Noche' : isComando ? 'Comando' : isSalida ? 'Salida' : isNodo ? 'Nodo' : isVerde ? 'Verde' : isAzul ? 'Azul' : 'Claro'}
+            {night ? 'Noche' : isComando ? 'Comando' : isSalida ? 'Salida' : isNodo ? 'Nodo' : isVerde ? 'Verde' : 'Claro'}
           </span>
         </button>
         <button
@@ -983,8 +978,8 @@ export default function DispatchPublicPage() {
           aria-label={isFullscreen ? 'Salir de pantalla completa' : 'Pantalla completa'}
         >
           {isFullscreen
-            ? <Minimize2 className={`w-5 h-5 ${night ? 'text-amber-100' : isComando ? 'text-red-300' : isNodo || isSalida ? 'text-[#67c8ff]' : isVerde ? 'text-[#1ce783]' : isAzul ? 'text-white' : 'text-slate-800'}`} />
-            : <Maximize2 className={`w-5 h-5 ${night ? 'text-amber-100' : isComando ? 'text-red-300' : isNodo || isSalida ? 'text-[#67c8ff]' : isVerde ? 'text-[#1ce783]' : isAzul ? 'text-white' : 'text-slate-800'}`} />}
+            ? <Minimize2 className={`w-5 h-5 ${night ? 'text-amber-100' : isComando ? 'text-red-300' : isNodo || isSalida ? 'text-[#67c8ff]' : isVerde ? 'text-[#1ce783]' : 'text-slate-800'}`} />
+            : <Maximize2 className={`w-5 h-5 ${night ? 'text-amber-100' : isComando ? 'text-red-300' : isNodo || isSalida ? 'text-[#67c8ff]' : isVerde ? 'text-[#1ce783]' : 'text-slate-800'}`} />}
         </button>
         {!isSalida && !isComando && (
         <button
@@ -994,7 +989,7 @@ export default function DispatchPublicPage() {
           title="Cambiar diseño"
           aria-label="Cambiar diseño"
         >
-          <SlidersHorizontal className={`w-4 h-4 ${night ? 'text-amber-300' : isNodo || isSalida ? 'text-[#67c8ff]' : isVerde ? 'text-[#1ce783]' : isAzul ? 'text-white' : 'text-blue-600'}`} />
+          <SlidersHorizontal className={`w-4 h-4 ${night ? 'text-amber-300' : isNodo || isSalida ? 'text-[#67c8ff]' : isVerde ? 'text-[#1ce783]' : 'text-blue-600'}`} />
         </button>
         )}
       </div>
@@ -1076,11 +1071,6 @@ export default function DispatchPublicPage() {
               {isVerde && (
                 <p className="mt-1 inline-flex items-center gap-1.5 text-[10px] font-semibold uppercase text-[#1ce783]">
                   <Leaf className="w-3 h-3" /> Tema verde
-                </p>
-              )}
-              {isAzul && (
-                <p className="mt-1 inline-flex items-center gap-1.5 text-[10px] font-semibold uppercase text-white">
-                  <Hexagon className="w-3 h-3" /> Tema azul
                 </p>
               )}
             </div>
@@ -1521,7 +1511,7 @@ export default function DispatchPublicPage() {
           <div className="grid sm:grid-cols-2 xl:grid-cols-3 gap-3">
             {fleet.vehicles.map((v) => (
               <div key={v.id} className={`flex gap-3 rounded-xl p-3 border ${th.fleetItem}`}>
-                <div className={`w-28 h-20 rounded-lg overflow-hidden shrink-0 ${night || isNodo || isVerde || isAzul ? 'bg-[#e8eef4]' : 'bg-slate-100'}`}>
+                <div className={`w-28 h-20 rounded-lg overflow-hidden shrink-0 ${night || isNodo || isVerde ? 'bg-[#e8eef4]' : 'bg-slate-100'}`}>
                   {v.imageUrl ? (
                     <img src={v.imageUrl} alt={v.patent} className="w-full h-full object-cover object-center" />
                   ) : (

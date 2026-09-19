@@ -8,6 +8,7 @@ import { PrismaClient } from '@prisma/client';
  */
 export async function ensureDemoDatabaseSeeded(): Promise<void> {
   if (process.env.AUTO_SEED_DEMO === 'false') return;
+  if (process.env.NODE_ENV === 'production' && process.env.AUTO_SEED_DEMO !== 'true') return;
 
   const prisma = new PrismaClient();
   try {

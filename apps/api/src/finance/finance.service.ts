@@ -1,15 +1,17 @@
 import { Injectable, NotFoundException, ConflictException } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
+import { Actor, assertCompanyAccess, companyIdWhere, companyIdsForActor } from '../common/cuerpo-scope';
 import { CreateBudgetDto } from './dto/create-budget.dto';
 
 @Injectable()
 export class FinanceService {
   constructor(private prisma: PrismaService) {}
 
-  async findBudgets(companyId?: string, year?: number) {
+  async findBudgets(actor: Actor, companyId?: string, year?: number) {
+    const scope = companyIdWhere(await companyIdsForActor(this.prisma, actor, companyId));
     return this.prisma.budget.findMany({
       where: {
-        ...(companyId ? { companyId } : {}),
+        ...scope,
         ...(year ? { year } : {}),
       },
       include: { company: { select: { id: true, name: true, number: true } } },
@@ -17,16 +19,18 @@ export class FinanceService {
     });
   }
 
-  async findBudgetById(id: string) {
+  async findBudgetById(id: string, actor: Actor) {
     const b = await this.prisma.budget.findUnique({
       where: { id },
       include: { company: { select: { id: true, name: true, number: true } } },
     });
     if (!b) throw new NotFoundException('Presupuesto no encontrado');
+    await assertCompanyAccess(this.prisma, actor, b.companyId);
     return b;
   }
 
-  async createBudget(dto: CreateBudgetDto) {
+  async createBudget(dto: CreateBudgetDto, actor: Actor) {
+    await assertCompanyAccess(this.prisma, actor, dto.companyId);
     const exists = await this.prisma.budget.findUnique({
       where: { companyId_year_category: { companyId: dto.companyId, year: dto.year, category: dto.category } },
     });
@@ -37,8 +41,9 @@ export class FinanceService {
     });
   }
 
-  async updateBudget(id: string, dto: Partial<CreateBudgetDto>) {
-    await this.findBudgetById(id);
+  async updateBudget(id: string, dto: Partial<CreateBudgetDto>, actor: Actor) {
+    await this.findBudgetById(id, actor);
+    if (dto.companyId) await assertCompanyAccess(this.prisma, actor, dto.companyId);
     return this.prisma.budget.update({
       where: { id },
       data: dto,
@@ -46,15 +51,15 @@ export class FinanceService {
     });
   }
 
-  async deleteBudget(id: string) {
-    await this.findBudgetById(id);
+  async deleteBudget(id: string, actor: Actor) {
+    await this.findBudgetById(id, actor);
     return this.prisma.budget.delete({ where: { id } });
   }
 
-  async getDashboard(companyId?: string) {
+  async getDashboard(actor: Actor, companyId?: string) {
     const now = new Date();
     const year = now.getFullYear();
-    const where = companyId ? { companyId } : {};
+    const where = companyIdWhere(await companyIdsForActor(this.prisma, actor, companyId));
 
     const [budgets, invoiceStats, purchaseStats] = await Promise.all([
       this.prisma.budget.findMany({

@@ -7,6 +7,7 @@ import {
   ChevronRight, FolderOpen,
 } from 'lucide-react';
 import { api } from '../lib/api';
+import { safeHref } from '../lib/safe-url';
 import { useAuthStore } from '../store/authStore';
 import toast from 'react-hot-toast';
 
@@ -462,7 +463,7 @@ export default function DocumentsPage() {
 
               {/* Acciones */}
               <div className="flex gap-2 pt-1">
-                <a href={selected.fileUrl} target="_blank" rel="noopener noreferrer"
+                <a href={safeHref(selected.fileUrl)} target="_blank" rel="noopener noreferrer"
                   className="flex-1 flex items-center justify-center gap-2 bg-blue-600/10 hover:bg-blue-600/20 text-blue-400 text-sm font-medium py-2.5 rounded-xl border border-blue-600/20 transition-colors">
                   <Download className="w-3.5 h-3.5" />Abrir
                 </a>

@@ -29,7 +29,7 @@ export class EmergencyBitacoraController {
     @Body() dto: FinalizePublicEmergencyDto,
     @Req() req: HeaderRequest,
   ) {
-    await this.dispatch.assertPublicSalaAccess(slug, req);
+    await this.dispatch.assertPublicWriteAccess(slug, req);
     return this.service.finalizeFromPublic(slug, dto);
   }
 
@@ -40,7 +40,7 @@ export class EmergencyBitacoraController {
     @Body() dto: ClosePublicEmergencyDto,
     @Req() req: HeaderRequest,
   ) {
-    await this.dispatch.assertPublicSalaAccess(slug, req);
+    await this.dispatch.assertPublicWriteAccess(slug, req);
     return this.service.closeFromPublic(slug, dto.incidentId);
   }
 
@@ -51,7 +51,7 @@ export class EmergencyBitacoraController {
     @Param('incidentId') incidentId: string,
     @Req() req: HeaderRequest,
   ) {
-    await this.dispatch.assertPublicSalaAccess(slug, req);
+    await this.dispatch.assertPublicWriteAccess(slug, req);
     return this.service.getPublicReportPack(slug, incidentId);
   }
 

@@ -1,5 +1,6 @@
 import { Injectable, NotFoundException, ConflictException } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
+import { Actor, assertCompanyAccess, companyIdWhere, companyIdsForActor } from '../common/cuerpo-scope';
 import { CreateEquipmentDto } from './dto/create-equipment.dto';
 import { UpdateEquipmentDto } from './dto/update-equipment.dto';
 import { CreateVehicleDto } from './dto/create-vehicle.dto';
@@ -9,12 +10,17 @@ import { UpdateVehicleDto } from './dto/update-vehicle.dto';
 export class InventoryService {
   constructor(private prisma: PrismaService) {}
 
+  private async scope(actor: Actor, companyId?: string) {
+    return companyIdWhere(await companyIdsForActor(this.prisma, actor, companyId));
+  }
+
   // ─── Equipment ────────────────────────────────────────────────────────────
 
-  async findAllEquipment(companyId?: string, category?: string) {
+  async findAllEquipment(actor: Actor, companyId?: string, category?: string) {
+    const scope = await this.scope(actor, companyId);
     return this.prisma.equipment.findMany({
       where: {
-        ...(companyId ? { companyId } : {}),
+        ...scope,
         ...(category ? { category } : {}),
       },
       include: { company: { select: { id: true, name: true, number: true } } },
@@ -22,42 +28,47 @@ export class InventoryService {
     });
   }
 
-  async findEquipmentById(id: string) {
+  async findEquipmentById(id: string, actor: Actor) {
     const eq = await this.prisma.equipment.findUnique({
       where: { id },
       include: { company: { select: { id: true, name: true, number: true } } },
     });
     if (!eq) throw new NotFoundException('Equipo no encontrado');
+    await assertCompanyAccess(this.prisma, actor, eq.companyId);
     return eq;
   }
 
-  async createEquipment(dto: CreateEquipmentDto) {
+  async createEquipment(dto: CreateEquipmentDto, actor: Actor) {
+    await assertCompanyAccess(this.prisma, actor, dto.companyId);
     const exists = await this.prisma.equipment.findUnique({ where: { code: dto.code } });
     if (exists) throw new ConflictException(`Código de equipo '${dto.code}' ya registrado`);
     return this.prisma.equipment.create({ data: dto });
   }
 
-  async updateEquipment(id: string, dto: UpdateEquipmentDto) {
-    await this.findEquipmentById(id);
+  async updateEquipment(id: string, dto: UpdateEquipmentDto, actor: Actor) {
+    const current = await this.findEquipmentById(id, actor);
+    if (dto.companyId) await assertCompanyAccess(this.prisma, actor, dto.companyId);
+    else await assertCompanyAccess(this.prisma, actor, current.companyId);
     return this.prisma.equipment.update({ where: { id }, data: dto });
   }
 
-  async deleteEquipment(id: string) {
-    await this.findEquipmentById(id);
+  async deleteEquipment(id: string, actor: Actor) {
+    await this.findEquipmentById(id, actor);
     return this.prisma.equipment.delete({ where: { id } });
   }
 
   // ─── Vehicles ─────────────────────────────────────────────────────────────
 
-  async findAllVehicles(companyId?: string) {
+  async findAllVehicles(actor: Actor, companyId?: string) {
+    const scope = await this.scope(actor, companyId);
     return this.prisma.vehicle.findMany({
-      where: companyId ? { companyId } : {},
+      where: scope,
       include: { company: { select: { id: true, name: true, number: true } } },
       orderBy: { patent: 'asc' },
     });
   }
 
-  async findVehicleById(id: string) {
+  async findVehicleById(id: string, actor: Actor) {
     const v = await this.prisma.vehicle.findUnique({
       where: { id },
       include: {
@@ -66,10 +77,12 @@ export class InventoryService {
       },
     });
     if (!v) throw new NotFoundException('Vehículo no encontrado');
+    await assertCompanyAccess(this.prisma, actor, v.companyId);
     return v;
   }
 
-  async createVehicle(dto: CreateVehicleDto) {
+  async createVehicle(dto: CreateVehicleDto, actor: Actor) {
+    await assertCompanyAccess(this.prisma, actor, dto.companyId);
     const exists = await this.prisma.vehicle.findUnique({ where: { patent: dto.patent } });
     if (exists) throw new ConflictException(`Patente '${dto.patent}' ya registrada`);
     const data: any = { ...dto };
@@ -78,52 +91,55 @@ export class InventoryService {
     return this.prisma.vehicle.create({ data });
   }
 
-  async updateVehicle(id: string, dto: UpdateVehicleDto) {
-    await this.findVehicleById(id);
+  async updateVehicle(id: string, dto: UpdateVehicleDto, actor: Actor) {
+    const current = await this.findVehicleById(id, actor);
+    if (dto.companyId) await assertCompanyAccess(this.prisma, actor, dto.companyId);
+    else await assertCompanyAccess(this.prisma, actor, current.companyId);
     const data: any = { ...dto };
     if (dto.lastMaintenanceAt) data.lastMaintenanceAt = new Date(dto.lastMaintenanceAt);
     if (dto.nextMaintenanceAt) data.nextMaintenanceAt = new Date(dto.nextMaintenanceAt);
     return this.prisma.vehicle.update({ where: { id }, data });
   }
 
-  async deleteVehicle(id: string) {
-    await this.findVehicleById(id);
+  async deleteVehicle(id: string, actor: Actor) {
+    await this.findVehicleById(id, actor);
     return this.prisma.vehicle.delete({ where: { id } });
   }
 
   // ─── Alerts / Vencimientos ────────────────────────────────────────────────
 
-  async getAlerts(companyId?: string) {
+  async getAlerts(actor: Actor, companyId?: string) {
     const now = new Date();
     const in30 = new Date(now.getTime() + 30 * 24 * 60 * 60 * 1000);
+    const scope = await this.scope(actor, companyId);
 
     const [expiredEquipment, expiringEquipment, overdueVehicles, upcomingVehicles] =
       await Promise.all([
         this.prisma.equipment.findMany({
           where: {
             expiresAt: { lt: now },
-            ...(companyId ? { companyId } : {}),
+            ...scope,
           },
           include: { company: { select: { name: true, number: true } } },
         }),
         this.prisma.equipment.findMany({
           where: {
             expiresAt: { gte: now, lte: in30 },
-            ...(companyId ? { companyId } : {}),
+            ...scope,
           },
           include: { company: { select: { name: true, number: true } } },
         }),
         this.prisma.vehicle.findMany({
           where: {
             nextMaintenanceAt: { lt: now },
-            ...(companyId ? { companyId } : {}),
+            ...scope,
           },
           include: { company: { select: { name: true, number: true } } },
         }),
         this.prisma.vehicle.findMany({
           where: {
             nextMaintenanceAt: { gte: now, lte: in30 },
-            ...(companyId ? { companyId } : {}),
+            ...scope,
           },
           include: { company: { select: { name: true, number: true } } },
         }),
@@ -147,8 +163,8 @@ export class InventoryService {
 
   // ─── Dashboard Stats ──────────────────────────────────────────────────────
 
-  async getDashboardStats(companyId?: string) {
-    const where = companyId ? { companyId } : {};
+  async getDashboardStats(actor: Actor, companyId?: string) {
+    const where = await this.scope(actor, companyId);
 
     const [
       totalCompanies,
@@ -165,7 +181,7 @@ export class InventoryService {
       this.prisma.vehicle.count({ where: { ...where, status: 'OPERATIVO' } }),
       this.prisma.equipment.count({ where }),
       this.prisma.equipment.count({ where: { ...where, status: 'OPERATIVO' } }),
-      this.getAlerts(companyId),
+      this.getAlerts(actor, companyId),
     ]);
 
     return {

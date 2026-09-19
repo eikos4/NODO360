@@ -12,7 +12,7 @@ import { Logger } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
 import { Server, Socket } from 'socket.io';
 import { PrismaService } from '../prisma/prisma.service';
-import { RadioService, RadioTransmission } from './radio.service';
+import { formatRadioSpeaker, RadioService, RadioTransmission } from './radio.service';
 import { isAllowedCorsOrigin } from '../common/cors-origins';
 import { hasAnyRole } from '../common/user-roles';
 import { assertCompanyAccess } from '../common/cuerpo-scope';
@@ -25,6 +25,7 @@ type SocketUser = {
   companyId: string | null;
   firstName: string;
   lastName: string;
+  operativeNumber: number | null;
 };
 
 @WebSocketGateway({
@@ -96,6 +97,7 @@ export class RadioGateway implements OnGatewayInit, OnGatewayConnection, OnGatew
         companyId: true,
         firstName: true,
         lastName: true,
+        operativeNumber: true,
         isActive: true,
       },
     });
@@ -108,6 +110,7 @@ export class RadioGateway implements OnGatewayInit, OnGatewayConnection, OnGatew
       companyId: user.companyId,
       firstName: user.firstName,
       lastName: user.lastName,
+      operativeNumber: user.operativeNumber ?? null,
     };
   }
 
@@ -193,6 +196,7 @@ export class RadioGateway implements OnGatewayInit, OnGatewayConnection, OnGatew
       lastName: user.lastName,
       role: user.role,
       companyId: user.companyId,
+      operativeNumber: user.operativeNumber,
     });
     await client.join(body.channelId);
     const state = this.radio.snapshot(body.channelId);
@@ -226,8 +230,14 @@ export class RadioGateway implements OnGatewayInit, OnGatewayConnection, OnGatew
     if (!(await this.canTalkOnChannel(user, body.channelId))) {
       return { ok: false, reason: 'Marcá VOY para transmitir' };
     }
-    const speakerName = `${user.firstName} ${user.lastName}`.trim();
-    const result = this.radio.tryPttStart(body.channelId, client.id, user.userId, speakerName);
+    const speakerName = formatRadioSpeaker(user.firstName, user.lastName, user.operativeNumber);
+    const result = this.radio.tryPttStart(
+      body.channelId,
+      client.id,
+      user.userId,
+      speakerName,
+      user.operativeNumber,
+    );
     if (!result.ok) return result;
     const state = this.radio.snapshot(body.channelId);
     this.server.to(body.channelId).emit('channel:state', state);
@@ -236,6 +246,7 @@ export class RadioGateway implements OnGatewayInit, OnGatewayConnection, OnGatew
       userId: user.userId,
       speakerName,
       role: user.role,
+      operativeNumber: user.operativeNumber,
     });
     return { ok: true };
   }
@@ -272,15 +283,22 @@ export class RadioGateway implements OnGatewayInit, OnGatewayConnection, OnGatew
       const joined = await this.onJoin(client, body);
       if (!joined?.ok) return joined;
     }
+    if (!(await this.canTalkOnChannel(user, body.channelId))) {
+      return { ok: false, reason: 'Marcá VOY para transmitir' };
+    }
+    if (!isSafeRadioAudioUrl(body.audioUrl)) {
+      return { ok: false, reason: 'Audio inválido' };
+    }
     const tx: RadioTransmission = {
       id: body.id || `tx_${Date.now()}`,
       channelId: body.channelId,
       userId: user.userId,
-      speakerName: `${user.firstName} ${user.lastName}`.trim(),
+      speakerName: formatRadioSpeaker(user.firstName, user.lastName, user.operativeNumber),
       role: user.role,
       audioUrl: body.audioUrl,
       durationMs: body.durationMs ?? 0,
       at: Date.now(),
+      operativeNumber: user.operativeNumber,
     };
     this.radio.addTransmission(tx);
     this.radio.pttStop(body.channelId, client.id);
@@ -290,5 +308,22 @@ export class RadioGateway implements OnGatewayInit, OnGatewayConnection, OnGatew
     this.server.to(body.channelId).emit('ptt:idle', { channelId: body.channelId });
     client.emit('tx:new', tx);
     return { ok: true, tx, state };
+  }
+}
+
+function isSafeRadioAudioUrl(url: string) {
+  try {
+    const parsed = new URL(url, 'https://nodo360.invalid');
+    if (parsed.protocol !== 'https:' && parsed.protocol !== 'http:') return false;
+    const path = parsed.pathname.toLowerCase();
+    if (/\.(html?|svg|js|mjs|xml)$/i.test(path)) return false;
+    return (
+      path.includes('/uploads/')
+      || path.includes('/nodo360/radio')
+      || parsed.hostname.includes('cloudinary.com')
+      || parsed.hostname.includes('res.cloudinary.com')
+    );
+  } catch {
+    return false;
   }
 }

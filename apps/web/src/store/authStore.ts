@@ -1,6 +1,7 @@
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
 import { api } from '../lib/api';
+import { disconnectRadioSocket } from '../lib/radio-socket';
 
 export interface AuthCompany {
   id: string;
@@ -51,6 +52,7 @@ export const useAuthStore = create<AuthState>()(
 
       logout: () => {
         localStorage.removeItem('nodo360_token');
+        disconnectRadioSocket();
         set({ user: null, token: null, isAuthenticated: false });
       },
 

@@ -1,7 +1,7 @@
 import { Injectable, NotFoundException, ConflictException, BadRequestException, ForbiddenException } from '@nestjs/common';
 import * as bcrypt from 'bcryptjs';
 import { PrismaService } from '../prisma/prisma.service';
-import { Actor, cuerpoIdForUser, isPlatformOwner, assertCompanyAccess } from '../common/cuerpo-scope';
+import { Actor, CUERPO_WIDE_ROLES, cuerpoIdForUser, isPlatformOwner, assertCompanyAccess } from '../common/cuerpo-scope';
 import { assignedRoles, hasAnyRole, normalizePhone, pickPrimaryRole } from '../common/user-roles';
 import { CreateUserDto, Role } from './dto/create-user.dto';
 import { UpdateUserDto } from './dto/update-user.dto';
@@ -43,8 +43,15 @@ export class UsersService {
     if (actor && companyId) await assertCompanyAccess(this.prisma, actor, companyId);
     const where: Record<string, unknown> = companyId ? { companyId } : {};
     if (actor && !isPlatformOwner(actor.role, actor.roles) && !companyId) {
-      const cuerpoId = await cuerpoIdForUser(this.prisma, actor);
-      if (cuerpoId) where.company = { cuerpoId };
+      if (!hasAnyRole(actor, ...CUERPO_WIDE_ROLES)) {
+        if (!actor.companyId) throw new ForbiddenException('Usuario sin compañía asignada');
+        where.companyId = actor.companyId;
+      } else {
+        const cuerpoId = await cuerpoIdForUser(this.prisma, actor);
+        if (cuerpoId) where.company = { cuerpoId };
+        else if (actor.companyId) where.companyId = actor.companyId;
+        else throw new ForbiddenException('Usuario sin Cuerpo asignado');
+      }
     }
     return this.prisma.user.findMany({
       where,
@@ -126,18 +133,31 @@ export class UsersService {
     };
   }
 
+  private assertAssignable(assigned: { role: Role; roles: Role[] }, actor?: UserActor, companyId?: string | null) {
+    if (!actor) return;
+    if (assigned.roles.includes(Role.KODESK) && !hasAnyRole(actor, 'KODESK')) {
+      throw new ForbiddenException('El perfil Kodesk solo lo asigna Kodesk');
+    }
+    if (assigned.roles.includes(Role.SUPER_ADMIN) && !hasAnyRole(actor, 'KODESK')) {
+      throw new ForbiddenException('Solo Kodesk puede asignar Super Admin');
+    }
+    if (!isPlatformOwner(actor.role, actor.roles) && !companyId) {
+      throw new ForbiddenException('Compañía requerida');
+    }
+  }
+
   async create(dto: CreateUserDto, actor?: UserActor) {
-    if (dto.companyId && actor) {
-      await assertCompanyAccess(this.prisma, actor, dto.companyId);
+    const { password, role, roles, phone, companyId, ...rest } = dto;
+    const assigned = this.resolveRoles(role, roles);
+    this.assertAssignable(assigned, actor, companyId);
+    if (companyId && actor) {
+      await assertCompanyAccess(this.prisma, actor, companyId);
     }
     const exists = await this.prisma.user.findFirst({
       where: { OR: [{ email: dto.email }, { rut: dto.rut }] },
     });
     if (exists) throw new ConflictException('Email o RUT ya registrado');
     await this.assertOperativeNumber(dto.companyId, dto.operativeNumber);
-
-    const { password, role, roles, phone, companyId, ...rest } = dto;
-    const assigned = this.resolveRoles(role, roles);
     const passwordHash = await bcrypt.hash(password, 10);
     return this.prisma.user.create({
       data: {
@@ -165,6 +185,11 @@ export class UsersService {
         roles ?? current.roles,
         current.role,
       );
+      this.assertAssignable(
+        assigned,
+        actor,
+        (companyId !== undefined ? companyId || null : current.companyId) as string | null,
+      );
       data.role = assigned.role;
       data.roles = assigned.roles;
     }
@@ -190,6 +215,9 @@ export class UsersService {
     }
 
     const nextCompanyId = (companyId !== undefined ? companyId || null : current.companyId) as string | null;
+    if (actor && !isPlatformOwner(actor.role, actor.roles) && !nextCompanyId) {
+      throw new ForbiddenException('Compañía requerida');
+    }
     if (actor && nextCompanyId) {
       await assertCompanyAccess(this.prisma, actor, nextCompanyId);
     }

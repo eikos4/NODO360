@@ -3,8 +3,8 @@ import { io, Socket } from 'socket.io-client';
 export type RadioChannelState = {
   channelId: string;
   listeners: number;
-  participants: { userId: string; firstName: string; lastName: string; role: string }[];
-  talker: { userId: string; socketId: string; speakerName: string; since: number } | null;
+  participants: { userId: string; firstName: string; lastName: string; role: string; operativeNumber?: number | null }[];
+  talker: { userId: string; socketId: string; speakerName: string; since: number; operativeNumber?: number | null } | null;
   recent: RadioTx[];
 };
 
@@ -17,7 +17,15 @@ export type RadioTx = {
   audioUrl: string;
   durationMs: number;
   at: number;
+  operativeNumber?: number | null;
 };
+
+export function radioSpeakerParts(tx: { speakerName: string; operativeNumber?: number | null }) {
+  const match = String(tx.speakerName || '').match(/^N[°º]?\s*(\d+)\s*[·\-–]\s*(.+)$/i);
+  const number = tx.operativeNumber ?? (match ? Number(match[1]) : null);
+  const name = (match?.[2] || tx.speakerName || 'Bombero').trim();
+  return { number: Number.isFinite(number as number) ? number : null, name };
+}
 
 export function radioSocketOrigin(): string {
   const api = import.meta.env.VITE_API_URL?.replace(/\/$/, '') || '';

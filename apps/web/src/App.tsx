@@ -26,7 +26,6 @@ import DispatchPublicPage from './pages/DispatchPublicPage';
 import CentralGlobalPage from './pages/CentralGlobalPage';
 import IncidentLocationPinPage from './pages/IncidentLocationPinPage';
 import Despacho360Page from './pages/Despacho360Page';
-import BotoneraShell from './pages/BotoneraShell';
 import AnnouncementsPage from './pages/AnnouncementsPage';
 import HydrantsPage from './pages/HydrantsPage';
 import EmergencyPlansPage from './pages/EmergencyPlansPage';
@@ -40,6 +39,7 @@ import InventoryAuditsPage from './pages/InventoryAuditsPage';
 import FleetLogPage from './pages/FleetLogPage';
 import CentralOperativaPage from './pages/CentralOperativaPage';
 import CentralBitacoraPage from './pages/CentralBitacoraPage';
+import Bitacora360Page from './pages/Bitacora360Page';
 import CentralDespachosParralPage from './pages/CentralDespachosParralPage';
 import CentralExpressPage from './pages/CentralExpressPage';
 import BomberoEmergencyPage from './pages/BomberoEmergencyPage';
@@ -100,41 +100,43 @@ export default function App() {
       >
         <Route path="dashboard" element={<DashboardPage />} />
         <Route path="implementacion" element={<SuperAdminImplementacionPage />} />
-        <Route path="companies" element={<CompaniesPage />} />
-        <Route path="users" element={<UsersPage />} />
-        <Route path="inventory" element={<InventoryPage />} />
+        <Route path="companies" element={<RequireRoles roles={['SUPER_ADMIN', 'COMANDANTE']}><CompaniesPage /></RequireRoles>} />
+        <Route path="users" element={<RequireRoles roles={['KODESK', 'SUPER_ADMIN', 'COMANDANTE', 'CAPITAN']}><UsersPage /></RequireRoles>} />
+        <Route path="inventory" element={<RequireRoles roles={['SUPER_ADMIN', 'COMANDANTE', 'CAPITAN', 'ENCARGADO_MATERIAL']}><InventoryPage /></RequireRoles>} />
         <Route path="inventory-audits" element={<InventoryAuditsPage />} />
         <Route path="alerts" element={<AlertsPage />} />
         <Route path="announcements" element={<AnnouncementsPage />} />
-        <Route path="hydrants" element={<HydrantsPage />} />
-        <Route path="emergency-plans" element={<EmergencyPlansPage />} />
+        <Route path="hydrants" element={<RequireRoles roles={['SUPER_ADMIN', 'COMANDANTE', 'CAPITAN', 'ENCARGADO_MATERIAL']}><HydrantsPage /></RequireRoles>} />
+        <Route path="emergency-plans" element={<RequireRoles roles={['SUPER_ADMIN', 'COMANDANTE', 'CAPITAN', 'SECRETARIO']}><EmergencyPlansPage /></RequireRoles>} />
         <Route path="evacuation" element={<EvacuationPage />} />
         <Route path="training" element={<TrainingPage />} />
         <Route path="health" element={<RequireRoles roles={['SUPER_ADMIN', 'COMANDANTE', 'CAPITAN', 'SECRETARIO']}><HealthPage /></RequireRoles>} />
-        <Route path="operational-map" element={<OperationalMapPage />} />
-        <Route path="incidents" element={<IncidentsPage />} />
+        <Route path="operational-map" element={<RequireRoles roles={['SUPER_ADMIN', 'COMANDANTE', 'CAPITAN', 'ENCARGADO_MATERIAL', 'SECRETARIO', 'OPERADOR_CENTRAL']}><OperationalMapPage /></RequireRoles>} />
+        <Route path="incidents" element={<RequireRoles roles={['SUPER_ADMIN', 'COMANDANTE', 'CAPITAN', 'OPERADOR_CENTRAL']}><IncidentsPage /></RequireRoles>} />
         <Route path="maintenance" element={<MaintenancePage />} />
         <Route path="shifts" element={<ShiftsPage />} />
         <Route path="guard-log" element={<GuardLogPage />} />
         <Route path="documents" element={<DocumentsPage />} />
         <Route path="purchases" element={<PurchasesPage />} />
-        <Route path="finance" element={<FinancePage />} />
+        <Route path="finance" element={<RequireRoles roles={['SUPER_ADMIN', 'TESORERO', 'AUDITOR', 'COMANDANTE']}><FinancePage /></RequireRoles>} />
         <Route path="membership" element={<RequireRoles roles={['SUPER_ADMIN', 'TESORERO', 'SECRETARIO', 'COMANDANTE', 'AUDITOR', 'CAPITAN']}><MembershipPage /></RequireRoles>} />
         <Route path="nodo360" element={<RequireRoles roles={['SUPER_ADMIN', 'COMANDANTE', 'CAPITAN', 'OPERADOR_CENTRAL']}><Nodo360Page /></RequireRoles>} />
         <Route path="motores" element={<MotoresPage />} />
         <Route path="fleet-logs" element={<FleetLogPage />} />
         <Route path="organigrama" element={<OrganigramaPage />} />
-        <Route path="despacho360" element={<Despacho360Page />} />
-        <Route path="nodo360-alarms" element={<Nodo360AlarmsPage />} />
+        <Route path="despacho360" element={<RequireRoles roles={['SUPER_ADMIN', 'COMANDANTE', 'CAPITAN', 'OPERADOR_CENTRAL']}><Despacho360Page /></RequireRoles>} />
+        <Route path="nodo360-alarms" element={<RequireRoles roles={['SUPER_ADMIN', 'COMANDANTE', 'CAPITAN', 'OPERADOR_CENTRAL']}><Nodo360AlarmsPage /></RequireRoles>} />
         <Route path="emergencia-respuesta" element={<BomberoEmergencyPage />} />
         <Route path="central-despachos-parral" element={<CentralDespachosParralPage />} />
-        <Route path="dispatch/global" element={<CentralGlobalPage />} />
-        <Route path="central-express" element={<CentralExpressPage />} />
-        <Route path="vision360-cuarteles" element={<Vision360CuartelesPage />} />
+        <Route path="dispatch/global" element={<RequireRoles roles={['SUPER_ADMIN', 'COMANDANTE', 'CAPITAN', 'OPERADOR_CENTRAL', 'SECRETARIO']}><CentralGlobalPage /></RequireRoles>} />
+        <Route path="central-express" element={<RequireRoles roles={['SUPER_ADMIN', 'COMANDANTE', 'CAPITAN', 'OPERADOR_CENTRAL']}><CentralExpressPage /></RequireRoles>} />
+        <Route path="vision360-cuarteles" element={<RequireRoles roles={['SUPER_ADMIN', 'COMANDANTE', 'CAPITAN', 'OPERADOR_CENTRAL']}><Vision360CuartelesPage /></RequireRoles>} />
         <Route path="central-operativa" element={<RequireRoles roles={['OPERADOR_CENTRAL', 'COMANDANTE', 'CAPITAN', 'SUPER_ADMIN']}><CentralOperativaPage /></RequireRoles>} />
-        <Route path="central-bitacora" element={<CentralBitacoraPage />} />
+        <Route path="bitacora360" element={<RequireRoles roles={['OPERADOR_CENTRAL', 'COMANDANTE', 'CAPITAN', 'SUPER_ADMIN']}><Bitacora360Page /></RequireRoles>} />
+        <Route path="central-bitacora" element={<RequireRoles roles={['OPERADOR_CENTRAL', 'COMANDANTE', 'CAPITAN', 'SUPER_ADMIN']}><Bitacora360Page /></RequireRoles>} />
+        <Route path="central-bitacora/registro" element={<RequireRoles roles={['OPERADOR_CENTRAL', 'COMANDANTE', 'CAPITAN', 'SUPER_ADMIN']}><CentralBitacoraPage /></RequireRoles>} />
         <Route path="central-despachos" element={<Navigate to="/despacho360" replace />} />
-        <Route path="central-despachos/variantes" element={<BotoneraShell />} />
+        <Route path="central-despachos/variantes" element={<Navigate to="/despacho360" replace />} />
         <Route path="botonera" element={<Navigate to="/despacho360" replace />} />
       </Route>
       <Route path="*" element={<Navigate to="/" replace />} />

@@ -6,7 +6,7 @@ import {
   MapPin, Building2, Square, Settings,
   CheckCircle2, X, Crosshair, ExternalLink, BookOpen,
   Globe, Copy, UserX, Star, Search, ChevronDown, ChevronUp,
-  Clock, Keyboard, Loader2, Users, LogOut, Menu, LayoutGrid, Sun, Moon, MessageCircle, GraduationCap, Radio, KeyRound,
+  Clock, Keyboard, Loader2, Users, LogOut, Menu, Sun, Moon, MessageCircle, GraduationCap, Radio, KeyRound,
 } from 'lucide-react';
 import { api } from '../lib/api';
 import toast from 'react-hot-toast';
@@ -131,6 +131,7 @@ function EmergencyKeyButton({
   const isSelected = selectedType === main.id || childSelected;
   const hasAudio = hasEmergencyAudioFile(main.id);
   const hex = COLOR_HEX[main.color] ?? '#64748b';
+  const onColor = main.text === 'text-black' ? '#111827' : '#ffffff';
 
   return (
     <button
@@ -145,33 +146,33 @@ function EmergencyKeyButton({
       style={
         !isSelected
           ? {
-            backgroundColor: isDark ? `${hex}15` : `${hex}10`,
-            borderColor: isDark ? `${hex}40` : `${hex}30`,
+            backgroundColor: isDark ? `${hex}22` : `${hex}2e`,
+            borderColor: hex,
           }
           : undefined
       }
     >
       <span
         className={`absolute top-1 left-1 text-[9px] font-mono font-bold px-1 py-0.5 rounded leading-none ${isSelected ? 'bg-black/30 text-white' : ''}`}
-        style={!isSelected ? { color: isDark ? `${hex}dd` : hex, backgroundColor: isDark ? `${hex}18` : `${hex}12` } : undefined}
+        style={!isSelected ? { color: onColor, backgroundColor: hex } : undefined}
       >
         {main.code}
       </span>
       {EMERGENCY_MAIN_DIGIT_KEY[main.id] && (
         <span
           className={`absolute top-1 right-1 text-[8px] font-mono ${isSelected ? 'text-white opacity-60' : ''}`}
-          style={!isSelected ? { color: isDark ? `${hex}88` : `${hex}99` } : undefined}
+          style={!isSelected ? { color: hex } : undefined}
         >
           {EMERGENCY_MAIN_DIGIT_KEY[main.id]}
         </span>
       )}
       {hasAudio && (
-        <span className={`absolute bottom-1 right-1 ${isSelected ? 'text-white/70' : ''}`} style={!isSelected ? { color: `${hex}88` } : undefined}>
+        <span className={`absolute bottom-1 right-1 ${isSelected ? 'text-white/70' : ''}`} style={!isSelected ? { color: hex } : undefined}>
           <Volume2 className="w-3 h-3" />
         </span>
       )}
       <Icon className="w-5 h-5 mt-2" style={!isSelected ? { color: hex } : undefined} />
-      <span className={`text-center leading-tight line-clamp-2 px-0.5 ${isSelected ? '' : isDark ? 'text-slate-300' : 'text-slate-700'}`}>{main.shortLabel}</span>
+      <span className={`text-center leading-tight line-clamp-2 px-0.5 ${isSelected ? '' : isDark ? 'text-slate-200' : 'text-slate-900'}`}>{main.shortLabel}</span>
       {familyHasPanel(main) ? (
         <span
           className={`text-[8px] font-bold uppercase tracking-wide ${isSelected ? 'text-white/80' : ''}`}
@@ -974,14 +975,6 @@ export default function BotoneraPage() {
             <Settings className="w-4 h-4" />
             <span className="hidden sm:inline">Audio</span>
           </button>
-          <Link
-            to="/central-despachos/variantes"
-            className={`hidden md:flex items-center gap-1.5 px-3 py-2 rounded-lg border text-xs font-medium transition-colors ${bt.btnTool}`}
-            title="5 versiones alternativas de botonera"
-          >
-            <LayoutGrid className="w-4 h-4" />
-            Variantes
-          </Link>
 
         </div>
       </header>
@@ -1734,10 +1727,14 @@ export default function BotoneraPage() {
               type="button"
               onClick={() => void handleStandbyAlert()}
               disabled={!selectedCia || standbySending || dispatching}
-              className="w-full flex items-center justify-center gap-2 px-3 py-3 rounded-xl border-2 border-emerald-500/50 bg-emerald-950/40 text-emerald-200 hover:bg-emerald-900/50 hover:border-emerald-400 disabled:opacity-40 font-bold text-xs uppercase tracking-wide min-h-[48px]"
+              className={`w-full flex items-center justify-center gap-2 px-3 py-3 rounded-xl border-2 disabled:opacity-40 font-bold text-xs uppercase tracking-wide min-h-[48px] ${
+                isDark
+                  ? 'border-emerald-500/50 bg-emerald-950/40 text-emerald-200 hover:bg-emerald-900/50 hover:border-emerald-400'
+                  : 'border-emerald-600 bg-emerald-100 text-emerald-950 hover:bg-emerald-200'
+              }`}
               title="Solo ident Nodo360 en teléfonos y sala. No despacha emergencia."
             >
-              <Radio className="w-4 h-4 text-emerald-400" />
+              <Radio className={`w-4 h-4 ${isDark ? 'text-emerald-400' : 'text-emerald-700'}`} />
               {standbySending ? 'Enviando aviso…' : 'Aviso Nodo360 · preaviso extraordinario'}
             </button>
             <p className={`text-[10px] leading-snug ${bt.hint}`}>
@@ -1746,9 +1743,9 @@ export default function BotoneraPage() {
           </div>
           {activeMainWithSubs && familyHasPanel(activeMainWithSubs) && (
             <div className={`rounded-xl border p-3 space-y-3 ${bt.subPanel}`}>
-              <p className="text-[10px] font-bold text-amber-400 uppercase tracking-wider flex flex-wrap items-center gap-2">
+              <p className={`text-[10px] font-bold uppercase tracking-wider flex flex-wrap items-center gap-2 ${isDark ? 'text-amber-400' : 'text-amber-800'}`}>
                 Tono {activeMainWithSubs.code}
-                <span className="font-normal text-slate-500 normal-case">{activeMainWithSubs.label}</span>
+                <span className={`font-normal normal-case ${isDark ? 'text-slate-500' : 'text-slate-700'}`}>{activeMainWithSubs.label}</span>
               </p>
               {activeMainWithSubs.subdivisions?.length ? (
                 <div className="space-y-1.5">
@@ -1769,11 +1766,11 @@ export default function BotoneraPage() {
                               : bt.subKeyIdle
                             }`}
                         >
-                          <span className={`font-mono font-bold text-[9px] ${isSubSelected ? 'text-white' : 'text-amber-400'}`}>
+                          <span className={`font-mono font-bold text-[9px] ${isSubSelected ? 'text-white' : isDark ? 'text-amber-400' : 'text-amber-800'}`}>
                             {sub.code}
                           </span>
-                          <SubIcon className={`w-4 h-4 ${isSubSelected ? activeMainWithSubs.text : bt.emergencyKeyIcon}`} />
-                          <span className="text-center leading-tight line-clamp-2">{sub.shortLabel}</span>
+                          <SubIcon className={`w-4 h-4 ${isSubSelected ? activeMainWithSubs.text : isDark ? bt.emergencyKeyIcon : 'text-slate-800'}`} />
+                          <span className={`text-center leading-tight line-clamp-2 ${isSubSelected ? '' : isDark ? '' : 'text-slate-900'}`}>{sub.shortLabel}</span>
                         </button>
                       );
                     })}

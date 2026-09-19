@@ -10,6 +10,7 @@ export type RadioParticipant = {
   lastName: string;
   role: string;
   companyId: string | null;
+  operativeNumber?: number | null;
 };
 
 export type RadioTransmission = {
@@ -21,6 +22,7 @@ export type RadioTransmission = {
   audioUrl: string;
   durationMs: number;
   at: number;
+  operativeNumber?: number | null;
 };
 
 export type ChannelTalker = {
@@ -28,7 +30,17 @@ export type ChannelTalker = {
   socketId: string;
   speakerName: string;
   since: number;
+  operativeNumber?: number | null;
 };
+
+export function formatRadioSpeaker(
+  firstName: string,
+  lastName: string,
+  operativeNumber?: number | null,
+) {
+  const name = `${firstName} ${lastName}`.trim() || 'Bombero';
+  return operativeNumber != null ? `N° ${operativeNumber} · ${name}` : name;
+}
 
 @Injectable()
 export class RadioService {
@@ -91,6 +103,7 @@ export class RadioService {
     socketId: string,
     userId: string,
     speakerName: string,
+    operativeNumber?: number | null,
   ): { ok: true } | { ok: false; reason: string; talker?: ChannelTalker } {
     const members = this.rooms.get(channelId);
     if (!members?.has(socketId)) {
@@ -100,7 +113,7 @@ export class RadioService {
     if (current && current.socketId !== socketId) {
       return { ok: false, reason: 'Canal ocupado', talker: current };
     }
-    this.talkers.set(channelId, { userId, socketId, speakerName, since: Date.now() });
+    this.talkers.set(channelId, { userId, socketId, speakerName, since: Date.now(), operativeNumber });
     return { ok: true };
   }
 
@@ -142,19 +155,28 @@ export class RadioService {
         orderBy: { createdAt: 'desc' },
         take: 40,
       });
+      const speakers = await this.prisma.user.findMany({
+        where: { id: { in: [...new Set(rows.map((row) => row.userId))] } },
+        select: { id: true, firstName: true, lastName: true, operativeNumber: true },
+      });
+      const byUser = new Map(speakers.map((user) => [user.id, user]));
       const existing = this.history.get(channelId) ?? [];
       const byId = new Map(existing.map((item) => [item.id, item]));
       for (const row of rows) {
         if (byId.has(row.id)) continue;
+        const speaker = byUser.get(row.userId);
         byId.set(row.id, {
           id: row.id,
           channelId: row.channelId,
           userId: row.userId,
-          speakerName: row.speakerName,
+          speakerName: speaker
+            ? formatRadioSpeaker(speaker.firstName, speaker.lastName, speaker.operativeNumber)
+            : row.speakerName,
           role: row.role,
           audioUrl: row.audioUrl,
           durationMs: row.durationMs,
           at: row.createdAt.getTime(),
+          operativeNumber: speaker?.operativeNumber ?? null,
         });
       }
       this.history.set(
@@ -181,6 +203,7 @@ export class RadioService {
         firstName: m.firstName,
         lastName: m.lastName,
         role: m.role,
+        operativeNumber: m.operativeNumber ?? null,
       })),
       talker: this.talkers.get(channelId) ?? null,
       recent: this.recent(channelId).slice(0, 12),

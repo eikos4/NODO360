@@ -285,7 +285,7 @@ export default function IncidentsPage() {
         </div>
         <div className="flex items-center gap-3">
           <Link
-            to="/central-bitacora"
+            to="/bitacora360"
             className="flex items-center gap-2 bg-white dark:bg-slate-800 hover:bg-slate-50 dark:hover:bg-slate-700 border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-300 text-sm font-bold px-4 py-2.5 rounded-xl transition-colors shadow-sm"
           >
             <BookOpen className="w-4 h-4" />Bitácora en vivo
@@ -680,7 +680,7 @@ export default function IncidentsPage() {
                     <p className="text-xs font-bold text-slate-700 dark:text-slate-300 uppercase tracking-widest">Bitácora operacional</p>
                   </div>
                   <Link
-                    to={`/central-bitacora?incidente=${selected.id}`}
+                    to={`/bitacora360?incidente=${selected.id}`}
                     className="text-[11px] font-semibold text-amber-700 dark:text-amber-400 hover:underline"
                   >
                     Abrir en sala de radio

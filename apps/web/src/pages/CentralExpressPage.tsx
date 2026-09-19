@@ -2,8 +2,8 @@ import { useEffect, useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import {
-  Clock, Flame, HardHat, Loader2, Mic, MicOff, Moon, Search, Settings, Shield,
-  Siren, Sun, Truck, UserCog, Users, Volume2, VolumeX, MessageCircle, Crosshair
+  Clock, Flame, HardHat, Loader2, Mic, MicOff, Search, Settings, Shield,
+  Siren, Truck, UserCog, Users, Volume2, VolumeX, MessageCircle, Crosshair
 } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { buildLocationPinWhatsAppMessage, buildWhatsAppShareUrl, buildLocationPinUrl } from '../lib/incident-location-pin';
@@ -13,7 +13,7 @@ import { useSimpleDispatch } from '../hooks/useQuickDispatch';
 import { useCentralExpressTheme } from '../hooks/useCentralExpressTheme';
 import type { CentralExpressThemeTokens } from '../lib/central-express-theme';
 import { listEmergencyDispatchOptions } from '../lib/emergency-codes';
-import type { CuartelItem } from '../components/botonera/CuartelOverviewPanel';
+import type { CuartelItem } from '../lib/cuartel';
 import CentralExpressMap from '../components/central-express/CentralExpressMap';
 import CompanyMaquinistaAlert from '../components/dispatch/CompanyMaquinistaAlert';
 import DispatchVoiceConfigToggle from '../components/dispatch/DispatchVoiceConfigToggle';
@@ -139,7 +139,7 @@ function CompanyCard({
 export default function CentralExpressPage() {
   const d = useSimpleDispatch();
   const user = useAuthStore((s) => s.user);
-  const { tokens: th, toggleTheme, isDark } = useCentralExpressTheme();
+  const { tokens: th, isDark } = useCentralExpressTheme();
   const [commune, setCommune] = useState('Parral');
   const [reference, setReference] = useState('');
   const [priority, setPriority] = useState<'ALTA' | 'MEDIA' | 'BAJA'>('ALTA');
@@ -293,16 +293,13 @@ export default function CentralExpressPage() {
         <nav className="hidden md:flex items-center gap-1 text-xs font-semibold">
           <span className={`px-3 py-1.5 rounded-lg ${th.navActive}`}>Despacho</span>
           <Link to="/incidents" className={`px-3 py-1.5 rounded-lg ${th.navIdle}`}>Incidentes</Link>
-          <Link to="/central-bitacora" className={`px-3 py-1.5 rounded-lg ${th.navIdle}`}>Bitácora</Link>
+          <Link to="/bitacora360" className={`px-3 py-1.5 rounded-lg ${th.navIdle}`}>Bitácora360</Link>
           <Link to="/operational-map" className={`px-3 py-1.5 rounded-lg ${th.navIdle}`}>Recursos</Link>
           <Link to="/despacho360" className={`px-3 py-1.5 rounded-lg ${th.navIdle}`}>Despacho360</Link>
         </nav>
 
         <div className="flex items-center gap-2 shrink-0">
           <LiveClock th={th} />
-          <button type="button" onClick={toggleTheme} className={`p-2 rounded-lg border ${th.btnGhost}`} title={isDark ? 'Modo claro' : 'Modo oscuro'}>
-            {isDark ? <Sun className="w-4 h-4" /> : <Moon className="w-4 h-4" />}
-          </button>
           <button
             type="button"
             onClick={() => d.setVoiceEnabled(!d.voiceEnabled)}

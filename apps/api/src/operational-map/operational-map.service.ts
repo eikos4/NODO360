@@ -1,6 +1,7 @@
 import { Injectable } from '@nestjs/common';
 import { DispatchSource } from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
+import { Actor, companyIdWhere, companyIdsForActor } from '../common/cuerpo-scope';
 
 type LatLng = { lat: number; lng: number };
 
@@ -101,8 +102,12 @@ function resolveAlarmBy(
 export class OperationalMapService {
   constructor(private prisma: PrismaService) {}
 
-  async getMapData(companyId?: string, incidentDays = 90) {
-    const where = companyId ? { companyId } : {};
+  async getMapData(actor: Actor, companyId?: string, incidentDays = 90) {
+    const ids = await companyIdsForActor(this.prisma, actor, companyId);
+    const where = companyIdWhere(ids);
+    const companyFilter = ids == null
+      ? { isActive: true }
+      : { id: ids.length === 1 ? ids[0] : { in: ids }, isActive: true };
     const since = new Date();
     since.setDate(since.getDate() - incidentDays);
 
@@ -158,7 +163,7 @@ export class OperationalMapService {
         take: 200,
       }),
       this.prisma.company.findMany({
-        where: companyId ? { id: companyId, isActive: true } : { isActive: true },
+        where: companyFilter,
         select: {
           id: true,
           name: true,
@@ -207,7 +212,7 @@ export class OperationalMapService {
         where: {
           isActive: true,
           stationAvailable: true,
-          ...(companyId ? { companyId } : {}),
+          ...where,
         },
         select: {
           id: true,

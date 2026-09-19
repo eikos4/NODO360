@@ -4,7 +4,7 @@ import type { SalaLook } from '../lib/dispatch-public-theme';
 const LOOK_KEY = 'nodo360_sala_look';
 const LEGACY_KEY = 'nodo360_sala_night';
 
-const LOOKS: SalaLook[] = ['light', 'nodo', 'verde', 'azul', 'night', 'salida', 'comando'];
+const LOOKS: SalaLook[] = ['light', 'nodo', 'verde', 'night', 'salida', 'comando'];
 
 export type SalaNightPref = 'auto' | 'day' | 'night';
 
@@ -16,6 +16,7 @@ export function isGuardiaHours(d = new Date()) {
 function readLook(): SalaLook {
   try {
     const look = localStorage.getItem(LOOK_KEY);
+    if (look === 'azul') return 'nodo';
     if (look && LOOKS.includes(look as SalaLook)) return look as SalaLook;
     const legacy = localStorage.getItem(LEGACY_KEY);
     if (legacy === 'night') return 'night';
@@ -39,7 +40,6 @@ export function useSalaNightMode() {
   const night = look === 'night';
   const isNodo = look === 'nodo';
   const isVerde = look === 'verde';
-  const isAzul = look === 'azul';
   const isSalida = look === 'salida';
   const isComando = look === 'comando';
   const pref: SalaNightPref = look === 'night' ? 'night' : 'day';
@@ -47,10 +47,9 @@ export function useSalaNightMode() {
     look === 'light' ? 'Tema claro'
       : look === 'nodo' ? 'Tema Nodo'
         : look === 'verde' ? 'Tema verde'
-          : look === 'azul' ? 'Tema azul'
-            : look === 'salida' ? 'Tema salida'
-              : look === 'comando' ? 'Tema comando'
-                : 'Guardia nocturna';
+          : look === 'salida' ? 'Tema salida'
+            : look === 'comando' ? 'Tema comando'
+              : 'Guardia nocturna';
 
-  return { look, night, isNodo, isVerde, isAzul, isSalida, isComando, pref, cycle, label };
+  return { look, night, isNodo, isVerde, isSalida, isComando, pref, cycle, label };
 }

@@ -1,5 +1,6 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
+import { Actor, assertCompanyAccess, companyIdWhere, companyIdsForActor } from '../common/cuerpo-scope';
 import { CreateHydrantDto } from './dto/create-hydrant.dto';
 import { UpdateHydrantDto } from './dto/update-hydrant.dto';
 
@@ -7,17 +8,15 @@ import { UpdateHydrantDto } from './dto/update-hydrant.dto';
 export class HydrantsService {
   constructor(private prisma: PrismaService) {}
 
-  async findAll(filters?: { type?: string; status?: string; companyId?: string }) {
-    const where: any = {};
+  async findAll(actor: Actor, filters?: { type?: string; status?: string; companyId?: string }) {
+    const scope = companyIdWhere(await companyIdsForActor(this.prisma, actor, filters?.companyId));
+    const where: Record<string, unknown> = { ...scope };
 
     if (filters?.type) {
       where.type = filters.type;
     }
     if (filters?.status) {
       where.status = filters.status;
-    }
-    if (filters?.companyId) {
-      where.companyId = filters.companyId;
     }
 
     return this.prisma.hydrant.findMany({
@@ -27,7 +26,7 @@ export class HydrantsService {
     });
   }
 
-  async findOne(id: string) {
+  async findOne(id: string, actor: Actor) {
     const hydrant = await this.prisma.hydrant.findUnique({
       where: { id },
       include: { company: true },
@@ -36,18 +35,21 @@ export class HydrantsService {
     if (!hydrant) {
       throw new NotFoundException('Hidrante no encontrado');
     }
+    await assertCompanyAccess(this.prisma, actor, hydrant.companyId);
 
     return hydrant;
   }
 
-  async create(dto: CreateHydrantDto) {
+  async create(dto: CreateHydrantDto, actor: Actor) {
+    await assertCompanyAccess(this.prisma, actor, dto.companyId);
     return this.prisma.hydrant.create({
       data: dto,
     });
   }
 
-  async update(id: string, dto: UpdateHydrantDto) {
-    await this.findOne(id);
+  async update(id: string, dto: UpdateHydrantDto, actor: Actor) {
+    await this.findOne(id, actor);
+    if (dto.companyId) await assertCompanyAccess(this.prisma, actor, dto.companyId);
 
     return this.prisma.hydrant.update({
       where: { id },
@@ -59,8 +61,8 @@ export class HydrantsService {
     });
   }
 
-  async remove(id: string) {
-    await this.findOne(id);
+  async remove(id: string, actor: Actor) {
+    await this.findOne(id, actor);
 
     return this.prisma.hydrant.delete({
       where: { id },

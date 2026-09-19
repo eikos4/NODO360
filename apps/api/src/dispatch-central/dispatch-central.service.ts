@@ -282,6 +282,7 @@ export class DispatchCentralService {
       const fuelLevelPercent = this.estimateFuelLevel(v.type, latestFuel);
       return {
         id: v.id,
+        companyId,
         patent: v.patent,
         brand: v.brand,
         model: v.model,
@@ -743,6 +744,13 @@ export class DispatchCentralService {
     return access;
   }
 
+  /** Mutaciones desde sala de máquinas: PIN o JWT. Sin PIN no se escribe. */
+  async assertPublicWriteAccess(slug: string, req: HeaderRequest) {
+    const access = await this.peekPublicAccess(slug, req);
+    if (access === 'sala' || access === 'user') return access;
+    throw new UnauthorizedException('PIN de sala requerido');
+  }
+
   async getPublicLocked(slug: string) {
     const company = await this.getCompanyBySlug(slug);
     return {
@@ -775,8 +783,9 @@ export class DispatchCentralService {
     };
   }
 
-  async getPublicBySlug(slug: string) {
+  async getPublicBySlug(slug: string, opts?: { includePii?: boolean }) {
     const company = await this.getCompanyBySlug(slug);
+    const includePii = opts?.includePii !== false;
     const [roster, maquinistas, fleet, recentEmergencies] = await Promise.all([
       this.getRosterForCompany(company.id),
       this.getMaquinistasForCompany(company.id),
@@ -787,7 +796,6 @@ export class DispatchCentralService {
       company.dispatchPublicEnabled,
       company.dispatchAvailable,
     );
-
     return {
       id: company.id,
       slug: company.dispatchSlug,
@@ -796,14 +804,19 @@ export class DispatchCentralService {
       region: company.region,
       city: company.city,
       address: company.address,
-      phone: company.phone,
-      email: company.email,
+      phone: includePii ? company.phone : null,
+      email: includePii ? company.email : null,
       logoUrl: company.logoUrl,
       headquartersImageUrl: company.headquartersImageUrl,
       publicEnabled: company.dispatchPublicEnabled,
       available: company.dispatchAvailable,
       status,
-      roster,
+      roster: includePii
+        ? roster
+        : {
+            ...roster,
+            members: roster.members.map((row) => ({ ...row, phone: null })),
+          },
       maquinistas,
       fleet,
       recentEmergencies,
@@ -1335,5 +1348,24 @@ export class DispatchCentralService {
       companies: mappedCompanies,
       activeEmergencies,
     };
+  }
+
+  async setVehicleStatus(id: string, status: EquipmentStatus, actor: Actor) {
+    const vehicle = await this.prisma.vehicle.findUnique({
+      where: { id },
+      select: { id: true, companyId: true, patent: true, status: true },
+    });
+    if (!vehicle) throw new NotFoundException('Carro no encontrado');
+    await assertCompanyAccess(this.prisma, actor, vehicle.companyId);
+    return this.prisma.vehicle.update({
+      where: { id },
+      data: { status },
+      select: {
+        id: true,
+        companyId: true,
+        patent: true,
+        status: true,
+      },
+    });
   }
 }

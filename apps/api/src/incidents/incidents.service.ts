@@ -78,7 +78,6 @@ export class IncidentsService {
       }
       const cuerpoId = await this.actorCuerpoId(user);
       if (!cuerpoId) {
-        if (hasAnyRole(user, 'SUPER_ADMIN')) return this.findAll();
         if (!user.companyId) throw new ForbiddenException('Usuario sin compañía asignada');
         return this.findAll(user.companyId);
       }
@@ -111,11 +110,14 @@ export class IncidentsService {
     if (hasAnyRole(user, 'SUPER_ADMIN', 'COMANDANTE', 'OPERADOR_CENTRAL')) {
       const incident = await this.prisma.incident.findUnique({
         where: { id },
-        select: { company: { select: { cuerpoId: true } } },
+        select: { companyId: true, company: { select: { cuerpoId: true } } },
       });
       if (!incident) throw new NotFoundException('Emergencia no encontrada');
       const cuerpoId = await this.actorCuerpoId(user);
       if (cuerpoId && cuerpoId !== incident.company.cuerpoId) {
+        throw new NotFoundException('Emergencia no encontrada');
+      }
+      if (!cuerpoId && user.companyId && user.companyId !== incident.companyId) {
         throw new NotFoundException('Emergencia no encontrada');
       }
       return this.findById(id);
@@ -144,7 +146,8 @@ export class IncidentsService {
     if (!incident) throw new NotFoundException('Emergencia no encontrada');
     if (hasAnyRole(user, 'SUPER_ADMIN', 'COMANDANTE', 'OPERADOR_CENTRAL')) {
       const cuerpoId = await this.actorCuerpoId(user);
-      if (!cuerpoId || cuerpoId === incident.company.cuerpoId) return;
+      if (cuerpoId && cuerpoId === incident.company.cuerpoId) return;
+      if (!cuerpoId && user.companyId === incident.companyId) return;
       throw new ForbiddenException('No puede modificar una emergencia de otro Cuerpo');
     }
     if (!user.companyId) throw new ForbiddenException('Usuario sin compañía asignada');
@@ -166,10 +169,7 @@ export class IncidentsService {
     if (hasAnyRole(user, 'SUPER_ADMIN', 'COMANDANTE', 'OPERADOR_CENTRAL')) {
       const cuerpoId = await this.actorCuerpoId(user);
       if (!cuerpoId) {
-        if (hasAnyRole(user, 'SUPER_ADMIN')) return;
-        const cuerpos = await this.prisma.cuerpo.count({ where: { isActive: true } });
-        if (cuerpos <= 1) return;
-        throw new ForbiddenException('Centralista sin Cuerpo asignado');
+        throw new ForbiddenException('Usuario sin Cuerpo asignado');
       }
       if (cuerpoId === target.cuerpoId) return;
       throw new ForbiddenException('No puede despachar fuera de este Cuerpo');
@@ -267,9 +267,10 @@ export class IncidentsService {
   }
 
   private withChecklistMeta(incident: any) {
-    const items = (incident.planChecklist as PlanChecklistItem[]) ?? [];
+    const { locationPinToken: _omit, ...safe } = incident;
+    const items = (safe.planChecklist as PlanChecklistItem[]) ?? [];
     return {
-      ...incident,
+      ...safe,
       planChecklist: items,
       checklistProgress: checklistProgress(items),
     };
@@ -334,7 +335,7 @@ export class IncidentsService {
         address: dto.address,
         latitude: dto.latitude,
         longitude: dto.longitude,
-        locationPinToken: dto.locationPinToken?.trim() || randomUUID().replace(/-/g, ''),
+        locationPinToken: randomUUID().replace(/-/g, ''),
         dispatchedAt: new Date().toISOString(),
         companyId: dto.companyId,
         participantIds: dto.participantIds,
@@ -427,7 +428,7 @@ export class IncidentsService {
           status,
           latitude: data.latitude,
           longitude: data.longitude,
-          locationPinToken: data.locationPinToken,
+          locationPinToken: randomUUID().replace(/-/g, ''),
           dispatchedAt: data.dispatchedAt,
           arrivedAt,
           closedAt,
@@ -548,7 +549,7 @@ export class IncidentsService {
 
   async update(id: string, dto: UpdateIncidentDto) {
     const incident = await this.findById(id);
-    const { participantIds, vehicleIds, dispatchSource, ...data } = dto;
+    const { participantIds, vehicleIds, dispatchSource, locationPinToken: _pin, ...data } = dto;
 
     if (participantIds !== undefined) {
       await this.prisma.incidentParticipant.deleteMany({ where: { incidentId: id } });

@@ -47,7 +47,7 @@ export async function ensureParralCuerpo(): Promise<void> {
             phone: PARRAL_CUERPO.phone,
             email: 'contacto@bomberosparral.cl',
             dispatchSlug: slugTaken ? `${spec.dispatchSlug}-${spec.number}` : spec.dispatchSlug,
-            dispatchPublicEnabled: true,
+            dispatchPublicEnabled: process.env.NODE_ENV !== 'production',
             dispatchAvailable: true,
             cuerpoId: cuerpo.id,
           },
@@ -67,8 +67,6 @@ export async function ensureParralCuerpo(): Promise<void> {
         const slugTaken = await prisma.company.findUnique({ where: { dispatchSlug: spec.dispatchSlug } });
         if (!slugTaken) patch.dispatchSlug = spec.dispatchSlug;
       }
-      if (!byNumber.dispatchPublicEnabled) patch.dispatchPublicEnabled = true;
-      if (!byNumber.dispatchAvailable) patch.dispatchAvailable = true;
       if (Object.keys(patch).length) {
         await prisma.company.update({ where: { id: byNumber.id }, data: patch });
         repaired += 1;
@@ -93,6 +91,9 @@ export async function ensureParralCuerpo(): Promise<void> {
 }
 
 async function ensureParralPilotUsers(prisma: PrismaClient, cuerpoId: string): Promise<number> {
+  if (process.env.NODE_ENV === 'production' && process.env.ALLOW_DEMO_SEED !== '1') {
+    return 0;
+  }
   const companies = await prisma.company.findMany({
     where: { cuerpoId, number: { in: [...PARRAL_COMPANIES.map((c) => c.number)] } },
     orderBy: { number: 'asc' },

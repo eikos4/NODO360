@@ -7,6 +7,7 @@ import {
   ShieldAlert, Calendar, ClipboardList,
 } from 'lucide-react';
 import { api } from '../lib/api';
+import { safeHref } from '../lib/safe-url';
 import toast from 'react-hot-toast';
 import { PlanDepthFields, parseChecklist, PLAN_STATUS_LABELS } from '../components/emergency-plans/PlanDepthFields';
 
@@ -678,7 +679,7 @@ export default function EmergencyPlansPage() {
                   <ul className="space-y-1">
                     {planDetail.attachments.map((a: any) => (
                       <li key={a.id}>
-                        <a href={a.fileUrl} target="_blank" rel="noreferrer" className="text-sm text-sky-400 hover:underline">{a.name}</a>
+                        <a href={safeHref(a.fileUrl)} target="_blank" rel="noopener noreferrer" className="text-sm text-sky-400 hover:underline">{a.name}</a>
                       </li>
                     ))}
                   </ul>

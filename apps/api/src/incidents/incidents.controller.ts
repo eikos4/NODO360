@@ -7,6 +7,7 @@ import { StorageService } from '../storage/storage.service';
 import { memoryUpload } from '../storage/upload.interceptor';
 import { CreateIncidentDto } from './dto/create-incident.dto';
 import { UpdateIncidentDto } from './dto/update-incident.dto';
+import { AssignIncidentVehiclesDto } from './dto/assign-incident-vehicles.dto';
 import { DispatchIncidentDto } from './dto/dispatch-incident.dto';
 import { UpdateIncidentChecklistDto } from './dto/update-incident-checklist.dto';
 
@@ -24,6 +25,10 @@ export class IncidentsController {
   }
 
   @Get()
+  @Roles(
+    'SUPER_ADMIN', 'COMANDANTE', 'CAPITAN', 'OPERADOR_CENTRAL', 'SECRETARIO', 'KODESK',
+    'BOMBERO', 'BOMBERO_HONORARIO', 'BOMBERO_INICIAL', 'BOMBERO_PROFESIONAL', 'ENCARGADO_MATERIAL',
+  )
   findAll(@Req() req: { user: IncidentAuthUser }, @Query('companyId') companyId?: string) {
     return this.service.findAllAuthorized(req.user, companyId);
   }
@@ -80,8 +85,19 @@ export class IncidentsController {
     return this.service.create(dto, req.user?.id);
   }
 
+  @Patch(':id/vehicles')
+  @Roles('SUPER_ADMIN', 'COMANDANTE', 'CAPITAN', 'OPERADOR_CENTRAL')
+  async assignVehicles(
+    @Param('id') id: string,
+    @Body() dto: AssignIncidentVehiclesDto,
+    @Req() req: { user: IncidentAuthUser },
+  ) {
+    await this.service.assertCanManage(id, req.user);
+    return this.service.update(id, { vehicleIds: dto.vehicleIds });
+  }
+
   @Put(':id')
-  @Roles('SUPER_ADMIN', 'COMANDANTE', 'CAPITAN')
+  @Roles('SUPER_ADMIN', 'COMANDANTE', 'CAPITAN', 'OPERADOR_CENTRAL')
   async update(
     @Param('id') id: string,
     @Body() dto: UpdateIncidentDto,

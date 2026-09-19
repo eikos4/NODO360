@@ -41,12 +41,6 @@ const NOVELTY_TONE_VERDE: Record<NoveltyTone, { icon: string; badge: string; ico
   blue: { icon: 'text-[#1ce783]', badge: 'bg-[#0a2a1c] text-[#1ce783] border-[#1ce783]/40', iconBg: 'bg-[#0a2a1c]' },
 };
 
-const NOVELTY_TONE_AZUL: Record<NoveltyTone, { icon: string; badge: string; iconBg: string }> = {
-  red: { icon: 'text-red-200', badge: 'bg-white/15 text-white border-white/30', iconBg: 'bg-white/15' },
-  amber: { icon: 'text-amber-100', badge: 'bg-white/15 text-white border-white/30', iconBg: 'bg-white/15' },
-  blue: { icon: 'text-white', badge: 'bg-white/15 text-white border-white/30', iconBg: 'bg-white/15' },
-};
-
 function formatNoveltyDay(daysAgo: number, hour: number, minute = 0) {
   const d = new Date();
   d.setDate(d.getDate() - daysAgo);
@@ -111,12 +105,12 @@ interface Props {
   onEmergency?: boolean;
   padActive?: boolean;
   night?: boolean;
-  look?: 'light' | 'nodo' | 'verde' | 'azul' | 'night' | 'salida' | 'comando';
+  look?: 'light' | 'nodo' | 'verde' | 'night' | 'salida' | 'comando';
   requestHeaders?: Record<string, string>;
   onDownloadPdf?: (emergency: PublicEmergency) => void;
 }
 
-function LiveClock({ night, nodo, verde, azul }: { night?: boolean; nodo?: boolean; verde?: boolean; azul?: boolean }) {
+function LiveClock({ night, nodo, verde }: { night?: boolean; nodo?: boolean; verde?: boolean }) {
   const [now, setNow] = useState(new Date());
   useEffect(() => {
     const id = setInterval(() => setNow(new Date()), 1000);
@@ -129,8 +123,7 @@ function LiveClock({ night, nodo, verde, azul }: { night?: boolean; nodo?: boole
         night ? 'text-amber-100'
           : nodo ? 'text-[#67c8ff]'
             : verde ? 'text-[#1ce783]'
-              : azul ? 'text-white'
-                : 'text-slate-800'
+              : 'text-slate-800'
       }`}>
         {now.toLocaleTimeString('es-CL', { hour: '2-digit', minute: '2-digit', second: '2-digit' })} <span className="text-sm font-semibold uppercase">{now.getHours() >= 12 ? 'p. m.' : 'a. m.'}</span>
       </p>
@@ -208,16 +201,13 @@ function StatCard({ icon: Icon, value, label, subtext, colorClass, isAlert = fal
 export default function PublicCompanyModernView({ data, onToggleMember, onToggleMaquinista, onToggleByNumber, togglingId, onEmergency, padActive, night, look, requestHeaders, onDownloadPdf }: Props) {
   const isNodo = look === 'nodo';
   const isVerde = look === 'verde';
-  const isAzul = look === 'azul';
-  const inkDark = isNodo || isVerde || isAzul;
-  const noveltyTones = isAzul ? NOVELTY_TONE_AZUL : isVerde ? NOVELTY_TONE_VERDE : isNodo ? NOVELTY_TONE_NODO : NOVELTY_TONE;
-  const chrome = isAzul
-    ? { text: 'text-white', muted: 'text-white/70', body: 'text-white/90', hover: 'hover:bg-white/10', border: 'border-white/20', card: 'bg-[#0712b8]/80', close: 'bg-white text-[#0918e3] hover:bg-white/90' }
-    : isVerde
-      ? { text: 'text-[#e8f8ee]', muted: 'text-[#8fb9a4]', body: 'text-[#c8e6d6]', hover: 'hover:bg-[#0a2a1c]', border: 'border-[#13402c]', card: 'bg-[#062016]', close: 'bg-[#1ce783] text-[#00140e] hover:bg-[#17c972]' }
-      : isNodo
-        ? { text: 'text-[#e7edf4]', muted: 'text-[#9fb3c4]', body: 'text-[#c5d3de]', hover: 'hover:bg-[#102433]', border: 'border-[#1d3041]', card: 'bg-[#0d1924]', close: 'bg-[#ef343f] text-white hover:bg-[#d42d37]' }
-        : { text: 'text-slate-800', muted: 'text-slate-500', body: 'text-slate-700', hover: 'hover:bg-slate-50', border: 'border-slate-100', card: 'bg-white', close: 'bg-slate-900 text-white hover:bg-slate-800' };
+  const inkDark = isNodo || isVerde;
+  const noveltyTones = isVerde ? NOVELTY_TONE_VERDE : isNodo ? NOVELTY_TONE_NODO : NOVELTY_TONE;
+  const chrome = isVerde
+    ? { text: 'text-[#e8f8ee]', muted: 'text-[#8fb9a4]', body: 'text-[#c8e6d6]', hover: 'hover:bg-[#0a2a1c]', border: 'border-[#13402c]', card: 'bg-[#062016]', close: 'bg-[#1ce783] text-[#00140e] hover:bg-[#17c972]' }
+    : isNodo
+      ? { text: 'text-[#e7edf4]', muted: 'text-[#9fb3c4]', body: 'text-[#c5d3de]', hover: 'hover:bg-[#102433]', border: 'border-[#1d3041]', card: 'bg-[#0d1924]', close: 'bg-[#ef343f] text-white hover:bg-[#d42d37]' }
+      : { text: 'text-slate-800', muted: 'text-slate-500', body: 'text-slate-700', hover: 'hover:bg-slate-50', border: 'border-slate-100', card: 'bg-white', close: 'bg-slate-900 text-white hover:bg-slate-800' };
   const [search, setSearch] = useState('');
   const [filterState, setFilterState] = useState<'all' | 'available' | 'unavailable'>('available');
   const [globalSearchResult, setGlobalSearchResult] = useState<any>(null);
@@ -290,8 +280,7 @@ export default function PublicCompanyModernView({ data, onToggleMember, onToggle
       night ? 'bg-transparent text-[#f4e8d0]'
         : isVerde ? 'sala-modern-verde bg-[#00140e] text-[#e8f8ee]'
           : isNodo ? 'sala-modern-nodo bg-[#071019] text-[#e7edf4]'
-            : isAzul ? 'sala-modern-azul text-white'
-              : 'bg-slate-50 text-slate-800'
+            : 'bg-slate-50 text-slate-800'
     }`}>
       
       {/* HEADER */}
@@ -333,12 +322,7 @@ export default function PublicCompanyModernView({ data, onToggleMember, onToggle
               Tema verde
             </span>
           )}
-          {isAzul && (
-            <span className="inline-flex items-center gap-1.5 text-[10px] font-semibold uppercase text-white">
-              Tema azul
-            </span>
-          )}
-          <LiveClock night={night} nodo={isNodo} verde={isVerde} azul={isAzul} />
+          <LiveClock night={night} nodo={isNodo} verde={isVerde} />
         </div>
       </header>
 
