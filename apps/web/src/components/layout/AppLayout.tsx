@@ -24,6 +24,7 @@ const IMMERSIVE_ROUTES = [
   '/central-express',
   '/dispatch/global',
   '/vision360-cuarteles',
+  '/companias-tv',
   '/hydrants',
 ];
 
@@ -33,7 +34,8 @@ export default function AppLayout() {
   const { user, logout } = useAuthStore();
   const centralOperator = isCentralOperator(user?.role);
   const isImmersive = IMMERSIVE_ROUTES.some((r) => location.pathname.startsWith(r));
-  const hideSidebar = centralOperator && isCentralOperatorRoute(location.pathname);
+  const isCompaniasTv = location.pathname.startsWith('/companias-tv');
+  const hideSidebar = isCompaniasTv || (centralOperator && isCentralOperatorRoute(location.pathname));
   const globalTheme = useThemeStore((s) => s.theme);
   const toggleTheme = useThemeStore((s) => s.toggleTheme);
   const isDark = globalTheme === 'dark';
@@ -46,13 +48,15 @@ export default function AppLayout() {
   const [showOnboarding, setShowOnboarding] = useState(false);
   const [menuOpen, setMenuOpen] = useState(false);
 
-  const shellBg = isBitacora360
-    ? 'bg-slate-100'
-    : isImmersive && globalTheme === 'light'
-      ? isDespacho360
-        ? 'bg-white'
-        : 'bg-slate-100'
-      : 'bg-slate-950';
+  const shellBg = isCompaniasTv
+    ? 'bg-[#07090d]'
+    : isBitacora360
+      ? 'bg-slate-100'
+      : isImmersive && globalTheme === 'light'
+        ? isDespacho360
+          ? 'bg-white'
+          : 'bg-slate-100'
+        : 'bg-slate-950';
 
   useEffect(() => {
     if (isCentralOperator(user?.role)) return;
@@ -100,11 +104,11 @@ export default function AppLayout() {
 
       <div className="flex flex-col flex-1 overflow-hidden min-w-0 w-full">
         {/* Header for Desktop */}
-        {centralOperator ? (
+        {!isCompaniasTv && (centralOperator ? (
           <CentralOperatorBar />
         ) : (
           <Header onStartTour={startTour} />
-        )}
+        ))}
 
         {/* Main Content Area */}
         <main
@@ -121,7 +125,7 @@ export default function AppLayout() {
         </main>
 
         {/* MOBILE BOTTOM NAVIGATION BAR */}
-        {!hideSidebar && !centralOperator && (
+        {!hideSidebar && !centralOperator && !isCompaniasTv && (
           <nav className="md:hidden fixed bottom-0 left-0 right-0 h-16 bg-slate-900/95 backdrop-blur-md border-t border-slate-800 flex items-center justify-around px-2 z-50 shadow-lg">
             {finalBottomItems.map((item) => (
               <NavLink

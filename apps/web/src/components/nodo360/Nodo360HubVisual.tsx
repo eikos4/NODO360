@@ -20,6 +20,7 @@ const GROUPS = [
       { label: 'Despacho360', icon: Siren, route: '/despacho360' },
       { label: 'Central Express', icon: Droplets, route: '/central-express' },
       { label: 'Central Pública', icon: Flame, route: '/central-despachos-parral' },
+      { label: 'Muro compañías TV', icon: Building2, route: '/companias-tv' },
       { label: 'Alertas', icon: Bell, route: '/alerts' },
     ],
   },

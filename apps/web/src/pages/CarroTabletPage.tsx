@@ -133,15 +133,17 @@ function CarroIndexShell({ children }: { children: React.ReactNode }) {
 function CarroBrandMark() {
   return (
     <div className="flex items-center gap-3">
-      <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-emerald-500/15 border border-emerald-500/30">
-        <Truck className="h-5 w-5 text-emerald-400" />
-      </div>
+      <img
+        src="/nodotrack-icon.png"
+        alt=""
+        className="h-11 w-11 rounded-xl border border-emerald-500/30 shadow-[0_0_20px_rgba(16,185,129,0.25)]"
+      />
       <div>
-        <p className="flex items-baseline gap-1 leading-none">
-          <span className="text-lg font-black tracking-tight text-white">NODO</span>
-          <span className="text-lg font-black tracking-tight text-emerald-400">360</span>
+        <p className="flex items-baseline gap-0 leading-none">
+          <span className="text-lg font-black tracking-tight text-white">Nodo</span>
+          <span className="text-lg font-black tracking-tight text-emerald-400">Track</span>
         </p>
-        <p className="mt-1 text-[10px] font-bold uppercase tracking-[0.22em] text-emerald-400">Android · Carro</p>
+        <p className="mt-1 text-[10px] font-bold uppercase tracking-[0.22em] text-emerald-400">Cabina</p>
       </div>
     </div>
   );
@@ -213,7 +215,8 @@ export default function CarroTabletPage() {
   useEffect(() => {
     const meta = document.querySelector('meta[name="theme-color"]');
     const prev = meta?.getAttribute('content') ?? '';
-    meta?.setAttribute('content', '#06090e');
+    meta?.setAttribute('content', '#082a20');
+    document.title = 'NodoTrack';
     document.documentElement.classList.add('dark');
     return () => {
       if (meta) meta.setAttribute('content', prev || '#dc2626');

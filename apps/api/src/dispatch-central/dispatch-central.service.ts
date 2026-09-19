@@ -1234,7 +1234,9 @@ export class DispatchCentralService {
         name: true,
         city: true,
         logoUrl: true,
+        headquartersImageUrl: true,
         dispatchSlug: true,
+        dispatchAvailable: true,
       },
     });
 

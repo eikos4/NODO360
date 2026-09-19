@@ -45,6 +45,7 @@ import CentralExpressPage from './pages/CentralExpressPage';
 import BomberoEmergencyPage from './pages/BomberoEmergencyPage';
 import CompanyPublicProfilePage from './pages/CompanyPublicProfilePage';
 import Vision360CuartelesPage from './pages/Vision360CuartelesPage';
+import CompaniasTvPage from './pages/CompaniasTvPage';
 import SuperAdminImplementacionPage from './pages/SuperAdminImplementacionPage';
 import Nodo360AlarmsPage from './pages/Nodo360AlarmsPage';
 import CarroTabletPage from './pages/CarroTabletPage';
@@ -139,6 +140,7 @@ export default function App() {
         <Route path="dispatch/global" element={<RequireRoles roles={['SUPER_ADMIN', 'COMANDANTE', 'CAPITAN', 'OPERADOR_CENTRAL', 'SECRETARIO']}><CentralGlobalPage /></RequireRoles>} />
         <Route path="central-express" element={<RequireRoles roles={['SUPER_ADMIN', 'COMANDANTE', 'CAPITAN', 'OPERADOR_CENTRAL']}><CentralExpressPage /></RequireRoles>} />
         <Route path="vision360-cuarteles" element={<RequireRoles roles={['SUPER_ADMIN', 'COMANDANTE', 'CAPITAN', 'OPERADOR_CENTRAL']}><Vision360CuartelesPage /></RequireRoles>} />
+        <Route path="companias-tv" element={<RequireRoles roles={['SUPER_ADMIN', 'COMANDANTE', 'CAPITAN', 'OPERADOR_CENTRAL']}><CompaniasTvPage /></RequireRoles>} />
         <Route path="central-operativa" element={<RequireRoles roles={['OPERADOR_CENTRAL', 'COMANDANTE', 'CAPITAN', 'SUPER_ADMIN']}><CentralOperativaPage /></RequireRoles>} />
         <Route path="bitacora360" element={<RequireRoles roles={['OPERADOR_CENTRAL', 'COMANDANTE', 'CAPITAN', 'SUPER_ADMIN']}><Bitacora360Page /></RequireRoles>} />
         <Route path="central-bitacora" element={<RequireRoles roles={['OPERADOR_CENTRAL', 'COMANDANTE', 'CAPITAN', 'SUPER_ADMIN']}><Bitacora360Page /></RequireRoles>} />

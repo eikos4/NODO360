@@ -2,16 +2,18 @@ import { useEffect, useMemo, useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { Link, useSearchParams } from 'react-router-dom';
 import {
-  Camera, CheckCircle2, Flame, Home, Loader2, MapPin,
-  Mic, Navigation, Paperclip, Phone, Radio, Send, Siren, Truck, Wrench,
+  Camera, CheckCircle2, Clock, FileDown, Flame, Home, Loader2, MapPin,
+  Mic, Navigation, Paperclip, Phone, Power, Radio, Send, ShieldCheck, Siren, Truck, Wrench,
 } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { api } from '../lib/api';
 import { useAuthStore } from '../store/authStore';
 import RadioPttPanel from '../components/radio/RadioPttPanel';
 import PublicOsmMap, { PARRAL_CENTER, type OsmMarker } from '../components/map/PublicOsmMap';
+import Bitacora360CloseModal from '../components/dispatch/Bitacora360CloseModal';
+import { downloadEmergencyReport } from '../lib/pdf/downloadEmergencyReport';
 import { vehicleTypeAbbrev } from '../lib/vehicle-types';
-import { type IncidentTimelineKind } from '../lib/incident-timeline';
+import { INCIDENT_TIMELINE_ACTIONS, type IncidentTimelineKind } from '../lib/incident-timeline';
 import { ACTION_ICON, BITACORA360_GROUPS, TONE_ICON } from '../lib/bitacora360-actions';
 
 type IncidentListRow = {
@@ -102,6 +104,8 @@ function point(inc?: IncidentDetail | null): [number, number] | null {
   return [Number(lat), Number(lng)];
 }
 
+const TERMINAL_KINDS: IncidentTimelineKind[] = ['REGRESO', 'EN_CUARTEL', 'DISPONIBLE', 'FALSA_ALARMA'];
+
 function unitCode(v: { type?: string; patent?: string }, idx: number) {
   return `${vehicleTypeAbbrev(v.type)}-${idx + 1}`;
 }
@@ -130,6 +134,8 @@ export default function Bitacora360Page() {
   const [note, setNote] = useState('');
   const [now, setNow] = useState(() => new Date());
   const [selectedId, setSelectedId] = useState(params.get('incidente') ?? '');
+  const [closeOpen, setCloseOpen] = useState(false);
+  const [closingKind, setClosingKind] = useState<IncidentTimelineKind | null>(null);
 
   useEffect(() => {
     const t = window.setInterval(() => setNow(new Date()), 1000);
@@ -146,19 +152,31 @@ export default function Bitacora360Page() {
     () => [...incidents].filter((i) => !i.closedAt).sort((a, b) => +new Date(b.dispatchedAt) - +new Date(a.dispatchedAt)),
     [incidents],
   );
+  const recentClosed = useMemo(
+    () =>
+      [...incidents]
+        .filter((i) => i.closedAt)
+        .sort((a, b) => +new Date(b.closedAt ?? b.dispatchedAt) - +new Date(a.closedAt ?? a.dispatchedAt))
+        .slice(0, 6),
+    [incidents],
+  );
+
   const filtered = useMemo(() => {
     const q = search.trim().toLowerCase();
-    const pool = open.length ? open : incidents;
-    if (!q) return pool;
-    return pool.filter((i) =>
+    if (!q) return open;
+    return open.filter((i) =>
       `${i.code} ${i.type} ${i.address} ${i.company?.name ?? ''}`.toLowerCase().includes(q),
     );
-  }, [incidents, open, search]);
+  }, [open, search]);
 
-  const selectedList = filtered.find((i) => i.id === selectedId) ?? open[0] ?? filtered[0];
+  const selectedList = open.find((i) => i.id === selectedId) ?? open[0] ?? null;
 
   useEffect(() => {
-    if (!selectedList) return;
+    if (!selectedList) {
+      if (selectedId) setSelectedId('');
+      if (params.get('incidente')) setParams({}, { replace: true });
+      return;
+    }
     if (selectedList.id !== selectedId) setSelectedId(selectedList.id);
     if (params.get('incidente') !== selectedList.id) {
       setParams({ incidente: selectedList.id }, { replace: true });
@@ -217,10 +235,30 @@ export default function Bitacora360Page() {
   const pushKind = (kind: IncidentTimelineKind, extra?: string) => {
     if (!selectedList) return toast.error('Selecciona una emergencia');
     if (selectedList.closedAt) return toast.error('La emergencia está cerrada');
+    if (TERMINAL_KINDS.includes(kind)) {
+      setClosingKind(kind);
+      setCloseOpen(true);
+      return;
+    }
     if (kind === 'COMENTARIO' && !(extra || note).trim()) {
       return toast.error('Escribe el comentario');
     }
     add.mutate({ kind, note: (extra || note).trim() || undefined });
+  };
+
+  const openClose = () => {
+    if (!selectedList) return toast.error('Selecciona una emergencia');
+    if (selectedList.closedAt) return toast.error('La emergencia está cerrada');
+    setClosingKind(null);
+    setCloseOpen(true);
+  };
+
+  const afterClosed = () => {
+    setNote('');
+    setClosingKind(null);
+    qc.invalidateQueries({ queryKey: ['incidents'] });
+    qc.invalidateQueries({ queryKey: ['incident-timeline'] });
+    qc.invalidateQueries({ queryKey: ['incident'] });
   };
 
   return (
@@ -259,8 +297,12 @@ export default function Bitacora360Page() {
           )}
         </div>
         <div className="ml-auto flex items-center gap-3 text-xs">
-          <span className="hidden items-center gap-1.5 text-emerald-600 sm:flex">
-            <Radio className="h-3.5 w-3.5" /> Radio conectada
+          <span className={`hidden items-center gap-1.5 sm:flex ${open.length ? 'text-red-600' : 'text-emerald-600'}`}>
+            {open.length ? (
+              <><Siren className="h-3.5 w-3.5" /> {open.length} activa{open.length === 1 ? '' : 's'}</>
+            ) : (
+              <><ShieldCheck className="h-3.5 w-3.5" /> En espera · sin emergencias</>
+            )}
           </span>
           <Mic className="hidden h-4 w-4 text-slate-400 sm:block" />
           <Link
@@ -276,10 +318,16 @@ export default function Bitacora360Page() {
         </div>
       </header>
 
-      {!inc ? (
+      {listLoading && !inc ? (
         <div className="flex flex-1 items-center justify-center text-slate-500">
-          {listLoading ? <Loader2 className="h-5 w-5 animate-spin" /> : 'Despacha una emergencia para abrir Bitácora360.'}
+          <Loader2 className="h-5 w-5 animate-spin" />
         </div>
+      ) : !open.length || !inc || inc.closedAt ? (
+        <Bitacora360Standby
+          now={now}
+          recentClosed={recentClosed}
+          userName={[user?.firstName, user?.lastName].filter(Boolean).join(' ')}
+        />
       ) : (
         <div className="flex min-h-0 flex-1 flex-col gap-3 overflow-y-auto p-3">
           <section className="flex shrink-0 flex-wrap items-start justify-between gap-3 rounded-2xl border border-slate-200 bg-white px-4 py-3 shadow-sm">
@@ -303,6 +351,23 @@ export default function Bitacora360Page() {
               {orgs.map((org) => (
                 <span key={org} className="rounded-full border border-slate-200 bg-slate-50 px-2.5 py-1 text-[11px] text-slate-600">{org}</span>
               ))}
+              {!inc.closedAt ? (
+                <button
+                  type="button"
+                  onClick={openClose}
+                  className="inline-flex items-center gap-1.5 rounded-xl bg-emerald-600 px-3 py-2 text-xs font-black text-white hover:bg-emerald-500"
+                >
+                  <Power className="h-3.5 w-3.5" /> Terminar emergencia
+                </button>
+              ) : (
+                <button
+                  type="button"
+                  onClick={() => downloadEmergencyReport(inc.id)}
+                  className="inline-flex items-center gap-1.5 rounded-xl bg-red-600 px-3 py-2 text-xs font-black text-white hover:bg-red-500"
+                >
+                  <FileDown className="h-3.5 w-3.5" /> Informe PDF
+                </button>
+              )}
               <span className="font-mono text-lg font-black text-slate-900">{fmtClock(now)}</span>
             </div>
           </section>
@@ -495,6 +560,148 @@ export default function Bitacora360Page() {
           </div>
         </div>
       )}
+      <Bitacora360CloseModal
+        open={closeOpen}
+        incident={inc ? { id: inc.id, code: inc.code, type: inc.type, address: inc.address } : null}
+        initialComment={note}
+        closingKind={closingKind}
+        closingLabel={closingKind ? INCIDENT_TIMELINE_ACTIONS.find((a) => a.kind === closingKind)?.label : undefined}
+        onClose={() => { setCloseOpen(false); setClosingKind(null); }}
+        onClosed={afterClosed}
+      />
+    </div>
+  );
+}
+
+function Bitacora360Standby({
+  now,
+  recentClosed,
+  userName,
+}: {
+  now: Date;
+  recentClosed: IncidentListRow[];
+  userName: string;
+}) {
+  const dateLabel = now.toLocaleDateString('es-CL', {
+    weekday: 'long',
+    day: 'numeric',
+    month: 'long',
+    year: 'numeric',
+  });
+
+  return (
+    <div className="flex min-h-0 flex-1 flex-col gap-3 overflow-y-auto p-3">
+      <section className="relative overflow-hidden rounded-2xl border border-emerald-200 bg-gradient-to-br from-emerald-50 via-white to-slate-50 px-6 py-8 shadow-sm">
+        <div className="pointer-events-none absolute -right-8 -top-10 h-40 w-40 rounded-full bg-emerald-100/70" />
+        <div className="pointer-events-none absolute -bottom-12 right-16 h-32 w-32 rounded-full bg-sky-100/50" />
+        <div className="relative flex flex-col items-center text-center">
+          <span className="mb-3 flex h-16 w-16 items-center justify-center rounded-2xl bg-emerald-600 shadow-lg shadow-emerald-600/20">
+            <ShieldCheck className="h-8 w-8 text-white" />
+          </span>
+          <p className="text-[11px] font-black uppercase tracking-[0.22em] text-emerald-700">Bitácora360</p>
+          <h1 className="mt-1 text-3xl font-black tracking-tight text-slate-900 sm:text-4xl">Todo tranquilo</h1>
+          <p className="mt-2 max-w-md text-sm text-slate-500">
+            Sin emergencias activas. La central está en espera y lista para el próximo despacho.
+          </p>
+          <div className="mt-5 flex flex-wrap items-center justify-center gap-3">
+            <span className="inline-flex items-center gap-1.5 rounded-full border border-emerald-200 bg-white px-3 py-1.5 text-xs font-semibold text-emerald-700">
+              <span className="h-2 w-2 rounded-full bg-emerald-500" />
+              En espera
+            </span>
+            <span className="inline-flex items-center gap-1.5 font-mono text-2xl font-black text-slate-900">
+              <Clock className="h-5 w-5 text-slate-400" />
+              {fmtClock(now)}
+            </span>
+          </div>
+          <p className="mt-2 capitalize text-xs text-slate-400">{dateLabel}</p>
+          {userName ? (
+            <p className="mt-1 text-[11px] text-slate-400">Centralista de turno · {userName}</p>
+          ) : null}
+          <div className="mt-6 flex flex-wrap justify-center gap-2">
+            <Link
+              to="/despacho360"
+              className="inline-flex items-center gap-1.5 rounded-xl bg-red-600 px-4 py-2.5 text-xs font-black text-white hover:bg-red-500"
+            >
+              <Siren className="h-3.5 w-3.5" />
+              Abrir Despacho360
+            </Link>
+            <Link
+              to="/central-bitacora/registro"
+              className="inline-flex items-center gap-1.5 rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-xs font-bold text-slate-700 hover:bg-slate-50"
+            >
+              Bitácora botonera
+            </Link>
+          </div>
+        </div>
+      </section>
+
+      <div className="grid min-h-0 flex-1 gap-3 xl:grid-cols-[1fr_320px]">
+        <section className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
+          <div className="flex items-center justify-between px-4 py-3">
+            <p className="text-xs font-semibold text-slate-700">Cobertura</p>
+            <span className="text-[10px] font-semibold uppercase tracking-widest text-emerald-600">Sin pin activo</span>
+          </div>
+          <div className="h-64 xl:h-[min(420px,calc(100vh-28rem))]">
+            <PublicOsmMap
+              center={PARRAL_CENTER}
+              markers={[]}
+              zoom={13}
+              theme="light"
+              className="h-full w-full"
+            />
+          </div>
+        </section>
+
+        <aside className="space-y-3">
+          <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
+            <p className="text-xs font-semibold text-slate-700">Estado de la central</p>
+            <dl className="mt-3 space-y-2 text-[12px] text-slate-500">
+              <div className="flex justify-between gap-2">
+                <dt>Emergencias activas</dt>
+                <dd className="font-bold text-emerald-700">0</dd>
+              </div>
+              <div className="flex justify-between gap-2">
+                <dt>Modo</dt>
+                <dd className="font-semibold text-slate-800">Espera / monitoreo</dd>
+              </div>
+              <div className="flex justify-between gap-2">
+                <dt>Radio</dt>
+                <dd className="inline-flex items-center gap-1 font-semibold text-slate-800">
+                  <Radio className="h-3 w-3 text-emerald-600" /> Lista
+                </dd>
+              </div>
+            </dl>
+          </div>
+
+          <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
+            <p className="mb-3 text-xs font-semibold text-slate-700">Últimas cerradas</p>
+            {recentClosed.length === 0 ? (
+              <p className="text-[12px] text-slate-500">Aún no hay emergencias cerradas en el historial.</p>
+            ) : (
+              <ul className="space-y-2">
+                {recentClosed.map((row) => (
+                  <li key={row.id} className="flex items-start justify-between gap-2 rounded-xl border border-slate-100 bg-slate-50 px-3 py-2">
+                    <div className="min-w-0">
+                      <p className="text-[11px] font-black text-slate-400">{row.code}</p>
+                      <p className="truncate text-xs font-semibold text-slate-800">{row.type}</p>
+                      <p className="truncate text-[11px] text-slate-500">{row.address}</p>
+                      <p className="mt-0.5 text-[10px] text-slate-400">Cerrada {fmtDate(row.closedAt)}</p>
+                    </div>
+                    <button
+                      type="button"
+                      title="Informe PDF"
+                      onClick={() => downloadEmergencyReport(row.id)}
+                      className="mt-0.5 inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-lg border border-slate-200 bg-white text-slate-500 hover:bg-slate-100 hover:text-red-600"
+                    >
+                      <FileDown className="h-3.5 w-3.5" />
+                    </button>
+                  </li>
+                ))}
+              </ul>
+            )}
+          </div>
+        </aside>
+      </div>
     </div>
   );
 }

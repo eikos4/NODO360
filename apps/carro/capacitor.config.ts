@@ -4,7 +4,7 @@ const remoteUrl = process.env.CARRO_WEB_URL;
 
 const config: CapacitorConfig = {
   appId: 'cl.nodo360.carro',
-  appName: 'Nodo360 Carro',
+  appName: 'NodoTrack',
   webDir: '../web/dist',
   backgroundColor: '#06090e',
   android: {

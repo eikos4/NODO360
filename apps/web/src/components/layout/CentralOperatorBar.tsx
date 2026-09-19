@@ -1,5 +1,5 @@
 import { Link, useLocation, useNavigate } from 'react-router-dom';
-import { Flame, LogOut, Moon, Siren, Map, ShieldAlert, Radio, Sun, Zap, Droplets, Globe, Eye, BookOpen, Bell, ClipboardList } from 'lucide-react';
+import { Flame, LogOut, Moon, Siren, Map, ShieldAlert, Radio, Sun, Zap, Droplets, Globe, Eye, BookOpen, Bell, ClipboardList, Tv } from 'lucide-react';
 import { useAuthStore } from '../../store/authStore';
 import { useThemeStore } from '../../store/themeStore';
 import { cn } from '../../lib/utils';
@@ -11,6 +11,7 @@ const TABS = [
   { to: '/nodo360-alarms', label: 'Nodo360 Alarms', icon: Bell },
   { to: '/central-express', label: 'Central Express', icon: Zap },
   { to: '/vision360-cuarteles', label: 'Vision360', icon: Eye },
+  { to: '/companias-tv', label: 'Muro compañías', icon: Tv },
   { to: '/central-despachos-parral', label: 'Central Parral', icon: Flame },
   { to: '/central-operativa', label: 'En vivo', icon: Radio },
   { to: '/bitacora360', label: 'Bitácora360', icon: BookOpen },

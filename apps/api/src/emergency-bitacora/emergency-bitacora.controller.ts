@@ -22,6 +22,14 @@ export class EmergencyBitacoraController {
     private readonly dispatch: DispatchCentralService,
   ) {}
 
+  /** Cerrar emergencia con últimos comentarios e informe (centralista JWT) */
+  @Post('finalize')
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles(...WRITE_ROLES)
+  finalize(@Body() dto: FinalizePublicEmergencyDto, @Req() req: any) {
+    return this.service.finalizeForActor(dto, req.user);
+  }
+
   /** Finalizar emergencia desde sala de máquinas (PIN o JWT) */
   @Post('public/:slug/finalize')
   async finalizePublic(

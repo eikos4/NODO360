@@ -17,6 +17,7 @@ export const CENTRAL_OPERATOR_ROUTES = [
   '/hydrants',
   '/dispatch/global',
   '/vision360-cuarteles',
+  '/companias-tv',
 ] as const;
 
 export function isCentralOperator(role?: string | null) {

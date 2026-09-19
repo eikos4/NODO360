@@ -933,8 +933,8 @@ export default function DispatchPublicPage() {
         <Link
           to={`/carro/${data.slug}`}
           className={`${floatBtn} p-3 rounded-full hover:scale-105 transition-all`}
-          title="Tablet de carro"
-          aria-label="Tablet de carro"
+          title="NodoTrack"
+          aria-label="NodoTrack"
         >
           <Truck className={`w-5 h-5 ${night ? 'text-amber-300' : isComando ? 'text-red-300' : isNodo || isSalida ? 'text-[#67c8ff]' : isVerde ? 'text-[#1ce783]' : 'text-slate-700'}`} />
         </Link>

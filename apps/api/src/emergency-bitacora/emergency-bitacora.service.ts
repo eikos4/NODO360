@@ -118,12 +118,49 @@ export class EmergencyBitacoraService {
 
   async finalizeFromPublic(slug: string, dto: FinalizePublicEmergencyDto) {
     const { company, incident } = await this.resolvePublicIncident(slug, dto.incidentId);
-    const vehicleNotes = this.vehicleNotesForCompany(incident, company.id);
+    return this.commitFinalize(incident, company.id, dto, EmergencyBitacoraSource.SALA_MAQUINAS);
+  }
 
-    const now = new Date();
-    const existing = await this.prisma.emergencyBitacoraEntry.findUnique({
-      where: { incidentId: incident.id },
+  async finalizeForActor(dto: FinalizePublicEmergencyDto, actor: Actor) {
+    const incident = await this.prisma.incident.findUnique({
+      where: { id: dto.incidentId },
+      include: {
+        vehicles: { include: { vehicle: { select: { patent: true, companyId: true } } } },
+        bitacoraEntry: { select: { id: true } },
+      },
     });
+    if (!incident) throw new NotFoundException('Emergencia no encontrada');
+    await assertCompanyAccess(this.prisma, actor, incident.companyId);
+    return this.commitFinalize(
+      incident,
+      incident.companyId,
+      dto,
+      EmergencyBitacoraSource.INCIDENTE,
+      actor.id,
+    );
+  }
+
+  private async commitFinalize(
+    incident: {
+      id: string;
+      companyId: string;
+      code: string;
+      type: string;
+      address: string;
+      dispatchedAt: Date;
+      closedAt: Date | null;
+      vehicles: { vehicle: { patent: string; companyId: string } }[];
+      bitacoraEntry?: { id: string } | null;
+    },
+    companyId: string,
+    dto: FinalizePublicEmergencyDto,
+    source: EmergencyBitacoraSource,
+    authorId?: string,
+  ) {
+    const vehicleNotes = this.vehicleNotesForCompany(incident, companyId);
+    const now = new Date();
+    const existing = incident.bitacoraEntry
+      ?? await this.prisma.emergencyBitacoraEntry.findUnique({ where: { incidentId: incident.id } });
 
     const [bitacora] = await this.prisma.$transaction([
       existing
@@ -134,13 +171,13 @@ export class EmergencyBitacoraService {
               actionsTaken: dto.actionsTaken?.trim(),
               outcome: dto.outcome?.trim(),
               observations: dto.observations?.trim(),
-              vehicleNotes: vehicleNotes || existing.vehicleNotes,
+              vehicleNotes: vehicleNotes || undefined,
             },
             include: INCLUDE,
           })
         : this.prisma.emergencyBitacoraEntry.create({
             data: {
-              companyId: company.id,
+              companyId,
               incidentId: incident.id,
               title: `${incident.type} — ${incident.code}`,
               emergencyType: incident.type,
@@ -151,7 +188,8 @@ export class EmergencyBitacoraService {
               outcome: dto.outcome?.trim(),
               observations: dto.observations?.trim(),
               vehicleNotes: vehicleNotes || undefined,
-              source: EmergencyBitacoraSource.SALA_MAQUINAS,
+              source,
+              authorId,
             },
             include: INCLUDE,
           }),

@@ -4,6 +4,7 @@
   "private": true,
   "type": "module",
   "scripts": {
+    "icons:launcher": "node scripts/generate-icons.mjs",
     "build:web": "node scripts/build-kiosk.mjs",
     "sync": "node scripts/build-kiosk.mjs && cap sync android",
     "open:android": "cap open android",

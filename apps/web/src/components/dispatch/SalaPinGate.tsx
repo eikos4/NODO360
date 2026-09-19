@@ -88,7 +88,7 @@ export default function SalaPinGate({ preview, unlocking, error, onSubmit, varia
       )}
       <div className="relative">
         {carro && (
-          <p className="text-[11px] font-black tracking-[0.22em] uppercase text-emerald-400 mb-2">NODO 360 · Carro</p>
+          <p className="text-[11px] font-black tracking-[0.22em] uppercase text-emerald-400 mb-2">NodoTrack</p>
         )}
         <p className={`text-[10px] font-black uppercase tracking-[0.2em] ${carro ? 'text-emerald-400/80' : 'text-amber-500/80'}`}>
           Sala de máquinas

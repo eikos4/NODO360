@@ -154,7 +154,7 @@ function HeroSection() {
               className="inline-flex items-center justify-center gap-2 border border-slate-600 hover:border-slate-400 text-white font-bold px-8 py-3.5 rounded-lg transition-all"
             >
               <Truck className="w-4 h-4" />
-              Tablet de carro
+              NodoTrack
             </Link>
           </div>
 
@@ -557,7 +557,7 @@ function CarrosAndroidSection() {
               En el material mayor
             </p>
             <h2 className="text-4xl md:text-5xl font-black text-white leading-[1.1] tracking-tight">
-              NODO <span className="text-emerald-400">360</span>
+              Nodo<span className="text-emerald-400">Track</span>
               <span className="block text-white">para vehículos de emergencia</span>
             </h2>
             <p className="mt-5 text-lg text-slate-300 font-light leading-relaxed max-w-xl">
@@ -599,10 +599,10 @@ function CarrosAndroidSection() {
             <div className="relative mx-auto max-w-[520px] rounded-[1.6rem] border-4 border-slate-800 bg-[#0b1220] shadow-2xl shadow-black/50 overflow-hidden">
               <div className="flex items-center justify-between px-4 py-2.5 border-b border-white/5 bg-slate-950">
                 <div className="flex items-baseline gap-1">
-                  <span className="text-white text-sm font-black tracking-tight">NODO</span>
-                  <span className="text-emerald-400 text-sm font-black tracking-tight">360</span>
+                  <span className="text-white text-sm font-black tracking-tight">Nodo</span>
+                  <span className="text-emerald-400 text-sm font-black tracking-tight">Track</span>
                 </div>
-                <span className="text-[10px] font-bold uppercase tracking-widest text-emerald-400">Android · Carro</span>
+                <span className="text-[10px] font-bold uppercase tracking-widest text-emerald-400">Cabina</span>
               </div>
 
               <div className="p-4 space-y-3">
