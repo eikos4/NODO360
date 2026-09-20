@@ -755,8 +755,48 @@ html:not(.dark) .sala-comando .keep-on-color *,
 .sala-salida .text-white,
 .sala-salida .keep-on-color,
 .sala-comando .text-white,
-.sala-comando .keep-on-color {
+.sala-comando .keep-on-color,
+.companias-tv .text-white,
+.companias-tv .keep-on-color {
   color: #ffffff !important;
+}
+
+html:not(.dark) .companias-tv .text-white,
+html:not(.dark) .companias-tv .keep-on-color,
+html:not(.dark) .companias-tv .keep-on-color * {
+  color: #ffffff !important;
+}
+
+@keyframes companias-tv-progress {
+  from { transform: scaleX(0); }
+  to { transform: scaleX(1); }
+}
+
+.companias-tv-progress {
+  transform-origin: left center;
+  animation: companias-tv-progress 60s linear forwards;
+}
+
+@keyframes companias-tv-fade {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+.companias-tv-slide {
+  animation: companias-tv-fade 0.65s ease;
+}
+
+html:not(.dark) .companias-tv .bg-slate-900,
+html:not(.dark) .companias-tv .bg-slate-800 {
+  background-color: #0f172a !important;
+}
+
+html:not(.dark) .companias-tv .from-slate-800,
+html:not(.dark) .companias-tv .via-slate-900,
+html:not(.dark) .companias-tv .to-slate-950 {
+  --tw-gradient-from: #1e2937 !important;
+  --tw-gradient-to: #020617 !important;
+  --tw-gradient-stops: var(--tw-gradient-from), #0f172a, var(--tw-gradient-to) !important;
 }
 
 html:not(.dark) .sala-salida input {
@@ -1044,17 +1084,17 @@ html:not(.dark) .sala-guardia .text-slate-600 {
 }
 
 .sala-comando-hero {
-  opacity: 0.88;
-  filter: contrast(1.22) saturate(1.18) brightness(1.08);
+  opacity: 1;
+  filter: contrast(1.08) saturate(1.2) brightness(1.18);
   transform-origin: 72% 38%;
   animation: sala-comando-kenburns 38s ease-in-out infinite alternate;
   will-change: transform;
   -webkit-mask-image:
-    linear-gradient(to left, #000 38%, transparent 96%),
-    linear-gradient(to bottom, #000 52%, transparent 100%);
+    linear-gradient(to left, #000 48%, transparent 100%),
+    linear-gradient(to bottom, #000 62%, transparent 100%);
   mask-image:
-    linear-gradient(to left, #000 38%, transparent 96%),
-    linear-gradient(to bottom, #000 52%, transparent 100%);
+    linear-gradient(to left, #000 48%, transparent 100%),
+    linear-gradient(to bottom, #000 62%, transparent 100%);
   -webkit-mask-composite: source-in;
   mask-composite: intersect;
 }
@@ -1063,24 +1103,22 @@ html:not(.dark) .sala-guardia .text-slate-600 {
   position: absolute;
   inset: 0;
   background:
-    linear-gradient(to right, #050b16 0%, #050b16 28%, rgba(5, 11, 22, 0.72) 48%, rgba(5, 11, 22, 0.18) 72%, transparent 100%),
-    linear-gradient(to top, #050b16 0%, rgba(5, 11, 22, 0.55) 28%, transparent 62%, rgba(5, 11, 22, 0.42) 100%);
+    linear-gradient(to right, #050b16 0%, #050b16 34%, rgba(5, 11, 22, 0.88) 46%, rgba(5, 11, 22, 0.22) 68%, transparent 88%),
+    linear-gradient(to bottom, rgba(5, 11, 22, 0.92) 0%, rgba(5, 11, 22, 0.45) 16%, transparent 40%, rgba(5, 11, 22, 0.55) 86%, #0b1626 100%);
 }
 
 .sala-comando-hero-grade {
   position: absolute;
   inset: 0;
   background:
-    radial-gradient(ellipse 58% 52% at 84% 18%, rgba(220, 38, 38, 0.32), transparent 64%),
-    radial-gradient(ellipse 36% 30% at 90% 6%, rgba(251, 191, 36, 0.14), transparent 52%),
-    linear-gradient(115deg, transparent 46%, rgba(12, 24, 40, 0.22) 100%);
-  mix-blend-mode: soft-light;
+    radial-gradient(ellipse 50% 46% at 86% 20%, rgba(220, 38, 38, 0.18), transparent 70%),
+    radial-gradient(ellipse 30% 26% at 92% 8%, rgba(251, 191, 36, 0.1), transparent 58%);
 }
 
 .sala-comando-hero-vignette {
   position: absolute;
   inset: 0;
-  background: radial-gradient(ellipse at 78% 22%, transparent 22%, rgba(5, 11, 22, 0.42) 78%);
+  background: radial-gradient(ellipse at 80% 28%, transparent 34%, rgba(5, 11, 22, 0.22) 86%);
 }
 
 @keyframes sala-comando-kenburns {

@@ -203,34 +203,34 @@ export default function SalaComandoBoard({ data, emergency }: Props) {
                 <Siren className="h-7 w-7 text-red-400" />
               </div>
             )}
-            <div className="min-w-0">
-              <h1 className="truncate text-[22px] font-bold leading-tight tracking-tight lg:text-[28px]">
+            <div className="min-w-0 rounded-2xl bg-[#050b16]/70 px-3 py-1.5 backdrop-blur-sm">
+              <h1 className="keep-on-color truncate text-[22px] font-black leading-tight text-white drop-shadow-[0_2px_10px_rgba(0,0,0,0.85)] lg:text-[30px]">
                 {data.name}
               </h1>
-              <p className="mt-0.5 text-[13px] text-white/55">
+              <p className="keep-on-color mt-0.5 text-[13px] font-medium text-white/80">
                 {[data.address?.split(',')[0]?.trim(), data.city].filter(Boolean).filter((v, i, a) => a.indexOf(v) === i).join(' · ')}
               </p>
             </div>
           </div>
 
-          <p className="hidden min-w-0 flex-1 pt-2 text-center text-[11px] font-semibold uppercase tracking-[0.28em] text-white/40 lg:block">
+          <p className="keep-on-color hidden min-w-0 flex-1 pt-2 text-center text-[11px] font-semibold uppercase tracking-[0.28em] text-white/70 lg:block">
             Disciplina · Servicio · Trabajo en equipo
           </p>
 
-          <div className="flex shrink-0 items-start gap-3">
+            <div className="flex shrink-0 items-start gap-3">
             <div className="text-right">
-              <p className="font-mono text-[34px] font-semibold leading-none tabular-nums tracking-tight lg:text-[40px]">
+              <p className="keep-on-color font-mono text-[34px] font-black leading-none tabular-nums tracking-tight text-white drop-shadow-[0_2px_10px_rgba(0,0,0,0.8)] lg:text-[40px]">
                 {now.toLocaleTimeString('es-CL', { hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: false })}
               </p>
-              <p className="mt-1 text-[11px] capitalize text-white/50">
+              <p className="keep-on-color mt-1 text-[11px] capitalize text-white/75">
                 {now.toLocaleDateString('es-CL', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' })}
               </p>
             </div>
-            <div className="flex items-center gap-2 rounded-2xl border border-white/10 bg-[#0c1828]/90 px-3 py-2">
+            <div className="flex items-center gap-2 rounded-2xl border border-white/15 bg-[#1a2b3f] px-3 py-2">
               <Cloud className="h-5 w-5 text-sky-300" />
               <div>
-                <p className="text-lg font-semibold leading-none">{tempC != null ? `${tempC}°C` : '—'}</p>
-                <p className="mt-0.5 text-[10px] text-white/45">{data.city}</p>
+                <p className="keep-on-color text-lg font-black leading-none text-white">{tempC != null ? `${tempC}°C` : '—'}</p>
+                <p className="keep-on-color mt-0.5 text-[10px] text-white/75">{data.city}</p>
               </div>
             </div>
           </div>
@@ -296,7 +296,7 @@ export default function SalaComandoBoard({ data, emergency }: Props) {
             </div>
 
             <div>
-              <p className="mb-2 text-[11px] font-black uppercase tracking-[0.22em] text-white/45">Unidades despachadas</p>
+              <p className="keep-on-color mb-2 text-[11px] font-black uppercase tracking-[0.22em] text-white/70">Unidades despachadas</p>
               <div className="grid grid-cols-2 gap-3 xl:grid-cols-4">
                 {units.map((v, i) => {
                   const dispatched = dispatchedKeys.has(v.id) || dispatchedKeys.has(v.patent);
@@ -316,25 +316,24 @@ export default function SalaComandoBoard({ data, emergency }: Props) {
                   const ui = KIND_UI[shownKind];
                   const src = !brokenImg[v.id] ? publicMediaUrl(v.imageUrl) : null;
                   return (
-                    <article key={v.id} className={`overflow-hidden rounded-2xl border bg-[#0b1524]/90 ${ui.ring}`}>
-                      <div className="relative h-[92px] overflow-hidden bg-[#081018]">
+                    <article key={v.id} className={`overflow-hidden rounded-2xl border bg-[#122033] ${ui.ring}`}>
+                      <div className="relative h-[92px] overflow-hidden bg-[#1a2838]">
                         {src ? (
                           <img
                             src={src}
                             alt={v.patent}
                             onError={() => setBrokenImg((p) => ({ ...p, [v.id]: true }))}
-                            className="h-full w-full object-cover object-center contrast-125 saturate-[1.12] brightness-110"
+                            className="h-full w-full object-cover object-center saturate-[1.08] brightness-125"
                           />
                         ) : (
                           <div className="flex h-full items-center justify-center">
-                            <Truck className="h-9 w-9 text-white/20" />
+                            <Truck className="h-9 w-9 text-white/40" />
                           </div>
                         )}
-                        <div className="absolute inset-0 bg-gradient-to-t from-[#050b16] via-[#050b16]/35 to-transparent" />
-                        <div className="absolute inset-0 bg-gradient-to-tr from-red-950/45 via-transparent to-amber-300/10" />
+                        <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-black/15 to-transparent" />
                         <div className="absolute inset-x-0 bottom-0 px-2.5 pb-2 pt-6">
-                          <p className="font-mono text-[15px] font-bold leading-none drop-shadow-[0_1px_8px_rgba(0,0,0,0.85)]">{v.patent}</p>
-                          <p className="mt-0.5 text-[10px] uppercase tracking-wide text-white/70">{typeCode(v.type, i)}</p>
+                          <p className="keep-on-color font-mono text-[15px] font-black leading-none text-white drop-shadow-[0_1px_8px_rgba(0,0,0,0.9)]">{v.patent}</p>
+                          <p className="keep-on-color mt-0.5 text-[10px] font-semibold uppercase tracking-wide text-white/85">{typeCode(v.type, i)}</p>
                         </div>
                       </div>
                       <div className="px-2.5 py-2">
@@ -349,7 +348,7 @@ export default function SalaComandoBoard({ data, emergency }: Props) {
             </div>
 
             <div className="flex min-h-0 flex-1 flex-col">
-              <p className="mb-2 text-[11px] font-black uppercase tracking-[0.22em] text-white/45">Mapa en tiempo real</p>
+              <p className="keep-on-color mb-2 text-[11px] font-black uppercase tracking-[0.22em] text-white/70">Mapa en tiempo real</p>
               <div className="relative min-h-[180px] flex-1 overflow-hidden rounded-3xl border border-white/10 bg-[#0a1520]">
                 <PublicOsmMap
                   center={mapCenter}
@@ -381,8 +380,8 @@ export default function SalaComandoBoard({ data, emergency }: Props) {
           </div>
 
           <aside className="flex min-h-0 flex-col gap-3">
-            <div className="rounded-3xl border border-white/10 bg-[#0c1828]/90 p-4">
-              <p className="mb-3 text-[11px] font-black uppercase tracking-[0.2em] text-white/45">Estado general</p>
+            <div className="rounded-3xl border border-white/15 bg-[#152436] p-4">
+              <p className="keep-on-color mb-3 text-[11px] font-black uppercase tracking-[0.2em] text-white/70">Estado general</p>
               <ul className="space-y-2.5">
                 <StatRow icon={<Truck className="h-4 w-4" />} iconBg="bg-emerald-500/15 text-emerald-300" label="Carros operativos" value={`${data.fleet.stats.operativo} / ${data.fleet.stats.total}`} />
                 <StatRow icon={<Users className="h-4 w-4" />} iconBg="bg-sky-500/15 text-sky-300" label="Personal disponible" value={String(data.roster.stats.available)} />
@@ -404,9 +403,9 @@ export default function SalaComandoBoard({ data, emergency }: Props) {
               </div>
             </div>
 
-            <div className="flex min-h-0 flex-1 flex-col rounded-3xl border border-white/10 bg-[#0c1828]/90 p-4">
+            <div className="flex min-h-0 flex-1 flex-col rounded-3xl border border-white/15 bg-[#152436] p-4">
               <div className="mb-3 flex items-center justify-between">
-                <p className="text-[11px] font-black uppercase tracking-[0.2em] text-white/45">Últimas emergencias</p>
+                <p className="keep-on-color text-[11px] font-black uppercase tracking-[0.2em] text-white/70">Últimas emergencias</p>
                 <span className="text-[11px] font-semibold text-sky-300">Ver todas</span>
               </div>
               <ul className="min-h-0 flex-1 space-y-2 overflow-hidden">
@@ -437,23 +436,23 @@ export default function SalaComandoBoard({ data, emergency }: Props) {
           </aside>
         </div>
 
-        <footer className="mt-3 flex items-center justify-between gap-4 border-t border-white/10 py-3">
+        <footer className="relative z-10 mt-3 flex items-center justify-between gap-4 rounded-2xl border border-white/15 bg-[#1a2b3f] px-4 py-3">
           <div className="flex items-center gap-2.5">
-            <span className="flex h-8 w-8 items-center justify-center rounded-lg bg-red-600 text-sm font-black">N</span>
+            <span className="flex h-8 w-8 items-center justify-center rounded-lg bg-red-600 text-sm font-black text-white">N</span>
             <div>
-              <p className="text-sm font-black tracking-tight">Nodo<span className="text-red-500">360</span></p>
-              <p className="text-[9px] uppercase tracking-[0.16em] text-white/40">Conecta · Coordina · Responde</p>
+              <p className="keep-on-color text-sm font-black tracking-tight text-white">Nodo<span className="text-red-400">360</span></p>
+              <p className="keep-on-color text-[9px] uppercase tracking-[0.16em] text-white/75">Conecta · Coordina · Responde</p>
             </div>
           </div>
-          <nav className="hidden items-center gap-5 text-[10px] font-bold uppercase tracking-[0.14em] text-white/40 md:flex">
-            <span className="text-red-400">Sala de máquinas</span>
+          <nav className="keep-on-color hidden items-center gap-5 text-[10px] font-bold uppercase tracking-[0.14em] text-white/80 md:flex">
+            <span className="text-red-300">Sala de máquinas</span>
             <span className="inline-flex items-center gap-1.5"><Building2 className="h-3.5 w-3.5" /> Compañías</span>
             <span className="inline-flex items-center gap-1.5"><Users className="h-3.5 w-3.5" /> Personal</span>
             <span className="inline-flex items-center gap-1.5"><Droplets className="h-3.5 w-3.5" /> Hidrantes</span>
             <span className="inline-flex items-center gap-1.5"><BarChart3 className="h-3.5 w-3.5" /> Reportes</span>
             <span className="inline-flex items-center gap-1.5"><Settings className="h-3.5 w-3.5" /> Configuración</span>
           </nav>
-          <p className="hidden text-right text-[9px] uppercase tracking-[0.16em] text-white/35 lg:block">
+          <p className="keep-on-color hidden text-right text-[9px] uppercase tracking-[0.16em] text-white/70 lg:block">
             Tecnología al servicio<br />de quienes salvan vidas
           </p>
         </footer>
@@ -471,11 +470,11 @@ function Kpi({
       ? 'bg-sky-500/15 text-sky-300'
       : 'bg-white/10 text-white/70';
   return (
-    <div className="flex items-center gap-3 rounded-2xl border border-white/10 bg-[#0c1828]/85 px-3 py-2.5">
+    <div className="flex items-center gap-3 rounded-2xl border border-white/15 bg-[#152436] px-3 py-2.5">
       <span className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-xl ${iconWrap}`}>{icon}</span>
       <div className="min-w-0">
-        <p className="truncate font-mono text-[17px] font-bold leading-none">{title}</p>
-        <p className="mt-1 truncate text-[10px] uppercase tracking-wide text-white/45">{sub}</p>
+        <p className="keep-on-color truncate font-mono text-[17px] font-black leading-none text-white">{title}</p>
+        <p className="keep-on-color mt-1 truncate text-[10px] uppercase tracking-wide text-white/70">{sub}</p>
       </div>
     </div>
   );
@@ -485,8 +484,8 @@ function StatRow({ icon, iconBg, label, value }: { icon: ReactNode; iconBg: stri
   return (
     <li className="flex items-center gap-3">
       <span className={`flex h-9 w-9 items-center justify-center rounded-xl ${iconBg}`}>{icon}</span>
-      <span className="flex-1 text-[13px] text-white/70">{label}</span>
-      <span className="font-mono text-[18px] font-bold">{value}</span>
+      <span className="keep-on-color flex-1 text-[13px] text-white/85">{label}</span>
+      <span className="keep-on-color font-mono text-[18px] font-black text-white">{value}</span>
     </li>
   );
 }

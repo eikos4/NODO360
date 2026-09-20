@@ -100,31 +100,33 @@ function CrewPhoto({
   const src = publicMediaUrl(person.photoUrl);
   const show = src && !err;
   return (
-    <button
-      type="button"
-      onClick={onClick}
-      disabled={disabled || !onClick}
-      title="Marcar no disponible"
-      className={`relative aspect-square w-full overflow-hidden rounded-full border bg-[#0b1824] disabled:cursor-default enabled:cursor-pointer enabled:hover:border-red-400/70 enabled:hover:opacity-90 ${
-        live ? 'border-[#ef343f]/50 shadow-[0_0_14px_rgba(239,52,63,0.22)]' : 'border-white/15'
-      }`}
-    >
-      {show ? (
-        <img
-          src={src}
-          alt={person.name}
-          onError={() => setErr(true)}
-          className="h-full w-full object-cover object-top"
-        />
-      ) : (
-        <FirefighterPlaceholder className="h-full w-full" />
-      )}
+    <div className={`relative w-full ${person.isMaquinista ? 'pb-3' : ''}`}>
+      <button
+        type="button"
+        onClick={onClick}
+        disabled={disabled || !onClick}
+        title="Marcar no disponible"
+        className={`relative aspect-square w-full overflow-hidden rounded-full border bg-[#0b1824] disabled:cursor-default enabled:cursor-pointer enabled:hover:border-red-400/70 enabled:hover:opacity-90 ${
+          live ? 'border-[#ef343f]/50 shadow-[0_0_14px_rgba(239,52,63,0.22)]' : 'border-white/15'
+        }`}
+      >
+        {show ? (
+          <img
+            src={src}
+            alt={person.name}
+            onError={() => setErr(true)}
+            className="h-full w-full object-cover object-top"
+          />
+        ) : (
+          <FirefighterPlaceholder className="h-full w-full" />
+        )}
+      </button>
       {person.isMaquinista && (
-        <span className="absolute left-1.5 top-1.5 rounded bg-amber-400 px-1 py-0.5 text-[8px] font-black uppercase tracking-wide text-amber-950">
-          Maq.
+        <span className="absolute bottom-0 left-1/2 z-10 -translate-x-1/2 whitespace-nowrap rounded-full bg-amber-400 px-2 py-0.5 text-[9px] font-black uppercase tracking-wide text-amber-950 shadow-[0_2px_8px_rgba(0,0,0,0.45)]">
+          Maquinista
         </span>
       )}
-    </button>
+    </div>
   );
 }
 
@@ -261,12 +263,13 @@ function resolveVehicles(data: PublicCentral, emergency: PublicEmergency | null)
 type Props = {
   data: PublicCentral;
   emergency: PublicEmergency | null;
-  operativeNumber: string;
-  onOperativeNumber: (value: string) => void;
-  onToggleByNumber: (markAvailableOrNum?: boolean | number, explicitNum?: number) => void;
-  onUnmarkCrew: (userId: string) => void;
+  operativeNumber?: string;
+  onOperativeNumber?: (value: string) => void;
+  onToggleByNumber?: (markAvailableOrNum?: boolean | number, explicitNum?: number) => void;
+  onUnmarkCrew?: (userId: string) => void;
   togglingId?: string | null;
   inputRef?: RefObject<HTMLInputElement | null>;
+  displayOnly?: boolean;
 };
 
 export default function SalaSalidaBoard({
@@ -278,6 +281,7 @@ export default function SalaSalidaBoard({
   onUnmarkCrew,
   togglingId,
   inputRef,
+  displayOnly = false,
 }: Props) {
   const vehicles = useMemo(() => resolveVehicles(data, emergency), [data, emergency]);
   const crew = useMemo(() => buildCrew(data, emergency), [data, emergency]);
@@ -296,7 +300,7 @@ export default function SalaSalidaBoard({
   const typeLabel = emergency?.type?.split(' — ')[1] || emergency?.type;
   const emergencyCode = emergency?.emergencyCodeId || emergency?.code;
   const busy = Boolean(togglingId);
-  const canMark = Boolean(operativeNumber) && !busy;
+  const canMark = !displayOnly && Boolean(operativeNumber) && !busy;
   const vehicleKey = vehicles.map((v) => v.id).join('|');
   const rotatingKey = rotating.map((v) => v.id).join('|');
 
@@ -327,7 +331,7 @@ export default function SalaSalidaBoard({
   }, [emergencyId]);
 
   return (
-    <section className="sala-salida relative flex min-h-0 flex-1 overflow-hidden bg-[#0b0d10] text-[#e7edf4]">
+    <section className="sala-salida relative flex h-full min-h-0 flex-1 flex-col overflow-hidden bg-[#0b0d10] text-[#e7edf4]">
       <div className="pointer-events-none absolute inset-0 overflow-hidden">
         {heroSrc ? (
           <img
@@ -372,7 +376,7 @@ export default function SalaSalidaBoard({
         </div>
       )}
 
-      <div className="relative z-10 flex min-h-0 flex-1 flex-col px-6 py-5 pb-24 lg:px-10 lg:py-7">
+      <div className={`relative z-10 flex min-h-0 flex-1 flex-col px-6 py-5 lg:px-10 lg:py-7 ${displayOnly ? 'pb-6' : 'pb-24'}`}>
         <p className={`mb-3 text-lg font-black uppercase tracking-[0.18em] lg:text-2xl ${
           live
             ? 'sala-salida-hold-glow text-red-400 drop-shadow-[0_0_18px_rgba(239,68,68,0.55)]'
@@ -405,11 +409,12 @@ export default function SalaSalidaBoard({
 
           <div className="flex w-[300px] shrink-0 flex-col items-stretch gap-3">
             <LiveClock />
+            {!displayOnly && (
             <form
               className="rounded-2xl border border-[#38bdf8]/35 bg-[#0b2736]/90 p-3 shadow-[0_0_24px_rgba(56,189,248,0.12)] backdrop-blur-sm"
               onSubmit={(e) => {
                 e.preventDefault();
-                onToggleByNumber();
+                onToggleByNumber?.();
               }}
             >
               <p className="mb-2 flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-wide text-[#67c8ff]">
@@ -421,8 +426,8 @@ export default function SalaSalidaBoard({
                 type="text"
                 inputMode="numeric"
                 maxLength={4}
-                value={operativeNumber}
-                onChange={(e) => onOperativeNumber(e.target.value.replace(/\D/g, '').slice(0, 4))}
+                value={operativeNumber ?? ''}
+                onChange={(e) => onOperativeNumber?.(e.target.value.replace(/\D/g, '').slice(0, 4))}
                 placeholder="528"
                 className="keep-on-color mb-2 w-full rounded-xl border border-[#38bdf8]/40 bg-[#07111a] px-3 py-2 text-center font-mono text-2xl font-semibold text-white placeholder-[#1879ac] outline-none focus:border-[#67c8ff]"
                 style={{ color: '#ffffff' }}
@@ -438,7 +443,7 @@ export default function SalaSalidaBoard({
                 <button
                   type="button"
                   disabled={!canMark}
-                  onClick={() => onToggleByNumber(true)}
+                  onClick={() => onToggleByNumber?.(true)}
                   className="inline-flex items-center justify-center gap-0.5 rounded-lg bg-emerald-600 px-1 py-1.5 text-[10px] font-bold uppercase text-white disabled:opacity-40"
                 >
                   <Check className="h-3 w-3" /> Sí
@@ -446,13 +451,14 @@ export default function SalaSalidaBoard({
                 <button
                   type="button"
                   disabled={!canMark}
-                  onClick={() => onToggleByNumber(false)}
+                  onClick={() => onToggleByNumber?.(false)}
                   className="inline-flex items-center justify-center gap-0.5 rounded-lg bg-slate-700 px-1 py-1.5 text-[10px] font-bold uppercase text-slate-100 disabled:opacity-40"
                 >
                   <X className="h-3 w-3" /> No
                 </button>
               </div>
             </form>
+            )}
           </div>
         </header>
 
@@ -525,7 +531,7 @@ export default function SalaSalidaBoard({
                     person={person}
                     live={live}
                     disabled={busy}
-                    onClick={() => onUnmarkCrew(person.id)}
+                    onClick={displayOnly || !onUnmarkCrew ? undefined : () => onUnmarkCrew(person.id)}
                   />
                   {person.operativeNumber != null && (
                     <p className="keep-on-color mt-2.5 text-lg font-semibold tabular-nums leading-none text-white" style={{ color: '#ffffff' }}>
@@ -533,13 +539,8 @@ export default function SalaSalidaBoard({
                     </p>
                   )}
                   <p className="keep-on-color mt-1.5 w-full truncate text-xs font-semibold leading-tight text-white" style={{ color: '#ffffff' }}>{person.name}</p>
-                  <div className="mt-1 flex flex-wrap items-center justify-center gap-1">
+                  <div className="mt-1 flex justify-center">
                     <RoleBadge role={person.role} size="xs" contrast />
-                    {person.isMaquinista && person.duty === 'maquinista' && (
-                      <span className="rounded bg-amber-400/15 px-1 py-0.5 text-[8px] font-semibold uppercase text-amber-200">
-                        Maquinista
-                      </span>
-                    )}
                   </div>
                   {statusLabel(person.status) && (
                     <p className={`mt-0.5 text-[9px] font-semibold uppercase tracking-wide ${live ? 'text-[#ef343f]' : 'text-[#67c8ff]'}`}>
