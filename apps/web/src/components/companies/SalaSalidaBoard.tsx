@@ -85,28 +85,80 @@ function LiveClock() {
   );
 }
 
+/** Densidad visual: con más gente, círculos más chicos para dejar ver el carro. */
+function crewDensity(count: number) {
+  if (count >= 20) {
+    return {
+      grid: 'grid-cols-8 gap-x-2 gap-y-3 sm:grid-cols-10 md:grid-cols-12 xl:grid-cols-[repeat(14,minmax(0,1fr))] 2xl:grid-cols-[repeat(16,minmax(0,1fr))]',
+      photo: 'h-11 w-11 sm:h-12 sm:w-12',
+      num: 'mt-1 text-xs',
+      name: 'mt-0.5 text-[10px]',
+      badge: 'mt-0.5 scale-90',
+      maq: 'text-[8px] px-1.5',
+      pad: 'pb-2',
+    };
+  }
+  if (count >= 12) {
+    return {
+      grid: 'grid-cols-6 gap-x-3 gap-y-4 sm:grid-cols-8 md:grid-cols-10 xl:grid-cols-12 2xl:grid-cols-[repeat(14,minmax(0,1fr))]',
+      photo: 'h-14 w-14 sm:h-16 sm:w-16',
+      num: 'mt-1.5 text-sm',
+      name: 'mt-1 text-[11px]',
+      badge: 'mt-0.5',
+      maq: 'text-[8px] px-1.5',
+      pad: 'pb-2.5',
+    };
+  }
+  if (count >= 7) {
+    return {
+      grid: 'grid-cols-4 gap-x-4 gap-y-5 sm:grid-cols-6 md:grid-cols-8 xl:grid-cols-10',
+      photo: 'h-[4.5rem] w-[4.5rem] sm:h-20 sm:w-20',
+      num: 'mt-2 text-base',
+      name: 'mt-1 text-xs',
+      badge: 'mt-1',
+      maq: 'text-[9px] px-2',
+      pad: 'pb-3',
+    };
+  }
+  return {
+    grid: 'grid-cols-3 gap-x-5 gap-y-6 sm:grid-cols-4 md:grid-cols-6 xl:grid-cols-8',
+    photo: 'h-24 w-24 sm:h-28 sm:w-28',
+    num: 'mt-2.5 text-lg',
+    name: 'mt-1.5 text-xs',
+    badge: 'mt-1',
+    maq: 'text-[9px] px-2',
+    pad: 'pb-3',
+  };
+}
+
 function CrewPhoto({
   person,
   onClick,
   disabled,
   live,
+  photoClass,
+  maqClass,
+  padClass,
 }: {
   person: CrewCard;
   onClick?: () => void;
   disabled?: boolean;
   live?: boolean;
+  photoClass: string;
+  maqClass: string;
+  padClass: string;
 }) {
   const [err, setErr] = useState(false);
   const src = publicMediaUrl(person.photoUrl);
   const show = src && !err;
   return (
-    <div className={`relative w-full ${person.isMaquinista ? 'pb-3' : ''}`}>
+    <div className={`relative ${person.isMaquinista ? padClass : ''}`}>
       <button
         type="button"
         onClick={onClick}
         disabled={disabled || !onClick}
         title="Marcar no disponible"
-        className={`relative aspect-square w-full overflow-hidden rounded-full border bg-[#0b1824] disabled:cursor-default enabled:cursor-pointer enabled:hover:border-red-400/70 enabled:hover:opacity-90 ${
+        className={`relative overflow-hidden rounded-full border bg-[#0b1824] disabled:cursor-default enabled:cursor-pointer enabled:hover:border-red-400/70 enabled:hover:opacity-90 ${photoClass} ${
           live ? 'border-[#ef343f]/50 shadow-[0_0_14px_rgba(239,52,63,0.22)]' : 'border-white/15'
         }`}
       >
@@ -122,7 +174,7 @@ function CrewPhoto({
         )}
       </button>
       {person.isMaquinista && (
-        <span className="absolute bottom-0 left-1/2 z-10 -translate-x-1/2 whitespace-nowrap rounded-full bg-amber-400 px-2 py-0.5 text-[9px] font-black uppercase tracking-wide text-amber-950 shadow-[0_2px_8px_rgba(0,0,0,0.45)]">
+        <span className={`absolute bottom-0 left-1/2 z-10 -translate-x-1/2 whitespace-nowrap rounded-full bg-amber-400 py-0.5 font-black uppercase tracking-wide text-amber-950 shadow-[0_2px_8px_rgba(0,0,0,0.45)] ${maqClass}`}>
           Maquinista
         </span>
       )}
@@ -285,6 +337,7 @@ export default function SalaSalidaBoard({
 }: Props) {
   const vehicles = useMemo(() => resolveVehicles(data, emergency), [data, emergency]);
   const crew = useMemo(() => buildCrew(data, emergency), [data, emergency]);
+  const density = crewDensity(crew.length);
   const [heroIndex, setHeroIndex] = useState(0);
   const [logoBroken, setLogoBroken] = useState(false);
   const [brokenHero, setBrokenHero] = useState<Record<string, boolean>>({});
@@ -517,29 +570,32 @@ export default function SalaSalidaBoard({
           </div>
         </div>
 
-        <div className="mt-auto min-h-0 overflow-y-auto pt-8 pb-2">
+        <div className="mt-auto min-h-0 overflow-y-auto pt-4 pb-2">
           {crew.length === 0 ? (
             <div className="flex items-center gap-3 rounded-2xl border border-white/10 bg-black/30 px-5 py-6 text-[#89a0b3]">
               <Radio className="h-5 w-5 text-[#67c8ff]" />
               Sin dotación marcada. Ingresá el N° operativo arriba para marcarte en sala.
             </div>
           ) : (
-            <div className="grid grid-cols-4 gap-x-4 gap-y-7 sm:grid-cols-6 md:grid-cols-8 xl:grid-cols-10 2xl:grid-cols-12">
+            <div className={`grid ${density.grid}`}>
               {crew.map((person) => (
                 <article key={person.id} className="flex min-w-0 flex-col items-center text-center">
                   <CrewPhoto
                     person={person}
                     live={live}
                     disabled={busy}
+                    photoClass={density.photo}
+                    maqClass={density.maq}
+                    padClass={density.pad}
                     onClick={displayOnly || !onUnmarkCrew ? undefined : () => onUnmarkCrew(person.id)}
                   />
                   {person.operativeNumber != null && (
-                    <p className="keep-on-color mt-2.5 text-lg font-semibold tabular-nums leading-none text-white" style={{ color: '#ffffff' }}>
+                    <p className={`keep-on-color font-semibold tabular-nums leading-none text-white ${density.num}`} style={{ color: '#ffffff' }}>
                       {person.operativeNumber}
                     </p>
                   )}
-                  <p className="keep-on-color mt-1.5 w-full truncate text-xs font-semibold leading-tight text-white" style={{ color: '#ffffff' }}>{person.name}</p>
-                  <div className="mt-1 flex justify-center">
+                  <p className={`keep-on-color w-full truncate font-semibold leading-tight text-white ${density.name}`} style={{ color: '#ffffff' }}>{person.name}</p>
+                  <div className={`flex justify-center ${density.badge}`}>
                     <RoleBadge role={person.role} size="xs" contrast />
                   </div>
                   {statusLabel(person.status) && (
