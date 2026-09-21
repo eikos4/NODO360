@@ -1,7 +1,7 @@
-import { LogOut, Bell, Sun, Moon, HelpCircle } from 'lucide-react';
+import { LogOut, Bell, Sun, Moon, HelpCircle, Compass } from 'lucide-react';
 import { useAuthStore } from '../../store/authStore';
 import { useThemeStore } from '../../store/themeStore';
-import { useNavigate } from 'react-router-dom';
+import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { cn } from '../../lib/utils';
 import CentralQuickOverview from './CentralQuickOverview';
 import { canViewCuartelesOverview } from '../../hooks/useCuartelesOverview';
@@ -14,9 +14,11 @@ interface HeaderProps {
 export default function Header({ onStartTour }: HeaderProps) {
   const { user, logout } = useAuthStore();
   const navigate = useNavigate();
+  const location = useLocation();
   const { theme, toggleTheme } = useThemeStore();
   const isDark = theme === 'dark';
   const showOverview = canViewCuartelesOverview(user?.role);
+  const ayudaActive = location.pathname.startsWith('/ayuda');
 
   const handleLogout = () => {
     logout();
@@ -49,9 +51,16 @@ export default function Header({ onStartTour }: HeaderProps) {
               title="Tour de la plataforma"
               className={btnClass}
             >
-              <HelpCircle className="w-4 h-4" />
+              <Compass className="w-4 h-4" />
             </button>
           )}
+          <Link
+            to="/ayuda"
+            title="Ayuda NODO360"
+            className={cn(btnClass, ayudaActive && 'bg-red-600 !text-white hover:bg-red-600')}
+          >
+            <HelpCircle className="w-4 h-4" />
+          </Link>
           <button
             onClick={toggleTheme}
             title={isDark ? 'Tema claro' : 'Tema oscuro'}

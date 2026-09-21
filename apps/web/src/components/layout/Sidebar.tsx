@@ -4,7 +4,7 @@ import {
   LayoutDashboard, Building2, Users, Package,
   Truck, FileText, ShieldAlert, Wrench, DollarSign,
   Flame, Bell, ShoppingCart, Zap, Gauge, Network, Siren, Megaphone, Droplets, Shield, HandCoins, Signpost,
-  GraduationCap, Map, BookOpen, ClipboardCheck, ClipboardList, Fuel, HeartPulse, PanelLeftClose, PanelLeft, Radio, Globe, Eye, Crown, Tv
+  GraduationCap, Map, BookOpen, ClipboardCheck, ClipboardList, Fuel, HeartPulse, PanelLeftClose, PanelLeft, Radio, Globe, Eye, Crown, Tv, HelpCircle
 } from 'lucide-react';
 import { useAuthStore } from '../../store/authStore';
 import { cn } from '../../lib/utils';
@@ -20,6 +20,7 @@ export const navItems: NavItem[] = [
   { to: '/implementacion', label: 'Kodesk Console', icon: Crown, roles: ['KODESK'] },
   { to: '/emergencia-respuesta', label: 'Mi emergencia', icon: Siren, roles: ['SUPER_ADMIN', 'COMANDANTE', 'CAPITAN', 'BOMBERO', 'BOMBERO_HONORARIO', 'BOMBERO_INICIAL', 'BOMBERO_PROFESIONAL', 'ENCARGADO_MATERIAL'] },
   { to: '/nodo360',    label: 'NODO360',      icon: Zap,             roles: ['SUPER_ADMIN', 'COMANDANTE', 'CAPITAN', 'OPERADOR_CENTRAL'] },
+  { to: '/central-emergencia', label: 'Consola activa', icon: Siren, roles: ['OPERADOR_CENTRAL', 'SUPER_ADMIN', 'COMANDANTE', 'CAPITAN'] },
   { to: '/central-operativa', label: 'Central en vivo', icon: Radio, roles: ['OPERADOR_CENTRAL', 'SUPER_ADMIN', 'COMANDANTE', 'CAPITAN'] },
   { to: '/bitacora360', label: 'Bitácora360', icon: BookOpen, roles: ['OPERADOR_CENTRAL', 'SUPER_ADMIN', 'COMANDANTE', 'CAPITAN'] },
   { to: '/central-bitacora/registro', label: 'Bitácora botonera', icon: ClipboardList, roles: ['OPERADOR_CENTRAL', 'SUPER_ADMIN', 'COMANDANTE', 'CAPITAN'] },
@@ -34,7 +35,7 @@ export const navItems: NavItem[] = [
   { to: '/alerts',     label: 'Alertas',      icon: Bell,            roles: ['ALL'] },
   { to: '/announcements', label: 'Comunicados', icon: Megaphone,     roles: ['ALL'] },
   { to: '/operational-map', label: 'Mapa 360', icon: Map, roles: ['SUPER_ADMIN', 'COMANDANTE', 'CAPITAN', 'ENCARGADO_MATERIAL', 'SECRETARIO', 'OPERADOR_CENTRAL'] },
-  { to: '/hydrants',   label: 'Hidrantes',    icon: Droplets,        roles: ['SUPER_ADMIN', 'COMANDANTE', 'CAPITAN', 'ENCARGADO_MATERIAL'] },
+  { to: '/hydrants',   label: 'Hidrantes',    icon: Droplets,        roles: ['SUPER_ADMIN', 'COMANDANTE', 'CAPITAN', 'ENCARGADO_MATERIAL', 'OPERADOR_CENTRAL'] },
   { to: '/emergency-plans', label: 'Planes Emergencia', icon: Shield, roles: ['SUPER_ADMIN', 'COMANDANTE', 'CAPITAN', 'SECRETARIO'] },
   { to: '/evacuation', label: 'Simulacros', icon: Signpost, roles: ['SUPER_ADMIN', 'COMANDANTE', 'CAPITAN', 'SECRETARIO', 'ENCARGADO_MATERIAL'] },
   { to: '/companies',  label: 'Compañías',    icon: Building2,       roles: ['SUPER_ADMIN', 'COMANDANTE'] },
@@ -50,6 +51,7 @@ export const navItems: NavItem[] = [
   { to: '/fleet-logs',  label: 'Libro flota',  icon: Fuel,            roles: ['SUPER_ADMIN', 'COMANDANTE', 'ENCARGADO_MATERIAL', 'CAPITAN', 'BOMBERO', 'BOMBERO_HONORARIO', 'BOMBERO_INICIAL', 'BOMBERO_PROFESIONAL'] },
   { to: '/shifts',     label: 'Guardia',      icon: Truck,           roles: ['SUPER_ADMIN', 'COMANDANTE', 'CAPITAN'] },
   { to: '/guard-log',  label: 'Bitácora',     icon: BookOpen,        roles: ['SUPER_ADMIN', 'COMANDANTE', 'CAPITAN', 'BOMBERO', 'BOMBERO_HONORARIO', 'BOMBERO_INICIAL', 'BOMBERO_PROFESIONAL', 'SECRETARIO'] },
+  { to: '/ayuda', label: 'Ayuda NODO360', icon: HelpCircle, roles: ['ALL'] },
   { to: '/documents',  label: 'Documentos',   icon: FileText,        roles: ['ALL'] },
   { to: '/purchases',  label: 'Compras',      icon: ShoppingCart,    roles: ['SUPER_ADMIN', 'TESORERO', 'SECRETARIO', 'COMANDANTE'] },
   { to: '/finance',    label: 'Finanzas',     icon: DollarSign,      roles: ['SUPER_ADMIN', 'TESORERO', 'AUDITOR', 'COMANDANTE'] },

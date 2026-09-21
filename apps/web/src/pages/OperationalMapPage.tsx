@@ -4,7 +4,7 @@ import { Link } from 'react-router-dom';
 import {
   Map as MapIcon, Layers, Building2, Droplets, Users, Route, ShieldAlert,
   Maximize2, RefreshCw, ChevronRight, Radio, Siren, UserCheck,
-  Sun, Moon, Truck, Navigation, Satellite, Mountain
+  Moon, Truck, Navigation, Satellite, Mountain
 } from 'lucide-react';
 import { Map, AdvancedMarker, InfoWindow, useMap } from '@vis.gl/react-google-maps';
 import { api } from '../lib/api';
@@ -181,7 +181,7 @@ function timeAgo(iso: string) {
 
 export default function OperationalMapPage() {
   const user = useAuthStore((s) => s.user);
-  const { tokens: th, toggleTheme, isDark } = useOperationalMapTheme();
+  const { tokens: th, isDark } = useOperationalMapTheme();
   const [baseLayer, setBaseLayer] = useState<BaseLayerKey>('streets');
   
   useEffect(() => {
@@ -324,14 +324,6 @@ export default function OperationalMapPage() {
             <option value="180">Historial 180 días</option>
             <option value="365">Historial 1 año</option>
           </select>
-          <button
-            type="button"
-            onClick={toggleTheme}
-            className={`p-2 rounded-xl border transition-colors ${th.btnGhost}`}
-            title={isDark ? 'Modo claro' : 'Modo oscuro'}
-          >
-            {isDark ? <Sun className="w-4 h-4" /> : <Moon className="w-4 h-4" />}
-          </button>
           <Link
             to="/despacho360"
             className="flex items-center gap-2 bg-red-600 hover:bg-red-500 text-white text-sm font-semibold px-3 py-2 rounded-xl"

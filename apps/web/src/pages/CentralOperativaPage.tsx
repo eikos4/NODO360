@@ -3,7 +3,7 @@ import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { Link } from 'react-router-dom';
 import {
   Siren, Users, Truck, RefreshCw, Radio, MapPin, Clock,
-  ExternalLink, AlertTriangle, CheckCircle2, Flame, Moon, Sun, BookOpen, Layers, FileDown,
+  ExternalLink, AlertTriangle, CheckCircle2, Flame, BookOpen, Layers, FileDown,
 } from 'lucide-react';
 import { api } from '../lib/api';
 import { useAuthStore } from '../store/authStore';
@@ -83,7 +83,7 @@ export default function CentralOperativaPage() {
   const user = useAuthStore((s) => s.user);
   const token = useAuthStore((s) => s.token);
   const qc = useQueryClient();
-  const { tokens: th, toggleTheme, isDark } = useCentralParralTheme();
+  const { tokens: th, isDark } = useCentralParralTheme();
   const [dismissedBannerId, setDismissedBannerId] = useState<string | null>(null);
   const [focusId, setFocusId] = useState<string | null>(null);
   const [mapStyle, setMapStyle] = useState<OsmBaseStyle>(isDark ? 'dark' : 'osm');
@@ -200,14 +200,6 @@ export default function CentralOperativaPage() {
                 Actualizado {lastUpdate}
               </p>
             </div>
-            <button
-              type="button"
-              onClick={toggleTheme}
-              className={`p-2 rounded-lg border transition-colors ${th.btnGhost}`}
-              title={isDark ? 'Modo claro' : 'Modo oscuro'}
-            >
-              {isDark ? <Sun className="w-4 h-4" /> : <Moon className="w-4 h-4" />}
-            </button>
             <button
               type="button"
               onClick={() => refetch()}

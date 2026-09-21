@@ -4,6 +4,9 @@ import { hasAnyRole, pickPrimaryRole, userRoles, type RoleActor } from './roles'
 export const OPERADOR_CENTRAL_ROLE = 'OPERADOR_CENTRAL';
 
 export const CENTRAL_OPERATOR_ROUTES = [
+  '/central-emergencia',
+  '/ayuda',
+  '/nodo360',
   '/despacho360',
   '/nodo360-alarms',
   '/central-despachos-parral',
@@ -35,7 +38,7 @@ export function isRestrictedCentralista(user?: RoleActor) {
 
 export function getDefaultRouteForRole(role?: string | null) {
   if (isKodesk(role)) return '/implementacion';
-  if (isCentralOperator(role)) return '/despacho360';
+  if (isCentralOperator(role)) return '/central-emergencia';
   if (role === 'BOMBERO' || role === 'BOMBERO_HONORARIO' || role === 'BOMBERO_INICIAL' || role === 'BOMBERO_PROFESIONAL') {
     return '/emergencia-respuesta';
   }

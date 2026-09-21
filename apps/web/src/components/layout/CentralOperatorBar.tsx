@@ -1,5 +1,5 @@
 import { Link, useLocation, useNavigate } from 'react-router-dom';
-import { Flame, LogOut, Moon, Siren, Map, ShieldAlert, Radio, Sun, Zap, Droplets, Globe, Eye, BookOpen, Bell, ClipboardList, Tv } from 'lucide-react';
+import { Flame, HelpCircle, LogOut, Moon, Siren, Map, ShieldAlert, Radio, Sun, Zap, Droplets, Globe, Eye, BookOpen, Bell, ClipboardList, Tv, LayoutDashboard } from 'lucide-react';
 import { useAuthStore } from '../../store/authStore';
 import { useThemeStore } from '../../store/themeStore';
 import { cn } from '../../lib/utils';
@@ -7,6 +7,7 @@ import CentralQuickOverview from './CentralQuickOverview';
 import { canViewCuartelesOverview } from '../../hooks/useCuartelesOverview';
 
 const TABS = [
+  { to: '/central-emergencia', label: 'Consola activa', icon: LayoutDashboard },
   { to: '/despacho360', label: 'Despacho360', icon: Siren },
   { to: '/nodo360-alarms', label: 'Nodo360 Alarms', icon: Bell },
   { to: '/central-express', label: 'Central Express', icon: Zap },
@@ -80,6 +81,20 @@ export default function CentralOperatorBar() {
               <CentralQuickOverview />
             </div>
           )}
+          <Link
+            to="/ayuda"
+            title="Ayuda NODO360"
+            className={cn(
+              'p-2 rounded-lg transition-colors',
+              location.pathname.startsWith('/ayuda')
+                ? 'bg-red-600 !text-white'
+                : isDark
+                  ? 'text-slate-500 hover:text-white hover:bg-slate-800'
+                  : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100',
+            )}
+          >
+            <HelpCircle className="w-4 h-4" />
+          </Link>
           <button
             type="button"
             onClick={toggleTheme}

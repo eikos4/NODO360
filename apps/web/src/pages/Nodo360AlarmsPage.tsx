@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import {
-  Bell, Building2, CheckCircle2, Circle, Clock, Copy, Loader2, MapPin, MessageCircle, Mic, MicOff, Moon, Search, Siren, Square, Sun, Truck, Volume2, VolumeX, X,
+  Bell, Building2, CheckCircle2, Circle, Clock, Copy, Loader2, MapPin, MessageCircle, Mic, MicOff, Search, Siren, Square, Truck, Volume2, VolumeX, X,
 } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { useQuickDispatch } from '../hooks/useQuickDispatch';
@@ -16,6 +16,9 @@ import CompanyMaquinistaAlert from '../components/dispatch/CompanyMaquinistaAler
 import DoubleDispatchConfirmModal from '../components/dispatch/DoubleDispatchConfirmModal';
 import AlarmConfirmOverlay, { type AlarmConfirmInfo } from '../components/dispatch/AlarmConfirmOverlay';
 import PublicOsmMap, { PARRAL_CENTER } from '../components/map/PublicOsmMap';
+import { Map, AdvancedMarker, useMap } from '@vis.gl/react-google-maps';
+
+const HAS_GOOGLE_MAPS = Boolean(import.meta.env.VITE_GOOGLE_MAPS_API_KEY);
 
 const WA_PHONE_KEY = 'nodo360_location_pin_phone';
 
@@ -48,6 +51,54 @@ function LiveClock({ isDark }: { isDark: boolean }) {
   );
 }
 
+function AlarmsMapRecenter({ center, zoom = 14 }: { center: [number, number]; zoom?: number }) {
+  const map = useMap();
+  useEffect(() => {
+    if (!map) return;
+    map.panTo({ lat: center[0], lng: center[1] });
+    map.setZoom(zoom);
+  }, [center[0], center[1], map, zoom]);
+  return null;
+}
+
+function AlarmsGoogleMap({
+  center,
+  hasPoint,
+  onPick,
+}: {
+  center: [number, number];
+  hasPoint: boolean;
+  onPick: (lat: number, lng: number) => void;
+}) {
+  return (
+    <Map
+      defaultCenter={{ lat: center[0], lng: center[1] }}
+      defaultZoom={13}
+      mapId="nodo360-alarms-map"
+      style={{ height: '100%', width: '100%' }}
+      className="absolute inset-0 z-0 cursor-crosshair"
+      disableDefaultUI
+      gestureHandling="greedy"
+      onClick={(e) => {
+        const p = e.detail.latLng;
+        if (p) onPick(p.lat, p.lng);
+      }}
+    >
+      <AlarmsMapRecenter center={center} zoom={hasPoint ? 15 : 13} />
+      {hasPoint && (
+        <AdvancedMarker position={{ lat: center[0], lng: center[1] }} zIndex={20}>
+          <div className="relative flex h-10 w-10 items-center justify-center">
+            <span className="absolute inset-0 animate-ping rounded-full bg-red-500/40" />
+            <span className="relative flex h-9 w-9 items-center justify-center rounded-full border-2 border-white bg-red-600 shadow-lg shadow-red-900/40">
+              <MapPin className="h-4 w-4 text-white" />
+            </span>
+          </div>
+        </AdvancedMarker>
+      )}
+    </Map>
+  );
+}
+
 export default function Nodo360AlarmsPage() {
   const d = useQuickDispatch({
     autoDispatchOnKey: false,
@@ -56,7 +107,6 @@ export default function Nodo360AlarmsPage() {
     dispatchSource: 'MANUAL',
   });
   const theme = useThemeStore((s) => s.theme);
-  const toggleTheme = useThemeStore((s) => s.toggleTheme);
   const isDark = theme === 'dark';
   const [confirm, setConfirm] = useState<AlarmConfirmInfo | null>(null);
   const [preConfirm, setPreConfirm] = useState(false);
@@ -151,7 +201,15 @@ export default function Nodo360AlarmsPage() {
   }, [last, d.resetDraft, d.address]);
 
   const companies = d.companies as { id: string; number: number; name: string }[];
-  const vehicles = d.dispatchableVehicles as { id: string; patent: string; type?: string }[];
+  const vehicles = d.dispatchableVehicles as {
+    id: string;
+    patent: string;
+    type?: string;
+    brand?: string;
+    model?: string;
+    imageUrl?: string | null;
+  }[];
+  const selectedVehicles = vehicles.filter((v) => d.selectedVehicles.includes(v.id));
   const lat = parseFloat(String(d.latitude));
   const lng = parseFloat(String(d.longitude));
   const hasPoint = Number.isFinite(lat) && Number.isFinite(lng);
@@ -159,12 +217,9 @@ export default function Nodo360AlarmsPage() {
     { ok: Boolean(d.selectedCia), label: 'Compañía' },
     { ok: Boolean(d.address.trim()), label: 'Ubicación' },
     { ok: isEmergencyTypeReadyForDispatch(d.selectedType), label: 'Clave' },
-    { ok: d.selectedVehicles.length > 0, label: 'Carro' },
+    { ok: selectedVehicles.length > 0, label: 'Carro' },
     { ok: Boolean(d.maquinistaReady), label: 'Maquinista' },
   ];
-  const selectedVehicleLabels = vehicles
-    .filter((v) => d.selectedVehicles.includes(v.id))
-    .map((v) => v.patent);
 
   return (
     <div className={`nodo360-alarms-page h-full min-h-0 flex flex-col overflow-hidden ${
@@ -193,9 +248,6 @@ export default function Nodo360AlarmsPage() {
           </button>
           <button type="button" onClick={() => d.setMuted(!d.muted)} className={iconBtn(isDark)}>
             {d.muted ? <VolumeX className="w-4 h-4" /> : <Volume2 className="w-4 h-4" />}
-          </button>
-          <button type="button" onClick={toggleTheme} className={iconBtn(isDark)}>
-            {isDark ? <Sun className="w-4 h-4" /> : <Moon className="w-4 h-4" />}
           </button>
         </div>
       </header>
@@ -305,17 +357,25 @@ export default function Nodo360AlarmsPage() {
         </aside>
 
         <section className={`relative min-h-[280px] rounded-2xl border overflow-hidden ${panel(isDark)}`}>
-          <PublicOsmMap
-            theme={isDark ? 'dark' : 'light'}
-            baseStyle="osm"
-            center={hasPoint ? [lat, lng] : PARRAL_CENTER}
-            focus={hasPoint ? [lat, lng] : null}
-            zoom={13}
-            pickActive
-            onPick={d.onMapPick}
-            className="absolute inset-0 h-full w-full"
-            markers={hasPoint ? [{ id: 'pin', lat, lng, active: true, label: d.address || 'Punto' }] : []}
-          />
+          {HAS_GOOGLE_MAPS ? (
+            <AlarmsGoogleMap
+              center={hasPoint ? [lat, lng] : PARRAL_CENTER}
+              hasPoint={hasPoint}
+              onPick={d.onMapPick}
+            />
+          ) : (
+            <PublicOsmMap
+              theme={isDark ? 'dark' : 'light'}
+              baseStyle="osm"
+              center={hasPoint ? [lat, lng] : PARRAL_CENTER}
+              focus={hasPoint ? [lat, lng] : null}
+              zoom={13}
+              pickActive
+              onPick={d.onMapPick}
+              className="absolute inset-0 h-full w-full"
+              markers={hasPoint ? [{ id: 'pin', lat, lng, active: true, label: d.address || 'Punto' }] : []}
+            />
+          )}
           <div className={`absolute top-3 left-3 right-3 z-[500] flex gap-2 rounded-xl border p-2 shadow-lg backdrop-blur-md ${
             isDark ? 'bg-[#0c1018]/90 border-white/10' : 'bg-white/95 border-slate-200'
           }`}>
@@ -388,25 +448,84 @@ export default function Nodo360AlarmsPage() {
                 </p>
               )}
             </div>
-            <div className="flex flex-wrap gap-1.5">
-              {vehicles.map((v) => {
-                const on = d.selectedVehicles.includes(v.id);
-                return (
-                  <button
-                    key={v.id}
-                    type="button"
-                    onClick={() => d.toggleVehicle(v.id)}
-                    className={`flex items-center gap-1 px-2 py-1 rounded-lg border text-[11px] font-bold ${
-                      on
-                        ? isDark ? 'border-sky-400 bg-sky-500/15 text-sky-200' : 'border-sky-500 bg-sky-50 text-sky-900'
-                        : isDark ? 'border-white/10 text-slate-300' : 'border-slate-200 text-slate-700'
-                    }`}
-                  >
-                    <Truck className="w-3 h-3" />
-                    {v.patent}
-                  </button>
-                );
-              })}
+            <div>
+              <p className={`text-[10px] font-black uppercase tracking-widest mb-1.5 flex items-center gap-1.5 ${
+                isDark ? 'text-slate-400' : 'text-slate-600'
+              }`}>
+                <Truck className="w-3.5 h-3.5" />
+                Carro / vehículo de emergencia
+              </p>
+              {vehicles.length === 0 ? (
+                <p className={`text-xs rounded-xl border border-dashed px-3 py-4 text-center ${
+                  isDark ? 'border-white/10 text-slate-500' : 'border-slate-200 text-slate-600'
+                }`}>
+                  Sin carros operativos en esta compañía
+                </p>
+              ) : (
+                <div className="space-y-1.5 max-h-[220px] overflow-y-auto scrollbar-thin">
+                  {vehicles.map((v) => {
+                    const on = d.selectedVehicles.includes(v.id);
+                    return (
+                      <button
+                        key={v.id}
+                        type="button"
+                        onClick={() => d.toggleVehicle(v.id)}
+                        className={`w-full flex items-center gap-3 p-2 rounded-xl border text-left transition ${
+                          on
+                            ? isDark
+                              ? 'border-sky-400 bg-sky-500/15 shadow-sm'
+                              : 'border-sky-500 bg-sky-50 shadow-sm'
+                            : isDark
+                              ? 'border-white/10 bg-white/5 hover:border-sky-500/40'
+                              : 'border-slate-200 bg-slate-50 hover:border-sky-300 hover:bg-white'
+                        }`}
+                      >
+                        <div className={`w-16 h-12 rounded-lg overflow-hidden shrink-0 flex items-center justify-center ${
+                          isDark ? 'bg-slate-800' : 'bg-slate-200'
+                        }`}>
+                          {v.imageUrl ? (
+                            <img src={v.imageUrl} alt={v.patent} className="w-full h-full object-cover" />
+                          ) : (
+                            <Truck className={`w-6 h-6 ${isDark ? 'text-slate-500' : 'text-slate-400'}`} />
+                          )}
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <p className={`text-sm font-black font-mono leading-none ${
+                            on
+                              ? isDark ? 'text-sky-200' : 'text-sky-900'
+                              : isDark ? 'text-white' : 'text-slate-900'
+                          }`}>
+                            {v.patent}
+                          </p>
+                          <p className={`mt-1 text-[11px] truncate ${
+                            on
+                              ? isDark ? 'text-sky-300/80' : 'text-sky-700'
+                              : isDark ? 'text-slate-400' : 'text-slate-600'
+                          }`}>
+                            {v.type ?? 'Carro bomba'}
+                            {v.brand ? ` · ${v.brand}` : ''}
+                            {v.model ? ` ${v.model}` : ''}
+                          </p>
+                        </div>
+                        <span className={`shrink-0 text-[10px] font-black uppercase px-2 py-1 rounded-md ${
+                          on
+                            ? 'keep-on-color bg-sky-600 text-white'
+                            : isDark
+                              ? 'bg-white/10 text-slate-300'
+                              : 'bg-slate-200 text-slate-700'
+                        }`}>
+                          {on ? 'Listo' : 'Elegir'}
+                        </span>
+                      </button>
+                    );
+                  })}
+                </div>
+              )}
+              {selectedVehicles.length > 0 && (
+                <p className={`mt-1.5 text-[11px] font-semibold ${isDark ? 'text-sky-300' : 'text-sky-800'}`}>
+                  Confirmado: {selectedVehicles.map((v) => v.patent).join(' · ')}
+                </p>
+              )}
             </div>
             <p className={`text-sm font-semibold ${isDark ? 'text-white' : 'text-slate-900'}`}>
               {d.emergType ? `${d.emergType.code} · ${d.emergType.label}` : 'Elige una clave'}
@@ -564,12 +683,59 @@ export default function Nodo360AlarmsPage() {
                 </div>
               ))}
             </div>
-            <div className={`rounded-2xl border p-3 text-sm space-y-1.5 mb-4 ${isDark ? 'border-white/10 bg-white/5' : 'border-slate-200 bg-slate-50'}`}>
+            <div className={`rounded-2xl border p-3 text-sm space-y-1.5 mb-3 ${isDark ? 'border-white/10 bg-white/5' : 'border-slate-200 bg-slate-50'}`}>
               <p><span className={isDark ? 'text-slate-400' : 'text-slate-500'}>Compañía · </span>{d.company ? `${d.company.number}ª ${d.company.name}` : '—'}</p>
               <p><span className={isDark ? 'text-slate-400' : 'text-slate-500'}>Ubicación · </span>{d.address.trim() || '—'}</p>
               <p><span className={isDark ? 'text-slate-400' : 'text-slate-500'}>Clave · </span>{d.emergType ? `${d.emergType.code} · ${d.emergType.label}` : '—'}</p>
-              <p><span className={isDark ? 'text-slate-400' : 'text-slate-500'}>Carro · </span>{selectedVehicleLabels.join(', ') || '—'}</p>
               <p><span className={isDark ? 'text-slate-400' : 'text-slate-500'}>Maquinista · </span>{d.maquinistaReady ? `${d.maquinistasAvailable} disponible${d.maquinistasAvailable === 1 ? '' : 's'}` : 'Sin maquinista habilitado'}</p>
+            </div>
+            <div className={`rounded-2xl border p-3 mb-4 ${
+              selectedVehicles.length > 0
+                ? isDark ? 'border-sky-400/40 bg-sky-500/10' : 'border-sky-400 bg-sky-50'
+                : isDark ? 'border-amber-500/40 bg-amber-500/10' : 'border-amber-400 bg-amber-50'
+            }`}>
+              <p className={`text-[10px] font-black uppercase tracking-widest mb-2 flex items-center gap-1.5 ${
+                selectedVehicles.length > 0
+                  ? isDark ? 'text-sky-300' : 'text-sky-800'
+                  : isDark ? 'text-amber-300' : 'text-amber-900'
+              }`}>
+                <Truck className="w-3.5 h-3.5" />
+                Confirmar carro / vehículo
+              </p>
+              {selectedVehicles.length === 0 ? (
+                <p className={`text-sm font-semibold ${isDark ? 'text-amber-200' : 'text-amber-900'}`}>
+                  No hay carro seleccionado. Vuelve y elige el vehículo de emergencia.
+                </p>
+              ) : (
+                <div className="space-y-2">
+                  {selectedVehicles.map((v) => (
+                    <div key={v.id} className="flex items-center gap-3">
+                      <div className={`w-16 h-12 rounded-lg overflow-hidden shrink-0 flex items-center justify-center ${
+                        isDark ? 'bg-slate-800' : 'bg-white border border-sky-200'
+                      }`}>
+                        {v.imageUrl ? (
+                          <img src={v.imageUrl} alt={v.patent} className="w-full h-full object-cover" />
+                        ) : (
+                          <Truck className={`w-6 h-6 ${isDark ? 'text-sky-300' : 'text-sky-600'}`} />
+                        )}
+                      </div>
+                      <div className="min-w-0 flex-1">
+                        <p className={`text-base font-black font-mono leading-none ${
+                          isDark ? 'text-sky-100' : 'text-sky-950'
+                        }`}>
+                          {v.patent}
+                        </p>
+                        <p className={`mt-1 text-xs truncate ${isDark ? 'text-sky-200/80' : 'text-sky-800'}`}>
+                          {v.type ?? 'Carro bomba'}
+                          {v.brand ? ` · ${v.brand}` : ''}
+                          {v.model ? ` ${v.model}` : ''}
+                        </p>
+                      </div>
+                      <CheckCircle2 className="w-5 h-5 shrink-0 text-emerald-500" />
+                    </div>
+                  ))}
+                </div>
+              )}
             </div>
             {!d.maquinistaReady && (
               <p className={`text-[12px] font-semibold mb-3 ${isDark ? 'text-amber-200' : 'text-amber-800'}`}>

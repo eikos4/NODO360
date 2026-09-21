@@ -14,6 +14,8 @@ import PushAlarmBanner from '../PushAlarmBanner';
 import { unregisterPushToken } from '../../lib/push-notifications';
 
 const IMMERSIVE_ROUTES = [
+  '/ayuda',
+  '/central-emergencia',
   '/despacho360',
   '/nodo360-alarms',
   '/central-despachos',
@@ -212,12 +214,12 @@ export default function AppLayout() {
               type="button"
               onClick={() => {
                 setMenuOpen(false);
-                startTour();
+                navigate('/ayuda');
               }}
               className="flex items-center justify-center gap-2 py-3 rounded-xl bg-slate-900 border border-slate-800 text-xs font-semibold text-slate-300 hover:bg-slate-800"
             >
               <HelpCircle className="w-4 h-4 text-sky-400" />
-              <span>Ayuda / Tour</span>
+              <span>Ayuda NODO360</span>
             </button>
           </div>
 

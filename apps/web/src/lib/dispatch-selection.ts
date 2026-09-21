@@ -9,6 +9,7 @@ export type DispatchVehicleRow = {
   type?: string;
   brand?: string;
   model?: string;
+  imageUrl?: string | null;
 };
 
 export function operativoVehiclesForCompanies(
