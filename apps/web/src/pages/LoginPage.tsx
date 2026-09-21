@@ -266,7 +266,7 @@ export default function LoginPage() {
           
           {/* Copyright footer */}
           <p className="text-center text-[10px] text-slate-400 dark:text-slate-650 font-mono tracking-wider">
-            NODO360 SECURE GATEWAY // PORTAL_2026
+            NODO360 SECURE GATEWAY // kodesk.cl
           </p>
         </div>
       </div>

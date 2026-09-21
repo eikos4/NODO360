@@ -1,5 +1,6 @@
+import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
-import { Truck, Users, Siren, Loader2 } from 'lucide-react';
+import { Truck, Users, Siren, Loader2, Maximize2, Minimize2 } from 'lucide-react';
 import { cn } from '../../lib/utils';
 import { useThemeStore } from '../../store/themeStore';
 import { useCuartelesOverview } from '../../hooks/useCuartelesOverview';
@@ -25,7 +26,7 @@ function CuartelChip({ c, isDark, compact, fill }: { c: CuartelItem; isDark: boo
         'flex items-center gap-1.5 rounded-xl border px-2 py-1.5 transition-colors',
         fill ? 'flex-1 min-w-[68px] basis-0' : 'shrink-0',
         c.activeEmergencies > 0
-          ? isDark 
+          ? isDark
             ? 'bg-red-950/40 border-red-800/80 hover:bg-red-900/50 hover:border-red-700'
             : 'bg-red-50 border-red-200 hover:bg-red-100 hover:border-red-300'
           : isDark
@@ -120,9 +121,30 @@ function CuartelChip({ c, isDark, compact, fill }: { c: CuartelItem; isDark: boo
   return inner;
 }
 
+function useFullscreenToggle() {
+  const [fullscreen, setFullscreen] = useState(() => Boolean(document.fullscreenElement));
+
+  useEffect(() => {
+    const onFs = () => setFullscreen(Boolean(document.fullscreenElement));
+    document.addEventListener('fullscreenchange', onFs);
+    return () => document.removeEventListener('fullscreenchange', onFs);
+  }, []);
+
+  const toggle = () => {
+    if (document.fullscreenElement) {
+      void document.exitFullscreen();
+      return;
+    }
+    void document.documentElement.requestFullscreen?.();
+  };
+
+  return { fullscreen, toggle };
+}
+
 export default function CentralQuickOverview({ compact, className }: Props) {
   const isDark = useThemeStore((s) => s.theme) === 'dark';
   const { data: cuarteles = [], isLoading, isFetching } = useCuartelesOverview();
+  const { fullscreen, toggle } = useFullscreenToggle();
 
   if (!cuarteles.length && !isLoading) return null;
 
@@ -175,6 +197,23 @@ export default function CentralQuickOverview({ compact, className }: Props) {
             <Loader2 className={cn('w-3 h-3 animate-spin shrink-0', isDark ? 'text-slate-600' : 'text-slate-400')} />
           )}
         </div>
+
+        <button
+          type="button"
+          onClick={toggle}
+          title={fullscreen ? 'Salir de pantalla completa' : 'Pantalla completa'}
+          aria-label={fullscreen ? 'Salir de pantalla completa' : 'Pantalla completa'}
+          className={cn(
+            'shrink-0 p-2 rounded-lg border transition-colors',
+            fullscreen
+              ? 'border-red-500/40 bg-red-600/15 text-red-500'
+              : isDark
+                ? 'border-slate-700 text-slate-400 hover:text-white hover:bg-slate-800'
+                : 'border-slate-200 text-slate-600 hover:text-slate-900 hover:bg-slate-100',
+          )}
+        >
+          {fullscreen ? <Minimize2 className="w-4 h-4" /> : <Maximize2 className="w-4 h-4" />}
+        </button>
       </div>
     </div>
   );
