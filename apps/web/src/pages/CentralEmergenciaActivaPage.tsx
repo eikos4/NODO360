@@ -2,8 +2,8 @@ import { useEffect, useMemo, useState } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import {
-  Bell, BookOpen, CheckCircle2, Clock, FileDown, Loader2, MapPin, MessageSquarePlus,
-  Navigation, Radio, RefreshCw, Siren, Truck, Users, X,
+  Bell, BookOpen, CheckCircle2, Clock, Droplets, FileDown, HelpCircle, Loader2, Map,
+  MapPin, MessageSquarePlus, Navigation, Radio, RefreshCw, Shield, Siren, Truck, Tv, Users, X, Zap,
 } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { api } from '../lib/api';
@@ -23,6 +23,7 @@ import EmergencyLiveFeed from '../components/dispatch/EmergencyLiveFeed';
 import RadioPttPanel from '../components/radio/RadioPttPanel';
 import PublicOsmMap, { PARRAL_CENTER } from '../components/map/PublicOsmMap';
 import DoubleDispatchConfirmModal from '../components/dispatch/DoubleDispatchConfirmModal';
+import type { CentralParralThemeTokens } from '../lib/central-parral-theme';
 
 const POLL_MS = 8_000;
 
@@ -95,6 +96,216 @@ function LiveClock({ className }: { className: string }) {
   );
 }
 
+function IdleHomeClock({ isDark }: { isDark: boolean }) {
+  const [now, setNow] = useState(() => new Date());
+  useEffect(() => {
+    const t = window.setInterval(() => setNow(new Date()), 1000);
+    return () => window.clearInterval(t);
+  }, []);
+  const dateLabel = now.toLocaleDateString('es-CL', {
+    weekday: 'long',
+    day: 'numeric',
+    month: 'long',
+    year: 'numeric',
+  });
+  return (
+    <div className="text-center">
+      <p
+        className={`font-mono font-black tabular-nums tracking-tight leading-none ${
+          isDark ? 'text-white' : 'text-slate-900'
+        }`}
+        style={{ fontSize: 'clamp(3.25rem, 12vw, 6.5rem)' }}
+      >
+        {now.toLocaleTimeString('es-CL', { hour: '2-digit', minute: '2-digit', second: '2-digit' })}
+      </p>
+      <p className={`mt-3 text-sm sm:text-base capitalize ${isDark ? 'text-slate-400' : 'text-slate-600'}`}>
+        {dateLabel}
+      </p>
+    </div>
+  );
+}
+
+const IDLE_SHORTCUTS = [
+  { to: '/nodo360-alarms', label: 'Nodo360 Alarms', hint: 'Despacho con mapa', icon: Bell },
+  { to: '/despacho360', label: 'Despacho360', hint: 'Botonera completa', icon: Siren },
+  { to: '/bitacora360', label: 'Bitácora360', hint: 'Fases e informe', icon: BookOpen },
+  { to: '/operational-map', label: 'Mapa 360', hint: 'Terreno y recursos', icon: Map },
+  { to: '/hydrants', label: 'Hidrantes', hint: 'Inventario de agua', icon: Droplets },
+  { to: '/companias-tv', label: 'Muro TV', hint: 'Cuarteles en vivo', icon: Tv },
+  { to: '/central-express', label: 'Central Express', hint: 'Despacho rápido', icon: Zap },
+  { to: '/ayuda', label: 'Ayuda', hint: 'Guía NODO360', icon: HelpCircle },
+] as const;
+
+function IdleHome({
+  th,
+  isDark,
+  recentClosed,
+  onDispatch,
+  isFetching,
+  onRefresh,
+}: {
+  th: CentralParralThemeTokens;
+  isDark: boolean;
+  recentClosed: IncidentRow[];
+  onDispatch: () => void;
+  isFetching: boolean;
+  onRefresh: () => void;
+}) {
+  const user = useAuthStore((s) => s.user);
+  return (
+    <div className="flex-1 min-h-0 overflow-y-auto">
+      <div
+        className={`relative min-h-full px-4 sm:px-8 py-8 sm:py-12 ${
+          isDark
+            ? 'bg-[radial-gradient(900px_420px_at_50%_-10%,rgba(16,185,129,0.14),transparent_55%),radial-gradient(700px_360px_at_80%_80%,rgba(14,165,233,0.08),transparent_50%)]'
+            : 'bg-[radial-gradient(900px_420px_at_50%_-10%,rgba(16,185,129,0.12),transparent_55%),radial-gradient(700px_360px_at_80%_80%,rgba(14,165,233,0.08),transparent_50%)]'
+        }`}
+      >
+        <div className="max-w-5xl mx-auto">
+          <div className="flex flex-wrap items-center justify-between gap-3 mb-10">
+            <div className="flex items-center gap-2">
+              <span className="w-2.5 h-2.5 rounded-full bg-emerald-500 shadow-[0_0_12px_rgba(16,185,129,0.7)]" />
+              <span className="text-[11px] font-black uppercase tracking-[0.22em] text-emerald-500">
+                Central en espera
+              </span>
+            </div>
+            <button
+              type="button"
+              onClick={onRefresh}
+              className={`p-2 rounded-lg border ${th.refreshBtn}`}
+              title="Actualizar"
+            >
+              <RefreshCw className={`w-4 h-4 ${isFetching ? 'animate-spin' : ''}`} />
+            </button>
+          </div>
+
+          <div className="text-center mb-4">
+            <p className={`text-sm font-semibold ${isDark ? 'text-slate-400' : 'text-slate-600'}`}>
+              Hola{user?.firstName ? `, ${user.firstName}` : ''}
+            </p>
+            <h1 className={`mt-1 text-2xl sm:text-3xl font-black ${th.title}`}>
+              Sin novedades
+            </h1>
+            <p className={`mt-2 text-sm sm:text-base max-w-md mx-auto ${th.subtitle}`}>
+              Todo tranquilo. No hay emergencias activas. La central está lista para despachar cuando haga falta.
+            </p>
+          </div>
+
+          <div className="flex justify-center mb-10 sm:mb-14">
+            <IdleHomeClock isDark={isDark} />
+          </div>
+
+          <div className="flex flex-wrap justify-center gap-3 mb-12">
+            <button
+              type="button"
+              onClick={onDispatch}
+              className="keep-on-color inline-flex items-center gap-2 px-6 py-3.5 rounded-2xl bg-red-600 text-white text-sm font-black uppercase tracking-wide shadow-lg shadow-red-900/25"
+            >
+              <Siren className="w-5 h-5" />
+              Despachar alarma
+            </button>
+            <Link
+              to="/nodo360-alarms"
+              className={`inline-flex items-center gap-2 px-5 py-3.5 rounded-2xl border text-sm font-bold ${
+                isDark
+                  ? 'border-white/15 text-slate-200 hover:bg-white/5'
+                  : 'border-slate-300 text-slate-800 hover:bg-white'
+              }`}
+            >
+              <Bell className="w-4 h-4" />
+              Abrir Alarms
+            </Link>
+          </div>
+
+          <div className="mb-10">
+            <p className={`text-[10px] font-black uppercase tracking-widest mb-3 ${th.sectionLabel}`}>
+              Accesos directos
+            </p>
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5">
+              {IDLE_SHORTCUTS.map(({ to, label, hint, icon: Icon }) => (
+                <Link
+                  key={to}
+                  to={to}
+                  className={`group rounded-2xl border p-3.5 transition ${
+                    isDark
+                      ? 'border-white/10 bg-white/[0.03] hover:border-emerald-500/35 hover:bg-emerald-500/10'
+                      : 'border-slate-200 bg-white/80 hover:border-emerald-400 hover:bg-emerald-50 shadow-sm'
+                  }`}
+                >
+                  <Icon className={`w-5 h-5 mb-2 ${isDark ? 'text-emerald-400' : 'text-emerald-600'}`} />
+                  <p className={`text-sm font-bold leading-tight ${th.title}`}>{label}</p>
+                  <p className={`text-[11px] mt-0.5 ${th.subtitle}`}>{hint}</p>
+                </Link>
+              ))}
+            </div>
+          </div>
+
+          <div className={`rounded-2xl border p-4 sm:p-5 ${
+            isDark ? 'border-white/10 bg-white/[0.03]' : 'border-slate-200 bg-white/90 shadow-sm'
+          }`}>
+            <div className="flex items-center gap-2 mb-3">
+              <Shield className={`w-4 h-4 ${isDark ? 'text-emerald-400' : 'text-emerald-600'}`} />
+              <p className={`text-[10px] font-black uppercase tracking-widest ${th.sectionLabel}`}>
+                Estado operativo
+              </p>
+            </div>
+            <div className="grid sm:grid-cols-3 gap-3">
+              {[
+                { label: 'Emergencias activas', value: '0', ok: true },
+                { label: 'Canal de alarma', value: 'En espera', ok: true },
+                { label: 'Consola', value: 'Lista', ok: true },
+              ].map((row) => (
+                <div
+                  key={row.label}
+                  className={`rounded-xl border px-3 py-3 ${
+                    isDark ? 'border-emerald-500/20 bg-emerald-500/10' : 'border-emerald-200 bg-emerald-50'
+                  }`}
+                >
+                  <div className="flex items-center gap-1.5 mb-1">
+                    <CheckCircle2 className="w-3.5 h-3.5 text-emerald-500" />
+                    <p className={`text-[10px] font-bold uppercase ${isDark ? 'text-emerald-300/80' : 'text-emerald-800'}`}>
+                      {row.label}
+                    </p>
+                  </div>
+                  <p className={`text-lg font-black ${isDark ? 'text-emerald-100' : 'text-emerald-950'}`}>
+                    {row.value}
+                  </p>
+                </div>
+              ))}
+            </div>
+
+            {recentClosed.length > 0 && (
+              <div className="mt-5 pt-4 border-t border-white/10" style={{ borderColor: isDark ? undefined : '#e2e8f0' }}>
+                <p className={`text-[10px] font-black uppercase tracking-widest mb-2 ${th.sectionLabel}`}>
+                  Últimas cerradas
+                </p>
+                <div className="space-y-1.5">
+                  {recentClosed.map((inc) => (
+                    <div
+                      key={inc.id}
+                      className={`flex items-center justify-between gap-3 rounded-xl px-3 py-2 border ${
+                        isDark ? 'border-white/5 bg-black/20' : 'border-slate-100 bg-slate-50'
+                      }`}
+                    >
+                      <div className="min-w-0">
+                        <p className="font-mono text-xs font-bold text-slate-500">{inc.code}</p>
+                        <p className={`text-xs truncate ${th.title}`}>{inc.type}</p>
+                      </div>
+                      <p className={`text-[10px] shrink-0 tabular-nums ${th.subtitle}`}>
+                        {elapsed(inc.dispatchedAt)}
+                      </p>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 function statusTone(status: string | null | undefined, isDark: boolean) {
   if (status === 'ON_SCENE') return isDark ? 'bg-sky-500/20 text-sky-200 border-sky-500/40' : 'bg-sky-50 text-sky-900 border-sky-300';
   if (status === 'GOING') return isDark ? 'bg-emerald-500/20 text-emerald-200 border-emerald-500/40' : 'bg-emerald-50 text-emerald-900 border-emerald-300';
@@ -162,16 +373,23 @@ export default function CentralEmergenciaActivaPage() {
   }, [selected?.id]);
 
   useEffect(() => {
-    if (active.length === 0) setShowDispatch(true);
-  }, [active.length]);
-
-  useEffect(() => {
     const last = d.lastDispatchedIncident as { id?: string } | null;
     if (!last?.id) return;
     setSelectedId(last.id);
     setShowDispatch(false);
     void refetch();
   }, [d.lastDispatchedIncident]);
+
+  const recentClosed = useMemo(
+    () =>
+      [...incidents]
+        .filter((i) => i.closedAt)
+        .sort((a, b) => new Date(b.dispatchedAt).getTime() - new Date(a.dispatchedAt).getTime())
+        .slice(0, 4),
+    [incidents],
+  );
+
+  const idleHome = active.length === 0 && !showDispatch;
 
   const { data: team } = useQuery<TeamDetail | null>({
     queryKey: ['emergency-response', selected?.id],
@@ -291,29 +509,38 @@ export default function CentralEmergenciaActivaPage() {
         <div className="flex flex-wrap items-start justify-between gap-3">
           <div className="min-w-0">
             <div className="flex items-center gap-2 mb-1">
-              <span className="w-2 h-2 rounded-full bg-red-500 animate-pulse" />
-              <span className="text-[10px] uppercase tracking-widest text-red-500 font-bold">
-                Consola de emergencia activa
+              <span className={`w-2 h-2 rounded-full ${idleHome ? 'bg-emerald-500' : 'bg-red-500 animate-pulse'}`} />
+              <span className={`text-[10px] uppercase tracking-widest font-bold ${
+                idleHome ? 'text-emerald-500' : 'text-red-500'
+              }`}>
+                {idleHome ? 'Central en espera' : 'Consola de emergencia activa'}
               </span>
             </div>
             <h1 className={`text-lg sm:text-xl font-bold truncate ${th.title}`}>
               {selected
                 ? `${selected.code} · ${selected.type}`
-                : 'Sin emergencia activa'}
+                : idleHome
+                  ? 'Sin novedades'
+                  : 'Despacho rápido'}
             </h1>
             <p className={`text-xs mt-0.5 flex items-center gap-1 truncate ${th.subtitle}`}>
               <MapPin className="w-3 h-3 shrink-0" />
-              {selected?.address || 'Despacha una alarma o selecciona una emergencia'}
+              {selected?.address
+                || (idleHome
+                  ? 'Todo tranquilo · listos para alarmar'
+                  : 'Completa clave, dirección y carro')}
             </p>
           </div>
           <div className="flex items-center gap-2 flex-wrap justify-end">
-            <div className="text-right hidden sm:block">
-              <LiveClock className={th.clock} />
-              <p className={`text-[10px] flex items-center justify-end gap-1 mt-0.5 ${th.subtitle}`}>
-                <Clock className="w-3 h-3" />
-                {selected ? `Tiempo · ${elapsed(selected.dispatchedAt)}` : `${active.length} activa(s)`}
-              </p>
-            </div>
+            {!idleHome && (
+              <div className="text-right hidden sm:block">
+                <LiveClock className={th.clock} />
+                <p className={`text-[10px] flex items-center justify-end gap-1 mt-0.5 ${th.subtitle}`}>
+                  <Clock className="w-3 h-3" />
+                  {selected ? `Tiempo · ${elapsed(selected.dispatchedAt)}` : `${active.length} activa(s)`}
+                </p>
+              </div>
+            )}
             <button
               type="button"
               onClick={() => setShowDispatch((v) => !v)}
@@ -322,16 +549,18 @@ export default function CentralEmergenciaActivaPage() {
               }`}
             >
               <Siren className="w-3.5 h-3.5" />
-              {showDispatch ? 'Ocultar despacho' : 'Despachar'}
+              {showDispatch ? (active.length === 0 ? 'Volver al inicio' : 'Ocultar despacho') : 'Despachar'}
             </button>
-            <button
-              type="button"
-              onClick={() => refetch()}
-              className={`p-2 rounded-lg border ${th.refreshBtn}`}
-              title="Actualizar"
-            >
-              <RefreshCw className={`w-4 h-4 ${isFetching ? 'animate-spin' : ''}`} />
-            </button>
+            {!idleHome && (
+              <button
+                type="button"
+                onClick={() => refetch()}
+                className={`p-2 rounded-lg border ${th.refreshBtn}`}
+                title="Actualizar"
+              >
+                <RefreshCw className={`w-4 h-4 ${isFetching ? 'animate-spin' : ''}`} />
+              </button>
+            )}
             {selected && (
               <>
                 <button
@@ -360,6 +589,16 @@ export default function CentralEmergenciaActivaPage() {
         </div>
       </header>
 
+      {idleHome ? (
+        <IdleHome
+          th={th}
+          isDark={isDark}
+          recentClosed={recentClosed}
+          onDispatch={() => setShowDispatch(true)}
+          isFetching={isFetching}
+          onRefresh={() => void refetch()}
+        />
+      ) : (
       <div className="flex-1 min-h-0 grid grid-cols-1 xl:grid-cols-[280px_minmax(0,1fr)_340px] gap-0 overflow-hidden">
         {/* Left: emergencias + despacho */}
         <aside className={`min-h-0 flex flex-col border-b xl:border-b-0 xl:border-r overflow-hidden ${th.borderSubtle} ${th.panelAside}`}>
@@ -740,6 +979,7 @@ export default function CentralEmergenciaActivaPage() {
           </div>
         </aside>
       </div>
+      )}
 
       {d.pendingDoubleDispatch && (
         <DoubleDispatchConfirmModal
