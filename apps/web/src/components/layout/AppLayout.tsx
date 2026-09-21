@@ -50,10 +50,15 @@ export default function AppLayout() {
   const [showOnboarding, setShowOnboarding] = useState(false);
   const [menuOpen, setMenuOpen] = useState(false);
 
+  const isAyuda = location.pathname.startsWith('/ayuda');
   const shellBg = isCompaniasTv
     ? 'bg-[#07090d]'
     : isBitacora360
       ? 'bg-slate-100'
+      : isAyuda
+        ? globalTheme === 'light'
+          ? 'bg-[#f4f6f9]'
+          : 'bg-[#070b12]'
       : isImmersive && globalTheme === 'light'
         ? isDespacho360
           ? 'bg-white'

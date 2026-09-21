@@ -166,6 +166,22 @@ html:not(.dark) .nodo360-alarms-page .keep-on-color,
 html:not(.dark) .nodo360-alarms-page .keep-on-color * {
   color: #ffffff !important;
 }
+
+/* Ayuda: el hero sobre video debe conservar texto claro aunque el tema global sea light */
+html:not(.dark) .nodo360-ayuda .ayuda-hero-copy,
+html:not(.dark) .nodo360-ayuda .ayuda-hero-copy *,
+html:not(.dark) .nodo360-ayuda .ayuda-hero-copy .keep-on-color,
+html:not(.dark) .nodo360-ayuda .ayuda-hero-copy .keep-on-color * {
+  color: #ffffff !important;
+}
+html:not(.dark) .nodo360-ayuda .ayuda-hero-copy .text-red-400,
+html:not(.dark) .nodo360-ayuda .ayuda-hero-copy .text-red-500 {
+  color: #f87171 !important;
+}
+html:not(.dark) .nodo360-ayuda .keep-on-color.bg-red-600,
+html:not(.dark) .nodo360-ayuda .keep-on-color.bg-red-600 * {
+  color: #ffffff !important;
+}
 .nodo360-alarms-page .alarms-dispatch-btn,
 .nodo360-alarms-page .alarms-dispatch-btn * {
   color: #ffffff !important;

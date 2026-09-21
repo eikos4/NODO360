@@ -6,6 +6,7 @@ import {
   Smartphone, Siren, Truck, Users, Zap, ArrowRight, Play,
 } from 'lucide-react';
 import { useAuthStore } from '../store/authStore';
+import { useThemeStore } from '../store/themeStore';
 import { getDefaultRouteForUser } from '../lib/roleAccess';
 
 const FLOW = [
@@ -108,6 +109,65 @@ const MODULES = [
   { name: 'Muro TV / Vision360', tip: 'Cuarteles en pantalla' },
 ] as const;
 
+type ThemeTone = {
+  page: string;
+  pageBg: string;
+  ink: string;
+  muted: string;
+  soft: string;
+  hairline: string;
+  band: string;
+  card: string;
+  cardHover: string;
+  iconBox: string;
+  stepBox: string;
+  nav: string;
+  navSep: string;
+  ghostBtn: string;
+  footerLink: string;
+};
+
+function tone(isDark: boolean): ThemeTone {
+  if (isDark) {
+    return {
+      page: 'text-slate-100',
+      pageBg:
+        'radial-gradient(1200px 600px at 10% -10%, rgba(220,38,38,0.22), transparent 55%), radial-gradient(900px 500px at 90% 10%, rgba(14,116,144,0.12), transparent 50%), #070b12',
+      ink: 'text-white',
+      muted: 'text-slate-400',
+      soft: 'text-slate-300',
+      hairline: 'border-white/10',
+      band: 'bg-black/25',
+      card: 'bg-[#0a1018]',
+      cardHover: 'hover:bg-[#0e1622]',
+      iconBox: 'bg-red-600/15 border-red-500/30',
+      stepBox: 'bg-[#0d1420] border-white/10 shadow-lg shadow-black/40',
+      nav: 'text-slate-300 hover:text-white',
+      navSep: 'text-slate-600',
+      ghostBtn: 'border-white/25 hover:border-white/50 text-white bg-white/5',
+      footerLink: 'hover:text-white',
+    };
+  }
+  return {
+    page: 'text-slate-800',
+    pageBg:
+      'radial-gradient(1200px 600px at 10% -10%, rgba(220,38,38,0.10), transparent 55%), radial-gradient(900px 500px at 90% 10%, rgba(14,116,144,0.08), transparent 50%), #f4f6f9',
+    ink: 'text-slate-900',
+    muted: 'text-slate-600',
+    soft: 'text-slate-700',
+    hairline: 'border-slate-200',
+    band: 'bg-white/80',
+    card: 'bg-white',
+    cardHover: 'hover:bg-slate-50',
+    iconBox: 'bg-red-50 border-red-200',
+    stepBox: 'bg-white border-slate-200 shadow-sm',
+    nav: 'text-slate-600 hover:text-slate-900',
+    navSep: 'text-slate-300',
+    ghostBtn: 'border-slate-300 hover:border-slate-400 text-slate-800 bg-white/80',
+    footerLink: 'hover:text-slate-900',
+  };
+}
+
 function useReveal() {
   const ref = useRef<HTMLElement | null>(null);
   const [on, setOn] = useState(false);
@@ -129,6 +189,8 @@ function useReveal() {
 export default function AyudaPage() {
   const user = useAuthStore((s) => s.user);
   const home = getDefaultRouteForUser(user);
+  const isDark = useThemeStore((s) => s.theme) === 'dark';
+  const t = tone(isDark);
 
   useEffect(() => {
     window.scrollTo(0, 0);
@@ -144,14 +206,13 @@ export default function AyudaPage() {
 
   return (
     <div
-      className="nodo360-ayuda h-full min-h-0 overflow-y-auto text-slate-100 selection:bg-red-500/35"
+      className={`nodo360-ayuda h-full min-h-0 overflow-y-auto selection:bg-red-500/35 ${t.page}`}
       style={{
         fontFamily: '"Source Sans 3", system-ui, sans-serif',
-        background:
-          'radial-gradient(1200px 600px at 10% -10%, rgba(220,38,38,0.22), transparent 55%), radial-gradient(900px 500px at 90% 10%, rgba(14,116,144,0.12), transparent 50%), #070b12',
+        background: t.pageBg,
       }}
     >
-      {/* Hero — brand first, full-bleed video */}
+      {/* Hero — always dark over video for contrast */}
       <section className="relative min-h-[min(100%,72svh)] sm:min-h-[80svh] flex items-end overflow-hidden">
         <div className="absolute inset-0 bg-[#070b12]">
           <video
@@ -164,18 +225,18 @@ export default function AyudaPage() {
             <source src="/video.mp4" type="video/mp4" />
           </video>
         </div>
-        <div className="absolute inset-0 bg-gradient-to-t from-[#070b12] via-[#070b12]/70 to-[#070b12]/30" />
+        <div className="absolute inset-0 bg-gradient-to-t from-[#070b12] via-[#070b12]/75 to-[#070b12]/35" />
         <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_center,transparent_0%,rgba(7,11,18,0.5)_100%)]" />
 
-        <div className="relative z-10 w-full max-w-6xl mx-auto px-4 sm:px-6 pb-12 sm:pb-16 pt-10">
+        <div className="ayuda-hero-copy keep-on-color relative z-10 w-full max-w-6xl mx-auto px-4 sm:px-6 pb-12 sm:pb-16 pt-10 text-white">
           <div className="flex flex-wrap items-center gap-3 mb-5">
-            <a href="#por-que" className="text-[11px] font-bold uppercase tracking-wider text-slate-300 hover:text-white">Por qué</a>
-            <span className="text-slate-600">·</span>
-            <a href="#flujo" className="text-[11px] font-bold uppercase tracking-wider text-slate-300 hover:text-white">Flujo</a>
-            <span className="text-slate-600">·</span>
-            <a href="#usar" className="text-[11px] font-bold uppercase tracking-wider text-slate-300 hover:text-white">Cómo usar</a>
-            <span className="text-slate-600">·</span>
-            <a href="#modulos" className="text-[11px] font-bold uppercase tracking-wider text-slate-300 hover:text-white">Módulos</a>
+            <a href="#por-que" className="text-[11px] font-bold uppercase tracking-wider text-slate-200 hover:text-white">Por qué</a>
+            <span className="text-slate-500">·</span>
+            <a href="#flujo" className="text-[11px] font-bold uppercase tracking-wider text-slate-200 hover:text-white">Flujo</a>
+            <span className="text-slate-500">·</span>
+            <a href="#usar" className="text-[11px] font-bold uppercase tracking-wider text-slate-200 hover:text-white">Cómo usar</a>
+            <span className="text-slate-500">·</span>
+            <a href="#modulos" className="text-[11px] font-bold uppercase tracking-wider text-slate-200 hover:text-white">Módulos</a>
           </div>
           <p
             className="text-red-400 text-sm sm:text-base font-semibold uppercase tracking-[0.28em] mb-4 animate-[ayuda-rise_0.8s_ease-out_both]"
@@ -189,7 +250,7 @@ export default function AyudaPage() {
           >
             NODO<span className="text-red-500">360</span>
           </h1>
-          <p className="mt-5 max-w-xl text-lg sm:text-xl text-slate-200/95 leading-relaxed animate-[ayuda-rise_1s_ease-out_0.16s_both]">
+          <p className="mt-5 max-w-xl text-lg sm:text-xl text-slate-100 leading-relaxed animate-[ayuda-rise_1s_ease-out_0.16s_both]">
             Central, móvil y terreno en un solo nodo: despacho más rápido, GPS, WhatsApp y radio cuando cada segundo cuenta.
           </p>
           <div className="mt-8 flex flex-wrap gap-3 animate-[ayuda-rise_1.05s_ease-out_0.24s_both]">
@@ -202,14 +263,14 @@ export default function AyudaPage() {
             </a>
             <a
               href="#usar"
-              className="inline-flex items-center gap-2 border border-white/25 hover:border-white/50 text-white font-semibold px-5 py-3 rounded-xl backdrop-blur-sm bg-white/5 transition-colors"
+              className="inline-flex items-center gap-2 border border-white/35 hover:border-white/60 text-white font-semibold px-5 py-3 rounded-xl backdrop-blur-sm bg-black/25 transition-colors"
             >
               <Play className="w-4 h-4" />
               Cómo se usa
             </a>
             <Link
               to={home}
-              className="inline-flex items-center gap-2 border border-white/25 hover:border-white/50 text-white font-semibold px-5 py-3 rounded-xl backdrop-blur-sm bg-white/5 transition-colors"
+              className="inline-flex items-center gap-2 border border-white/35 hover:border-white/60 text-white font-semibold px-5 py-3 rounded-xl backdrop-blur-sm bg-black/25 transition-colors"
             >
               Ir a la consola
             </Link>
@@ -217,8 +278,7 @@ export default function AyudaPage() {
         </div>
       </section>
 
-      {/* Value strip */}
-      <section id="por-que" className="border-y border-white/10 bg-black/25">
+      <section id="por-que" className={`border-y ${t.hairline} ${t.band}`}>
         <div className="max-w-6xl mx-auto px-4 sm:px-6 py-10 grid sm:grid-cols-3 gap-8">
           {[
             { k: 'Segundos', v: 'menos en despachar', d: 'Clave + carro + dirección sin cambiar de pantalla' },
@@ -227,42 +287,38 @@ export default function AyudaPage() {
           ].map((s) => (
             <div key={s.k} className="text-center sm:text-left">
               <p
-                className="text-4xl sm:text-5xl text-red-500 leading-none"
+                className="text-4xl sm:text-5xl text-red-600 leading-none"
                 style={{ fontFamily: '"Barlow Condensed", sans-serif', fontWeight: 800 }}
               >
                 {s.k}
               </p>
-              <p className="mt-1 text-white font-semibold">{s.v}</p>
-              <p className="mt-1 text-sm text-slate-400">{s.d}</p>
+              <p className={`mt-1 font-semibold ${t.ink}`}>{s.v}</p>
+              <p className={`mt-1 text-sm ${t.muted}`}>{s.d}</p>
             </div>
           ))}
         </div>
       </section>
 
-      {/* Pillars */}
-      <PillarsSection />
+      <PillarsSection t={t} />
+      <FlowSection t={t} />
+      <HowSection home={home} t={t} isDark={isDark} />
+      <ModulesSection t={t} />
 
-      {/* Flow */}
-      <FlowSection />
-
-      {/* How to use */}
-      <HowSection home={home} />
-
-      {/* Modules */}
-      <ModulesSection />
-
-      {/* CTA */}
       <section className="relative py-24 px-4 sm:px-6 overflow-hidden">
-        <div className="absolute inset-0 bg-gradient-to-br from-red-950/50 via-transparent to-cyan-950/20" />
+        <div className={`absolute inset-0 ${
+          isDark
+            ? 'bg-gradient-to-br from-red-950/50 via-transparent to-cyan-950/20'
+            : 'bg-gradient-to-br from-red-100/70 via-transparent to-sky-100/50'
+        }`} />
         <div className="relative max-w-3xl mx-auto text-center">
-          <Shield className="w-10 h-10 text-red-500 mx-auto mb-5" />
+          <Shield className="w-10 h-10 text-red-600 mx-auto mb-5" />
           <h2
-            className="text-4xl sm:text-5xl text-white leading-tight"
+            className={`text-4xl sm:text-5xl leading-tight ${t.ink}`}
             style={{ fontFamily: '"Barlow Condensed", sans-serif', fontWeight: 800 }}
           >
             Listos para acortar la cadena de alarma
           </h2>
-          <p className="mt-4 text-slate-300 text-lg leading-relaxed">
+          <p className={`mt-4 text-lg leading-relaxed ${t.muted}`}>
             NODO360 une centralista, voluntarios y carros. Menos fricción, más claridad en el momento crítico.
           </p>
           <div className="mt-8 flex flex-wrap justify-center gap-3">
@@ -275,7 +331,7 @@ export default function AyudaPage() {
             </Link>
             <Link
               to="/central-emergencia"
-              className="inline-flex items-center gap-2 border border-white/20 text-white font-semibold px-6 py-3.5 rounded-xl hover:bg-white/5"
+              className={`inline-flex items-center gap-2 border font-semibold px-6 py-3.5 rounded-xl ${t.ghostBtn}`}
             >
               Consola activa
             </Link>
@@ -283,18 +339,18 @@ export default function AyudaPage() {
         </div>
       </section>
 
-      <footer className="border-t border-white/10 py-10 px-4 sm:px-6">
-        <div className="max-w-6xl mx-auto flex flex-col sm:flex-row items-center justify-between gap-4 text-sm text-slate-500">
+      <footer className={`border-t ${t.hairline} py-10 px-4 sm:px-6`}>
+        <div className={`max-w-6xl mx-auto flex flex-col sm:flex-row items-center justify-between gap-4 text-sm ${t.muted}`}>
           <div className="flex items-center gap-2">
-            <Flame className="w-4 h-4 text-red-500" />
+            <Flame className="w-4 h-4 text-red-600" />
             <span>
               NODO360 · Guía operativa ·{' '}
-              <a href="https://kodesk.cl/" className="hover:text-white transition-colors" target="_blank" rel="noreferrer">
+              <a href="https://kodesk.cl/" className={`${t.footerLink} transition-colors`} target="_blank" rel="noreferrer">
                 kodesk.cl
               </a>
             </span>
           </div>
-          <Link to={home} className="hover:text-white transition-colors font-semibold">
+          <Link to={home} className={`${t.footerLink} transition-colors font-semibold`}>
             Volver a la consola
           </Link>
         </div>
@@ -323,19 +379,19 @@ export default function AyudaPage() {
   );
 }
 
-function PillarsSection() {
+function PillarsSection({ t }: { t: ThemeTone }) {
   const { ref, on } = useReveal();
   return (
     <section ref={ref} className="py-20 sm:py-28 px-4 sm:px-6">
       <div className={`max-w-6xl mx-auto ayuda-reveal ${on ? 'on' : ''}`}>
-        <p className="text-red-400 text-xs font-bold uppercase tracking-[0.22em] mb-3">Qué resuelve</p>
+        <p className="text-red-600 text-xs font-bold uppercase tracking-[0.22em] mb-3">Qué resuelve</p>
         <h2
-          className="text-4xl sm:text-5xl text-white max-w-2xl leading-tight"
+          className={`text-4xl sm:text-5xl max-w-2xl leading-tight ${t.ink}`}
           style={{ fontFamily: '"Barlow Condensed", sans-serif', fontWeight: 800 }}
         >
           Todo lo que es NODO360, en claro
         </h2>
-        <p className="mt-4 max-w-2xl text-slate-400 text-lg">
+        <p className={`mt-4 max-w-2xl text-lg ${t.muted}`}>
           No es solo un software de inventario: es el hilo operativo desde el aviso hasta el regreso al cuartel.
         </p>
         <div className="mt-12 grid sm:grid-cols-2 lg:grid-cols-3 gap-x-10 gap-y-12">
@@ -344,17 +400,17 @@ function PillarsSection() {
             return (
               <div key={p.title} className="relative pl-0">
                 <div className="flex items-center gap-3 mb-3">
-                  <span className="w-10 h-10 rounded-xl bg-red-600/15 border border-red-500/30 flex items-center justify-center">
-                    <Icon className="w-5 h-5 text-red-400" />
+                  <span className={`w-10 h-10 rounded-xl border flex items-center justify-center ${t.iconBox}`}>
+                    <Icon className="w-5 h-5 text-red-600" />
                   </span>
                   <h3
-                    className="text-xl text-white leading-tight"
+                    className={`text-xl leading-tight ${t.ink}`}
                     style={{ fontFamily: '"Barlow Condensed", sans-serif', fontWeight: 700 }}
                   >
                     {p.title}
                   </h3>
                 </div>
-                <p className="text-slate-400 leading-relaxed text-[15px]">{p.text}</p>
+                <p className={`leading-relaxed text-[15px] ${t.muted}`}>{p.text}</p>
               </div>
             );
           })}
@@ -364,22 +420,22 @@ function PillarsSection() {
   );
 }
 
-function FlowSection() {
+function FlowSection({ t }: { t: ThemeTone }) {
   const { ref, on } = useReveal();
   return (
-    <section id="flujo" ref={ref} className="py-20 sm:py-28 px-4 sm:px-6 bg-black/30 border-y border-white/10">
+    <section id="flujo" ref={ref} className={`py-20 sm:py-28 px-4 sm:px-6 ${t.band} border-y ${t.hairline}`}>
       <div className={`max-w-6xl mx-auto ayuda-reveal ${on ? 'on' : ''}`}>
         <div className="flex flex-col lg:flex-row lg:items-end lg:justify-between gap-6 mb-14">
           <div>
-            <p className="text-red-400 text-xs font-bold uppercase tracking-[0.22em] mb-3">Flujo operativo</p>
+            <p className="text-red-600 text-xs font-bold uppercase tracking-[0.22em] mb-3">Flujo operativo</p>
             <h2
-              className="text-4xl sm:text-5xl text-white leading-tight"
+              className={`text-4xl sm:text-5xl leading-tight ${t.ink}`}
               style={{ fontFamily: '"Barlow Condensed", sans-serif', fontWeight: 800 }}
             >
               De la llamada al cierre
             </h2>
           </div>
-          <p className="max-w-md text-slate-400 lg:text-right">
+          <p className={`max-w-md lg:text-right ${t.muted}`}>
             Así se mueve una emergencia real en NODO360: central, voluntarios y terreno sincronizados.
           </p>
         </div>
@@ -398,24 +454,24 @@ function FlowSection() {
                 style={{ transitionDelay: on ? `${i * 70}ms` : '0ms' }}
               >
                 <div className="flex md:justify-center">
-                  <span className="relative z-10 w-14 h-14 rounded-2xl bg-[#0d1420] border border-white/10 flex items-center justify-center shadow-lg shadow-black/40">
-                    <Icon className="w-6 h-6 text-red-400" />
+                  <span className={`relative z-10 w-14 h-14 rounded-2xl border flex items-center justify-center ${t.stepBox}`}>
+                    <Icon className="w-6 h-6 text-red-600" />
                   </span>
                 </div>
-                <div className="min-w-0 border-b border-white/10 pb-6 md:border-0 md:pb-0">
+                <div className={`min-w-0 border-b pb-6 md:border-0 md:pb-0 ${t.hairline}`}>
                   <p
-                    className="text-red-500/90 text-sm tracking-widest mb-1"
+                    className="text-red-600 text-sm tracking-widest mb-1"
                     style={{ fontFamily: '"Barlow Condensed", sans-serif', fontWeight: 700 }}
                   >
                     {step.n}
                   </p>
                   <h3
-                    className="text-2xl sm:text-3xl text-white"
+                    className={`text-2xl sm:text-3xl ${t.ink}`}
                     style={{ fontFamily: '"Barlow Condensed", sans-serif', fontWeight: 700 }}
                   >
                     {step.title}
                   </h3>
-                  <p className="mt-2 text-slate-400 max-w-2xl leading-relaxed">{step.desc}</p>
+                  <p className={`mt-2 max-w-2xl leading-relaxed ${t.muted}`}>{step.desc}</p>
                 </div>
               </li>
             );
@@ -426,14 +482,14 @@ function FlowSection() {
   );
 }
 
-function HowSection({ home }: { home: string }) {
+function HowSection({ home, t, isDark }: { home: string; t: ThemeTone; isDark: boolean }) {
   const { ref, on } = useReveal();
   return (
     <section id="usar" ref={ref} className="py-20 sm:py-28 px-4 sm:px-6">
       <div className={`max-w-6xl mx-auto ayuda-reveal ${on ? 'on' : ''}`}>
-        <p className="text-red-400 text-xs font-bold uppercase tracking-[0.22em] mb-3">Cómo se usa</p>
+        <p className="text-red-600 text-xs font-bold uppercase tracking-[0.22em] mb-3">Cómo se usa</p>
         <h2
-          className="text-4xl sm:text-5xl text-white max-w-2xl leading-tight"
+          className={`text-4xl sm:text-5xl max-w-2xl leading-tight ${t.ink}`}
           style={{ fontFamily: '"Barlow Condensed", sans-serif', fontWeight: 800 }}
         >
           Guía rápida para central y terreno
@@ -442,9 +498,9 @@ function HowSection({ home }: { home: string }) {
         <div className="mt-12 grid lg:grid-cols-2 gap-10 lg:gap-16">
           <div>
             <div className="flex items-center gap-3 mb-6">
-              <Headphones className="w-6 h-6 text-red-400" />
+              <Headphones className="w-6 h-6 text-red-600" />
               <h3
-                className="text-2xl text-white"
+                className={`text-2xl ${t.ink}`}
                 style={{ fontFamily: '"Barlow Condensed", sans-serif', fontWeight: 700 }}
               >
                 Centralista
@@ -454,18 +510,20 @@ function HowSection({ home }: { home: string }) {
               {HOW_CENTRAL.map((line, i) => (
                 <li key={line} className="flex gap-3">
                   <span
-                    className="shrink-0 w-8 h-8 rounded-lg bg-red-600/20 text-red-400 flex items-center justify-center text-sm font-bold"
+                    className={`shrink-0 w-8 h-8 rounded-lg flex items-center justify-center text-sm font-bold ${
+                      isDark ? 'bg-red-600/20 text-red-400' : 'bg-red-50 text-red-700 border border-red-200'
+                    }`}
                     style={{ fontFamily: '"Barlow Condensed", sans-serif' }}
                   >
                     {i + 1}
                   </span>
-                  <p className="text-slate-300 leading-relaxed pt-1">{line}</p>
+                  <p className={`leading-relaxed pt-1 ${t.soft}`}>{line}</p>
                 </li>
               ))}
             </ol>
             <Link
               to="/central-emergencia"
-              className="mt-8 inline-flex items-center gap-2 text-red-400 font-bold hover:text-red-300"
+              className="mt-8 inline-flex items-center gap-2 text-red-600 font-bold hover:text-red-500"
             >
               Abrir Consola activa <ArrowRight className="w-4 h-4" />
             </Link>
@@ -473,9 +531,9 @@ function HowSection({ home }: { home: string }) {
 
           <div>
             <div className="flex items-center gap-3 mb-6">
-              <Smartphone className="w-6 h-6 text-cyan-400" />
+              <Smartphone className={`w-6 h-6 ${isDark ? 'text-cyan-400' : 'text-cyan-700'}`} />
               <h3
-                className="text-2xl text-white"
+                className={`text-2xl ${t.ink}`}
                 style={{ fontFamily: '"Barlow Condensed", sans-serif', fontWeight: 700 }}
               >
                 Bombero (app móvil)
@@ -485,25 +543,29 @@ function HowSection({ home }: { home: string }) {
               {HOW_BOMBERO.map((line, i) => (
                 <li key={line} className="flex gap-3">
                   <span
-                    className="shrink-0 w-8 h-8 rounded-lg bg-cyan-500/15 text-cyan-300 flex items-center justify-center text-sm font-bold"
+                    className={`shrink-0 w-8 h-8 rounded-lg flex items-center justify-center text-sm font-bold ${
+                      isDark ? 'bg-cyan-500/15 text-cyan-300' : 'bg-cyan-50 text-cyan-800 border border-cyan-200'
+                    }`}
                     style={{ fontFamily: '"Barlow Condensed", sans-serif' }}
                   >
                     {i + 1}
                   </span>
-                  <p className="text-slate-300 leading-relaxed pt-1">{line}</p>
+                  <p className={`leading-relaxed pt-1 ${t.soft}`}>{line}</p>
                 </li>
               ))}
             </ol>
             <Link
               to={home}
-              className="mt-8 inline-flex items-center gap-2 text-cyan-300 font-bold hover:text-cyan-200"
+              className={`mt-8 inline-flex items-center gap-2 font-bold ${
+                isDark ? 'text-cyan-300 hover:text-cyan-200' : 'text-cyan-700 hover:text-cyan-800'
+              }`}
             >
               Ir al sistema <ArrowRight className="w-4 h-4" />
             </Link>
           </div>
         </div>
 
-        <div className="mt-16 grid sm:grid-cols-3 gap-6 border-t border-white/10 pt-12">
+        <div className={`mt-16 grid sm:grid-cols-3 gap-6 border-t ${t.hairline} pt-12`}>
           {[
             { icon: Navigation, t: 'GPS en ruta', d: 'El bombero puede compartir posición al marcar Voy o En el lugar.' },
             { icon: Zap, t: 'Alarma crítica', d: 'Tono 10-X + voz en el teléfono para no perder el llamado.' },
@@ -512,9 +574,9 @@ function HowSection({ home }: { home: string }) {
             const Icon = x.icon;
             return (
               <div key={x.t}>
-                <Icon className="w-5 h-5 text-red-400 mb-3" />
-                <p className="text-white font-bold">{x.t}</p>
-                <p className="text-sm text-slate-400 mt-1 leading-relaxed">{x.d}</p>
+                <Icon className="w-5 h-5 text-red-600 mb-3" />
+                <p className={`font-bold ${t.ink}`}>{x.t}</p>
+                <p className={`text-sm mt-1 leading-relaxed ${t.muted}`}>{x.d}</p>
               </div>
             );
           })}
@@ -524,31 +586,33 @@ function HowSection({ home }: { home: string }) {
   );
 }
 
-function ModulesSection() {
+function ModulesSection({ t }: { t: ThemeTone }) {
   const { ref, on } = useReveal();
   return (
-    <section id="modulos" ref={ref} className="py-20 sm:py-28 px-4 sm:px-6 bg-black/25 border-t border-white/10">
+    <section id="modulos" ref={ref} className={`py-20 sm:py-28 px-4 sm:px-6 ${t.band} border-t ${t.hairline}`}>
       <div className={`max-w-6xl mx-auto ayuda-reveal ${on ? 'on' : ''}`}>
-        <p className="text-red-400 text-xs font-bold uppercase tracking-[0.22em] mb-3">Plataforma</p>
+        <p className="text-red-600 text-xs font-bold uppercase tracking-[0.22em] mb-3">Plataforma</p>
         <h2
-          className="text-4xl sm:text-5xl text-white leading-tight"
+          className={`text-4xl sm:text-5xl leading-tight ${t.ink}`}
           style={{ fontFamily: '"Barlow Condensed", sans-serif', fontWeight: 800 }}
         >
           Módulos que verás en el menú
         </h2>
-        <p className="mt-4 text-slate-400 max-w-xl">
+        <p className={`mt-4 max-w-xl ${t.muted}`}>
           Según tu rol (centralista, capitán, bombero…) el menú muestra lo que necesitás. Estos son los ejes operativos.
         </p>
-        <ul className="mt-10 grid sm:grid-cols-2 lg:grid-cols-4 gap-px bg-white/10 rounded-2xl overflow-hidden border border-white/10">
+        <ul className={`mt-10 grid sm:grid-cols-2 lg:grid-cols-4 gap-px rounded-2xl overflow-hidden border ${t.hairline} ${
+          t.hairline.includes('white') ? 'bg-white/10' : 'bg-slate-200'
+        }`}>
           {MODULES.map((m) => (
-            <li key={m.name} className="bg-[#0a1018] p-5 hover:bg-[#0e1622] transition-colors">
+            <li key={m.name} className={`p-5 transition-colors ${t.card} ${t.cardHover}`}>
               <p
-                className="text-lg text-white"
+                className={`text-lg ${t.ink}`}
                 style={{ fontFamily: '"Barlow Condensed", sans-serif', fontWeight: 700 }}
               >
                 {m.name}
               </p>
-              <p className="text-sm text-slate-500 mt-1">{m.tip}</p>
+              <p className={`text-sm mt-1 ${t.muted}`}>{m.tip}</p>
             </li>
           ))}
         </ul>
