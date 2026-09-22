@@ -221,8 +221,8 @@ function MaquinistaAvailability({
           <b>{available ? 'Maquinista disponible' : 'No habilitado como maquinista'}</b>
           <small>
             {available
-              ? 'Figurás abajo en la sala de máquinas'
-              : 'Podés ser bombero y maquinista a la vez'}
+              ? 'También se activa al marcarte disponible en sala (si sos maquinista)'
+              : 'Override opcional: la sala te habilita al marcarte disponible'}
           </small>
         </span>
       </div>
@@ -746,12 +746,37 @@ export default function App() {
     }
     setStationBusy(true);
     try {
-      const { data } = await api.patch<{ stationAvailable: boolean }>('/dispatch/me/availability', {
+      const { data } = await api.patch<{
+        stationAvailable: boolean;
+        isMaquinista?: boolean;
+        maquinistaAvailable?: boolean;
+        maquinistaPrincipal?: boolean;
+      }>('/dispatch/me/availability', {
         available: next,
       });
       setStationAvailable(data.stationAvailable);
-      setUser((current) => current ? { ...current, stationAvailable: data.stationAvailable } : current);
-      setNotice(data.stationAvailable ? 'Ya figurás disponible en la sala de radio' : 'Saliste de la sala de radio');
+      if (typeof data.maquinistaAvailable === 'boolean') {
+        setMaqAvailable(data.maquinistaAvailable);
+      }
+      setUser((current) =>
+        current
+          ? {
+              ...current,
+              stationAvailable: data.stationAvailable,
+              ...(typeof data.isMaquinista === 'boolean' ? { isMaquinista: data.isMaquinista } : {}),
+              ...(typeof data.maquinistaAvailable === 'boolean'
+                ? { maquinistaAvailable: data.maquinistaAvailable }
+                : {}),
+            }
+          : current,
+      );
+      setNotice(
+        data.stationAvailable
+          ? data.maquinistaAvailable
+            ? 'Disponible en sala · habilitado como maquinista'
+            : 'Ya figurás disponible en la sala de radio'
+          : 'Saliste de la sala de radio',
+      );
     } catch {
       setNotice('No se pudo actualizar tu estado en la sala');
     } finally {

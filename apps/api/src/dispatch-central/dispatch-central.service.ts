@@ -833,6 +833,82 @@ export class DispatchCentralService {
     return this.standbyAlerts.trigger(companyId, message);
   }
 
+  /**
+   * Al marcarse disponible en cuartel, un maquinista calificado queda habilitado
+   * y toma el cargo solo si la compañía no tiene otro a cargo.
+   * Al salir, libera cargo y se promociona al siguiente disponible en cuartel.
+   */
+  private async syncMaquinistaFromStation(params: {
+    userId: string;
+    companyId: string;
+    stationAvailable: boolean;
+    isMaquinista: boolean;
+  }) {
+    if (!params.isMaquinista || !params.companyId) return;
+
+    if (params.stationAvailable) {
+      const otherPrincipal = await this.prisma.user.findFirst({
+        where: {
+          companyId: params.companyId,
+          isActive: true,
+          isMaquinista: true,
+          maquinistaPrincipal: true,
+          NOT: { id: params.userId },
+        },
+        select: { id: true },
+      });
+
+      await this.prisma.user.update({
+        where: { id: params.userId },
+        data: {
+          maquinistaAvailable: true,
+          ...(otherPrincipal ? {} : { maquinistaPrincipal: true }),
+        },
+      });
+      return;
+    }
+
+    const current = await this.prisma.user.findUnique({
+      where: { id: params.userId },
+      select: { maquinistaPrincipal: true },
+    });
+
+    await this.prisma.user.update({
+      where: { id: params.userId },
+      data: {
+        maquinistaAvailable: false,
+        maquinistaPrincipal: false,
+      },
+    });
+
+    if (current?.maquinistaPrincipal) {
+      await this.promoteNextMaquinistaPrincipal(params.companyId, params.userId);
+    }
+  }
+
+  private async promoteNextMaquinistaPrincipal(companyId: string, excludeUserId: string) {
+    const next = await this.prisma.user.findFirst({
+      where: {
+        companyId,
+        isActive: true,
+        isMaquinista: true,
+        stationAvailable: true,
+        NOT: { id: excludeUserId },
+      },
+      orderBy: { stationAvailableAt: 'desc' },
+      select: { id: true },
+    });
+    if (!next) return;
+
+    await this.prisma.user.update({
+      where: { id: next.id },
+      data: {
+        maquinistaPrincipal: true,
+        maquinistaAvailable: true,
+      },
+    });
+  }
+
   async toggleMaquinista(
     slug: string,
     userId: string,
@@ -930,13 +1006,27 @@ export class DispatchCentralService {
       },
     });
 
+    if (user.companyId) {
+      await this.syncMaquinistaFromStation({
+        userId,
+        companyId: user.companyId,
+        stationAvailable: available,
+        isMaquinista: user.isMaquinista,
+      });
+    }
+
     return this.getPublicBySlug(slug);
   }
 
   async toggleMyStationAvailability(userId: string, available: boolean) {
     const user = await this.prisma.user.findUnique({
       where: { id: userId },
-      select: { id: true, isActive: true, companyId: true },
+      select: {
+        id: true,
+        isActive: true,
+        companyId: true,
+        isMaquinista: true,
+      },
     });
     if (!user?.isActive) throw new NotFoundException('Usuario no encontrado');
     if (!user.companyId) {
@@ -957,10 +1047,29 @@ export class DispatchCentralService {
       },
     });
 
+    await this.syncMaquinistaFromStation({
+      userId,
+      companyId: user.companyId,
+      stationAvailable: available,
+      isMaquinista: user.isMaquinista,
+    });
+
+    const maquinista = await this.prisma.user.findUnique({
+      where: { id: userId },
+      select: {
+        isMaquinista: true,
+        maquinistaAvailable: true,
+        maquinistaPrincipal: true,
+      },
+    });
+
     return {
       stationAvailable: updated.stationAvailable,
       stationAvailableAt: updated.stationAvailableAt,
       company: updated.company,
+      isMaquinista: maquinista?.isMaquinista ?? user.isMaquinista,
+      maquinistaAvailable: maquinista?.maquinistaAvailable ?? false,
+      maquinistaPrincipal: maquinista?.maquinistaPrincipal ?? false,
     };
   }
 
@@ -1053,6 +1162,15 @@ export class DispatchCentralService {
         supportCompanyId,
       },
     });
+
+    if (user.companyId) {
+      await this.syncMaquinistaFromStation({
+        userId: user.id,
+        companyId: user.companyId,
+        stationAvailable: nextAvailable,
+        isMaquinista: user.isMaquinista,
+      });
+    }
 
     return this.getPublicBySlug(slug);
   }

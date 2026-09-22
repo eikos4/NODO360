@@ -392,8 +392,8 @@ export default function UsersPage() {
                     También es maquinista
                   </span>
                   <span className="block text-[11px] text-slate-500 mt-0.5">
-                    Conserva su cargo (bombero, capitán, etc.) y aparece abajo en la sala de máquinas.
-                    La disponibilidad se marca aparte, en la sala o en el celular.
+                    Conserva su cargo (bombero, capitán, etc.). Al marcarse disponible en cuartel
+                    queda habilitado como maquinista; si no hay a cargo, toma el cargo.
                   </span>
                 </span>
               </label>

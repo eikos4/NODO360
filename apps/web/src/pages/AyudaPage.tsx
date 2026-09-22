@@ -250,6 +250,7 @@ const OPS = [
     title: 'Disponibilidad en cuartel',
     body: [
       'Fuera de emergencia, el bombero puede marcar presencia / disponibilidad en el cuartel.',
+      'Si está calificado como maquinista y se marca disponible, queda habilitado; si no hay a cargo, toma el cargo.',
       'Ayuda a saber quién está en la casa de bombas antes de que suene el próximo llamado.',
       'No reemplaza Voy / No voy durante una emergencia activa.',
     ],

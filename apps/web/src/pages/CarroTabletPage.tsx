@@ -2,7 +2,7 @@ import { useCallback, useEffect, useMemo, useState } from 'react';
 import { Link, useNavigate, useParams, useSearchParams } from 'react-router-dom';
 import {
   Building2, Car, CheckCircle2, Droplet, Flame, HeartPulse, Loader2, MapPin,
-  Maximize2, Navigation, Radio, Search, ShieldAlert, Trees, Truck, Wrench,
+  Maximize2, Moon, Navigation, Radio, Search, ShieldAlert, Sun, Trees, Truck, Wrench,
 } from 'lucide-react';
 import toast from 'react-hot-toast';
 import SalaPinGate, { type SalaLockPreview } from '../components/dispatch/SalaPinGate';
@@ -15,6 +15,8 @@ import { clearCarroVehicle, readCarroVehicle, writeCarroVehicle } from '../lib/c
 import { incidentNavigatePoint, openGoogleMapsDirections } from '../lib/incident-location-pin';
 import { vehicleTypeAbbrev, vehicleTypeShortLabel } from '../lib/vehicle-types';
 import { useAuthStore } from '../store/authStore';
+import { useThemeStore } from '../store/themeStore';
+import { nodotrackTone, type NodotrackTone } from '../lib/nodotrack-theme';
 import { useEmergencyLiveSocket } from '../hooks/useEmergencyLiveSocket';
 import { type IncidentTimelineKind } from '../lib/incident-timeline';
 
@@ -120,30 +122,63 @@ function VehiclePhoto({
   );
 }
 
-function CarroIndexShell({ children }: { children: React.ReactNode }) {
+function NodotrackThemeToggle({ isDark, onToggle }: { isDark: boolean; onToggle: () => void }) {
   return (
-    <div className="relative flex min-h-[100dvh] flex-col overflow-hidden bg-[#06090e] text-white">
-      <div className="pointer-events-none absolute -top-24 right-0 h-[480px] w-[480px] rounded-full bg-emerald-500/15 blur-3xl" />
-      <div className="pointer-events-none absolute bottom-0 left-0 h-[320px] w-[320px] rounded-full bg-emerald-700/10 blur-3xl" />
+    <button
+      type="button"
+      onClick={onToggle}
+      className={`fixed right-4 top-4 z-20 flex h-10 w-10 items-center justify-center rounded-xl border shadow-sm transition-colors ${
+        isDark
+          ? 'border-emerald-500/25 bg-[#0b1220]/90 text-emerald-200 hover:bg-emerald-500/10'
+          : 'border-emerald-200 bg-white/95 text-emerald-800 hover:bg-emerald-50'
+      }`}
+      title={isDark ? 'Tema claro' : 'Tema oscuro'}
+      aria-label={isDark ? 'Cambiar a tema claro' : 'Cambiar a tema oscuro'}
+    >
+      {isDark ? <Sun className="h-5 w-5" /> : <Moon className="h-5 w-5" />}
+    </button>
+  );
+}
+
+function CarroIndexShell({
+  tone,
+  isDark,
+  onToggleTheme,
+  children,
+}: {
+  tone: NodotrackTone;
+  isDark: boolean;
+  onToggleTheme: () => void;
+  children: React.ReactNode;
+}) {
+  return (
+    <div className={`nodotrack-root relative flex min-h-[100dvh] flex-col overflow-hidden ${tone.shell}`}>
+      <div className={`pointer-events-none absolute -top-24 right-0 h-[480px] w-[480px] rounded-full blur-3xl ${tone.shellGlowA}`} />
+      <div className={`pointer-events-none absolute bottom-0 left-0 h-[320px] w-[320px] rounded-full blur-3xl ${tone.shellGlowB}`} />
+      <NodotrackThemeToggle isDark={isDark} onToggle={onToggleTheme} />
       <div className="relative z-10 flex min-h-[100dvh] flex-1 flex-col">{children}</div>
     </div>
   );
 }
 
-function CarroBrandMark() {
+function CarroBrandMark({ tone }: { tone: NodotrackTone }) {
   return (
     <div className="flex items-center gap-3">
       <img
         src="/nodotrack-icon.png"
         alt=""
-        className="h-11 w-11 rounded-xl border border-emerald-500/30 shadow-[0_0_20px_rgba(16,185,129,0.25)]"
+        className={`h-11 w-11 rounded-xl border shadow-sm ${
+          tone.mapTheme === 'dark'
+            ? 'border-emerald-500/30 shadow-[0_0_20px_rgba(16,185,129,0.25)]'
+            : 'border-emerald-200'
+        }`}
       />
       <div>
         <p className="flex items-baseline gap-0 leading-none">
-          <span className="text-lg font-black tracking-tight text-white">Nodo</span>
-          <span className="text-lg font-black tracking-tight text-emerald-400">Track</span>
+          <span className={`text-lg font-black tracking-tight ${tone.brandNodo}`}>Nodo</span>
+          <span className={`text-lg font-black tracking-tight ${tone.brandTrack}`}>Track</span>
         </p>
-        <p className="mt-1 text-[10px] font-bold uppercase tracking-[0.22em] text-emerald-400">Cabina</p>
+        <p className={`mt-1 text-[10px] font-bold uppercase tracking-[0.22em] ${tone.brandSub}`}>Cabina</p>
       </div>
     </div>
   );
@@ -165,6 +200,9 @@ export default function CarroTabletPage() {
   const navigate = useNavigate();
   const [params, setParams] = useSearchParams();
   const token = useAuthStore((s) => s.token);
+  const isDark = useThemeStore((s) => s.theme) === 'dark';
+  const toggleTheme = useThemeStore((s) => s.toggleTheme);
+  const tone = nodotrackTone(isDark);
   const [lockedPreview, setLockedPreview] = useState<SalaLockPreview | null>(null);
   const [pinError, setPinError] = useState<string | null>(null);
   const [unlocking, setUnlocking] = useState(false);
@@ -215,13 +253,12 @@ export default function CarroTabletPage() {
   useEffect(() => {
     const meta = document.querySelector('meta[name="theme-color"]');
     const prev = meta?.getAttribute('content') ?? '';
-    meta?.setAttribute('content', '#082a20');
+    meta?.setAttribute('content', tone.metaThemeColor);
     document.title = 'NodoTrack';
-    document.documentElement.classList.add('dark');
     return () => {
       if (meta) meta.setAttribute('content', prev || '#dc2626');
     };
-  }, []);
+  }, [tone.metaThemeColor]);
 
   useEmergencyLiveSocket({
     slug,
@@ -332,11 +369,11 @@ export default function CarroTabletPage() {
 
   if (!slug) {
     return (
-      <CarroIndexShell>
+      <CarroIndexShell tone={tone} isDark={isDark} onToggleTheme={toggleTheme}>
         <div className="mx-auto flex w-full max-w-4xl flex-1 flex-col justify-center p-6 sm:p-8">
-          <CarroBrandMark />
-          <h1 className="mt-8 text-3xl font-black tracking-tight sm:text-4xl">Elige compañía</h1>
-          <p className="mt-2 max-w-xl text-sm text-slate-300">
+          <CarroBrandMark tone={tone} />
+          <h1 className={`mt-8 text-3xl font-black tracking-tight sm:text-4xl ${tone.ink}`}>Elige compañía</h1>
+          <p className={`mt-2 max-w-xl text-sm ${tone.soft}`}>
             Esta tablet queda en el carro. Primero la compañía, después el PIN de sala de máquinas.
           </p>
           <div className="mt-8 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
@@ -344,11 +381,11 @@ export default function CarroTabletPage() {
               <Link
                 key={cia.slug}
                 to={`/carro/${cia.slug}`}
-                className="rounded-2xl border border-emerald-500/20 bg-white/5 px-4 py-5 text-left shadow-sm transition-colors hover:border-emerald-400 hover:bg-emerald-500/10"
+                className={`rounded-2xl border px-4 py-5 text-left shadow-sm transition-colors ${tone.border} ${tone.card} ${tone.cardHover}`}
               >
-                <p className="text-[10px] font-black uppercase tracking-widest text-emerald-400">{cia.short}</p>
-                <p className="mt-1 text-2xl font-black text-white">{cia.number}ª</p>
-                <p className="text-sm text-slate-300">{cia.name}</p>
+                <p className={`text-[10px] font-black uppercase tracking-widest ${tone.accent}`}>{cia.short}</p>
+                <p className={`mt-1 text-2xl font-black ${tone.ink}`}>{cia.number}ª</p>
+                <p className={`text-sm ${tone.soft}`}>{cia.name}</p>
               </Link>
             ))}
           </div>
@@ -359,8 +396,8 @@ export default function CarroTabletPage() {
 
   if (loading && !lockedPreview) {
     return (
-      <CarroIndexShell>
-        <div className="flex flex-1 items-center justify-center text-emerald-300">
+      <CarroIndexShell tone={tone} isDark={isDark} onToggleTheme={toggleTheme}>
+        <div className={`flex flex-1 items-center justify-center ${tone.loader}`}>
           <Loader2 className="mr-2 h-5 w-5 animate-spin" /> Abriendo sala de máquinas…
         </div>
       </CarroIndexShell>
@@ -369,24 +406,30 @@ export default function CarroTabletPage() {
 
   if (lockedPreview) {
     return (
-      <SalaPinGate
-        variant="carro"
-        preview={lockedPreview}
-        unlocking={unlocking}
-        error={pinError}
-        onSubmit={(pin) => { void unlockSala(pin); }}
-        onBack={() => navigate('/carro')}
-      />
+      <>
+        <NodotrackThemeToggle isDark={isDark} onToggle={toggleTheme} />
+        <SalaPinGate
+          variant="carro"
+          carroDark={isDark}
+          preview={lockedPreview}
+          unlocking={unlocking}
+          error={pinError}
+          onSubmit={(pin) => { void unlockSala(pin); }}
+          onBack={() => navigate('/carro')}
+        />
+      </>
     );
   }
 
   if (error || !data) {
     return (
-      <CarroIndexShell>
+      <CarroIndexShell tone={tone} isDark={isDark} onToggleTheme={toggleTheme}>
         <div className="flex flex-1 flex-col items-center justify-center gap-3 p-6 text-center">
-          <p className="font-bold text-white">Sala no disponible</p>
-          <p className="text-sm text-slate-400">{error}</p>
-          <Link to="/carro" className="text-sm font-semibold text-emerald-400">Elegir otra compañía</Link>
+          <p className={`font-bold ${tone.ink}`}>Sala no disponible</p>
+          <p className={`text-sm ${tone.muted}`}>{error}</p>
+          <Link to="/carro" className={`text-sm font-semibold ${tone.accent}`}>
+            Elegir otra compañía
+          </Link>
         </div>
       </CarroIndexShell>
     );
@@ -394,14 +437,14 @@ export default function CarroTabletPage() {
 
   if (!selectedVehicle) {
     return (
-      <CarroIndexShell>
+      <CarroIndexShell tone={tone} isDark={isDark} onToggleTheme={toggleTheme}>
         <div className="mx-auto w-full max-w-4xl flex-1 p-6 sm:p-8">
-          <CarroBrandMark />
-          <p className="mt-8 text-[10px] font-black uppercase tracking-[0.18em] text-emerald-400">
+          <CarroBrandMark tone={tone} />
+          <p className={`mt-8 text-[10px] font-black uppercase tracking-[0.18em] ${tone.accent}`}>
             {data.number}ª {data.name}
           </p>
-          <h1 className="mt-1 text-3xl font-black">¿Qué carro es esta tablet?</h1>
-          <p className="mt-1 text-sm text-slate-400">Queda guardado en este equipo hasta cambiar de carro.</p>
+          <h1 className={`mt-1 text-3xl font-black ${tone.ink}`}>¿Qué carro es esta tablet?</h1>
+          <p className={`mt-1 text-sm ${tone.muted}`}>Queda guardado en este equipo hasta cambiar de carro.</p>
           <div className="mt-6 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
             {vehicles.map((v, i) => {
               const label = vehicleLabel(v, i);
@@ -410,20 +453,22 @@ export default function CarroTabletPage() {
                   key={v.id}
                   type="button"
                   onClick={() => setVehicleId(v.id)}
-                  className="overflow-hidden rounded-2xl border border-emerald-500/20 bg-white/5 text-left transition-colors hover:border-emerald-400 hover:bg-emerald-500/10"
+                  className={`overflow-hidden rounded-2xl border text-left transition-colors ${tone.border} ${tone.card} ${tone.cardHover}`}
                 >
                   <VehiclePhoto vehicle={v} label={label} className="h-40" />
                   <div className="px-4 py-3">
-                    <p className="text-lg font-black text-white">{label}</p>
-                    <p className="text-xs text-emerald-300/80">{vehicleTypeShortLabel(v.type)}</p>
-                    <p className="mt-0.5 text-xs text-slate-400">{v.brand} {v.model} · {v.statusLabel}</p>
+                    <p className={`text-lg font-black ${tone.ink}`}>{label}</p>
+                    <p className={`text-xs ${tone.accentSoft}`}>{vehicleTypeShortLabel(v.type)}</p>
+                    <p className={`mt-0.5 text-xs ${tone.muted}`}>
+                      {v.brand} {v.model} · {v.statusLabel}
+                    </p>
                   </div>
                 </button>
               );
             })}
           </div>
-          {vehicles.length === 0 && <p className="mt-4 text-sm text-slate-400">Esta compañía no tiene carros cargados.</p>}
-          <button type="button" onClick={() => navigate('/carro')} className="mt-6 text-sm font-semibold text-emerald-400">
+          {vehicles.length === 0 && <p className={`mt-4 text-sm ${tone.muted}`}>Esta compañía no tiene carros cargados.</p>}
+          <button type="button" onClick={() => navigate('/carro')} className={`mt-6 text-sm font-semibold ${tone.accent}`}>
             Elegir otra compañía
           </button>
         </div>
@@ -435,30 +480,38 @@ export default function CarroTabletPage() {
   const vehicleIdx = Math.max(0, vehicles.findIndex((v) => v.id === selectedVehicle.id));
 
   return (
-    <div className="flex h-[100dvh] min-h-0 flex-col bg-[#06090e] text-slate-100">
-      <header className="flex shrink-0 items-center gap-3 border-b border-emerald-500/20 bg-[#07140f] px-4 py-2.5">
-        <div className="h-11 w-16 overflow-hidden rounded-lg border border-emerald-500/30 bg-emerald-500/10">
+    <div className={`nodotrack-root flex h-[100dvh] min-h-0 flex-col ${tone.shell}`}>
+      <header className={`flex shrink-0 items-center gap-3 border-b px-4 py-2.5 ${tone.header}`}>
+        <div className={`h-11 w-16 overflow-hidden rounded-lg border ${tone.border} ${isDark ? 'bg-emerald-500/10' : 'bg-emerald-50'}`}>
           <VehiclePhoto compact vehicle={selectedVehicle} label={vehicleLabel(selectedVehicle, vehicleIdx)} className="h-11" />
         </div>
         <div className="min-w-0">
-          <p className="truncate text-sm font-black text-white">{vehicleLabel(selectedVehicle, vehicleIdx)}</p>
-          <p className="text-[10px] uppercase tracking-widest text-emerald-400/80">{data.number}ª {data.name}</p>
+          <p className={`truncate text-sm font-black ${tone.ink}`}>{vehicleLabel(selectedVehicle, vehicleIdx)}</p>
+          <p className={`text-[10px] uppercase tracking-widest ${tone.accent}`}>{data.number}ª {data.name}</p>
         </div>
         <div className="ml-auto flex items-center gap-2">
+          <button
+            type="button"
+            onClick={toggleTheme}
+            className={`rounded-lg border p-2 ${tone.border} ${isDark ? 'text-emerald-200' : 'text-emerald-800'}`}
+            title={isDark ? 'Tema claro' : 'Tema oscuro'}
+          >
+            {isDark ? <Sun className="h-4 w-4" /> : <Moon className="h-4 w-4" />}
+          </button>
           <button
             type="button"
             onClick={() => {
               clearCarroVehicle(slug);
               setVehicleId('');
             }}
-            className="rounded-lg border border-emerald-500/20 px-2.5 py-1.5 text-[11px] font-semibold text-emerald-200"
+            className={`rounded-lg border px-2.5 py-1.5 text-[11px] font-semibold ${tone.border} ${isDark ? 'text-emerald-200' : 'text-emerald-800'}`}
           >
             Cambiar carro
           </button>
           <button
             type="button"
             onClick={() => void document.documentElement.requestFullscreen?.()}
-            className="rounded-lg border border-emerald-500/20 p-2 text-emerald-200"
+            className={`rounded-lg border p-2 ${tone.border} ${isDark ? 'text-emerald-200' : 'text-emerald-800'}`}
             title="Pantalla completa"
           >
             <Maximize2 className="h-4 w-4" />
@@ -467,19 +520,19 @@ export default function CarroTabletPage() {
       </header>
 
       <div className="grid min-h-0 flex-1 gap-3 p-3 lg:grid-cols-[1.4fr_380px]">
-        <section className="flex min-h-0 flex-col overflow-hidden rounded-2xl border border-emerald-500/20 bg-[#0b1220] shadow-sm">
-          <div className="flex items-center justify-between gap-2 border-b border-white/5 px-3 py-2">
-            <p className="text-xs font-semibold text-slate-300">Mapa de la emergencia</p>
+        <section className={`flex min-h-0 flex-col overflow-hidden rounded-2xl border shadow-sm ${tone.border} ${tone.card}`}>
+          <div className={`flex items-center justify-between gap-2 border-b px-3 py-2 ${isDark ? 'border-white/5' : 'border-slate-100'}`}>
+            <p className={`text-xs font-semibold ${tone.soft}`}>Mapa de la emergencia</p>
             {dest ? (
               <button
                 type="button"
                 onClick={navigateMaps}
-                className="inline-flex items-center gap-2 rounded-xl bg-emerald-500 px-4 py-2 text-sm font-black text-emerald-950 shadow-sm hover:bg-emerald-400"
+                className="keep-on-color inline-flex items-center gap-2 rounded-xl bg-emerald-500 px-4 py-2 text-sm font-black text-emerald-950 shadow-sm hover:bg-emerald-400"
               >
                 <Navigation className="h-4 w-4" /> Navegar
               </button>
             ) : (
-              <span className="text-[11px] text-slate-500">Sin GPS de destino</span>
+              <span className={`text-[11px] ${tone.muted}`}>Sin GPS de destino</span>
             )}
           </div>
           <div className="min-h-0 flex-1">
@@ -488,34 +541,34 @@ export default function CarroTabletPage() {
               focus={dest ? [dest.lat, dest.lng] : null}
               markers={markers}
               zoom={dest ? 15 : 13}
-              theme="dark"
+              theme={tone.mapTheme}
               className="h-full min-h-[280px] w-full"
             />
           </div>
         </section>
 
         <aside className="flex min-h-0 flex-col gap-3 overflow-y-auto">
-          <div className="rounded-2xl border border-emerald-500/20 bg-[#0b1220] p-3 shadow-sm">
+          <div className={`rounded-2xl border p-3 shadow-sm ${tone.border} ${tone.card}`}>
             {!active ? (
               <div className="py-6 text-center">
-                <Wrench className="mx-auto h-6 w-6 text-emerald-400/70" />
-                <p className="mt-2 font-bold text-white">En cuartel</p>
-                <p className="text-sm text-slate-400">Sin emergencia activa para este carro.</p>
+                <Wrench className={`mx-auto h-6 w-6 ${tone.accent}`} />
+                <p className={`mt-2 font-bold ${tone.ink}`}>En cuartel</p>
+                <p className={`text-sm ${tone.muted}`}>Sin emergencia activa para este carro.</p>
               </div>
             ) : (
               <>
-                <p className="text-[10px] font-black uppercase tracking-widest text-emerald-400">
+                <p className={`text-[10px] font-black uppercase tracking-widest ${tone.accent}`}>
                   {active.code} · {active.status}
                 </p>
-                <h2 className="text-xl font-black text-white">{active.type}</h2>
-                <p className="mt-1 flex items-center gap-1 text-sm text-slate-300">
-                  <MapPin className="h-3.5 w-3.5 shrink-0 text-emerald-400" /> {active.address}
+                <h2 className={`text-xl font-black ${tone.ink}`}>{active.type}</h2>
+                <p className={`mt-1 flex items-center gap-1 text-sm ${tone.soft}`}>
+                  <MapPin className={`h-3.5 w-3.5 shrink-0 ${tone.accent}`} /> {active.address}
                 </p>
                 <button
                   type="button"
                   disabled={!dest}
                   onClick={navigateMaps}
-                  className="mt-3 flex w-full items-center justify-center gap-2 rounded-2xl bg-emerald-500 py-4 text-lg font-black text-emerald-950 hover:bg-emerald-400 disabled:opacity-40"
+                  className="keep-on-color mt-3 flex w-full items-center justify-center gap-2 rounded-2xl bg-emerald-500 py-4 text-lg font-black text-emerald-950 hover:bg-emerald-400 disabled:opacity-40"
                 >
                   <Navigation className="h-6 w-6" /> Navegar con Google Maps
                 </button>
@@ -524,8 +577,10 @@ export default function CarroTabletPage() {
           </div>
 
           {active && (
-            <div className="rounded-2xl border border-emerald-500/20 bg-[#0b1220] p-3 shadow-sm">
-              <p className="mb-2 text-xs font-semibold text-slate-200">Estados del carro</p>
+            <div className={`rounded-2xl border p-3 shadow-sm ${tone.border} ${tone.card}`}>
+              <p className={`mb-2 text-xs font-semibold ${isDark ? 'text-slate-200' : 'text-slate-800'}`}>
+                Estados del carro
+              </p>
               <div className="grid grid-cols-2 gap-2">
                 {CARRO_ACTIONS.map((action) => {
                   const Icon = action.icon;
@@ -537,14 +592,12 @@ export default function CarroTabletPage() {
                       disabled={posting}
                       onClick={() => void pushKind(action.kind)}
                       className={`rounded-xl border px-2.5 py-2.5 text-left ${
-                        used
-                          ? 'border-emerald-400/40 bg-emerald-500/15'
-                          : 'border-white/10 bg-white/5 hover:bg-emerald-500/10'
+                        used ? tone.actionUsed : tone.actionIdle
                       }`}
                     >
-                      <Icon className="mb-1 h-4 w-4 text-emerald-400" />
-                      <p className="text-xs font-bold text-white">{action.label}</p>
-                      <p className="text-[10px] text-slate-400">{action.hint}</p>
+                      <Icon className={`mb-1 h-4 w-4 ${tone.accent}`} />
+                      <p className={`text-xs font-bold ${tone.ink}`}>{action.label}</p>
+                      <p className={`text-[10px] ${tone.muted}`}>{action.hint}</p>
                     </button>
                   );
                 })}
@@ -559,13 +612,13 @@ export default function CarroTabletPage() {
               incidentLabel={`${active.code} · ${active.type}`}
               enabled
               canTalk
-              isDark
+              isDark={isDark}
               showListenLog
             />
           ) : (
-            <div className="rounded-2xl border border-emerald-500/20 bg-[#0b1220] p-3 text-sm text-slate-400 shadow-sm">
-              <p className="flex items-center gap-2 font-semibold text-white">
-                <Radio className="h-4 w-4 text-emerald-400" /> Radio
+            <div className={`rounded-2xl border p-3 text-sm shadow-sm ${tone.border} ${tone.card} ${tone.muted}`}>
+              <p className={`flex items-center gap-2 font-semibold ${tone.ink}`}>
+                <Radio className={`h-4 w-4 ${tone.accent}`} /> Radio
               </p>
               <p className="mt-1 text-[12px]">
                 Para hablar o escuchar en este tablet, inicia sesión de maquinista en Nodo360. El canal también está en la app del bombero.

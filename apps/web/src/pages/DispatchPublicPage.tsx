@@ -1385,7 +1385,8 @@ export default function DispatchPublicPage() {
                 </span>
               </h2>
               <p className={`text-[11px] ${th.cardMuted}`}>
-                Un bombero también puede ser maquinista. Tocá «También maquinista» en su ficha o habilitá acá abajo.
+                Si el bombero está calificado como maquinista y se marca disponible en cuartel, queda habilitado solo;
+                si no hay a cargo, toma el cargo. El toggle abajo es override manual.
               </p>
             </div>
 
@@ -1424,7 +1425,7 @@ export default function DispatchPublicPage() {
                 </div>
               ) : (
                 <p className={`text-sm text-center py-2 ${th.cardMuted}`}>
-                  Sin maquinista a cargo — un maquinista habilitado puede tomar el cargo abajo
+                  Sin maquinista a cargo — al marcarse disponible un maquinista calificado toma el cargo automáticamente
                 </p>
               )}
             </div>
