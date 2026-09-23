@@ -15,6 +15,7 @@ import {
   type RadioChannelState,
   type RadioTx,
 } from './lib/radio';
+import { playRadioChirp, prefetchRadioChirp } from './lib/radio-chirp';
 import { getSessionToken } from './platform/session';
 import type { ActiveIncident, AuthUser } from './types';
 import type { EmergencyResponseStatus } from '@nodo360/shared';
@@ -69,7 +70,9 @@ export function RadioScreen({
   const pendingTxRef = useRef<RadioTx | null>(null);
   const noticeRef = useRef(onNotice);
   const pttRef = useRef({ starting: false, recording: false, finishing: false, stopQueued: false });
+  const meIdRef = useRef(user.id);
   noticeRef.current = onNotice;
+  meIdRef.current = user.id;
 
   const channelId = useMemo(
     () => (incident ? incidentChannelId(incident.id) : null),
@@ -122,6 +125,8 @@ export function RadioScreen({
       onReady?: () => void;
       onState?: (next: RadioChannelState) => void;
       onTx?: (tx: RadioTx) => void;
+      onPttActive?: (payload: { channelId?: string; userId?: string }) => void;
+      onPttIdle?: (payload: { channelId?: string }) => void;
     } = {};
 
     const joinChannel = (tries = 6) => {
@@ -155,6 +160,8 @@ export function RadioScreen({
       if (handlers.onReady) socket.off('radio.ready', handlers.onReady);
       if (handlers.onState) socket.off('channel:state', handlers.onState);
       if (handlers.onTx) socket.off('tx:new', handlers.onTx);
+      if (handlers.onPttActive) socket.off('ptt:active', handlers.onPttActive);
+      if (handlers.onPttIdle) socket.off('ptt:idle', handlers.onPttIdle);
     };
 
     void getSessionToken().then((token) => {
@@ -181,14 +188,27 @@ export function RadioScreen({
         setState((prev) => mergeRadioTx(prev, clip, channelId));
         void playTxRef.current(clip);
       };
+      handlers.onPttActive = (payload) => {
+        if (payload?.channelId !== channelId) return;
+        if (payload.userId && payload.userId === meIdRef.current) return;
+        void playRadioChirp('open');
+      };
+      handlers.onPttIdle = (payload) => {
+        if (payload?.channelId !== channelId) return;
+        if (pttRef.current.recording || pttRef.current.finishing || pttRef.current.starting) return;
+        void playRadioChirp('close');
+      };
 
       socket.on('connect', handlers.onConnect);
       socket.on('disconnect', handlers.onDisconnect);
       socket.on('radio.ready', handlers.onReady);
       socket.on('channel:state', handlers.onState);
       socket.on('tx:new', handlers.onTx);
+      socket.on('ptt:active', handlers.onPttActive);
+      socket.on('ptt:idle', handlers.onPttIdle);
       if (socket.connected) handlers.onConnect();
       else socket.connect();
+      prefetchRadioChirp();
       if (cancelled) detach();
     });
 
@@ -254,10 +274,11 @@ export function RadioScreen({
     const socket = getRadioSocket(token);
     const recorder = mediaRecorderRef.current;
     setHolding(false);
+    void playRadioChirp('close');
 
     const stopPtt = () => socket.emit('ptt:stop', { channelId });
+    stopPtt();
     if (!recorder) {
-      stopPtt();
       stopTracks();
       ptt.finishing = false;
       return;
@@ -368,6 +389,7 @@ export function RadioScreen({
       ptt.recording = true;
       ptt.starting = false;
       setHolding(true);
+      void playRadioChirp('open');
       window.setTimeout(() => {
         if (mediaRecorderRef.current === recorder && recorder.state === 'recording') void finishPtt();
       }, MAX_MS);

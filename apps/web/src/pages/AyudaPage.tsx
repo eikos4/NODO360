@@ -218,6 +218,7 @@ const OPS = [
     body: [
       'Hay un canal por emergencia: solo quienes están en ese llamado escuchan.',
       'Mantení pulsado para hablar; mensajes cortos y claros (ubicación, estado, pedido).',
+      'Al pulsar y al soltar suena el tono de radio (mitad de nodo.mp3 al inicio, la otra al corte).',
       'Las transmisiones pueden quedar en la línea de tiempo junto a la bitácora.',
       'Permití micrófono en el navegador o en la app. Sin permiso, el PTT no transmite.',
     ],

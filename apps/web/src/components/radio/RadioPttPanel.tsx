@@ -17,6 +17,7 @@ import {
 } from '../../lib/radio-socket';
 import { cn } from '../../lib/utils';
 import { useThemeStore } from '../../store/themeStore';
+import { playRadioChirp, prefetchRadioChirp } from '../../lib/radio-chirp';
 
 type Props = {
   incidentId: string;
@@ -63,6 +64,8 @@ export default function RadioPttPanel({
   const streamRef = useRef<MediaStream | null>(null);
   const audioRef = useRef<HTMLAudioElement | null>(null);
   const pttRef = useRef({ starting: false, recording: false, finishing: false, stopQueued: false });
+  const meIdRef = useRef(me?.id);
+  meIdRef.current = me?.id;
 
   const playTx = useCallback(async (tx: RadioTx, force = false) => {
     if (!force && me?.id && tx.userId === me.id) return;
@@ -124,15 +127,28 @@ export default function RadioPttPanel({
       setState((prev) => mergeRadioTx(prev, clip, channelId));
       void playTxRef.current(clip);
     };
+    const onPttActive = (payload: { channelId?: string; userId?: string }) => {
+      if (payload?.channelId !== channelId) return;
+      if (payload.userId && payload.userId === meIdRef.current) return;
+      void playRadioChirp('open');
+    };
+    const onPttIdle = (payload: { channelId?: string }) => {
+      if (payload?.channelId !== channelId) return;
+      if (pttRef.current.recording || pttRef.current.finishing || pttRef.current.starting) return;
+      void playRadioChirp('close');
+    };
 
     socket.on('connect', onConnect);
     socket.on('radio.ready', onReady);
     socket.on('disconnect', onDisconnect);
     socket.on('channel:state', onState);
     socket.on('tx:new', onTx);
+    socket.on('ptt:active', onPttActive);
+    socket.on('ptt:idle', onPttIdle);
 
     if (socket.connected) onConnect();
     else socket.connect();
+    prefetchRadioChirp();
 
     const poll = window.setInterval(() => {
       void api
@@ -161,6 +177,8 @@ export default function RadioPttPanel({
       socket.off('disconnect', onDisconnect);
       socket.off('channel:state', onState);
       socket.off('tx:new', onTx);
+      socket.off('ptt:active', onPttActive);
+      socket.off('ptt:idle', onPttIdle);
     };
   }, [channelId, enabled, incidentId]);
 
@@ -183,10 +201,12 @@ export default function RadioPttPanel({
     const recorder = mediaRecorderRef.current;
     const socket = getRadioSocket(localStorage.getItem('nodo360_token') || '');
     setHolding(false);
+    void playRadioChirp('close');
     const stopPttSignal = () => socket.emit('ptt:stop', { channelId });
+    // Liberar canal al soltar para que el resto oiga el tono de cierre al tiro
+    stopPttSignal();
 
     if (!recorder) {
-      stopPttSignal();
       stopTracks();
       ptt.finishing = false;
       return;
@@ -285,6 +305,7 @@ export default function RadioPttPanel({
       ptt.recording = true;
       ptt.starting = false;
       setHolding(true);
+      void playRadioChirp('open');
       window.setTimeout(() => {
         if (mediaRecorderRef.current === recorder && recorder.state === 'recording') {
           void finishPtt();
