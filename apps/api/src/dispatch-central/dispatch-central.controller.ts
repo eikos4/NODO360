@@ -1,4 +1,5 @@
 import {
+  BadRequestException,
   Body,
   Controller,
   Get,
@@ -40,6 +41,39 @@ export class DispatchCentralController {
   @Post('public/:slug/unlock')
   unlockPublic(@Param('slug') slug: string, @Body() dto: UnlockSalaDto) {
     return this.service.unlockPublic(slug, dto.pin);
+  }
+
+  @Post('public/:slug/vehicle-location')
+  async reportVehicleLocation(
+    @Param('slug') slug: string,
+    @Body()
+    body: { vehicleId?: string; latitude?: number; longitude?: number; incidentId?: string | null },
+    @Req() req: HeaderRequest,
+  ) {
+    await this.service.assertPublicWriteAccess(slug, req);
+    if (!body?.vehicleId) throw new BadRequestException('vehicleId requerido');
+    return this.service.reportVehicleLocation(slug, {
+      vehicleId: body.vehicleId,
+      latitude: Number(body.latitude),
+      longitude: Number(body.longitude),
+      incidentId: body.incidentId ?? null,
+    });
+  }
+
+  @Get('public/:slug/hydrants-near')
+  async hydrantsNear(
+    @Param('slug') slug: string,
+    @Query('lat') lat: string | undefined,
+    @Query('lng') lng: string | undefined,
+    @Query('km') km: string | undefined,
+    @Req() req: HeaderRequest,
+  ) {
+    await this.service.assertPublicSalaAccess(slug, req);
+    return this.service.getHydrantsNear(slug, {
+      lat: lat != null ? Number(lat) : undefined,
+      lng: lng != null ? Number(lng) : undefined,
+      km: km != null ? Number(km) : undefined,
+    });
   }
 
   @Get('public/:slug/search-operative/:number')

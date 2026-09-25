@@ -154,6 +154,15 @@ export type PublicCentral = {
     vehicles: FleetVehicle[];
     stats: { total: number; operativo: number };
   };
+  liveVehicles?: {
+    id: string;
+    patent: string;
+    type: string;
+    latitude: number;
+    longitude: number;
+    updatedAt: string;
+    incidentId?: string | null;
+  }[];
   recentEmergencies: PublicEmergency[];
   emergencyStats: { active: number; total: number };
   standby?: {

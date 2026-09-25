@@ -18,17 +18,20 @@ import { RadioService } from './radio.service';
 import { PrismaService } from '../prisma/prisma.service';
 import { Actor, assertCompanyAccess } from '../common/cuerpo-scope';
 import { UploadRadioBase64Dto } from './dto/upload-radio-base64.dto';
+import { DispatchCentralService } from '../dispatch-central/dispatch-central.service';
+import { HeaderRequest } from '../common/sala-token';
 
 @Controller('radio')
-@UseGuards(JwtAuthGuard)
 export class RadioController {
   constructor(
     private readonly storage: StorageService,
     private readonly radio: RadioService,
     private readonly prisma: PrismaService,
+    private readonly dispatch: DispatchCentralService,
   ) {}
 
   @Get('channels/:channelId/recent')
+  @UseGuards(JwtAuthGuard)
   async recent(@Param('channelId') channelId: string, @Req() req: { user: Actor }) {
     const id = decodeURIComponent(channelId);
     await this.assertChannelAccess(req.user, id);
@@ -41,6 +44,7 @@ export class RadioController {
   }
 
   @Post('upload')
+  @UseGuards(JwtAuthGuard)
   @UseInterceptors(memoryUpload({ maxBytes: 3 * 1024 * 1024, kind: 'audio' }))
   async upload(@UploadedFile() file: any, @Req() req: any) {
     if (!file?.buffer) throw new BadRequestException('Audio requerido');
@@ -52,7 +56,31 @@ export class RadioController {
     return { audioUrl };
   }
 
+  /** Upload desde tablet NodoTrack (PIN de sala). */
+  @Post('public/:slug/upload')
+  @UseInterceptors(memoryUpload({ maxBytes: 3 * 1024 * 1024, kind: 'audio' }))
+  async uploadPublic(
+    @Param('slug') slug: string,
+    @UploadedFile() file: any,
+    @Req()
+    req: HeaderRequest & {
+      protocol?: string;
+      get: (n: string) => string | undefined;
+      headers?: Record<string, unknown>;
+    },
+  ) {
+    await this.dispatch.assertPublicWriteAccess(slug, req);
+    if (!file?.buffer) throw new BadRequestException('Audio requerido');
+    const named = {
+      ...file,
+      originalname: file.originalname || `radio-sala-${Date.now()}.webm`,
+    };
+    const audioUrl = await this.storage.uploadFile(named, publicOrigin(req), 'nodo360/radio');
+    return { audioUrl };
+  }
+
   @Post('upload-base64')
+  @UseGuards(JwtAuthGuard)
   async uploadBase64(@Body() body: UploadRadioBase64Dto, @Req() req: any) {
     const raw = String(body?.audio || '').replace(/^data:[^;]+;base64,/, '');
     if (!raw) throw new BadRequestException('Audio requerido');
@@ -97,10 +125,19 @@ export class RadioController {
   }
 }
 
-function publicOrigin(req: { protocol?: string; get: (name: string) => string | undefined; headers?: Record<string, unknown> }) {
-  const fromEnv = String(process.env.PUBLIC_API_ORIGIN || process.env.API_PUBLIC_ORIGIN || '').replace(/\/$/, '');
+function publicOrigin(req: {
+  protocol?: string;
+  get: (name: string) => string | undefined;
+  headers?: Record<string, unknown>;
+}) {
+  const fromEnv = String(process.env.PUBLIC_API_ORIGIN || process.env.API_PUBLIC_ORIGIN || '').replace(
+    /\/$/,
+    '',
+  );
   if (fromEnv) return fromEnv;
-  const forwarded = String(req.headers?.['x-forwarded-proto'] || '').split(',')[0].trim();
+  const forwarded = String(req.headers?.['x-forwarded-proto'] || '')
+    .split(',')[0]
+    .trim();
   const proto = forwarded || req.protocol || 'https';
   const host = req.get('host') || '';
   return `${proto}://${host}`;

@@ -1,8 +1,9 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { Link, useNavigate, useParams, useSearchParams } from 'react-router-dom';
 import {
-  Building2, Car, CheckCircle2, Droplet, Flame, HeartPulse, Loader2, MapPin,
-  Maximize2, Moon, Navigation, Radio, Search, ShieldAlert, Sun, Trees, Truck, Wrench,
+  AlertTriangle, Building2, Car, CheckCircle2, Droplet, Flame, HeartPulse, Home,
+  Loader2, MapPin, Maximize2, Megaphone, Moon, Navigation, Radio, Search,
+  ShieldAlert, Siren, Sun, Trees, Truck, Users, Volume2, VolumeX, Wrench,
 } from 'lucide-react';
 import toast from 'react-hot-toast';
 import SalaPinGate, { type SalaLockPreview } from '../components/dispatch/SalaPinGate';
@@ -18,6 +19,7 @@ import { useAuthStore } from '../store/authStore';
 import { useThemeStore } from '../store/themeStore';
 import { nodotrackTone, type NodotrackTone } from '../lib/nodotrack-theme';
 import { useEmergencyLiveSocket } from '../hooks/useEmergencyLiveSocket';
+import { usePublicDispatchAlarm } from '../hooks/usePublicDispatchAlarm';
 import { type IncidentTimelineKind } from '../lib/incident-timeline';
 
 type FleetVehicle = {
@@ -34,14 +36,27 @@ type PublicCentral = {
   name: string;
   number: number;
   fleet: { vehicles: FleetVehicle[] };
+  maquinistas?: {
+    principal?: { firstName: string; lastName: string; maquinistaAvailable?: boolean } | null;
+    members?: { firstName: string; lastName: string; maquinistaAvailable?: boolean; maquinistaPrincipal?: boolean }[];
+    stats?: { available: number; total: number };
+  };
   recentEmergencies: PublicEmergency[];
 };
 
 type TimelineEvent = { id: string; kind: string; label: string; note?: string | null; occurredAt: string };
+type NearHydrant = {
+  id: string;
+  code: string;
+  address?: string;
+  latitude: number;
+  longitude: number;
+  distanceKm?: number;
+};
 
 const apiBase = import.meta.env.VITE_API_URL?.replace(/\/$/, '') || '/api';
 
-const CARRO_ACTIONS: Array<{ kind: IncidentTimelineKind; label: string; hint: string; icon: typeof Truck }> = [
+const CARRO_OPS: Array<{ kind: IncidentTimelineKind; label: string; hint: string; icon: typeof Truck; danger?: boolean }> = [
   { kind: 'EN_CAMINO', label: 'En camino', hint: 'Salimos al siniestro', icon: Truck },
   { kind: 'EN_LUGAR', label: 'En el lugar', hint: 'Llegada al destino', icon: MapPin },
   { kind: 'RECONOCIMIENTO', label: 'Reconocimiento', hint: 'Evaluación inicial', icon: Search },
@@ -49,6 +64,26 @@ const CARRO_ACTIONS: Array<{ kind: IncidentTimelineKind; label: string; hint: st
   { kind: 'ATAQUE_INTERIOR', label: 'Ataque interior', hint: 'Ingreso a recinto', icon: Flame },
   { kind: 'CONTROLADO', label: 'Controlado', hint: 'Situación controlada', icon: CheckCircle2 },
 ];
+
+const CARRO_CRITICAL: Array<{ kind: IncidentTimelineKind; label: string; hint: string; icon: typeof Truck }> = [
+  { kind: 'MAYDAY', label: 'MAYDAY', hint: 'Bombero en peligro', icon: Megaphone },
+  { kind: 'BOMBERO_HERIDO', label: 'Bombero herido', hint: 'Lesión en servicio', icon: HeartPulse },
+  { kind: 'ACCIDENTE_RUTA', label: 'Accidente ruta', hint: 'Unidad siniestrada', icon: AlertTriangle },
+  { kind: 'UNIDAD_AVERIADA', label: 'Avería', hint: 'Falla mecánica', icon: Wrench },
+];
+
+const CARRO_RETURN: Array<{ kind: IncidentTimelineKind; label: string; hint: string; icon: typeof Truck }> = [
+  { kind: 'REGRESO', label: 'Regreso', hint: 'Volvemos a cuartel', icon: Navigation },
+  { kind: 'EN_CUARTEL', label: 'En cuartel', hint: 'Ya en la compañía', icon: Home },
+  { kind: 'DISPONIBLE', label: 'Disponible', hint: 'Listos para otro llamado', icon: CheckCircle2 },
+];
+
+function crewStatusLabel(status?: string | null) {
+  if (status === 'ON_SCENE') return 'En el lugar';
+  if (status === 'GOING') return 'En camino';
+  if (status === 'NOT_AVAILABLE') return 'No voy';
+  return status || '—';
+}
 
 function vehicleLabel(v: Pick<FleetVehicle, 'type' | 'patent' | 'brand'>, idx = 0) {
   return `${vehicleTypeAbbrev(v.type)}-${idx + 1}${v.patent ? ` · ${v.patent}` : ''}`;
@@ -214,6 +249,8 @@ export default function CarroTabletPage() {
   const [events, setEvents] = useState<TimelineEvent[]>([]);
   const [posting, setPosting] = useState(false);
   const [here, setHere] = useState<{ latitude: number; longitude: number } | null>(null);
+  const [hydrants, setHydrants] = useState<NearHydrant[]>([]);
+  const [alarmMuted, setAlarmMuted] = useState(false);
 
   const load = useCallback(async () => {
     if (!slug) {
@@ -267,11 +304,89 @@ export default function CarroTabletPage() {
     onEvent: () => { void load(); },
   });
 
+  const emergencies = data?.recentEmergencies ?? [];
+  const selectedVehicleEarly = (data?.fleet?.vehicles ?? []).find((v) => v.id === vehicleId) ?? null;
+  const activeForAlarm = useMemo(() => {
+    const open = emergencies.filter((e) => e.status === 'ACTIVA' && !e.closedAt);
+    if (!selectedVehicleEarly) return [] as PublicEmergency[];
+    return open.filter((e) =>
+      (e.vehicles ?? []).some((v) => v.id === selectedVehicleEarly.id || v.patent === selectedVehicleEarly.patent),
+    );
+  }, [emergencies, selectedVehicleEarly]);
+
+  usePublicDispatchAlarm(
+    activeForAlarm.map((e) => ({
+      id: e.id,
+      status: e.status,
+      emergencyCodeId: e.emergencyCodeId,
+      radioMessage: e.radioMessage,
+      dispatchedAt: e.dispatchedAt,
+    })),
+    { enabled: Boolean(selectedVehicleEarly) && !lockedPreview, muted: alarmMuted },
+  );
+
   useEffect(() => {
     void getTabletGps().then(setHere);
     const t = window.setInterval(() => { void getTabletGps().then(setHere); }, 20000);
     return () => window.clearInterval(t);
   }, []);
+
+  // Reportar GPS del carro a central
+  useEffect(() => {
+    if (!slug || !vehicleId || !here || lockedPreview || !salaToken) return;
+    const body = JSON.stringify({
+      vehicleId,
+      latitude: here.latitude,
+      longitude: here.longitude,
+      incidentId: activeForAlarm[0]?.id ?? null,
+    });
+    const send = () => {
+      void fetch(`${apiBase}/dispatch/public/${slug}/vehicle-location`, {
+        method: 'POST',
+        headers: { ...salaAuthHeaders(slug), 'Content-Type': 'application/json' },
+        body,
+      }).catch(() => undefined);
+    };
+    send();
+    const t = window.setInterval(send, 20000);
+    return () => window.clearInterval(t);
+  }, [slug, vehicleId, here?.latitude, here?.longitude, lockedPreview, salaToken, activeForAlarm[0]?.id]);
+
+  // Hidrantes cerca del destino o del carro
+  useEffect(() => {
+    if (!slug || lockedPreview || !salaToken) {
+      setHydrants([]);
+      return;
+    }
+    const lat = activeForAlarm[0]
+      ? incidentNavigatePoint(activeForAlarm[0])?.lat ?? here?.latitude
+      : here?.latitude;
+    const lng = activeForAlarm[0]
+      ? incidentNavigatePoint(activeForAlarm[0])?.lng ?? here?.longitude
+      : here?.longitude;
+    if (lat == null || lng == null) return;
+    let cancelled = false;
+    void fetch(
+      `${apiBase}/dispatch/public/${slug}/hydrants-near?lat=${lat}&lng=${lng}&km=3`,
+      { headers: salaAuthHeaders(slug) },
+    )
+      .then((r) => r.json())
+      .then((json) => {
+        if (cancelled) return;
+        const items = Array.isArray(json?.items) ? json.items : [];
+        setHydrants(
+          items.filter(
+            (h: NearHydrant) => Number.isFinite(h.latitude) && Number.isFinite(h.longitude),
+          ),
+        );
+      })
+      .catch(() => {
+        if (!cancelled) setHydrants([]);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [slug, salaToken, lockedPreview, activeForAlarm[0]?.id, here?.latitude, here?.longitude]);
 
   const vehicles = data?.fleet?.vehicles ?? [];
   const selectedVehicle = vehicles.find((v) => v.id === vehicleId) ?? null;
@@ -284,7 +399,6 @@ export default function CarroTabletPage() {
     }
   }, [slug, vehicleId]);
 
-  const emergencies = data?.recentEmergencies ?? [];
   const active = useMemo(() => {
     const open = emergencies.filter((e) => e.status === 'ACTIVA' && !e.closedAt);
     if (selectedVehicle) {
@@ -366,6 +480,15 @@ export default function CarroTabletPage() {
   const markers: OsmMarker[] = [];
   if (dest) markers.push({ id: 'destino', lat: dest.lat, lng: dest.lng, label: active?.code, tone: 'active', active: true });
   if (here) markers.push({ id: 'carro', lat: here.latitude, lng: here.longitude, label: selectedVehicle?.patent ?? 'Carro', tone: 'truck' });
+  for (const h of hydrants) {
+    markers.push({
+      id: `hyd-${h.id}`,
+      lat: h.latitude,
+      lng: h.longitude,
+      label: h.code,
+      tone: 'hydrant',
+    });
+  }
 
   if (!slug) {
     return (
@@ -478,6 +601,43 @@ export default function CarroTabletPage() {
 
   const kinds = new Set(events.map((e) => e.kind));
   const vehicleIdx = Math.max(0, vehicles.findIndex((v) => v.id === selectedVehicle.id));
+  const crew = active?.crew?.length ? active.crew : [];
+  const principalMaq =
+    data?.maquinistas?.principal ??
+    data?.maquinistas?.members?.find((m) => m.maquinistaPrincipal) ??
+    null;
+  const renderActionGrid = (
+    actions: Array<{ kind: IncidentTimelineKind; label: string; hint: string; icon: typeof Truck }>,
+    opts?: { danger?: boolean },
+  ) => (
+    <div className="grid grid-cols-2 gap-2">
+      {actions.map((action) => {
+        const Icon = action.icon;
+        const used = kinds.has(action.kind);
+        return (
+          <button
+            key={action.kind}
+            type="button"
+            disabled={posting}
+            onClick={() => void pushKind(action.kind)}
+            className={`rounded-xl border px-2.5 py-2.5 text-left ${
+              opts?.danger
+                ? used
+                  ? 'border-red-500/50 bg-red-600/20'
+                  : 'border-red-500/40 bg-red-600/10 hover:bg-red-600/20'
+                : used
+                  ? tone.actionUsed
+                  : tone.actionIdle
+            }`}
+          >
+            <Icon className={`mb-1 h-4 w-4 ${opts?.danger ? 'text-red-500' : tone.accent}`} />
+            <p className={`text-xs font-bold ${tone.ink}`}>{action.label}</p>
+            <p className={`text-[10px] ${tone.muted}`}>{action.hint}</p>
+          </button>
+        );
+      })}
+    </div>
+  );
 
   return (
     <div className={`nodotrack-root flex h-[100dvh] min-h-0 flex-col ${tone.shell}`}>
@@ -490,6 +650,14 @@ export default function CarroTabletPage() {
           <p className={`text-[10px] uppercase tracking-widest ${tone.accent}`}>{data.number}ª {data.name}</p>
         </div>
         <div className="ml-auto flex items-center gap-2">
+          <button
+            type="button"
+            onClick={() => setAlarmMuted((m) => !m)}
+            className={`rounded-lg border p-2 ${tone.border} ${isDark ? 'text-emerald-200' : 'text-emerald-800'}`}
+            title={alarmMuted ? 'Activar alarma' : 'Silenciar alarma'}
+          >
+            {alarmMuted ? <VolumeX className="h-4 w-4" /> : <Volume2 className="h-4 w-4" />}
+          </button>
           <button
             type="button"
             onClick={toggleTheme}
@@ -519,10 +687,12 @@ export default function CarroTabletPage() {
         </div>
       </header>
 
-      <div className="grid min-h-0 flex-1 gap-3 p-3 lg:grid-cols-[1.4fr_380px]">
+      <div className="grid min-h-0 flex-1 gap-3 p-3 lg:grid-cols-[1.4fr_400px]">
         <section className={`flex min-h-0 flex-col overflow-hidden rounded-2xl border shadow-sm ${tone.border} ${tone.card}`}>
           <div className={`flex items-center justify-between gap-2 border-b px-3 py-2 ${isDark ? 'border-white/5' : 'border-slate-100'}`}>
-            <p className={`text-xs font-semibold ${tone.soft}`}>Mapa de la emergencia</p>
+            <p className={`text-xs font-semibold ${tone.soft}`}>
+              Mapa · {hydrants.length ? `${hydrants.length} hidrantes` : 'sin hidrantes cerca'}
+            </p>
             {dest ? (
               <button
                 type="button"
@@ -564,6 +734,12 @@ export default function CarroTabletPage() {
                 <p className={`mt-1 flex items-center gap-1 text-sm ${tone.soft}`}>
                   <MapPin className={`h-3.5 w-3.5 shrink-0 ${tone.accent}`} /> {active.address}
                 </p>
+                {active.radioMessage ? (
+                  <p className={`mt-2 text-xs leading-relaxed ${tone.muted}`}>
+                    <Siren className="mr-1 inline h-3.5 w-3.5" />
+                    {active.radioMessage}
+                  </p>
+                ) : null}
                 <button
                   type="button"
                   disabled={!dest}
@@ -578,34 +754,80 @@ export default function CarroTabletPage() {
 
           {active && (
             <div className={`rounded-2xl border p-3 shadow-sm ${tone.border} ${tone.card}`}>
-              <p className={`mb-2 text-xs font-semibold ${isDark ? 'text-slate-200' : 'text-slate-800'}`}>
-                Estados del carro
+              <p className={`mb-2 flex items-center gap-2 text-xs font-semibold ${isDark ? 'text-slate-200' : 'text-slate-800'}`}>
+                <Users className="h-3.5 w-3.5 text-red-500" /> Quién va
               </p>
-              <div className="grid grid-cols-2 gap-2">
-                {CARRO_ACTIONS.map((action) => {
-                  const Icon = action.icon;
-                  const used = kinds.has(action.kind);
-                  return (
-                    <button
-                      key={action.kind}
-                      type="button"
-                      disabled={posting}
-                      onClick={() => void pushKind(action.kind)}
-                      className={`rounded-xl border px-2.5 py-2.5 text-left ${
-                        used ? tone.actionUsed : tone.actionIdle
-                      }`}
-                    >
-                      <Icon className={`mb-1 h-4 w-4 ${tone.accent}`} />
-                      <p className={`text-xs font-bold ${tone.ink}`}>{action.label}</p>
-                      <p className={`text-[10px] ${tone.muted}`}>{action.hint}</p>
-                    </button>
-                  );
-                })}
-              </div>
+              {principalMaq ? (
+                <p className={`mb-2 text-[11px] ${tone.soft}`}>
+                  Maquinista a cargo:{' '}
+                  <span className={`font-bold ${tone.ink}`}>
+                    {principalMaq.firstName} {principalMaq.lastName}
+                  </span>
+                </p>
+              ) : (
+                <p className={`mb-2 text-[11px] ${tone.muted}`}>Sin maquinista a cargo de guardia</p>
+              )}
+              {crew.length === 0 ? (
+                <p className={`text-sm ${tone.muted}`}>Aún nadie marcó Voy / En el lugar.</p>
+              ) : (
+                <ul className="max-h-36 space-y-1.5 overflow-y-auto">
+                  {crew.map((m) => (
+                    <li key={m.id} className={`flex items-center justify-between gap-2 text-sm ${tone.soft}`}>
+                      <span className={`truncate font-semibold ${tone.ink}`}>
+                        {m.operativeNumber != null ? `N° ${m.operativeNumber} · ` : ''}
+                        {m.name || `${m.firstName ?? ''} ${m.lastName ?? ''}`.trim()}
+                        {m.isMaquinista ? (
+                          <span className={`ml-1 text-[10px] font-bold ${tone.accent}`}>MAQ</span>
+                        ) : null}
+                      </span>
+                      <span className={`shrink-0 text-[10px] font-bold uppercase ${tone.muted}`}>
+                        {crewStatusLabel(m.status)}
+                      </span>
+                    </li>
+                  ))}
+                </ul>
+              )}
             </div>
           )}
 
-          {active && token ? (
+          {active && (
+            <div className={`rounded-2xl border-2 border-red-500/40 bg-red-600/10 p-3 shadow-sm`}>
+              <p className="mb-2 text-xs font-black uppercase tracking-widest text-red-500">Crítico</p>
+              {renderActionGrid(CARRO_CRITICAL, { danger: true })}
+            </div>
+          )}
+
+          {active && (
+            <div className={`rounded-2xl border p-3 shadow-sm ${tone.border} ${tone.card}`}>
+              <p className={`mb-2 text-xs font-semibold ${isDark ? 'text-slate-200' : 'text-slate-800'}`}>
+                Operación
+              </p>
+              {renderActionGrid(CARRO_OPS)}
+            </div>
+          )}
+
+          {active && (
+            <div className={`rounded-2xl border p-3 shadow-sm ${tone.border} ${tone.card}`}>
+              <p className={`mb-2 text-xs font-semibold ${isDark ? 'text-slate-200' : 'text-slate-800'}`}>
+                Cierre / regreso
+              </p>
+              {renderActionGrid(CARRO_RETURN)}
+            </div>
+          )}
+
+          {active && salaToken ? (
+            <RadioPttPanel
+              variant="bar"
+              incidentId={active.id}
+              incidentLabel={`${active.code} · ${active.type}`}
+              enabled
+              canTalk
+              isDark={isDark}
+              showListenLog
+              salaToken={salaToken}
+              salaSlug={slug}
+            />
+          ) : active && token ? (
             <RadioPttPanel
               variant="bar"
               incidentId={active.id}
@@ -621,7 +843,7 @@ export default function CarroTabletPage() {
                 <Radio className={`h-4 w-4 ${tone.accent}`} /> Radio
               </p>
               <p className="mt-1 text-[12px]">
-                Para hablar o escuchar en este tablet, inicia sesión de maquinista en Nodo360. El canal también está en la app del bombero.
+                Desbloqueá la sala con PIN para hablar por radio desde la cabina.
               </p>
             </div>
           )}

@@ -68,6 +68,14 @@ export class IncidentTimelineService {
     IncidentTimelineKind.ATAQUE_INTERIOR,
     IncidentTimelineKind.ATAQUE_EXTERIOR,
     IncidentTimelineKind.CONTROLADO,
+    IncidentTimelineKind.MAYDAY,
+    IncidentTimelineKind.BOMBERO_HERIDO,
+    IncidentTimelineKind.BOMBERO_ATRAPADO,
+    IncidentTimelineKind.ACCIDENTE_RUTA,
+    IncidentTimelineKind.UNIDAD_AVERIADA,
+    IncidentTimelineKind.REGRESO,
+    IncidentTimelineKind.EN_CUARTEL,
+    IncidentTimelineKind.DISPONIBLE,
   ];
 
   private async companyBySlug(slug: string) {

@@ -16,6 +16,7 @@ import { formatRadioSpeaker, RadioService, RadioTransmission } from './radio.ser
 import { isAllowedCorsOrigin } from '../common/cors-origins';
 import { hasAnyRole } from '../common/user-roles';
 import { assertCompanyAccess } from '../common/cuerpo-scope';
+import { readSalaToken } from '../common/sala-token';
 
 type SocketUser = {
   userId: string;
@@ -26,6 +27,9 @@ type SocketUser = {
   firstName: string;
   lastName: string;
   operativeNumber: number | null;
+  /** Tablet NodoTrack / sala de máquinas (PIN) */
+  isSala?: boolean;
+  salaSlug?: string;
 };
 
 @WebSocketGateway({
@@ -80,6 +84,32 @@ export class RadioGateway implements OnGatewayInit, OnGatewayConnection, OnGatew
     const token =
       (client.handshake.auth?.token as string | undefined) ||
       (client.handshake.headers.authorization?.replace(/^Bearer\s+/i, '') ?? '');
+    const salaToken = String(client.handshake.auth?.salaToken ?? '').trim() || token;
+    const salaPayload = readSalaToken(this.jwt, salaToken);
+    if (salaPayload) {
+      const company = await this.prisma.company.findFirst({
+        where: {
+          id: salaPayload.companyId,
+          dispatchSlug: salaPayload.slug,
+          isActive: true,
+          dispatchPublicEnabled: true,
+        },
+        select: { id: true, number: true, name: true, dispatchSlug: true },
+      });
+      if (!company) throw new Error('Sala no válida');
+      return {
+        userId: `sala:${company.id}`,
+        email: `sala+${company.dispatchSlug}@nodo360.local`,
+        role: 'OPERADOR_CENTRAL',
+        roles: ['OPERADOR_CENTRAL'],
+        companyId: company.id,
+        firstName: 'Cabina',
+        lastName: `${company.number}ª`,
+        operativeNumber: null,
+        isSala: true,
+        salaSlug: company.dispatchSlug ?? undefined,
+      };
+    }
     if (!token) throw new Error('Sin token');
     const payload = this.jwt.verify(token) as {
       sub: string;
@@ -153,6 +183,7 @@ export class RadioGateway implements OnGatewayInit, OnGatewayConnection, OnGatew
   }
 
   private async canTalkOnChannel(user: SocketUser, channelId: string): Promise<boolean> {
+    if (user.isSala) return this.canAccessChannel(user, channelId);
     if (hasAnyRole(user, 'OPERADOR_CENTRAL', 'COMANDANTE', 'CAPITAN', 'SUPER_ADMIN', 'KODESK')) {
       return true;
     }

@@ -4,6 +4,7 @@ export const EMERGENCY_EVENT_NAMES = {
   dispatchCreated: 'emergency.dispatch.created.v1',
   responseUpdated: 'emergency.response.updated.v1',
   locationUpdated: 'emergency.location.updated.v1',
+  vehicleLocationUpdated: 'emergency.vehicle.location.v1',
   incidentUpdated: 'emergency.incident.updated.v1',
   incidentCancelled: 'emergency.incident.cancelled.v1',
   incidentClosed: 'emergency.incident.closed.v1',
@@ -57,6 +58,18 @@ export interface EmergencyLocationUpdatedData {
   };
   response?: unknown;
   replayed?: boolean;
+}
+
+export interface EmergencyVehicleLocationData {
+  vehicle: {
+    id: string;
+    patent: string;
+    type: string;
+    latitude: number;
+    longitude: number;
+    updatedAt: string;
+    incidentId?: string | null;
+  };
 }
 
 export interface EmergencyIncidentUpdatedData {

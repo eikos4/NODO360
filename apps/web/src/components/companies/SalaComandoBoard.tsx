@@ -144,8 +144,18 @@ export default function SalaComandoBoard({ data, emergency }: Props) {
         tone: 'active',
       });
     }
+    for (const v of data.liveVehicles ?? []) {
+      if (!Number.isFinite(v.latitude) || !Number.isFinite(v.longitude)) continue;
+      list.push({
+        id: `live-${v.id}`,
+        lat: v.latitude,
+        lng: v.longitude,
+        label: v.patent,
+        tone: 'truck',
+      });
+    }
     return list;
-  }, [point, emergency]);
+  }, [point, emergency, data.liveVehicles]);
 
   useEffect(() => {
     const id = setInterval(() => setNow(new Date()), 1000);

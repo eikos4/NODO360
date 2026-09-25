@@ -34,15 +34,23 @@ export function radioSocketOrigin(): string {
 }
 
 let shared: Socket | null = null;
+let sharedAuthKey = '';
 
-export function getRadioSocket(token: string): Socket {
-  if (shared) {
-    shared.auth = { token };
+export function getRadioSocket(token: string, opts?: { salaToken?: string }): Socket {
+  const salaToken = opts?.salaToken?.trim() || '';
+  const authKey = `${salaToken ? 'sala' : 'jwt'}:${salaToken || token}`;
+  if (shared && sharedAuthKey === authKey) {
+    shared.auth = salaToken ? { salaToken } : { token };
     if (!shared.connected) shared.connect();
     return shared;
   }
+  if (shared) {
+    shared.disconnect();
+    shared = null;
+  }
+  sharedAuthKey = authKey;
   shared = io(`${radioSocketOrigin()}/radio`, {
-    auth: { token },
+    auth: salaToken ? { salaToken } : { token },
     transports: ['websocket', 'polling'],
     reconnection: true,
     reconnectionAttempts: Infinity,

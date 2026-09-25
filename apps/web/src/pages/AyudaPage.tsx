@@ -287,7 +287,7 @@ const SCREENS = [
   {
     icon: Tablet,
     title: 'Tablet carro (NodoTrack)',
-    text: 'Pantalla en el vehículo: llamado activo e hitos de desplazamiento.',
+    text: 'Cabina: mapa, hidrantes, Quién va, MAYDAY, regreso, radio con PIN de sala, GPS a central y alarma al despachar.',
   },
   {
     icon: Smartphone,

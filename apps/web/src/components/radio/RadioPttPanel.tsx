@@ -32,6 +32,9 @@ type Props = {
   variant?: 'panel' | 'hero' | 'bar';
   showListenLog?: boolean;
   children?: ReactNode;
+  /** Token PIN de sala (NodoTrack) — alternativa al JWT */
+  salaToken?: string;
+  salaSlug?: string;
 };
 
 const MAX_MS = 15000;
@@ -47,6 +50,8 @@ export default function RadioPttPanel({
   variant = 'panel',
   showListenLog = false,
   children,
+  salaToken,
+  salaSlug,
 }: Props) {
   const theme = useThemeStore((s) => s.theme);
   const isDark = isDarkProp ?? theme === 'dark';
@@ -66,8 +71,11 @@ export default function RadioPttPanel({
   const pttRef = useRef({ starting: false, recording: false, finishing: false, stopQueued: false });
   const meIdRef = useRef(me?.id);
   meIdRef.current = me?.id;
+  const authToken = salaToken || (typeof localStorage !== 'undefined' ? localStorage.getItem('nodo360_token') : null) || '';
+  const usingSala = Boolean(salaToken);
 
   const playTx = useCallback(async (tx: RadioTx, force = false) => {
+    if (!force && usingSala && String(tx.userId || '').startsWith('sala:')) return;
     if (!force && me?.id && tx.userId === me.id) return;
     const url = resolveRadioAudioUrl(tx.audioUrl);
     if (!url) return;
@@ -81,17 +89,18 @@ export default function RadioPttPanel({
     } catch {
       /* autoplay puede fallar hasta interacción */
     }
-  }, [me?.id]);
+  }, [me?.id, usingSala]);
 
   const playTxRef = useRef(playTx);
   playTxRef.current = playTx;
 
   useEffect(() => {
     if (!enabled || !incidentId) return;
-    const token = localStorage.getItem('nodo360_token');
-    if (!token) return;
+    if (!authToken) return;
 
-    const socket = getRadioSocket(token);
+    const socket = usingSala
+      ? getRadioSocket(authToken, { salaToken: authToken })
+      : getRadioSocket(authToken);
     let joinTimer: number | null = null;
 
     const applyTx = (tx: RadioTx): RadioTx => ({ ...tx, audioUrl: resolveRadioAudioUrl(tx.audioUrl) });
@@ -180,7 +189,7 @@ export default function RadioPttPanel({
       socket.off('ptt:active', onPttActive);
       socket.off('ptt:idle', onPttIdle);
     };
-  }, [channelId, enabled, incidentId]);
+  }, [authToken, channelId, enabled, incidentId, usingSala]);
 
   const stopTracks = () => {
     streamRef.current?.getTracks().forEach((t) => t.stop());
@@ -199,7 +208,9 @@ export default function RadioPttPanel({
     ptt.stopQueued = false;
 
     const recorder = mediaRecorderRef.current;
-    const socket = getRadioSocket(localStorage.getItem('nodo360_token') || '');
+    const socket = usingSala
+      ? getRadioSocket(authToken, { salaToken: authToken })
+      : getRadioSocket(authToken);
     setHolding(false);
     void playRadioChirp('close');
     const stopPttSignal = () => socket.emit('ptt:stop', { channelId });
@@ -219,7 +230,6 @@ export default function RadioPttPanel({
 
     const durationMs = Math.min(MAX_MS, Date.now() - startedAtRef.current);
     if (blob.size < 250) {
-      stopPttSignal();
       toast.error(durationMs < 500
         ? 'Mantené el botón al menos un segundo'
         : 'El navegador no grabó audio. Revisá el permiso de micrófono.');
@@ -232,8 +242,23 @@ export default function RadioPttPanel({
       const form = new FormData();
       const file = radioUploadFile(blob, recorder.mimeType || blob.type);
       form.append('file', file, file instanceof File ? file.name : `radio-${Date.now()}.webm`);
-      const { data } = await api.post<{ audioUrl: string }>('/radio/upload', form);
-      const audioUrl = resolveRadioAudioUrl(data.audioUrl);
+      let audioUrl: string | undefined;
+      if (usingSala && salaSlug) {
+        const res = await fetch(
+          `${(import.meta.env.VITE_API_URL?.replace(/\/$/, '') || '/api')}/radio/public/${salaSlug}/upload`,
+          {
+            method: 'POST',
+            headers: { 'x-sala-token': authToken },
+            body: form,
+          },
+        );
+        const body = await res.json().catch(() => ({}));
+        if (!res.ok) throw new Error(body.message || 'Upload falló');
+        audioUrl = resolveRadioAudioUrl(body.audioUrl);
+      } else {
+        const { data } = await api.post<{ audioUrl: string }>('/radio/upload', form);
+        audioUrl = resolveRadioAudioUrl(data.audioUrl);
+      }
       if (!audioUrl) throw new Error('El servidor no devolvió audio');
       const ack = await new Promise<{ ok?: boolean; tx?: RadioTx; reason?: string }>((resolve) => {
         const timer = window.setTimeout(() => resolve({ ok: false, reason: 'Sin respuesta del canal' }), 8000);
@@ -249,29 +274,28 @@ export default function RadioPttPanel({
       if (ack?.tx) {
         setState((prev) => mergeRadioTx(prev, { ...ack.tx!, audioUrl: resolveRadioAudioUrl(ack.tx!.audioUrl) }, channelId));
       } else {
-        stopPttSignal();
         toast.error(ack?.reason || 'No se pudo publicar en el canal');
       }
     } catch {
-      stopPttSignal();
       toast.error('No se pudo enviar la transmisión');
     } finally {
       setUploading(false);
       ptt.finishing = false;
     }
-  }, [channelId]);
+  }, [authToken, channelId, salaSlug, usingSala]);
 
   const startPtt = useCallback(async () => {
     const ptt = pttRef.current;
     if (!enabled || !canTalk || ptt.starting || ptt.recording || ptt.finishing || uploading) return;
     ptt.starting = true;
     ptt.stopQueued = false;
-    const token = localStorage.getItem('nodo360_token');
-    if (!token) {
+    if (!authToken) {
       ptt.starting = false;
       return;
     }
-    const socket = getRadioSocket(token);
+    const socket = usingSala
+      ? getRadioSocket(authToken, { salaToken: authToken })
+      : getRadioSocket(authToken);
 
     try {
       const ack = await new Promise<{ ok?: boolean; reason?: string; talker?: { speakerName: string } }>((resolve) => {
@@ -318,7 +342,7 @@ export default function RadioPttPanel({
       stopTracks();
       toast.error('No se pudo acceder al micrófono');
     }
-  }, [channelId, canTalk, enabled, finishPtt, uploading]);
+  }, [authToken, channelId, canTalk, enabled, finishPtt, uploading, usingSala]);
 
   const talker = state?.talker;
   const isBusyOther = !!talker && holding === false;

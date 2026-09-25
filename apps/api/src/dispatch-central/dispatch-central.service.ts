@@ -14,6 +14,8 @@ import { StandbyAlertService } from './standby-alert.service';
 import { UpdateDispatchCentralDto } from './dto/update-dispatch-central.dto';
 import { Actor, assertCompanyAccess, companyIdsForActor } from '../common/cuerpo-scope';
 import { assignedRoles } from '../common/user-roles';
+import { EmergencyBroadcaster } from '../emergency-realtime/emergency-broadcaster.service';
+import { EMERGENCY_EVENT_NAMES } from '../emergency-realtime/emergency-events.contract';
 import {
   HeaderRequest,
   SALA_TOKEN_EXPIRES_SEC,
@@ -24,6 +26,17 @@ import {
 } from '../common/sala-token';
 
 export type DispatchPublicStatus = 'DISPONIBLE' | 'NO_DISPONIBLE' | 'OCULTA';
+
+export type LiveVehicleLocation = {
+  id: string;
+  patent: string;
+  type: string;
+  companyId: string;
+  latitude: number;
+  longitude: number;
+  updatedAt: string;
+  incidentId?: string | null;
+};
 
 const ROLE_LABELS: Record<string, string> = {
   SUPER_ADMIN: 'Super Admin',
@@ -84,11 +97,14 @@ const UNLOCK_BLOCK_MS = 5 * 60 * 1000;
 @Injectable()
 export class DispatchCentralService {
   private unlockAttempts = new Map<string, { fails: number; blockedUntil: number }>();
+  /** GPS en vivo de tablets NodoTrack (TTL corto). */
+  private liveVehicles = new Map<string, LiveVehicleLocation>();
 
   constructor(
     private prisma: PrismaService,
     private standbyAlerts: StandbyAlertService,
     private jwt: JwtService,
+    private emergencies: EmergencyBroadcaster,
   ) {}
 
   private mapPublicStatus(
@@ -819,6 +835,7 @@ export class DispatchCentralService {
           },
       maquinistas,
       fleet,
+      liveVehicles: this.getLiveVehiclesForCompany(company.id),
       recentEmergencies,
       emergencyStats: {
         active: recentEmergencies.filter((e) => e.status === 'ACTIVA').length,
@@ -826,6 +843,119 @@ export class DispatchCentralService {
       },
       standby: this.standbyAlerts.peek(company.id),
     };
+  }
+
+  getLiveVehiclesForCompany(companyId: string): LiveVehicleLocation[] {
+    const now = Date.now();
+    const out: LiveVehicleLocation[] = [];
+    for (const [id, row] of this.liveVehicles) {
+      if (row.companyId !== companyId) continue;
+      if (now - Date.parse(row.updatedAt) > 5 * 60_000) {
+        this.liveVehicles.delete(id);
+        continue;
+      }
+      out.push(row);
+    }
+    return out.sort((a, b) => a.patent.localeCompare(b.patent));
+  }
+
+  async reportVehicleLocation(
+    slug: string,
+    input: { vehicleId: string; latitude: number; longitude: number; incidentId?: string | null },
+  ) {
+    const company = await this.getCompanyBySlug(slug);
+    const vehicle = await this.prisma.vehicle.findFirst({
+      where: { id: input.vehicleId, companyId: company.id },
+      select: { id: true, patent: true, type: true, companyId: true },
+    });
+    if (!vehicle) throw new NotFoundException('Vehículo no encontrado');
+    if (
+      !Number.isFinite(input.latitude) ||
+      !Number.isFinite(input.longitude) ||
+      Math.abs(input.latitude) > 90 ||
+      Math.abs(input.longitude) > 180
+    ) {
+      throw new BadRequestException('Coordenadas inválidas');
+    }
+
+    const row: LiveVehicleLocation = {
+      id: vehicle.id,
+      patent: vehicle.patent,
+      type: vehicle.type,
+      companyId: vehicle.companyId,
+      latitude: input.latitude,
+      longitude: input.longitude,
+      updatedAt: new Date().toISOString(),
+      incidentId: input.incidentId ?? null,
+    };
+    this.liveVehicles.set(vehicle.id, row);
+
+    this.emergencies.emit({
+      event: EMERGENCY_EVENT_NAMES.vehicleLocationUpdated,
+      incidentId: input.incidentId || vehicle.id,
+      companyIds: [company.id],
+      snapshotVersion: row.updatedAt,
+      data: { vehicle: row },
+    });
+
+    return row;
+  }
+
+  async getHydrantsNear(
+    slug: string,
+    opts: { lat?: number; lng?: number; km?: number },
+  ) {
+    const company = await this.getCompanyBySlug(slug);
+    const km = Math.min(Math.max(opts.km ?? 3, 0.5), 15);
+    const hydrants = await this.prisma.hydrant.findMany({
+      where: {
+        companyId: company.id,
+        status: 'OPERATIVO',
+        latitude: { not: null },
+        longitude: { not: null },
+      },
+      select: {
+        id: true,
+        code: true,
+        type: true,
+        status: true,
+        address: true,
+        latitude: true,
+        longitude: true,
+        diameter: true,
+        pressure: true,
+      },
+      orderBy: { code: 'asc' },
+      take: 200,
+    });
+
+    const lat = opts.lat;
+    const lng = opts.lng;
+    if (!Number.isFinite(lat) || !Number.isFinite(lng)) {
+      return { km, items: hydrants };
+    }
+
+    const toRad = (d: number) => (d * Math.PI) / 180;
+    const distKm = (aLat: number, aLng: number, bLat: number, bLng: number) => {
+      const R = 6371;
+      const dLat = toRad(bLat - aLat);
+      const dLng = toRad(bLng - aLng);
+      const x =
+        Math.sin(dLat / 2) ** 2 +
+        Math.cos(toRad(aLat)) * Math.cos(toRad(bLat)) * Math.sin(dLng / 2) ** 2;
+      return 2 * R * Math.asin(Math.sqrt(x));
+    };
+
+    const items = hydrants
+      .map((h) => ({
+        ...h,
+        distanceKm: distKm(lat!, lng!, h.latitude!, h.longitude!),
+      }))
+      .filter((h) => h.distanceKm <= km)
+      .sort((a, b) => a.distanceKm - b.distanceKm)
+      .slice(0, 40);
+
+    return { km, items };
   }
 
   async triggerStandby(companyId: string, message?: string, actor?: Actor) {

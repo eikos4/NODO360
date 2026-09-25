@@ -5,6 +5,7 @@ const LIVE_EVENTS = [
   'emergency.dispatch.created.v1',
   'emergency.response.updated.v1',
   'emergency.location.updated.v1',
+  'emergency.vehicle.location.v1',
   'emergency.incident.updated.v1',
   'emergency.incident.cancelled.v1',
   'emergency.incident.closed.v1',
