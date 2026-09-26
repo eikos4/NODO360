@@ -76,6 +76,30 @@ export class DispatchCentralController {
     });
   }
 
+  @Post('public/:slug/fleet-fuel')
+  async fleetFuel(
+    @Param('slug') slug: string,
+    @Body()
+    body: {
+      vehicleId?: string;
+      odometerKm?: number;
+      fuelLiters?: number;
+      fullTank?: boolean;
+      notes?: string;
+    },
+    @Req() req: HeaderRequest,
+  ) {
+    await this.service.assertPublicWriteAccess(slug, req);
+    if (!body?.vehicleId) throw new BadRequestException('vehicleId requerido');
+    return this.service.createFleetFuelFromSala(slug, {
+      vehicleId: body.vehicleId,
+      odometerKm: Number(body.odometerKm),
+      fuelLiters: body.fuelLiters != null ? Number(body.fuelLiters) : undefined,
+      fullTank: body.fullTank,
+      notes: body.notes,
+    });
+  }
+
   @Get('public/:slug/search-operative/:number')
   async searchOperative(
     @Param('slug') slug: string,

@@ -76,6 +76,11 @@ export class IncidentTimelineService {
     IncidentTimelineKind.REGRESO,
     IncidentTimelineKind.EN_CUARTEL,
     IncidentTimelineKind.DISPONIBLE,
+    IncidentTimelineKind.SAMU,
+    IncidentTimelineKind.CARABINEROS,
+    IncidentTimelineKind.SEGUNDA_ALARMA,
+    IncidentTimelineKind.APOYO,
+    IncidentTimelineKind.COMENTARIO,
   ];
 
   private async companyBySlug(slug: string) {
@@ -121,6 +126,9 @@ export class IncidentTimelineService {
 
     const extra = vehicleNote?.trim();
     const note = [dto.note?.trim(), extra].filter(Boolean).join(' · ') || null;
+    if (dto.kind === IncidentTimelineKind.COMENTARIO && (!note || note.length < 3)) {
+      throw new BadRequestException('Escribe la anotación (mínimo 3 caracteres)');
+    }
     const occurredAt = new Date();
     const event = await this.prisma.incidentTimelineEvent.create({
       data: {

@@ -598,9 +598,17 @@ html:not(.dark) .localizar-publico .localizar-btn * {
   font-family: system-ui, sans-serif;
 }
 
-/* Leaflet Map Styles */
+/* Leaflet Map Styles — aislar panes para que no tapen modales/overlays */
 .leaflet-container {
   font-family: 'Inter', system-ui, sans-serif;
+  z-index: 0;
+  isolation: isolate;
+}
+.nodotrack-root .leaflet-container,
+.nodotrack-map-host {
+  z-index: 0;
+  isolation: isolate;
+  position: relative;
 }
 .osm-tiles-dark .leaflet-tile-pane {
   filter: invert(1) hue-rotate(180deg) brightness(0.92) contrast(0.95);
@@ -951,6 +959,8 @@ html:not(.dark) .sala-guardia .text-slate-600 {
 .leaflet-container {
   font-family: inherit;
   background: #e2e8f0;
+  z-index: 0;
+  isolation: isolate;
 }
 .sala-guardia .leaflet-container {
   background: #08060c;

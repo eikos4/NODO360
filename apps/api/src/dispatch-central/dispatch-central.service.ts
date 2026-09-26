@@ -248,9 +248,13 @@ export class DispatchCentralService {
         patent: true,
         brand: true,
         model: true,
+        year: true,
         type: true,
         status: true,
         imageUrl: true,
+        kilometers: true,
+        lastMaintenanceAt: true,
+        nextMaintenanceAt: true,
         principalMaquinista: {
           select: {
             id: true,
@@ -302,12 +306,17 @@ export class DispatchCentralService {
         patent: v.patent,
         brand: v.brand,
         model: v.model,
+        year: v.year,
         type: v.type,
         status: v.status,
         statusLabel: VEHICLE_STATUS_LABELS[v.status],
         imageUrl: v.imageUrl,
+        kilometers: v.kilometers ?? 0,
+        lastMaintenanceAt: v.lastMaintenanceAt,
+        nextMaintenanceAt: v.nextMaintenanceAt,
         fuelLevelPercent,
         fuelUpdatedAt: latestFuel?.date ?? null,
+        lastFuelLiters: latestFuel?.fuelLiters ?? null,
         principalMaquinista: v.principalMaquinista
           ? this.mapMaquinista(v.principalMaquinista)
           : null,
@@ -806,7 +815,7 @@ export class DispatchCentralService {
       this.getRosterForCompany(company.id),
       this.getMaquinistasForCompany(company.id),
       this.getFleetForCompany(company.id),
-      this.getRecentEmergencies(company.id, 8),
+      this.getRecentEmergencies(company.id, 12),
     ]);
     const status = this.mapPublicStatus(
       company.dispatchPublicEnabled,
@@ -956,6 +965,91 @@ export class DispatchCentralService {
       .slice(0, 40);
 
     return { km, items };
+  }
+
+  /** Registro de combustible / odómetro desde tablet NodoTrack (PIN de sala). */
+  async createFleetFuelFromSala(
+    slug: string,
+    input: {
+      vehicleId: string;
+      odometerKm: number;
+      fuelLiters?: number;
+      fullTank?: boolean;
+      notes?: string;
+    },
+  ) {
+    const company = await this.getCompanyBySlug(slug);
+    const vehicle = await this.prisma.vehicle.findFirst({
+      where: { id: input.vehicleId, companyId: company.id },
+      select: { id: true, kilometers: true, companyId: true },
+    });
+    if (!vehicle) throw new NotFoundException('Vehículo no encontrado');
+    if (!Number.isFinite(input.odometerKm) || input.odometerKm < 0) {
+      throw new BadRequestException('Odómetro inválido');
+    }
+    if (input.odometerKm < vehicle.kilometers - 500) {
+      throw new BadRequestException(
+        `El odómetro (${input.odometerKm} km) es muy inferior al registro actual (${vehicle.kilometers} km)`,
+      );
+    }
+    const liters = input.fuelLiters;
+    if (liters != null && (!Number.isFinite(liters) || liters <= 0)) {
+      throw new BadRequestException('Litros inválidos');
+    }
+
+    const registrar = await this.prisma.user.findFirst({
+      where: {
+        companyId: company.id,
+        isActive: true,
+        OR: [
+          { role: { in: ['CAPITAN', 'ENCARGADO_MATERIAL', 'OPERADOR_CENTRAL', 'COMANDANTE'] } },
+          { roles: { hasSome: ['CAPITAN', 'ENCARGADO_MATERIAL', 'OPERADOR_CENTRAL', 'COMANDANTE'] } },
+        ],
+      },
+      select: { id: true },
+      orderBy: { updatedAt: 'desc' },
+    });
+    const fallback = registrar
+      ? null
+      : await this.prisma.user.findFirst({
+          where: { companyId: company.id, isActive: true },
+          select: { id: true },
+        });
+    const registeredById = registrar?.id ?? fallback?.id;
+    if (!registeredById) {
+      throw new BadRequestException('No hay usuario en la compañía para registrar el log de flota');
+    }
+
+    const log = await this.prisma.fleetLog.create({
+      data: {
+        type: FleetLogType.COMBUSTIBLE,
+        date: new Date(),
+        vehicleId: vehicle.id,
+        companyId: vehicle.companyId,
+        registeredById,
+        odometerKm: Math.round(input.odometerKm),
+        fuelLiters: liters ?? null,
+        fullTank: Boolean(input.fullTank),
+        notes: input.notes?.trim() || 'Registro desde NodoTrack (cabina)',
+        description: 'Cabina NodoTrack',
+      },
+      select: {
+        id: true,
+        odometerKm: true,
+        fuelLiters: true,
+        fullTank: true,
+        date: true,
+      },
+    });
+
+    if (input.odometerKm > vehicle.kilometers) {
+      await this.prisma.vehicle.update({
+        where: { id: vehicle.id },
+        data: { kilometers: Math.round(input.odometerKm) },
+      });
+    }
+
+    return log;
   }
 
   async triggerStandby(companyId: string, message?: string, actor?: Actor) {

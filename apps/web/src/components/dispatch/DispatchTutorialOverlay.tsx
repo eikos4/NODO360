@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
-import { ChevronLeft, ChevronRight, X, GraduationCap, Flame, Play } from 'lucide-react';
+import { createPortal } from 'react-dom';
+import { ChevronLeft, ChevronRight, X, GraduationCap, Flame } from 'lucide-react';
 
 interface Step {
   targetId: string;
@@ -11,27 +12,32 @@ const TUTORIAL_STEPS: Step[] = [
   {
     targetId: 'step-claves',
     title: '1. Identificar la Emergencia',
-    description: 'Haz clic en una clave 10-0 a 10-9. Abajo aparecen el detalle y las claves que reciclan ese tono (10-10 por 10-0, 10-12 por 10-4, 10-11 por 10-0).',
+    description:
+      'Haz clic en una clave 10-0 a 10-9. Abajo aparecen el detalle y las claves que reciclan ese tono (10-10 por 10-0, 10-12 por 10-4, 10-11 por 10-0).',
   },
   {
     targetId: 'step-ubicacion',
     title: '2. Ingresar Dirección y Ubicación',
-    description: 'Escribe la calle y número de la emergencia, luego presiona Enter o la Lupa para buscar. También puedes hacer clic directo sobre el mapa interactivo para ajustar el marcador GPS.',
+    description:
+      'Escribe la calle y número de la emergencia, luego presiona Enter o la Lupa para buscar. También puedes hacer clic directo sobre el mapa interactivo para ajustar el marcador GPS.',
   },
   {
     targetId: 'step-companias',
     title: '3. Compañía a Cargo y Apoyo',
-    description: 'Selecciona la Compañía principal (el cuartel primario de respuesta). Si es un incidente de gran magnitud, puedes indicar una Compañía de apoyo en el segundo selector.',
+    description:
+      'Selecciona la Compañía principal (el cuartel primario de respuesta). Si es un incidente de gran magnitud, puedes indicar una Compañía de apoyo en el segundo selector.',
   },
   {
     targetId: 'step-carros',
     title: '4. Asignar Material Mayor (Carros)',
-    description: 'Selecciona los carros de bomberos que saldrán a la emergencia (máximo 2 carros para despacho rápido). El listado muestra únicamente los vehículos que están operativos.',
+    description:
+      'Selecciona los carros de bomberos que saldrán a la emergencia (máximo 2 carros para despacho rápido). El listado muestra únicamente los vehículos que están operativos.',
   },
   {
     targetId: 'step-despachar',
     title: '5. Iniciar Despacho Operativo',
-    description: '¡Todo listo! Haz clic en "DESPACHAR" para detonar la alarma sonora en los cuarteles y activar el sistema de voz inteligente que transmitirá los detalles de la emergencia.',
+    description:
+      '¡Todo listo! Haz clic en "DESPACHAR" para detonar la alarma sonora en los cuarteles y activar el sistema de voz inteligente que transmitirá los detalles de la emergencia.',
   },
 ];
 
@@ -42,42 +48,52 @@ interface DispatchTutorialOverlayProps {
 
 export default function DispatchTutorialOverlay({ isOpen, onClose }: DispatchTutorialOverlayProps) {
   const [currentStep, setCurrentStep] = useState(0);
-  const [coords, setCoords] = useState<{ top: number; left: number; width: number; height: number } | null>(null);
+  const [coords, setCoords] = useState<{ top: number; left: number; width: number; height: number } | null>(
+    null,
+  );
 
   const step = TUTORIAL_STEPS[currentStep];
 
   useEffect(() => {
-    if (!isOpen) return;
+    if (!isOpen) {
+      setCurrentStep(0);
+      setCoords(null);
+      return;
+    }
+
+    let cancelled = false;
+    let timer: number | undefined;
 
     const updatePosition = () => {
       const element = document.getElementById(step.targetId);
-      if (element) {
-        element.scrollIntoView({ behavior: 'smooth', block: 'center' });
-        
-        // Wait for scrolling to finish slightly before reading coordinates
-        const timer = setTimeout(() => {
-          const rect = element.getBoundingClientRect();
-          setCoords({
-            top: rect.top + window.scrollY,
-            left: rect.left + window.scrollX,
-            width: rect.width,
-            height: rect.height,
-          });
-        }, 350);
-
-        return () => clearTimeout(timer);
-      } else {
-        setCoords(null);
+      if (!element) {
+        if (!cancelled) setCoords(null);
+        return;
       }
+      element.scrollIntoView({ behavior: 'smooth', block: 'center', inline: 'nearest' });
+      window.clearTimeout(timer);
+      timer = window.setTimeout(() => {
+        if (cancelled) return;
+        const rect = element.getBoundingClientRect();
+        // Coordenadas de viewport (fixed overlay) — sin sumar scrollY
+        setCoords({
+          top: rect.top,
+          left: rect.left,
+          width: rect.width,
+          height: rect.height,
+        });
+      }, 320);
     };
 
     updatePosition();
     window.addEventListener('resize', updatePosition);
-    window.addEventListener('scroll', updatePosition);
-    
+    window.addEventListener('scroll', updatePosition, true);
+
     return () => {
+      cancelled = true;
+      window.clearTimeout(timer);
       window.removeEventListener('resize', updatePosition);
-      window.removeEventListener('scroll', updatePosition);
+      window.removeEventListener('scroll', updatePosition, true);
     };
   }, [isOpen, currentStep, step.targetId]);
 
@@ -97,100 +113,94 @@ export default function DispatchTutorialOverlay({ isOpen, onClose }: DispatchTut
     }
   };
 
-  // Determine card placement (top vs bottom of screen) depending on element height
-  // to avoid covering the targeted element
-  const isElementInLowerHalf = coords ? (coords.top - window.scrollY) > window.innerHeight / 2 : false;
+  const isElementInLowerHalf = coords ? coords.top > window.innerHeight / 2 : false;
 
-  return (
-    <div className="fixed inset-0 z-[100] pointer-events-none">
-      {/* Darkened backdrop with exclusion zone (spotlight) */}
-      <div className="absolute inset-0 bg-black/60 pointer-events-auto transition-all duration-300" />
-
-      {/* Dynamic spotlight border and shadow cutout */}
-      {coords && (
+  return createPortal(
+    <div className="fixed inset-0 z-[10000] pointer-events-none">
+      {coords ? (
         <div
-          className="absolute border-[3px] border-red-500 dark:border-red-400 rounded-2xl shadow-[0_0_0_9999px_rgba(0,0,0,0.65)] animate-pulse pointer-events-none transition-all duration-300 z-10"
+          className="absolute rounded-2xl border-[3px] border-red-500 transition-all duration-300"
           style={{
-            top: coords.top - 8,
-            left: coords.left - 8,
+            top: Math.max(4, coords.top - 8),
+            left: Math.max(4, coords.left - 8),
             width: coords.width + 16,
             height: coords.height + 16,
+            boxShadow: '0 0 0 9999px rgba(0,0,0,0.65)',
           }}
         />
+      ) : (
+        <div className="absolute inset-0 bg-black/65" />
       )}
 
-      {/* Floating Instructions Card */}
       <div
-        className={`fixed left-1/2 -translate-x-1/2 w-[92%] max-w-md pointer-events-auto z-20 transition-all duration-500 ${
+        className={`fixed left-1/2 z-[10001] w-[92%] max-w-md -translate-x-1/2 pointer-events-auto transition-all duration-300 ${
           isElementInLowerHalf ? 'top-6' : 'bottom-6'
         }`}
       >
-        <div className="bg-white/95 dark:bg-slate-900/95 border border-slate-200 dark:border-slate-800/80 rounded-3xl p-5 shadow-2xl backdrop-blur-xl relative overflow-hidden">
-          {/* Header Accent Bar */}
-          <div className="absolute top-0 left-0 right-0 h-[3px] bg-gradient-to-r from-red-500 to-orange-500" />
-          
+        <div className="relative overflow-hidden rounded-3xl border border-slate-200 bg-white/95 p-5 shadow-2xl backdrop-blur-xl dark:border-slate-800/80 dark:bg-slate-900/95">
+          <div className="absolute left-0 right-0 top-0 h-[3px] bg-gradient-to-r from-red-500 to-orange-500" />
+
           <button
+            type="button"
             onClick={onClose}
-            className="absolute top-4 right-4 p-1.5 rounded-lg text-slate-400 hover:text-slate-600 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors"
+            className="absolute right-4 top-4 rounded-lg p-1.5 text-slate-400 transition-colors hover:bg-slate-100 hover:text-slate-600 dark:hover:bg-slate-800 dark:hover:text-white"
             title="Cerrar tutorial"
           >
-            <X className="w-4 h-4" />
+            <X className="h-4 w-4" />
           </button>
 
-          <div className="flex gap-3.5 mt-1">
-            <div className="w-10 h-10 shrink-0 bg-red-500/10 dark:bg-red-500/15 rounded-2xl flex items-center justify-center text-red-500 dark:text-red-400">
-              <GraduationCap className="w-5 h-5" />
+          <div className="mt-1 flex gap-3.5">
+            <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl bg-red-500/10 text-red-500 dark:bg-red-500/15 dark:text-red-400">
+              <GraduationCap className="h-5 w-5" />
             </div>
-            
+
             <div className="space-y-1 pr-6">
-              <h3 className="font-black text-sm text-slate-900 dark:text-white tracking-wide uppercase">
+              <h3 className="text-sm font-black uppercase tracking-wide text-slate-900 dark:text-white">
                 {step.title}
               </h3>
-              <p className="text-xs text-slate-600 dark:text-slate-350 leading-relaxed font-semibold">
+              <p className="text-xs font-semibold leading-relaxed text-slate-600 dark:text-slate-300">
                 {step.description}
               </p>
             </div>
           </div>
 
-          <div className="flex items-center justify-between mt-5 pt-3 border-t border-slate-150 dark:border-slate-800/60">
-            {/* Progress dot indicators */}
+          <div className="mt-5 flex items-center justify-between border-t border-slate-200 pt-3 dark:border-slate-800/60">
             <div className="flex gap-1.5">
               {TUTORIAL_STEPS.map((_, index) => (
                 <div
                   key={index}
                   className={`h-1.5 rounded-full transition-all duration-300 ${
-                    index === currentStep
-                      ? 'w-5 bg-red-500'
-                      : 'w-1.5 bg-slate-300 dark:bg-slate-700'
+                    index === currentStep ? 'w-5 bg-red-500' : 'w-1.5 bg-slate-300 dark:bg-slate-700'
                   }`}
                 />
               ))}
             </div>
 
-            {/* Navigation buttons */}
             <div className="flex gap-1.5">
               <button
+                type="button"
                 onClick={handlePrev}
                 disabled={currentStep === 0}
-                className="p-1.5 rounded-lg border border-slate-200 dark:border-slate-850 text-slate-550 dark:text-slate-400 hover:text-slate-800 dark:hover:text-white disabled:opacity-40 disabled:cursor-not-allowed hover:bg-slate-50 dark:hover:bg-slate-800 transition"
+                className="rounded-lg border border-slate-200 p-1.5 text-slate-500 transition hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-40 dark:border-slate-700 dark:text-slate-400 dark:hover:bg-slate-800 dark:hover:text-white"
                 title="Anterior"
               >
-                <ChevronLeft className="w-4 h-4" />
+                <ChevronLeft className="h-4 w-4" />
               </button>
-              
+
               <button
+                type="button"
                 onClick={handleNext}
-                className="flex items-center gap-1 px-3 py-1.5 bg-gradient-to-r from-red-600 to-orange-500 hover:from-red-500 hover:to-orange-450 text-white font-black text-[10px] tracking-wider uppercase rounded-xl shadow-md shadow-red-500/10 active:scale-[0.98] transition"
+                className="flex items-center gap-1 rounded-xl bg-gradient-to-r from-red-600 to-orange-500 px-3 py-1.5 text-[10px] font-black uppercase tracking-wider text-white shadow-md shadow-red-500/10 transition active:scale-[0.98] hover:from-red-500 hover:to-orange-400"
               >
                 {currentStep === TUTORIAL_STEPS.length - 1 ? (
                   <>
                     <span>Entendido</span>
-                    <Flame className="w-3.5 h-3.5" />
+                    <Flame className="h-3.5 w-3.5" />
                   </>
                 ) : (
                   <>
                     <span>Siguiente</span>
-                    <ChevronRight className="w-3.5 h-3.5" />
+                    <ChevronRight className="h-4 w-4" />
                   </>
                 )}
               </button>
@@ -198,6 +208,7 @@ export default function DispatchTutorialOverlay({ isOpen, onClose }: DispatchTut
           </div>
         </div>
       </div>
-    </div>
+    </div>,
+    document.body,
   );
 }
