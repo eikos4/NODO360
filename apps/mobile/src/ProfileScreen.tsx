@@ -3,6 +3,7 @@ import {
   Building2, Calendar, ChevronRight, Flame, Mail, MapPin, ShieldCheck, Truck, UserRound,
 } from 'lucide-react';
 import { api } from './lib/api';
+import { getAppBuildInfo, type AppBuildInfo } from './lib/appBuild';
 
 type ProfileEmergency = {
   id: string;
@@ -68,6 +69,11 @@ export function ProfileScreen({
 }) {
   const [data, setData] = useState<ProfilePayload | null>(null);
   const [error, setError] = useState('');
+  const [build, setBuild] = useState<AppBuildInfo | null>(null);
+
+  useEffect(() => {
+    void getAppBuildInfo().then(setBuild);
+  }, []);
 
   useEffect(() => {
     let cancelled = false;
@@ -100,6 +106,13 @@ export function ProfileScreen({
             {person?.roleLabel || 'Bombero'}
             {person?.isMaquinista ? ' · Maquinista' : ''}
           </em>
+          {build && (
+            <em className="profile-build">
+              App {build.version}
+              {build.build && build.build !== build.version ? ` · build ${build.build}` : ''}
+              {build.platform !== 'web' ? ` · ${build.platform}` : ''}
+            </em>
+          )}
         </div>
       </article>
 

@@ -15,6 +15,8 @@
     "build:mobile": "npm run build --workspace=apps/mobile",
     "test": "npm run test --workspaces --if-present",
     "sync:mobile": "npm run sync --workspace=apps/mobile",
+    "apk:mobile": "npm run apk:debug --workspace=apps/mobile",
+    "apk:mobile:release": "npm run apk:release --workspace=apps/mobile",
     "sync:carro": "npm run sync --workspace=apps/carro",
     "apk:carro": "npm run apk:debug --workspace=apps/carro",
     "open:carro": "npm run open:android --workspace=apps/carro",

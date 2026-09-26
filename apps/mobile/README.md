@@ -14,6 +14,19 @@ npm run build:mobile
 npm run sync:mobile
 ```
 
+### APK privada (bomberos)
+
+Ver guía completa: [`DISTRIBUCION-PRIVADA.md`](./DISTRIBUCION-PRIVADA.md).
+
+```bash
+# 1) google-services.json real en android/app/
+npm run check:firebase --workspace=apps/mobile
+# 2) keystore (una vez)
+npm run keystore --workspace=apps/mobile
+# 3) APK firmada
+npm run apk:mobile:release
+```
+
 Después de sincronizar:
 
 ```bash

@@ -1,6 +1,6 @@
 {
   "name": "@nodo360/mobile",
-  "version": "1.0.0",
+  "version": "1.0.3",
   "private": true,
   "type": "module",
   "scripts": {
@@ -12,7 +12,11 @@
     "icons:launcher": "node scripts/generate-launcher-icons.mjs",
     "sync": "npm run build && cap sync",
     "open:android": "cap open android",
-    "open:ios": "cap open ios"
+    "open:ios": "cap open ios",
+    "check:firebase": "node scripts/check-firebase.mjs",
+    "keystore": "node scripts/ensure-keystore.mjs",
+    "apk:debug": "npm run sync && node scripts/assemble-apk.mjs debug",
+    "apk:release": "npm run sync && node scripts/assemble-apk.mjs release"
   },
   "dependencies": {
     "@aparajita/capacitor-secure-storage": "^8.0.0",

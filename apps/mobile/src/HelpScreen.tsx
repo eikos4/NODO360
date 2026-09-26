@@ -88,6 +88,10 @@ export function HelpScreen({ onBack, onOpenCodes }: { onBack: () => void; onOpen
         <p className="help-note">
           En Configuraciones revisa notificaciones, No molestar y batería para que la alarma suene aunque el celular esté bloqueado.
         </p>
+        <p className="help-note">
+          Actualizaciones: la compañía envía un APK por Drive/WhatsApp. En Perfil ves la versión instalada; debe coincidir con el nombre del archivo.
+          Si Android bloquea la instalación, permite “apps desconocidas” para Drive o el navegador.
+        </p>
       </section>
 
       {onOpenCodes && (

@@ -545,6 +545,7 @@ header small { color: var(--muted); font-size: 10px; margin-top: 4px; }
 .profile-hero small { color: var(--muted); font-size: 10px; font-weight: 700; text-transform: uppercase; }
 .profile-hero b { font-size: 18px; line-height: 1.15; }
 .profile-hero em { font-style: normal; color: var(--muted); font-size: 12px; font-weight: 700; }
+.profile-hero em.profile-build { font-size: 11px; font-weight: 650; opacity: 0.9; letter-spacing: 0.01em; }
 .profile-facts { display: grid; gap: 0; border-radius: 19px; border: 1px solid var(--line); background: var(--panel); overflow: hidden; }
 .profile-facts p { margin: 0; display: flex; align-items: center; gap: 10px; padding: 11px 14px; border-top: 1px solid var(--line); font-size: 13px; font-weight: 650; }
 .profile-facts p:first-child { border-top: 0; }

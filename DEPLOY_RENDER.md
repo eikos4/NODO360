@@ -108,14 +108,17 @@ Endpoints: `https://nodo360-api.onrender.com/api/...`
 
 Sin esto, el bombero **solo ve la alarma si tiene NODO360 abierto**.
 
-1. Crea un proyecto en [Firebase Console](https://console.firebase.google.com)
-2. Activa **Cloud Messaging**
-3. **Project settings → Service accounts → Generate new private key** → pega el JSON en `FIREBASE_SERVICE_ACCOUNT_JSON` (una línea)
-4. **Project settings → General → Your apps → Web**: copia apiKey, projectId, appId, messagingSenderId, etc. a `FIREBASE_WEB_*`
-5. Cloud Messaging → **Web Push certificates** → genera **VAPID** → `FIREBASE_WEB_VAPID_KEY`
-6. Para la **app Android (Capacitor)**: descarga `google-services.json` a `apps/web/android/app/`
-7. Redeploy API. El bombero inicia sesión → banner **Activar notificaciones** → debe aceptar el permiso
-8. Prueba: despacha un 10-0 con el celular en reposo (app cerrada)
+Proyecto Firebase de la APK de bomberos: **`nodo360-9a8ac`** (package Android `cl.nodo360.mobile`).
+
+1. [Firebase Console](https://console.firebase.google.com) → proyecto **nodo360-9a8ac**
+2. Cloud Messaging debe estar activo
+3. **Project settings → Service accounts → Generate new private key**
+4. En Render → servicio **nodo360-api** → **Environment** → variable `FIREBASE_SERVICE_ACCOUNT_JSON`
+5. Pegá el JSON **completo en una sola línea** (sin saltos). Guardar. Render redeploya la API.
+6. En los logs de `nodo360-api` debe aparecer: `Push FCM listo`
+7. Las variables `FIREBASE_WEB_*` y `FIREBASE_WEB_VAPID_KEY` son para notificaciones del **navegador**. La APK Android no las necesita si el paso 3–6 está hecho.
+8. El `google-services.json` va solo en la PC de build (`apps/mobile/android/app/`). No se sube a git ni a Render.
+9. Prueba: el bombero abre la APK una vez, acepta notificaciones, cierra la app y se despacha un 10-0.
 
 **iPhone:** hace falta la app nativa + cuenta Apple Developer. El navegador Safari no despierta apps cerradas de forma fiable.
 

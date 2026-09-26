@@ -10,11 +10,14 @@ build/
 .env
 .env.*
 !.env.example
+google-services.json
 apps/mobile/android/app/google-services.json
+apps/mobile/android/keystore.properties
 apps/mobile/ios/App/App/GoogleService-Info.plist
 apps/mobile/ios/App/App/Sounds/*.caf
 *.jks
 *.keystore
+**/keystore.properties
 
 # Logs
 logs/
