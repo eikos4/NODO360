@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { Link, useNavigate } from 'react-router-dom';
+import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import {
   Truck, AlertTriangle, Volume2, VolumeX, Siren,
   MapPin, Building2, Square, Settings,
@@ -228,6 +228,7 @@ function formatDispatchClock(value: unknown) {
 
 export default function BotoneraPage() {
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
   const qc = useQueryClient();
   const user = useAuthStore(s => s.user);
   const logout = useAuthStore(s => s.logout);
@@ -295,6 +296,24 @@ export default function BotoneraPage() {
 
   // PRE-DISPATCH GPS LOGIC
   const [preDispatchToken, setPreDispatchToken] = useState<string | null>(null);
+  const [seededPinToken, setSeededPinToken] = useState<string | null>(null);
+
+  useEffect(() => {
+    const latRaw = searchParams.get('lat');
+    const lngRaw = searchParams.get('lng');
+    if (!latRaw || !lngRaw) return;
+    const lat = Number(latRaw);
+    const lng = Number(lngRaw);
+    if (!Number.isFinite(lat) || !Number.isFinite(lng)) return;
+    setLatitude(lat.toFixed(6));
+    setLongitude(lng.toFixed(6));
+    setPickOnMap(true);
+    const dir = searchParams.get('dir');
+    if (dir) setAddress(dir);
+    const pin = searchParams.get('pin');
+    if (pin) setSeededPinToken(pin);
+    toast.success('Ubicación lista en el mapa de Despacho360');
+  }, [searchParams]);
 
   useEffect(() => {
     if (!preDispatchToken) return;
@@ -608,10 +627,11 @@ export default function BotoneraPage() {
     const lat = latitude ? parseFloat(latitude) : undefined;
     const lng = longitude ? parseFloat(longitude) : undefined;
 
+    let createdIncident: { id?: string } | undefined;
     if (pendingPersistRef.current) {
       pendingPersistRef.current = false;
       try {
-        await persistDispatch.mutateAsync({
+        const created = await persistDispatch.mutateAsync({
           type: botoneraTypeToIncident(typeId),
           address: address.trim(),
           description: notes.trim() || radioMsg || `Despacho clave ${emerg.code}: ${emerg.label}`,
@@ -622,8 +642,9 @@ export default function BotoneraPage() {
           longitude: lng != null && Number.isFinite(lng) ? lng : undefined,
           dispatchNotes: notes.trim() || undefined,
           dispatchSource: 'BOTONERA',
-          locationPinToken: preDispatchToken || undefined,
+          locationPinToken: seededPinToken || preDispatchToken || undefined,
         });
+        createdIncident = (created as { data?: { id?: string } })?.data;
         qc.invalidateQueries({ queryKey: ['incidents'] });
         qc.invalidateQueries({ queryKey: ['guard-log-dashboard'] });
       } catch {
@@ -646,8 +667,16 @@ export default function BotoneraPage() {
           notes,
           latitude,
           longitude,
-          incident: prev?.incident,
+          incident: prev?.incident ?? createdIncident,
         }));
+        if (createdIncident?.id) {
+          const qs = new URLSearchParams({ incidente: createdIncident.id });
+          if (lat != null && Number.isFinite(lat)) qs.set('lat', String(lat));
+          if (lng != null && Number.isFinite(lng)) qs.set('lng', String(lng));
+          if (address.trim()) qs.set('dir', address.trim());
+          toast.success(`${emerg.code} en la central, con el punto en el mapa`);
+          navigate(`/central-emergencia?${qs.toString()}`);
+        }
         return;
       }
 
@@ -678,7 +707,7 @@ export default function BotoneraPage() {
   }, [
     selectedType, address, selectedCia, getVehicleIdsForDispatch, repeatCount, muted, playBrandIdent, playEmergencyKeyTone, playSiren, sirenDuration,
     voiceEnabled, speak, vehicles, selectedParticipants, users, company, notes, latitude,
-    longitude, persistDispatch, qc, dispatchConfig,
+    longitude, persistDispatch, qc, dispatchConfig, navigate, seededPinToken,
   ]);
 
   const tryAutoDispatch = useCallback((typeId: string) => {
@@ -1976,11 +2005,17 @@ export default function BotoneraPage() {
           <div className="mt-4 flex flex-wrap gap-2">
             {lastDispatch.incident && (
               <Link
-                to="/incidents"
+                to={`/central-emergencia?incidente=${lastDispatch.incident.id}${
+                  lastDispatch.incident.latitude != null && lastDispatch.incident.longitude != null
+                    ? `&lat=${lastDispatch.incident.latitude}&lng=${lastDispatch.incident.longitude}`
+                    : lastDispatch.latitude && lastDispatch.longitude
+                      ? `&lat=${lastDispatch.latitude}&lng=${lastDispatch.longitude}`
+                      : ''
+                }`}
                 className="inline-flex items-center gap-2 text-xs font-semibold bg-emerald-600 hover:bg-emerald-500 text-white px-4 py-2 rounded-xl"
               >
                 <ExternalLink className="w-3.5 h-3.5" />
-                Ver {lastDispatch.incident.code} en Emergencias
+                Ver {lastDispatch.incident.code} en la central
               </Link>
             )}
             {selectedCia && (

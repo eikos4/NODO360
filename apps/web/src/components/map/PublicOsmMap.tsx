@@ -23,6 +23,8 @@ type Props = {
   focus?: [number, number] | null;
   markers?: OsmMarker[];
   zoom?: number;
+  /** Incrementar para volver a centrar aunque el foco no haya cambiado. */
+  flyToken?: number;
   theme?: 'light' | 'dark';
   baseStyle?: OsmBaseStyle;
   className?: string;
@@ -58,6 +60,7 @@ export default function PublicOsmMap({
   focus = null,
   markers = [],
   zoom = 14,
+  flyToken = 0,
   theme = 'light',
   baseStyle,
   className = 'h-full w-full',
@@ -141,7 +144,7 @@ export default function PublicOsmMap({
       }
     }
     requestAnimationFrame(() => map.invalidateSize());
-  }, [markers, center, focus, zoom]);
+  }, [markers, center, focus, zoom, flyToken]);
 
   return (
     <div

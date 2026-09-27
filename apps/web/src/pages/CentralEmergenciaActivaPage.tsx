@@ -1,9 +1,9 @@
 import { useEffect, useMemo, useState } from 'react';
-import { Link, useSearchParams } from 'react-router-dom';
+import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import {
-  Bell, BookOpen, CheckCircle2, Clock, Droplets, FileDown, HelpCircle, Loader2, Map,
-  MapPin, MessageSquarePlus, Navigation, Radio, RefreshCw, Shield, Siren, Truck, Tv, Users, X, Zap,
+  Bell, BookOpen, CheckCircle2, Clock, Cloud, CloudRain, CloudSun, Droplets, FileDown, HelpCircle, Loader2, LocateFixed, Map,
+  MapPin, MessageSquarePlus, Navigation, Radio, RefreshCw, Shield, Siren, Sun, Truck, Tv, Users, X, Zap,
 } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { api } from '../lib/api';
@@ -22,6 +22,8 @@ import { downloadEmergencyReport } from '../lib/pdf/downloadEmergencyReport';
 import EmergencyLiveFeed from '../components/dispatch/EmergencyLiveFeed';
 import RadioPttPanel from '../components/radio/RadioPttPanel';
 import PublicOsmMap, { PARRAL_CENTER } from '../components/map/PublicOsmMap';
+import LocateEmergencyStudio from '../components/dispatch/LocateEmergencyStudio';
+import { incidentNavigatePoint, openGoogleMapsDirections } from '../lib/incident-location-pin';
 import DoubleDispatchConfirmModal from '../components/dispatch/DoubleDispatchConfirmModal';
 import type { CentralParralThemeTokens } from '../lib/central-parral-theme';
 
@@ -83,6 +85,68 @@ function elapsed(iso: string) {
   return `${h}h ${mins % 60}m`;
 }
 
+function weatherLabel(code?: number | null) {
+  if (code == null) return 'Parral';
+  if (code === 0) return 'Despejado';
+  if (code <= 3) return 'Parcial';
+  if (code <= 48) return 'Nublado';
+  if (code <= 67) return 'Lluvia';
+  if (code <= 77) return 'Nieve';
+  if (code <= 82) return 'Chubascos';
+  return 'Inestable';
+}
+
+function WeatherGlyph({ code, className }: { code?: number | null; className?: string }) {
+  if (code != null && code >= 51) return <CloudRain className={className} />;
+  if (code != null && code >= 1 && code <= 3) return <CloudSun className={className} />;
+  if (code != null && code >= 45) return <Cloud className={className} />;
+  return <Sun className={className} />;
+}
+
+function useParralWeather() {
+  const [tempC, setTempC] = useState<number | null>(null);
+  const [code, setCode] = useState<number | null>(null);
+  const [wind, setWind] = useState<number | null>(null);
+  useEffect(() => {
+    const ctrl = new AbortController();
+    const [lat, lng] = PARRAL_CENTER;
+    fetch(
+      `https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lng}&current=temperature_2m,weather_code,wind_speed_10m&timezone=America/Santiago`,
+      { signal: ctrl.signal },
+    )
+      .then((r) => r.json())
+      .then((j) => {
+        const t = j?.current?.temperature_2m;
+        const c = j?.current?.weather_code;
+        const w = j?.current?.wind_speed_10m;
+        if (typeof t === 'number') setTempC(Math.round(t));
+        if (typeof c === 'number') setCode(c);
+        if (typeof w === 'number') setWind(Math.round(w));
+      })
+      .catch(() => undefined);
+    return () => ctrl.abort();
+  }, []);
+  return { tempC, code, wind };
+}
+
+function WeatherChip({ isDark, compact = false }: { isDark: boolean; compact?: boolean }) {
+  const weather = useParralWeather();
+  return (
+    <div className={`flex items-center gap-1.5 ${compact ? '' : 'justify-end'}`}>
+      <WeatherGlyph code={weather.code} className={`w-4 h-4 ${isDark ? 'text-sky-300' : 'text-sky-600'}`} />
+      <div className={compact ? '' : 'text-right'}>
+        <p className={`font-black tabular-nums leading-none ${compact ? 'text-sm' : 'text-base'} ${isDark ? 'text-white' : 'text-slate-900'}`}>
+          {weather.tempC != null ? `${weather.tempC}°` : '—'}
+        </p>
+        <p className={`text-[10px] font-semibold ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>
+          {weatherLabel(weather.code)}
+          {weather.wind != null ? ` · ${weather.wind} km/h` : ''}
+        </p>
+      </div>
+    </div>
+  );
+}
+
 function LiveClock({ className }: { className: string }) {
   const [now, setNow] = useState(() => new Date());
   useEffect(() => {
@@ -121,6 +185,9 @@ function IdleHomeClock({ isDark }: { isDark: boolean }) {
       <p className={`mt-3 text-sm sm:text-base capitalize ${isDark ? 'text-slate-400' : 'text-slate-600'}`}>
         {dateLabel}
       </p>
+      <div className="mt-4 flex justify-center">
+        <WeatherChip isDark={isDark} compact />
+      </div>
     </div>
   );
 }
@@ -141,6 +208,7 @@ function IdleHome({
   isDark,
   recentClosed,
   onDispatch,
+  onLocate,
   isFetching,
   onRefresh,
 }: {
@@ -148,6 +216,7 @@ function IdleHome({
   isDark: boolean;
   recentClosed: IncidentRow[];
   onDispatch: () => void;
+  onLocate: () => void;
   isFetching: boolean;
   onRefresh: () => void;
 }) {
@@ -215,6 +284,14 @@ function IdleHome({
               <Bell className="w-4 h-4" />
               Abrir Alarms
             </Link>
+            <button
+              type="button"
+              onClick={onLocate}
+              className="inline-flex items-center gap-2 px-5 py-3.5 rounded-2xl border border-sky-500 bg-sky-500 text-sm font-black text-sky-950 shadow-lg shadow-sky-900/15"
+            >
+              <LocateFixed className="w-4 h-4" />
+              Localizar
+            </button>
           </div>
 
           <div className="mb-10">
@@ -318,10 +395,13 @@ export default function CentralEmergenciaActivaPage() {
   const { tokens: th, isDark } = useCentralParralTheme();
   const token = useAuthStore((s) => s.token);
   const qc = useQueryClient();
+  const navigate = useNavigate();
   const [params, setParams] = useSearchParams();
   const [selectedId, setSelectedId] = useState(params.get('incidente') ?? '');
   const [note, setNote] = useState('');
   const [showDispatch, setShowDispatch] = useState(false);
+  const [flyToken, setFlyToken] = useState(0);
+  const [locateOpen, setLocateOpen] = useState(false);
   const [nowTick, setNowTick] = useState(0);
 
   const d = useQuickDispatch({
@@ -359,16 +439,29 @@ export default function CentralEmergenciaActivaPage() {
     [incidents],
   );
 
-  const selected = active.find((i) => i.id === selectedId) ?? active[0] ?? null;
+  const requestedId = params.get('incidente') || selectedId;
+  const matched = active.find((i) => i.id === requestedId) ?? null;
+  const [requestGaveUp, setRequestGaveUp] = useState(false);
+  useEffect(() => {
+    setRequestGaveUp(false);
+    if (!requestedId || matched) return;
+    const t = window.setTimeout(() => setRequestGaveUp(true), 8000);
+    return () => window.clearTimeout(t);
+  }, [requestedId, matched?.id]);
+  const selected = matched ?? (requestedId && !requestGaveUp ? null : active[0] ?? null);
 
   useEffect(() => {
-    if (!selected) {
-      if (selectedId) setSelectedId('');
-      return;
-    }
+    if (!selected) return;
     if (selected.id !== selectedId) setSelectedId(selected.id);
     if (params.get('incidente') !== selected.id) {
-      setParams({ incidente: selected.id }, { replace: true });
+      const next: Record<string, string> = { incidente: selected.id };
+      const lat = params.get('lat');
+      const lng = params.get('lng');
+      const dir = params.get('dir');
+      if (lat) next.lat = lat;
+      if (lng) next.lng = lng;
+      if (dir) next.dir = dir;
+      setParams(next, { replace: true });
     }
   }, [selected?.id]);
 
@@ -389,7 +482,8 @@ export default function CentralEmergenciaActivaPage() {
     [incidents],
   );
 
-  const idleHome = active.length === 0 && !showDispatch;
+  const pinPending = Boolean(requestedId && !matched && !requestGaveUp);
+  const idleHome = active.length === 0 && !showDispatch && !pinPending;
 
   const { data: team } = useQuery<TeamDetail | null>({
     queryKey: ['emergency-response', selected?.id],
@@ -467,11 +561,15 @@ export default function CentralEmergenciaActivaPage() {
       });
   }, [team, summary]);
 
-  const mapLat = selected?.confirmedLatitude ?? selected?.latitude ?? null;
-  const mapLng = selected?.confirmedLongitude ?? selected?.longitude ?? null;
+  const hintLat = Number(params.get('lat'));
+  const hintLng = Number(params.get('lng'));
+  const hasHint = Number.isFinite(hintLat) && Number.isFinite(hintLng);
+  const mapLat = selected?.confirmedLatitude ?? selected?.latitude ?? (hasHint ? hintLat : null);
+  const mapLng = selected?.confirmedLongitude ?? selected?.longitude ?? (hasHint ? hintLng : null);
   const mapCenter: [number, number] =
     mapLat != null && mapLng != null ? [mapLat, mapLng] : PARRAL_CENTER;
 
+  const hintDir = params.get('dir') || '';
   const mapMarkers = useMemo(() => {
     const markers: { id: string; lat: number; lng: number; active?: boolean; label?: string }[] = [];
     for (const inc of active) {
@@ -497,11 +595,41 @@ export default function CentralEmergenciaActivaPage() {
         label: `<strong>${r.user.firstName} ${r.user.lastName}</strong><br/>${r.statusLabel ?? r.status ?? ''}`,
       });
     }
+    const pinId = selected?.id || requestedId;
+    if (hasHint && pinId && !markers.some((m) => m.id === pinId)) {
+      markers.unshift({
+        id: pinId,
+        lat: hintLat,
+        lng: hintLng,
+        active: true,
+        label: `<strong>${selected?.code ?? 'Despacho'}</strong><br/>${selected?.address || hintDir || 'Punto del despacho'}`,
+      });
+    }
     return markers;
-  }, [active, selected?.id, team?.teamResponses]);
+  }, [active, selected?.id, selected?.code, selected?.address, team?.teamResponses, hasHint, hintLat, hintLng, requestedId, hintDir]);
 
   const vehicles = (d.dispatchableVehicles as { id: string; patent: string; type?: string }[]) ?? [];
   void nowTick;
+
+  const locateEmergency = () => {
+    if (!selected) return toast.error('No hay emergencia seleccionada');
+    const point = incidentNavigatePoint(selected);
+    setFlyToken((n) => n + 1);
+    if (point) {
+      openGoogleMapsDirections(point.lat, point.lng);
+      return;
+    }
+    const q = selected.address?.trim();
+    if (q && q !== 'Por confirmar') {
+      window.open(
+        `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(`${q}, Parral`)}`,
+        '_blank',
+        'noopener,noreferrer',
+      );
+      return;
+    }
+    toast.error('Esta emergencia no tiene GPS ni dirección');
+  };
 
   return (
     <div className={`flex flex-col h-full min-h-0 overflow-hidden transition-colors ${th.shell}`}>
@@ -519,26 +647,34 @@ export default function CentralEmergenciaActivaPage() {
             <h1 className={`text-lg sm:text-xl font-bold truncate ${th.title}`}>
               {selected
                 ? `${selected.code} · ${selected.type}`
-                : idleHome
-                  ? 'Sin novedades'
-                  : 'Despacho rápido'}
+                : pinPending
+                  ? 'Despacho en el mapa'
+                  : idleHome
+                    ? 'Sin novedades'
+                    : 'Despacho rápido'}
             </h1>
             <p className={`text-xs mt-0.5 flex items-center gap-1 truncate ${th.subtitle}`}>
               <MapPin className="w-3 h-3 shrink-0" />
               {selected?.address
-                || (idleHome
-                  ? 'Todo tranquilo · listos para alarmar'
-                  : 'Completa clave, dirección y carro')}
+                || (pinPending
+                  ? (params.get('dir') || 'Cargando la emergencia en este punto')
+                  : idleHome
+                    ? 'Todo tranquilo · listos para alarmar'
+                    : 'Completa clave, dirección y carro')}
             </p>
           </div>
           <div className="flex items-center gap-2 flex-wrap justify-end">
             {!idleHome && (
-              <div className="text-right hidden sm:block">
-                <LiveClock className={th.clock} />
-                <p className={`text-[10px] flex items-center justify-end gap-1 mt-0.5 ${th.subtitle}`}>
-                  <Clock className="w-3 h-3" />
-                  {selected ? `Tiempo · ${elapsed(selected.dispatchedAt)}` : `${active.length} activa(s)`}
-                </p>
+              <div className={`flex items-center gap-3 text-right rounded-xl border px-3 py-1.5 ${th.borderSubtle}`}>
+                <div>
+                  <LiveClock className={th.clock} />
+                  <p className={`text-[10px] flex items-center justify-end gap-1 mt-0.5 ${th.subtitle}`}>
+                    <Clock className="w-3 h-3" />
+                    {selected ? `En curso · ${elapsed(selected.dispatchedAt)}` : `${active.length} activa(s)`}
+                  </p>
+                </div>
+                <div className={`h-8 w-px ${isDark ? 'bg-white/10' : 'bg-slate-200'}`} />
+                <WeatherChip isDark={isDark} />
               </div>
             )}
             <button
@@ -563,6 +699,17 @@ export default function CentralEmergenciaActivaPage() {
             )}
             {selected && (
               <>
+                <button
+                  type="button"
+                  onClick={locateEmergency}
+                  className={`flex items-center gap-1.5 px-3 py-2 rounded-xl border text-xs font-black uppercase tracking-wide ${
+                    isDark ? 'border-sky-400/40 text-sky-200' : 'border-sky-600 text-sky-800'
+                  }`}
+                  title="Centrar mapa y abrir navegación"
+                >
+                  <LocateFixed className="w-3.5 h-3.5" />
+                  Localizar emergencia
+                </button>
                 <button
                   type="button"
                   onClick={() => downloadEmergencyReport(selected.id)}
@@ -595,6 +742,7 @@ export default function CentralEmergenciaActivaPage() {
           isDark={isDark}
           recentClosed={recentClosed}
           onDispatch={() => setShowDispatch(true)}
+          onLocate={() => setLocateOpen(true)}
           isFetching={isFetching}
           onRefresh={() => void refetch()}
         />
@@ -606,9 +754,23 @@ export default function CentralEmergenciaActivaPage() {
             <p className={`text-[10px] font-black uppercase tracking-widest ${th.sectionLabel}`}>
               Activas · {active.length}
             </p>
-            <Link to="/nodo360-alarms" className={`text-[10px] font-bold flex items-center gap-1 ${th.navLink}`}>
-              <Bell className="w-3 h-3" /> Alarms
-            </Link>
+            <div className="flex items-center gap-2">
+              <button
+                type="button"
+                disabled={!selected}
+                onClick={locateEmergency}
+                className={`inline-flex items-center gap-1 rounded-lg border px-2 py-1 text-[10px] font-black uppercase tracking-wide disabled:opacity-40 ${
+                  isDark ? 'border-sky-400/40 text-sky-200' : 'border-sky-600 text-sky-800'
+                }`}
+                title="Centrar el mapa y abrir navegación"
+              >
+                <LocateFixed className="w-3 h-3" />
+                Localizar
+              </button>
+              <Link to="/nodo360-alarms" className={`text-[10px] font-bold flex items-center gap-1 ${th.navLink}`}>
+                <Bell className="w-3 h-3" /> Alarms
+              </Link>
+            </div>
           </div>
 
           <div className="min-h-0 flex-1 overflow-y-auto p-2 space-y-1.5 scrollbar-thin">
@@ -752,12 +914,25 @@ export default function CentralEmergenciaActivaPage() {
                         ? 'Falta carro'
                         : 'Despachar alarma'}
               </button>
-              <Link
-                to="/nodo360-alarms"
-                className={`block text-center text-[11px] font-semibold ${th.navLink}`}
-              >
-                Abrir consola Alarms completa →
-              </Link>
+              <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
+                <button
+                  type="button"
+                  disabled={!selected}
+                  onClick={locateEmergency}
+                  className={`inline-flex flex-1 items-center justify-center gap-1.5 rounded-xl border px-3 py-2 text-[11px] font-black uppercase tracking-wide disabled:opacity-40 ${
+                    isDark ? 'border-sky-400/40 text-sky-200' : 'border-sky-600 text-sky-800'
+                  }`}
+                >
+                  <LocateFixed className="w-3.5 h-3.5" />
+                  Localizar emergencia
+                </button>
+                <Link
+                  to="/nodo360-alarms"
+                  className={`inline-flex flex-1 items-center justify-center text-center text-[11px] font-semibold ${th.navLink}`}
+                >
+                  Abrir consola Alarms completa →
+                </Link>
+              </div>
             </div>
           )}
         </aside>
@@ -770,6 +945,7 @@ export default function CentralEmergenciaActivaPage() {
               baseStyle={isDark ? 'dark' : 'voyager'}
               center={mapCenter}
               focus={mapLat != null && mapLng != null ? [mapLat, mapLng] : null}
+              flyToken={flyToken}
               zoom={selected && mapLat != null ? 15 : 13}
               markers={mapMarkers}
               className="absolute inset-0 h-full w-full"
@@ -989,6 +1165,22 @@ export default function CentralEmergenciaActivaPage() {
           isDark={isDark}
         />
       )}
+
+      <LocateEmergencyStudio
+        open={locateOpen}
+        isDark={isDark}
+        onClose={() => setLocateOpen(false)}
+        onConfirmed={(located) => {
+          const qs = new URLSearchParams({
+            lat: String(located.lat),
+            lng: String(located.lng),
+            pin: located.token,
+          });
+          if (located.address) qs.set('dir', located.address);
+          setLocateOpen(false);
+          navigate(`/despacho360?${qs.toString()}`);
+        }}
+      />
     </div>
   );
 }
