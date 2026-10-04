@@ -3,14 +3,15 @@ import { Link } from 'react-router-dom';
 import {
   AlertTriangle, Bell, BookOpen, CheckCircle2, ChevronRight, Clock, Flame, Headphones,
   HelpCircle, KeyRound, LayoutDashboard, MapPin, MessageCircle, Monitor, Navigation,
-  Radio, Shield, Smartphone, Siren, Tablet, Truck, Users, Zap, ArrowRight, Play,
-  UserCog, Building2, FileText, Mic, LifeBuoy,
+  Radio, Shield, Smartphone, Siren, Tablet, Truck, Users, Zap, ArrowRight, Play, ExternalLink,
+  UserCog, Building2, FileText, Mic, LifeBuoy, X,
 } from 'lucide-react';
 import { useAuthStore } from '../store/authStore';
 import { useThemeStore } from '../store/themeStore';
 import { getDefaultRouteForUser } from '../lib/roleAccess';
 
 const NAV = [
+  { href: '#redes', label: 'Redes' },
   { href: '#por-que', label: 'Por qué' },
   { href: '#roles', label: 'Roles' },
   { href: '#empezar', label: 'Empezar' },
@@ -21,6 +22,35 @@ const NAV = [
   { href: '#pantallas', label: 'Pantallas' },
   { href: '#faq', label: 'FAQ' },
   { href: '#soporte', label: 'Soporte' },
+] as const;
+
+const NODO_INSTAGRAM = 'https://www.instagram.com/nodo360.ia/';
+const NODO_INSTAGRAM_REELS = 'https://www.instagram.com/nodo360.ia/reels/';
+const NODO_OPS_YOUTUBE_ID = '3tAJbB_kKnE';
+const NODO_OPS_YOUTUBE_EMBED = `https://www.youtube.com/embed/${NODO_OPS_YOUTUBE_ID}?autoplay=1&rel=0&modestbranding=1&playsinline=1`;
+
+const SOCIAL_POSTS = [
+  {
+    icon: Siren,
+    tag: 'Publicación',
+    title: 'Despacho y consola activa',
+    text: 'La centralista despacha, confirma carro, sigue el mapa y controla la bitácora en una sola vista.',
+    href: NODO_INSTAGRAM,
+  },
+  {
+    icon: Smartphone,
+    tag: 'Publicación',
+    title: 'App móvil del bombero',
+    text: 'Alarmas, Voy / No voy, GPS, radio y recap para que la respuesta sea más clara y rápida.',
+    href: NODO_INSTAGRAM,
+  },
+  {
+    icon: Radio,
+    tag: 'Publicación',
+    title: 'Radio, GPS y terreno',
+    text: 'Canal por emergencia, ubicación operativa y coordinación real entre central, carros y dotación.',
+    href: NODO_INSTAGRAM_REELS,
+  },
 ] as const;
 
 const FLOW = [
@@ -449,11 +479,63 @@ function SectionHead({
   );
 }
 
+function AyudaOpsVideoOverlay({ onClose }: { onClose: () => void }) {
+  const frameRef = useRef<HTMLDivElement | null>(null);
+
+  useEffect(() => {
+    const prev = document.body.style.overflow;
+    document.body.style.overflow = 'hidden';
+    const node = frameRef.current;
+    const requestFs = node?.requestFullscreen?.bind(node);
+    if (requestFs) void requestFs().catch(() => undefined);
+    const onKey = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') onClose();
+    };
+    window.addEventListener('keydown', onKey);
+    return () => {
+      document.body.style.overflow = prev;
+      window.removeEventListener('keydown', onKey);
+      if (document.fullscreenElement) void document.exitFullscreen().catch(() => undefined);
+    };
+  }, [onClose]);
+
+  return (
+    <div
+      ref={frameRef}
+      className="ayuda-ops-video fixed inset-0 z-[10000] bg-black"
+      role="dialog"
+      aria-modal="true"
+      aria-label="Trailer operativo Nodo360"
+    >
+      <button
+        type="button"
+        onClick={onClose}
+        className="keep-on-color absolute top-4 right-4 z-20 inline-flex items-center gap-2 rounded-full bg-black/70 px-4 py-2 text-sm font-bold text-white border border-white/20 hover:bg-black/90"
+      >
+        <X className="w-4 h-4" />
+        Cerrar
+      </button>
+      <div className="absolute inset-0 flex items-center justify-center">
+        <div className="w-screen h-[56.25vw] max-h-screen max-w-[177.78vh]">
+          <iframe
+            title="Nodo360: Trailer App"
+            src={NODO_OPS_YOUTUBE_EMBED}
+            className="h-full w-full border-0"
+            allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; fullscreen"
+            allowFullScreen
+          />
+        </div>
+      </div>
+    </div>
+  );
+}
+
 export default function AyudaPage() {
   const user = useAuthStore((s) => s.user);
   const home = getDefaultRouteForUser(user);
   const isDark = useThemeStore((s) => s.theme) === 'dark';
   const t = tone(isDark);
+  const [opsVideoOpen, setOpsVideoOpen] = useState(false);
 
   useEffect(() => {
     window.scrollTo(0, 0);
@@ -527,19 +609,114 @@ export default function AyudaPage() {
               Para empezar
               <ArrowRight className="w-4 h-4" />
             </a>
-            <a
-              href="#operacion"
+            <button
+              type="button"
+              onClick={() => setOpsVideoOpen(true)}
               className="inline-flex items-center gap-2 border border-white/35 hover:border-white/60 text-white font-semibold px-5 py-3 rounded-xl backdrop-blur-sm bg-black/25 transition-colors"
             >
               <Play className="w-4 h-4" />
               Operación
-            </a>
+            </button>
             <Link
               to={home}
               className="inline-flex items-center gap-2 border border-white/35 hover:border-white/60 text-white font-semibold px-5 py-3 rounded-xl backdrop-blur-sm bg-black/25 transition-colors"
             >
               Ir a la consola
             </Link>
+          </div>
+        </div>
+      </section>
+
+      <section id="redes" className={`py-16 sm:py-20 px-4 sm:px-6 border-y ${t.hairline} ${t.band}`}>
+        <div className="max-w-6xl mx-auto">
+          <SectionHead
+            t={t}
+            eyebrow="Redes Nodo360"
+            title="Reels y publicaciones para mostrar Nodo360"
+            lead="Un bloque pensado para centralistas: video al inicio y tres tarjetas para mostrar el sistema desde redes."
+          />
+
+          <div className="mt-10 grid lg:grid-cols-[1.2fr_.8fr] gap-6">
+            <article className={`overflow-hidden rounded-3xl border ${t.hairline} ${t.card}`}>
+              <div className="relative aspect-[16/9] bg-[#070b12]">
+                <video
+                  autoPlay
+                  loop
+                  muted
+                  playsInline
+                  className="absolute inset-0 h-full w-full object-cover"
+                >
+                  <source src="/video.mp4" type="video/mp4" />
+                </video>
+                <div className="absolute inset-0 bg-gradient-to-t from-black/75 via-black/20 to-black/10" />
+                <div className="absolute left-0 right-0 bottom-0 p-5 sm:p-6 text-white">
+                  <p className="text-[11px] font-bold uppercase tracking-[0.22em] text-red-300">Reels / Video</p>
+                  <h3
+                    className="mt-2 text-3xl sm:text-4xl"
+                    style={{ fontFamily: '"Barlow Condensed", sans-serif', fontWeight: 800 }}
+                  >
+                    Nodo360 en acción
+                  </h3>
+                  <p className="mt-2 max-w-xl text-sm sm:text-base text-slate-200">
+                    Una forma rápida de mostrar despacho, mapa, radio, app móvil y operación en terreno con look más comercial.
+                  </p>
+                </div>
+              </div>
+              <div className="flex flex-wrap gap-3 p-5 sm:p-6">
+                <a
+                  href={NODO_INSTAGRAM_REELS}
+                  target="_blank"
+                  rel="noreferrer"
+                  className="keep-on-color inline-flex items-center gap-2 rounded-xl bg-red-600 px-4 py-3 text-sm font-bold text-white hover:bg-red-500"
+                >
+                  <Play className="w-4 h-4" />
+                  Ver reels
+                </a>
+                <a
+                  href={NODO_INSTAGRAM}
+                  target="_blank"
+                  rel="noreferrer"
+                  className={`inline-flex items-center gap-2 rounded-xl border px-4 py-3 text-sm font-semibold ${t.ghostBtn}`}
+                >
+                  <ExternalLink className="w-4 h-4" />
+                  Abrir Instagram
+                </a>
+              </div>
+            </article>
+
+            <div className="grid gap-4">
+              {SOCIAL_POSTS.map((item) => {
+                const Icon = item.icon;
+                return (
+                  <a
+                    key={item.title}
+                    href={item.href}
+                    target="_blank"
+                    rel="noreferrer"
+                    className={`rounded-2xl border p-5 transition-colors ${t.hairline} ${t.card} ${t.cardHover}`}
+                  >
+                    <div className="flex items-start gap-3">
+                      <span className={`w-11 h-11 shrink-0 rounded-xl border flex items-center justify-center ${t.iconBox}`}>
+                        <Icon className="w-5 h-5 text-red-600" />
+                      </span>
+                      <div className="min-w-0">
+                        <p className="text-[10px] font-bold uppercase tracking-[0.22em] text-red-600">{item.tag}</p>
+                        <h3
+                          className={`mt-1 text-2xl leading-tight ${t.ink}`}
+                          style={{ fontFamily: '"Barlow Condensed", sans-serif', fontWeight: 700 }}
+                        >
+                          {item.title}
+                        </h3>
+                        <p className={`mt-2 text-sm leading-relaxed ${t.muted}`}>{item.text}</p>
+                        <span className="mt-4 inline-flex items-center gap-2 text-sm font-bold text-red-600">
+                          Ver en Instagram <ExternalLink className="w-4 h-4" />
+                        </span>
+                      </div>
+                    </div>
+                  </a>
+                );
+              })}
+            </div>
           </div>
         </div>
       </section>
@@ -638,6 +815,8 @@ export default function AyudaPage() {
           </Link>
         </div>
       </footer>
+
+      {opsVideoOpen && <AyudaOpsVideoOverlay onClose={() => setOpsVideoOpen(false)} />}
 
       <style>{`
         @keyframes ayuda-rise {

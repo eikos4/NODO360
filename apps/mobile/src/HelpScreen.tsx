@@ -5,6 +5,8 @@ import { RadioCodesMenuButton } from './RadioCodesScreen';
 
 const KODESK_WEB = 'https://www.kodesk.cl';
 const KODESK_MAIL = 'mailto:nodo360@kodesk.cl';
+const NODO_INSTAGRAM = 'https://www.instagram.com/nodo360.ia/';
+const NODO_INSTAGRAM_REELS = 'https://www.instagram.com/nodo360.ia/reels/';
 
 export function HelpMenuButton({ onOpen }: { onOpen: () => void }) {
   return (
@@ -104,6 +106,29 @@ export function HelpScreen({ onBack, onOpenCodes }: { onBack: () => void; onOpen
           <RadioCodesMenuButton onOpen={onOpenCodes} />
         </section>
       )}
+
+      <section className="help-card">
+        <h2><ExternalLink /> Nodo360 en Instagram</h2>
+        <p>
+          Conoce Nodo360 desde la misma app: novedades, publicaciones, reels y demostraciones del trabajo operativo.
+        </p>
+        <ul>
+          <li><b>Perfil oficial:</b> @nodo360.ia</li>
+          <li><b>Publicaciones:</b> avances, pantallas, funciones y despliegues de la plataforma.</li>
+          <li><b>Reels:</b> clips cortos para mostrar cómo trabaja Nodo360 en terreno y central.</li>
+        </ul>
+        <div className="help-kodesk-links">
+          <a href={NODO_INSTAGRAM} target="_blank" rel="noopener noreferrer">
+            <ExternalLink /> Ver Instagram
+          </a>
+          <a href={NODO_INSTAGRAM} target="_blank" rel="noopener noreferrer">
+            <ExternalLink /> Ver publicaciones
+          </a>
+          <a href={NODO_INSTAGRAM_REELS} target="_blank" rel="noopener noreferrer">
+            <ExternalLink /> Ver reels
+          </a>
+        </div>
+      </section>
 
       <section className="help-kodesk">
         <small>Plataforma creada por</small>

@@ -2,10 +2,11 @@ import { useEffect, useMemo, useState } from 'react';
 import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import {
-  Bell, BookOpen, CheckCircle2, Clock, Cloud, CloudRain, CloudSun, Droplets, FileDown, HelpCircle, Loader2, LocateFixed, Map,
+  Bell, BookOpen, CheckCircle2, Clock, Cloud, CloudRain, CloudSun, Droplets, FileDown, HelpCircle, Loader2, LocateFixed, Map as MapIcon,
   MapPin, MessageSquarePlus, Navigation, Radio, RefreshCw, Shield, Siren, Sun, Truck, Tv, Users, X, Zap,
 } from 'lucide-react';
 import toast from 'react-hot-toast';
+import { AdvancedMarker, Map as GoogleMap, useMap } from '@vis.gl/react-google-maps';
 import { api } from '../lib/api';
 import { useAuthStore } from '../store/authStore';
 import { useCentralParralTheme } from '../hooks/useCentralParralTheme';
@@ -28,6 +29,7 @@ import DoubleDispatchConfirmModal from '../components/dispatch/DoubleDispatchCon
 import type { CentralParralThemeTokens } from '../lib/central-parral-theme';
 
 const POLL_MS = 8_000;
+const HAS_GOOGLE_MAPS = Boolean(import.meta.env.VITE_GOOGLE_MAPS_API_KEY);
 
 type IncidentRow = {
   id: string;
@@ -77,6 +79,119 @@ type TeamDetail = {
     user: TeamResponse['user'];
   }[];
 };
+
+type CentralMapMarker = {
+  id: string;
+  lat: number;
+  lng: number;
+  active?: boolean;
+  tone?: 'incident' | 'responder-going' | 'responder-scene';
+  title?: string;
+};
+
+function mapMarkerTone(marker: CentralMapMarker) {
+  if (marker.tone === 'responder-scene') {
+    return {
+      shell: 'bg-sky-500 shadow-[0_0_0_4px_rgba(14,165,233,.18)]',
+      dot: 'bg-white',
+    };
+  }
+  if (marker.tone === 'responder-going') {
+    return {
+      shell: 'bg-emerald-500 shadow-[0_0_0_4px_rgba(34,197,94,.18)]',
+      dot: 'bg-white',
+    };
+  }
+  return {
+    shell: marker.active
+      ? 'bg-red-600 shadow-[0_0_0_5px_rgba(239,68,68,.22)]'
+      : 'bg-red-500 shadow-[0_0_0_4px_rgba(239,68,68,.16)]',
+    dot: 'bg-white',
+  };
+}
+
+function CentralGoogleMapRecenter({
+  focus,
+  center,
+  zoom,
+  flyToken,
+}: {
+  focus: [number, number] | null;
+  center: [number, number];
+  zoom: number;
+  flyToken: number;
+}) {
+  const map = useMap();
+  useEffect(() => {
+    if (!map) return;
+    const target = focus ?? center;
+    map.panTo({ lat: target[0], lng: target[1] });
+    map.setZoom(focus ? Math.max(zoom, 15) : zoom);
+  }, [map, center[0], center[1], focus?.[0], focus?.[1], zoom, flyToken]);
+  return null;
+}
+
+function CentralGoogleMapFit({ markers, focus }: { markers: CentralMapMarker[]; focus: [number, number] | null }) {
+  const map = useMap();
+  useEffect(() => {
+    const maps = (window as Window & { google?: { maps?: { LatLngBounds: new () => { extend: (point: { lat: number; lng: number }) => void } } } }).google?.maps;
+    if (!map || !maps || focus || markers.length < 2) return;
+    const bounds = new maps.LatLngBounds();
+    markers.forEach((marker) => bounds.extend({ lat: marker.lat, lng: marker.lng }));
+    map.fitBounds(bounds, { top: 48, right: 48, bottom: 48, left: 48 });
+  }, [map, markers, focus]);
+  return null;
+}
+
+function CentralGoogleMap({
+  center,
+  focus,
+  zoom,
+  flyToken,
+  markers,
+  onMarkerClick,
+}: {
+  center: [number, number];
+  focus: [number, number] | null;
+  zoom: number;
+  flyToken: number;
+  markers: CentralMapMarker[];
+  onMarkerClick?: (id: string) => void;
+}) {
+  return (
+    <GoogleMap
+      defaultCenter={{ lat: center[0], lng: center[1] }}
+      defaultZoom={zoom}
+      mapId="nodo360-central-map"
+      style={{ height: '100%', width: '100%' }}
+      className="absolute inset-0"
+      disableDefaultUI
+      gestureHandling="greedy"
+    >
+      <CentralGoogleMapRecenter center={center} focus={focus} zoom={zoom} flyToken={flyToken} />
+      <CentralGoogleMapFit markers={markers} focus={focus} />
+      {markers.map((marker) => {
+        const tone = mapMarkerTone(marker);
+        return (
+          <AdvancedMarker
+            key={marker.id}
+            position={{ lat: marker.lat, lng: marker.lng }}
+            title={marker.title}
+            zIndex={marker.active ? 30 : 10}
+            onClick={() => onMarkerClick?.(marker.id)}
+          >
+            <div className="relative flex h-10 w-10 items-center justify-center">
+              {marker.active && <span className="absolute inset-0 animate-ping rounded-full bg-red-500/35" />}
+              <span className={`relative flex h-8 w-8 items-center justify-center rounded-full border-2 border-white ${tone.shell}`}>
+                <span className={`h-2.5 w-2.5 rounded-full ${tone.dot}`} />
+              </span>
+            </div>
+          </AdvancedMarker>
+        );
+      })}
+    </GoogleMap>
+  );
+}
 
 function elapsed(iso: string) {
   const mins = Math.max(0, Math.floor((Date.now() - new Date(iso).getTime()) / 60000));
@@ -196,7 +311,7 @@ const IDLE_SHORTCUTS = [
   { to: '/nodo360-alarms', label: 'Nodo360 Alarms', hint: 'Despacho con mapa', icon: Bell },
   { to: '/despacho360', label: 'Despacho360', hint: 'Botonera completa', icon: Siren },
   { to: '/bitacora360', label: 'Bitácora360', hint: 'Fases e informe', icon: BookOpen },
-  { to: '/operational-map', label: 'Mapa 360', hint: 'Terreno y recursos', icon: Map },
+  { to: '/operational-map', label: 'Mapa 360', hint: 'Terreno y recursos', icon: MapIcon },
   { to: '/hydrants', label: 'Hidrantes', hint: 'Inventario de agua', icon: Droplets },
   { to: '/companias-tv', label: 'Muro TV', hint: 'Cuarteles en vivo', icon: Tv },
   { to: '/central-express', label: 'Central Express', hint: 'Despacho rápido', icon: Zap },
@@ -571,7 +686,7 @@ export default function CentralEmergenciaActivaPage() {
 
   const hintDir = params.get('dir') || '';
   const mapMarkers = useMemo(() => {
-    const markers: { id: string; lat: number; lng: number; active?: boolean; label?: string }[] = [];
+    const markers: CentralMapMarker[] = [];
     for (const inc of active) {
       const lat = inc.confirmedLatitude ?? inc.latitude;
       const lng = inc.confirmedLongitude ?? inc.longitude;
@@ -581,7 +696,8 @@ export default function CentralEmergenciaActivaPage() {
         lat,
         lng,
         active: inc.id === selected?.id,
-        label: `<strong>${inc.code} · ${inc.type}</strong><br/>${inc.address ?? ''}`,
+        tone: 'incident',
+        title: `${inc.code} · ${inc.type}${inc.address ? ` · ${inc.address}` : ''}`,
       });
     }
     for (const r of team?.teamResponses ?? []) {
@@ -592,7 +708,8 @@ export default function CentralEmergenciaActivaPage() {
         lat: r.latitude,
         lng: r.longitude,
         active: false,
-        label: `<strong>${r.user.firstName} ${r.user.lastName}</strong><br/>${r.statusLabel ?? r.status ?? ''}`,
+        tone: r.status === 'ON_SCENE' ? 'responder-scene' : 'responder-going',
+        title: `${r.user.firstName} ${r.user.lastName} · ${r.statusLabel ?? r.status ?? ''}`,
       });
     }
     const pinId = selected?.id || requestedId;
@@ -602,7 +719,8 @@ export default function CentralEmergenciaActivaPage() {
         lat: hintLat,
         lng: hintLng,
         active: true,
-        label: `<strong>${selected?.code ?? 'Despacho'}</strong><br/>${selected?.address || hintDir || 'Punto del despacho'}`,
+        tone: 'incident',
+        title: `${selected?.code ?? 'Despacho'} · ${selected?.address || hintDir || 'Punto del despacho'}`,
       });
     }
     return markers;
@@ -940,16 +1058,41 @@ export default function CentralEmergenciaActivaPage() {
         {/* Center: map + radio + timeline */}
         <section className="min-h-0 flex flex-col overflow-hidden">
           <div className={`relative flex-1 min-h-[240px] border-b ${th.borderSubtle}`}>
-            <PublicOsmMap
-              theme={th.mapTheme}
-              baseStyle={isDark ? 'dark' : 'voyager'}
-              center={mapCenter}
-              focus={mapLat != null && mapLng != null ? [mapLat, mapLng] : null}
-              flyToken={flyToken}
-              zoom={selected && mapLat != null ? 15 : 13}
-              markers={mapMarkers}
-              className="absolute inset-0 h-full w-full"
-            />
+            {HAS_GOOGLE_MAPS ? (
+              <CentralGoogleMap
+                center={mapCenter}
+                focus={mapLat != null && mapLng != null ? [mapLat, mapLng] : null}
+                flyToken={flyToken}
+                zoom={selected && mapLat != null ? 15 : 13}
+                markers={mapMarkers}
+                onMarkerClick={(id) => {
+                  if (!id.startsWith('resp-')) setSelectedId(id);
+                }}
+              />
+            ) : (
+              <PublicOsmMap
+                theme={th.mapTheme}
+                baseStyle={isDark ? 'dark' : 'voyager'}
+                center={mapCenter}
+                focus={mapLat != null && mapLng != null ? [mapLat, mapLng] : null}
+                flyToken={flyToken}
+                zoom={selected && mapLat != null ? 15 : 13}
+                markers={mapMarkers.map((marker) => ({
+                  id: marker.id,
+                  lat: marker.lat,
+                  lng: marker.lng,
+                  active: marker.active,
+                  tone:
+                    marker.tone === 'responder-scene'
+                      ? 'field'
+                      : marker.tone === 'responder-going'
+                        ? 'you'
+                        : 'active',
+                  label: marker.title,
+                }))}
+                className="absolute inset-0 h-full w-full"
+              />
+            )}
             {selected && (
               <div className={`absolute top-3 left-3 z-[500] rounded-xl border px-3 py-2 shadow-md backdrop-blur-md max-w-[min(100%,280px)] ${
                 isDark ? 'bg-slate-950/80 border-white/10 text-white' : 'bg-white/95 border-slate-200 text-slate-900'

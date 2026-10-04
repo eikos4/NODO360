@@ -183,6 +183,11 @@ html:not(.dark) .nodo360-ayuda .keep-on-color.bg-red-600 * {
   color: #ffffff !important;
 }
 
+html:not(.dark) .nodo360-ayuda .ayuda-ops-video,
+html:not(.dark) .nodo360-ayuda .ayuda-ops-video * {
+  color: #ffffff !important;
+}
+
 /* NodoTrack: botones emerald con texto claro en tema global light */
 html:not(.dark) .nodotrack-root .keep-on-color,
 html:not(.dark) .nodotrack-root .keep-on-color * {
