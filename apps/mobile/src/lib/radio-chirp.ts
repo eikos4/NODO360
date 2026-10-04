@@ -1,18 +1,25 @@
 /**
- * Tono de radio NODO360 (`/Audio/nodo.mp3`):
- * - open  → primera mitad (al empezar a transmitir)
- * - close → segunda mitad (al soltar el PTT)
+ * Tono de radio NODO360:
+ * - `/Audio/nodo-open.mp3`
+ * - `/Audio/nodo-close.mp3`
  */
 
 export type RadioChirpKind = 'open' | 'close';
 
-const SRC = '/Audio/nodo.mp3';
+const SRC: Record<RadioChirpKind, string> = {
+  open: '/Audio/nodo-open.mp3',
+  close: '/Audio/nodo-close.mp3',
+};
+const MIN_GAP_MS: Record<RadioChirpKind, number> = {
+  open: 160,
+  close: 320,
+};
 
 let ctx: AudioContext | null = null;
-let buffer: AudioBuffer | null = null;
-let loading: Promise<AudioBuffer | null> | null = null;
-let lastCloseAt = 0;
-let activeSource: AudioBufferSourceNode | null = null;
+const buffers: Partial<Record<RadioChirpKind, AudioBuffer | null>> = {};
+const loading: Partial<Record<RadioChirpKind, Promise<AudioBuffer | null>>> = {};
+const lastPlayedAt: Partial<Record<RadioChirpKind, number>> = {};
+const activeSources: Partial<Record<RadioChirpKind, AudioBufferSourceNode | null>> = {};
 
 function getCtx() {
   if (!ctx) {
@@ -22,28 +29,39 @@ function getCtx() {
   return ctx;
 }
 
-async function loadBuffer(): Promise<AudioBuffer | null> {
-  if (buffer) return buffer;
-  if (loading) return loading;
-  loading = (async () => {
+async function loadBuffer(kind: RadioChirpKind): Promise<AudioBuffer | null> {
+  if (buffers[kind]) return buffers[kind] ?? null;
+  if (loading[kind]) return loading[kind] ?? null;
+  loading[kind] = (async () => {
     try {
-      const res = await fetch(SRC);
+      const res = await fetch(SRC[kind]);
       if (!res.ok) return null;
       const raw = await res.arrayBuffer();
       const decoded = await getCtx().decodeAudioData(raw.slice(0));
-      buffer = decoded;
+      buffers[kind] = decoded;
       return decoded;
     } catch {
       return null;
     } finally {
-      loading = null;
+      delete loading[kind];
     }
   })();
-  return loading;
+  return loading[kind] ?? null;
+}
+
+function stopActive(kind: RadioChirpKind) {
+  const source = activeSources[kind];
+  if (!source) return;
+  try {
+    source.stop();
+  } catch {
+    /* */
+  }
+  activeSources[kind] = null;
 }
 
 export function prefetchRadioChirp() {
-  void loadBuffer().then(() => {
+  void Promise.all([loadBuffer('open'), loadBuffer('close')]).then(() => {
     try {
       void getCtx().resume();
     } catch {
@@ -53,30 +71,18 @@ export function prefetchRadioChirp() {
 }
 
 export async function playRadioChirp(kind: RadioChirpKind) {
-  if (kind === 'close') {
-    const now = Date.now();
-    if (now - lastCloseAt < 400) return;
-    lastCloseAt = now;
-  }
+  const now = Date.now();
+  if (now - (lastPlayedAt[kind] ?? 0) < MIN_GAP_MS[kind]) return;
+  lastPlayedAt[kind] = now;
 
   try {
-    const audio = await loadBuffer();
+    const audio = await loadBuffer(kind);
     if (!audio) return;
     const ac = getCtx();
     if (ac.state === 'suspended') await ac.resume();
 
-    if (activeSource) {
-      try {
-        activeSource.stop();
-      } catch {
-        /* */
-      }
-      activeSource = null;
-    }
-
-    const mid = audio.duration / 2;
-    const offset = kind === 'open' ? 0 : mid;
-    const duration = mid;
+    if (kind === 'close') stopActive('open');
+    stopActive(kind);
 
     const source = ac.createBufferSource();
     source.buffer = audio;
@@ -84,11 +90,11 @@ export async function playRadioChirp(kind: RadioChirpKind) {
     gain.gain.value = 0.85;
     source.connect(gain);
     gain.connect(ac.destination);
-    activeSource = source;
+    activeSources[kind] = source;
     source.onended = () => {
-      if (activeSource === source) activeSource = null;
+      if (activeSources[kind] === source) activeSources[kind] = null;
     };
-    source.start(0, offset, Math.max(0.05, duration));
+    source.start(0);
   } catch {
     /* autoplay / decode */
   }

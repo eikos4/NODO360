@@ -4,11 +4,13 @@ import { getSessionToken } from '../platform/session';
 
 const RENDER_API = 'https://nodo360-api.onrender.com/api';
 const envUrl = import.meta.env.VITE_API_URL?.replace(/\/$/, '') || '';
+const webDevProxyUrl = import.meta.env.DEV && !Capacitor.isNativePlatform() ? '/api' : '';
 
 export const API_URL =
-  Capacitor.isNativePlatform() && !envUrl.startsWith('http')
-    ? RENDER_API
-    : envUrl || RENDER_API;
+  webDevProxyUrl
+    || (Capacitor.isNativePlatform() && !envUrl.startsWith('http')
+      ? RENDER_API
+      : envUrl || RENDER_API);
 
 export const api = axios.create({
   baseURL: API_URL,

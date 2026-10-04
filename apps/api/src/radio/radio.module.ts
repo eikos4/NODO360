@@ -3,6 +3,7 @@ import { JwtModule } from '@nestjs/jwt';
 import { ConfigModule, ConfigService } from '@nestjs/config';
 import { PrismaModule } from '../prisma/prisma.module';
 import { DispatchCentralModule } from '../dispatch-central/dispatch-central.module';
+import { NotificationsModule } from '../notifications/notifications.module';
 import { RadioController } from './radio.controller';
 import { RadioGateway } from './radio.gateway';
 import { RadioService } from './radio.service';
@@ -11,6 +12,7 @@ import { RadioService } from './radio.service';
   imports: [
     PrismaModule,
     forwardRef(() => DispatchCentralModule),
+    NotificationsModule,
     JwtModule.registerAsync({
       imports: [ConfigModule],
       inject: [ConfigService],

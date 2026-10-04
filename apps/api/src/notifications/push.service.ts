@@ -20,6 +20,8 @@ export type QueuedAlarmPayload = {
   data: Record<string, string>;
 };
 
+const RADIO_BACKGROUND_ROLES = ['OPERADOR_CENTRAL', 'COMANDANTE', 'CAPITAN', 'SUPER_ADMIN', 'KODESK'] as const;
+
 @Injectable()
 export class PushService {
   private readonly logger = new Logger(PushService.name);
@@ -311,6 +313,112 @@ export class PushService {
     }
 
     this.logger.log(`Preaviso ${payload.companyLabel}: push ${sent}/${tokens.length}`);
+    return { sent };
+  }
+
+  async notifyRadioTransmission(payload: {
+    incidentId: string;
+    senderUserId: string;
+    txId: string;
+    speakerName: string;
+    audioUrl: string;
+    durationMs: number;
+  }) {
+    const incidentId = payload.incidentId?.trim();
+    const audioUrl = payload.audioUrl?.trim();
+    if (!incidentId || !audioUrl) return { sent: 0 };
+
+    const incident = await this.prisma.incident.findUnique({
+      where: { id: incidentId },
+      select: { id: true, code: true, type: true, companyId: true },
+    });
+    if (!incident) return { sent: 0 };
+
+    const commandRoleFilter = {
+      OR: RADIO_BACKGROUND_ROLES.flatMap((role) => [{ role }, { roles: { has: role } }]),
+    };
+
+    const devices = await this.prisma.devicePushToken.findMany({
+      where: {
+        platform: 'android',
+        userId: { not: payload.senderUserId },
+        user: {
+          isActive: true,
+          OR: [
+            {
+              emergencyResponses: {
+                some: {
+                  incidentId,
+                  status: { in: ['GOING', 'ON_SCENE'] },
+                },
+              },
+            },
+            { companyId: incident.companyId, ...commandRoleFilter },
+            { supportCompanyId: incident.companyId, ...commandRoleFilter },
+          ],
+        },
+      },
+      select: { token: true },
+    });
+
+    if (!devices.length) return { sent: 0 };
+    if (!this.ready || !this.messaging) {
+      this.logger.warn(`Radio ${incident.code}: ${devices.length} teléfonos listos, pero FCM no está configurado`);
+      return { sent: 0 };
+    }
+
+    const tokens = devices.map((item) => item.token);
+    const stale: string[] = [];
+    let sent = 0;
+
+    for (let i = 0; i < tokens.length; i += 500) {
+      const chunk = tokens.slice(i, i + 500);
+      const res = await this.messaging.sendEachForMulticast({
+        tokens: chunk,
+        data: {
+          kind: 'RADIO_TX',
+          incidentId,
+          channelId: `incident:${incidentId}`,
+          txId: payload.txId,
+          speakerName: payload.speakerName,
+          audioUrl,
+          durationMs: String(Math.max(0, payload.durationMs || 0)),
+          code: incident.code,
+          type: incident.type,
+          url: '/emergencia-respuesta',
+        },
+        android: {
+          priority: 'high',
+          ttl: 60 * 1000,
+        },
+        apns: {
+          headers: { 'apns-priority': '5', 'apns-push-type': 'background' },
+          payload: {
+            aps: {
+              contentAvailable: true,
+            },
+          },
+        },
+      });
+      sent += res.successCount;
+      res.responses.forEach((response, idx) => {
+        if (response.error) {
+          const code = response.error.code ?? '';
+          if (
+            code.includes('registration-token-not-registered')
+            || code.includes('invalid-registration-token')
+          ) {
+            stale.push(chunk[idx]);
+          }
+        }
+      });
+    }
+
+    if (stale.length) {
+      await this.prisma.devicePushToken.deleteMany({ where: { token: { in: stale } } });
+    }
+
+    this.logger.log(`Radio ${incident.code}: push radio ${sent}/${tokens.length}`);
     return { sent };
   }
 

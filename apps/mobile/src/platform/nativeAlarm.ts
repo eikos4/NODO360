@@ -36,6 +36,7 @@ interface NativeAlarmPlugin {
     body?: string;
     spoken?: string;
     notificationId?: number;
+    repeatCount?: number;
   }): Promise<{
     code: string;
     channelId?: string;

@@ -177,6 +177,7 @@ public class NativeAlarmPlugin extends Plugin {
         String channelId = channelId(code);
         String spoken = call.getString("spoken");
         int notifyId = call.getInt("notificationId", 10360);
+        int repeatCount = Math.max(1, call.getInt("repeatCount", 1));
         Context context = getContext();
         Intent launch = context.getPackageManager().getLaunchIntentForPackage(context.getPackageName());
         if (launch == null) {
@@ -211,7 +212,7 @@ public class NativeAlarmPlugin extends Plugin {
         try {
             NotificationManagerCompat.from(context).notify(notifyId, builder.build());
             vibrate(context);
-            playToneThenSpeak(code, spoken);
+            playToneThenSpeak(code, spoken, repeatCount);
             JSObject result = new JSObject();
             result.put("code", code);
             result.put("channelId", channelId);
@@ -222,12 +223,16 @@ public class NativeAlarmPlugin extends Plugin {
         }
     }
 
-    private void playToneThenSpeak(String code, String spoken) {
+    private void playToneThenSpeak(String code, String spoken, int repeatCount) {
         stopTone();
         List<Integer> queue = new ArrayList<>();
         int ident = rawRes("tone_nodo360");
-        if (ident != 0) queue.add(ident);
-        if (!"NODO".equals(code)) {
+        if ("NODO".equals(code)) {
+            for (int i = 0; i < repeatCount; i++) {
+                if (ident != 0) queue.add(ident);
+            }
+        } else {
+            if (ident != 0) queue.add(ident);
             int tone = rawRes("tone_" + code.replace('-', '_'));
             if (tone != 0) queue.add(tone);
         }

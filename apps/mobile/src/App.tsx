@@ -25,17 +25,19 @@ import { EmergencyRecapScreen } from './EmergencyRecapScreen';
 import { OperationalBitacora } from './OperationalBitacora';
 import { HelpMenuButton, HelpScreen } from './HelpScreen';
 import { RadioCodesScreen } from './RadioCodesScreen';
-import { useAppTheme } from './theme';
+import { useAppTheme, type AppTheme } from './theme';
 import type { ActiveIncident, AuthUser } from './types';
+import { getAlarmToneMode, setAlarmToneMode, type AlarmToneMode } from './lib/alarm-tone-preference';
 
 type Screen = 'alarms' | 'radio' | 'history' | 'settings' | 'announcements' | 'help' | 'recap' | 'codes';
 
 function ThemeToggle({ compact = false }: { compact?: boolean }) {
   const { theme, toggleTheme } = useAppTheme();
+  const nextLabel = theme === 'light' ? 'Tema Nodo' : theme === 'nodo' ? 'Modo humo' : 'Tema claro';
   return (
     <button type="button" className={compact ? 'icon-button' : 'theme-toggle'} onClick={toggleTheme} aria-label="Cambiar tema">
-      {theme === 'light' ? <Moon size={18} /> : <Sun size={18} />}
-      {!compact && <span>{theme === 'light' ? 'Tema Nodo' : 'Tema claro'}</span>}
+      {theme === 'light' ? <Moon size={18} /> : theme === 'nodo' ? <ShieldCheck size={18} /> : <Sun size={18} />}
+      {!compact && <span>{nextLabel}</span>}
     </button>
   );
 }
@@ -244,9 +246,11 @@ function ConnectionPill({ state, pending }: { state: 'online' | 'offline' | 'syn
 }
 
 function AlarmSettings({ onOpenHelp }: { onOpenHelp: () => void }) {
+  const { theme, setTheme } = useAppTheme();
   const [diagnostics, setDiagnostics] = useState<AlarmDiagnostics | null>(null);
   const [code, setCode] = useState('10-0');
   const [message, setMessage] = useState('');
+  const [toneMode, setToneModeState] = useState<AlarmToneMode>('official');
   const native = Capacitor.isNativePlatform();
   const platform = Capacitor.getPlatform();
 
@@ -261,6 +265,17 @@ function AlarmSettings({ onOpenHelp }: { onOpenHelp: () => void }) {
   }, [native]);
 
   useEffect(() => { void configureNativeAlarms().then((value) => setDiagnostics(value)); }, []);
+  useEffect(() => { void getAlarmToneMode().then(setToneModeState); }, []);
+
+  const changeToneMode = async (next: AlarmToneMode) => {
+    setToneModeState(next);
+    await setAlarmToneMode(next);
+    setMessage(
+      next === 'nodo'
+        ? 'Tono Nodo activado: se repite el ident corto antes de la voz.'
+        : 'Tonos operativos 10-X restaurados.',
+    );
+  };
 
   const requestNotifications = async () => {
     try {
@@ -281,10 +296,11 @@ function AlarmSettings({ onOpenHelp }: { onOpenHelp: () => void }) {
         body: 'Prueba local de tono y voz Nodo360',
       });
       const result = await NativeAlarm.testAlarm({
-        code: speech.code,
+        code: toneMode === 'nodo' ? 'NODO' : speech.code,
         title: speech.title,
         body: speech.body,
         spoken: speech.spoken,
+        repeatCount: toneMode === 'nodo' ? 3 : 1,
       });
       setMessage(
         result.fullScreenRequested === false
@@ -299,7 +315,24 @@ function AlarmSettings({ onOpenHelp }: { onOpenHelp: () => void }) {
   if (!native) {
     return (
       <section className="alarm-settings">
-        <section className="settings-card"><h2>Alertas del dispositivo</h2><p>El diagnóstico nativo está disponible en Android/iOS.</p></section>
+        <section className="settings-card">
+          <h2>Alertas del dispositivo</h2>
+          <p>El diagnóstico nativo está disponible en Android/iOS.</p>
+          <div className="theme-row settings-tone-row">
+            <span>Tono por defecto</span>
+            <select
+              value={toneMode}
+              onChange={(event) => void changeToneMode(event.target.value as AlarmToneMode)}
+            >
+              <option value="official">Tonos 10-X completos</option>
+              <option value="nodo">Tono Nodo corto</option>
+            </select>
+          </div>
+          <p className="settings-note">
+            Este ajuste se guarda aquí y se aplica completo en la app nativa.
+          </p>
+          {message && <p className="settings-message">{message}</p>}
+        </section>
         <HelpMenuButton onOpen={onOpenHelp} />
       </section>
     );
@@ -315,9 +348,29 @@ function AlarmSettings({ onOpenHelp }: { onOpenHelp: () => void }) {
         <h2>Alertas críticas</h2>
         <p>Diagnóstico del sistema. Los ajustes finales dependen del usuario y del fabricante.</p>
         <div className="theme-row">
-          <span>Apariencia</span>
-          <ThemeToggle />
+          <span>Modo visual</span>
+          <select
+            value={theme}
+            onChange={(event) => setTheme(event.target.value as AppTheme)}
+          >
+            <option value="light">Claro</option>
+            <option value="nodo">Nodo</option>
+            <option value="smoke">Humo / noche</option>
+          </select>
         </div>
+        <div className="theme-row settings-tone-row">
+          <span>Tono por defecto</span>
+          <select
+            value={toneMode}
+            onChange={(event) => void changeToneMode(event.target.value as AlarmToneMode)}
+          >
+            <option value="official">Tonos 10-X completos</option>
+            <option value="nodo">Tono Nodo corto</option>
+          </select>
+        </div>
+        <p className="settings-note">
+          Tono Nodo usa el ident corto de `nodo.mp3` antes de la voz para no escuchar toda la secuencia 10-X.
+        </p>
         <div className="diagnostic"><BellRing /><span>Notificaciones</span><b>{diagnostics?.notificationsGranted ? 'Permitidas' : 'Pendientes'}</b></div>
         {platform === 'android' && <>
           <div className="diagnostic"><ShieldCheck /><span>No molestar</span><b>{diagnostics?.notificationPolicyAccess ? 'Acceso concedido' : 'Sin acceso'}</b></div>
@@ -392,7 +445,7 @@ function IncidentView({
   status: EmergencyResponseStatus | null;
   responding: boolean;
   onRespond: (status: EmergencyResponseStatus) => Promise<void>;
-  onMarkLocation: () => Promise<void>;
+  onMarkLocation: (pin: string) => Promise<void>;
   onOpenRadio?: () => void;
 }) {
   const destination = incident.fieldGps ?? incident.dispatchGps ??
@@ -430,6 +483,42 @@ function IncidentView({
   const showDetail = detail && detail !== radio;
   const statusLabel = incident.myResponse?.statusLabel
     ?? (status === 'GOING' ? 'En camino' : status === 'ON_SCENE' ? 'En el lugar' : status);
+  const [editingResponse, setEditingResponse] = useState(false);
+  const [pinPromptOpen, setPinPromptOpen] = useState(false);
+  const [pinValue, setPinValue] = useState('');
+  const [pinError, setPinError] = useState('');
+  useEffect(() => {
+    setEditingResponse(false);
+    setPinPromptOpen(false);
+    setPinValue('');
+    setPinError('');
+  }, [incident.id, status]);
+  const responseHint = status === 'GOING'
+    ? 'La central ya te cuenta como en camino.'
+    : status === 'ON_SCENE'
+      ? 'Quedaste marcado en el lugar del incendio.'
+      : status === 'NOT_GOING'
+        ? 'La central ya sabe que no asistes.'
+        : status === 'NOT_AVAILABLE'
+          ? 'Quedaste como no disponible para esta salida.'
+          : '';
+  const showAllResponseButtons = !status || editingResponse;
+  const showGoingButton = showAllResponseButtons || status === 'GOING';
+  const showNoGoingButton = showAllResponseButtons || status === 'NOT_GOING';
+  const showHoldButton = showAllResponseButtons || status === 'NOT_AVAILABLE';
+  const showSceneButton = showAllResponseButtons || status === 'ON_SCENE';
+  const bigActionCount = Number(showGoingButton) + Number(showNoGoingButton);
+  const secondaryActionCount = Number(showHoldButton) + Number(showSceneButton);
+  const submitLocationUpdate = async () => {
+    setPinError('');
+    try {
+      await onMarkLocation(pinValue.trim());
+      setPinPromptOpen(false);
+      setPinValue('');
+    } catch (error) {
+      setPinError(error instanceof Error ? error.message : 'No se pudo validar el PIN.');
+    }
+  };
 
   return (
     <article className="incident">
@@ -495,29 +584,117 @@ function IncidentView({
         </section>
       )}
 
-      <section className="response-panel">
-        <p className="eyebrow">{status ? 'TU RESPUESTA' : 'CONFIRMA TU RESPUESTA'}</p>
-        <div className="big-actions">
-          <button className={`go ${going ? 'selected' : ''}`} disabled={responding} onClick={() => onRespond('GOING')}>
-            <Check />{going ? 'EN CAMINO' : 'VOY'}
-          </button>
-          <button className={`no-go ${status === 'NOT_GOING' ? 'selected' : ''}`} disabled={responding} onClick={() => onRespond('NOT_GOING')}><X />NO VOY</button>
+      <section className={`response-panel ${status ? `state-${status}` : 'pending'}`}>
+        {status ? (
+          <div className="response-state">
+            <div>
+              <p className="eyebrow">TU RESPUESTA</p>
+              <strong>{statusLabel}</strong>
+              <small>{responseHint}</small>
+            </div>
+            <button
+              type="button"
+              className="change-opinion"
+              onClick={() => setEditingResponse((current) => !current)}
+            >
+              {editingResponse ? 'Mantener respuesta' : 'Cambiar opinion'}
+            </button>
+          </div>
+        ) : (
+          <p className="eyebrow">CONFIRMA TU RESPUESTA</p>
+        )}
+        <div className={`big-actions ${bigActionCount === 1 ? 'single' : ''}`}>
+          {showGoingButton && (
+            <button
+              className={`go ${going ? 'selected' : ''}`}
+              aria-pressed={going}
+              disabled={responding}
+              onClick={() => onRespond('GOING')}
+            >
+              <Check />{going ? 'YA VOY' : 'VOY'}
+            </button>
+          )}
+          {showNoGoingButton && (
+            <button
+              className={`no-go ${status === 'NOT_GOING' ? 'selected' : ''}`}
+              aria-pressed={status === 'NOT_GOING'}
+              disabled={responding}
+              onClick={() => onRespond('NOT_GOING')}
+            >
+              <X />NO VOY
+            </button>
+          )}
         </div>
-        <div className="secondary-actions">
-          <button className={`hold ${status === 'NOT_AVAILABLE' ? 'selected' : ''}`} disabled={responding} onClick={() => onRespond('NOT_AVAILABLE')}>No disponible</button>
-          <button className={`scene ${status === 'ON_SCENE' ? 'selected' : ''}`} disabled={responding} onClick={() => onRespond('ON_SCENE')}><MapPin /> En el lugar</button>
+        <div className={`secondary-actions ${secondaryActionCount === 1 ? 'single' : ''}`}>
+          {showHoldButton && (
+            <button
+              className={`hold ${status === 'NOT_AVAILABLE' ? 'selected' : ''}`}
+              aria-pressed={status === 'NOT_AVAILABLE'}
+              disabled={responding}
+              onClick={() => onRespond('NOT_AVAILABLE')}
+            >
+              {status === 'NOT_AVAILABLE' ? 'YA NO DISPONIBLE' : 'No disponible'}
+            </button>
+          )}
+          {showSceneButton && (
+            <button
+              className={`scene ${status === 'ON_SCENE' ? 'selected' : ''}`}
+              aria-pressed={status === 'ON_SCENE'}
+              disabled={responding}
+              onClick={() => onRespond('ON_SCENE')}
+            >
+              <MapPin /> {status === 'ON_SCENE' ? 'YA EN EL LUGAR' : 'En el lugar'}
+            </button>
+          )}
         </div>
-        <button className="pin-fire" disabled={responding} onClick={() => void onMarkLocation()}>
-          <Crosshair /> {incident.fieldGps ? 'Actualizar punto del incendio' : 'Marcar incendio'}
+        <button className="pin-fire" disabled={responding} onClick={() => setPinPromptOpen((open) => !open)}>
+          <Crosshair /> Actualizar ubicacion emergencia
         </button>
-        {onOpenRadio && (
-          <button type="button" className="open-radio" onClick={onOpenRadio}>
-            <Radio /> Canal de radio
-          </button>
+        {pinPromptOpen && (
+          <div className="pin-confirm-card">
+            <p className="pin-confirm-title">Confirmar con PIN de sala de maquinas</p>
+            <p className="pin-confirm-copy">
+              Antes de actualizar la ubicacion de la emergencia, ingresa el PIN operativo.
+            </p>
+            <input
+              type="password"
+              inputMode="numeric"
+              pattern="[0-9]*"
+              autoFocus
+              maxLength={8}
+              value={pinValue}
+              onChange={(event) => setPinValue(event.target.value.replace(/\D/g, '').slice(0, 8))}
+              placeholder="PIN de 4 a 8 digitos"
+              className="pin-confirm-input"
+            />
+            {pinError && <p className="pin-confirm-error">{pinError}</p>}
+            <div className="pin-confirm-actions">
+              <button type="button" className="pin-cancel" onClick={() => setPinPromptOpen(false)}>
+                Cancelar
+              </button>
+              <button
+                type="button"
+                className="pin-approve"
+                disabled={responding || pinValue.trim().length < 4}
+                onClick={() => void submitLocationUpdate()}
+              >
+                {responding ? <Loader2 className="spin" /> : <Crosshair />}
+                Confirmar ubicacion
+              </button>
+            </div>
+          </div>
         )}
         {status && <p className="sent"><Check /> {statusLabel}</p>}
         {incident.fieldGps && <p className="sent pin-ok"><Crosshair /> Punto de incendio confirmado</p>}
       </section>
+
+      {onOpenRadio && (
+        <section className="radio-box">
+          <button type="button" className="open-radio" onClick={onOpenRadio}>
+            <Radio /> Canal de radio
+          </button>
+        </section>
+      )}
 
       <section className="stats">
         <div><b>{incident.teamSummary.going}</b><span>Van</span></div>
@@ -557,6 +734,7 @@ export default function App() {
   const [activated, setActivated] = useState(false);
   const [screen, setScreen] = useState<Screen>('alarms');
   const [settingsHelp, setSettingsHelp] = useState(false);
+  const [helpReturnScreen, setHelpReturnScreen] = useState<Exclude<Screen, 'help' | 'codes'>>('alarms');
   const [recapId, setRecapId] = useState<string | null>(null);
   const [recapFrom, setRecapFrom] = useState<Exclude<Screen, 'recap'>>('settings');
   useEffect(() => {
@@ -571,6 +749,11 @@ export default function App() {
   const [maqAvailable, setMaqAvailable] = useState(false);
   const [notice, setNotice] = useState('');
   const [announceCount, setAnnounceCount] = useState(0);
+  const openHeaderHelp = useCallback(() => {
+    setSettingsHelp(false);
+    setHelpReturnScreen(screen === 'help' || screen === 'codes' ? 'alarms' : screen);
+    setScreen('help');
+  }, [screen]);
   const announceDispatch = useCallback((incident: {
     id?: string;
     code?: string;
@@ -722,20 +905,29 @@ export default function App() {
     window.setTimeout(() => setNotice(''), 3500);
   };
 
-  const markLocation = async () => {
+  const markLocation = async (pin: string) => {
     if (!selected) return;
+    const slug = user?.company?.dispatchSlug?.trim();
+    if (!slug) throw new Error('Esta compania no tiene sala de maquinas configurada.');
+    if (pin.trim().length < 4) throw new Error('Ingresa el PIN de sala.');
     setResponding(true);
-    const position = await getCurrentCoords();
-    if (!position) {
-      setNotice('No se pudo leer el GPS. Activa la ubicación e intenta de nuevo.');
+    try {
+      await api.post(`/dispatch/public/${slug}/unlock`, { pin: pin.trim() });
+      const position = await getCurrentCoords();
+      if (!position) {
+        setNotice('No se pudo leer el GPS. Activa la ubicacion e intenta de nuevo.');
+        window.setTimeout(() => setNotice(''), 4000);
+        throw new Error('No se pudo leer el GPS.');
+      }
+      await sync.markLocation(selected.id, position);
+      setNotice(navigator.onLine ? 'Ubicacion de emergencia actualizada' : 'Punto guardado; se enviara al recuperar conexion');
+      window.setTimeout(() => setNotice(''), 3500);
+    } catch (error) {
+      if (error instanceof Error && error.message === 'No se pudo leer el GPS.') throw error;
+      throw new Error(errorMessage(error));
+    } finally {
       setResponding(false);
-      window.setTimeout(() => setNotice(''), 4000);
-      return;
     }
-    await sync.markLocation(selected.id, position);
-    setNotice(navigator.onLine ? 'Punto del incendio enviado' : 'Punto guardado; se enviará al recuperar conexión');
-    setResponding(false);
-    window.setTimeout(() => setNotice(''), 3500);
   };
 
   const toggleStation = async (next: boolean) => {
@@ -852,11 +1044,10 @@ export default function App() {
         <ThemeToggle compact />
         <button
           className="icon-button announce-nav"
-          onClick={() => setScreen('announcements')}
-          aria-label="Comunicados"
+          onClick={openHeaderHelp}
+          aria-label="Ayuda"
         >
-          <Megaphone />
-          {announceCount > 0 && <i />}
+          <HelpCircle />
         </button>
       </header>
       {notice && <div className="toast"><Check /> {notice}</div>}
@@ -883,7 +1074,7 @@ export default function App() {
         {screen === 'codes' ? (
           <RadioCodesScreen onBack={() => setScreen('help')} />
         ) : screen === 'help' ? (
-          <HelpScreen onBack={() => setScreen('settings')} onOpenCodes={() => setScreen('codes')} />
+          <HelpScreen onBack={() => setScreen(helpReturnScreen)} onOpenCodes={() => setScreen('codes')} />
         ) : screen === 'settings' ? (
           settingsHelp ? (
             <HelpScreen onBack={() => setSettingsHelp(false)} onOpenCodes={() => setScreen('codes')} />
@@ -963,7 +1154,7 @@ export default function App() {
         <button className={screen === 'radio' ? 'active' : ''} onClick={() => setScreen('radio')}><Radio />Radio{incidents.length > 0 && <i className="radio-live-dot" />}</button>
         <button className={screen === 'history' || (screen === 'recap' && recapFrom === 'history') ? 'active' : ''} onClick={() => setScreen('history')}><History />Historial</button>
         <button className={screen === 'settings' || (screen === 'recap' && recapFrom === 'settings') ? 'active' : ''} onClick={() => { setSettingsHelp(false); setScreen('settings'); }}><UserRound />Perfil</button>
-        <button className={screen === 'help' || screen === 'codes' || settingsHelp ? 'active' : ''} onClick={() => { setSettingsHelp(false); setScreen('help'); }}><HelpCircle />Ayuda</button>
+        <button className={screen === 'announcements' ? 'active' : ''} onClick={() => { setSettingsHelp(false); setScreen('announcements'); }}><BellRing />Notificaciones{announceCount > 0 && <i>{announceCount > 9 ? '9+' : announceCount}</i>}</button>
       </nav>
     </div>
   );

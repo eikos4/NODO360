@@ -1,5 +1,6 @@
 import { Capacitor } from '@capacitor/core';
 import { NativeAlarm } from '../platform/nativeAlarm';
+import { getAlarmToneMode } from './alarm-tone-preference';
 
 const CODE_LABELS: Record<string, string> = {
   '10-0': 'Incendio estructural',
@@ -124,12 +125,14 @@ export async function playEmergencyAlarm(input: AlarmAnnounceInput) {
   }
 
   const notificationId = Math.abs(hashId(id)) % 900_000 + 10_000;
+  const toneMode = await getAlarmToneMode();
   await NativeAlarm.testAlarm({
-    code: speech.code,
+    code: toneMode === 'nodo' ? 'NODO' : speech.code,
     title: speech.title,
     body: speech.body,
     spoken: speech.spoken,
     notificationId,
+    repeatCount: toneMode === 'nodo' ? 3 : 1,
   });
 }
 

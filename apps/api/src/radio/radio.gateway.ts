@@ -17,6 +17,7 @@ import { isAllowedCorsOrigin } from '../common/cors-origins';
 import { hasAnyRole } from '../common/user-roles';
 import { assertCompanyAccess } from '../common/cuerpo-scope';
 import { readSalaToken } from '../common/sala-token';
+import { PushService } from '../notifications/push.service';
 
 type SocketUser = {
   userId: string;
@@ -49,6 +50,7 @@ export class RadioGateway implements OnGatewayInit, OnGatewayConnection, OnGatew
     private readonly jwt: JwtService,
     private readonly prisma: PrismaService,
     private readonly radio: RadioService,
+    private readonly push: PushService,
   ) {}
 
   afterInit(server: Server) {
@@ -338,6 +340,16 @@ export class RadioGateway implements OnGatewayInit, OnGatewayConnection, OnGatew
     this.server.to(body.channelId).emit('channel:state', state);
     this.server.to(body.channelId).emit('ptt:idle', { channelId: body.channelId });
     client.emit('tx:new', tx);
+    if (body.channelId.startsWith('incident:')) {
+      void this.push.notifyRadioTransmission({
+        incidentId: body.channelId.slice('incident:'.length),
+        senderUserId: user.userId,
+        txId: tx.id,
+        speakerName: tx.speakerName,
+        audioUrl: tx.audioUrl,
+        durationMs: tx.durationMs,
+      });
+    }
     return { ok: true, tx, state };
   }
 }

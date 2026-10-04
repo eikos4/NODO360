@@ -13,7 +13,7 @@ export interface AuthUser {
   stationAvailableAt?: string | null;
   isMaquinista?: boolean;
   maquinistaAvailable?: boolean;
-  company?: { id: string; name: string; number: number; city: string; logoUrl?: string | null } | null;
+  company?: { id: string; name: string; number: number; city: string; logoUrl?: string | null; dispatchSlug?: string | null } | null;
 }
 
 export interface TeamResponse {
