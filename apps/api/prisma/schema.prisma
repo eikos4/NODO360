@@ -127,6 +127,8 @@ model User {
   achievements                  UserAchievement[]
   pushTokens                    DevicePushToken[]
   alarmDeliveries               AlarmDelivery[]
+  announcementReceipts          AnnouncementReceipt[]
+  announcementVotes             AnnouncementVote[]
 
   @@unique([companyId, operativeNumber])
   @@index([companyId])
@@ -546,28 +548,62 @@ model Budget {
 }
 
 model Announcement {
-  id             String                     @id @default(cuid())
-  title          String
-  content        String
-  type           AnnouncementType           @default(ANNOUNCEMENT)
-  priority       AnnouncementPriority       @default(MEDIUM)
-  eventDate      DateTime?
-  eventLocation  String?
-  publishedBy    String
-  publishedAt    DateTime                   @default(now())
-  expiresAt      DateTime?
-  isActive       Boolean                    @default(true)
-  targetAudience AnnouncementTargetAudience @default(ALL)
-  attachments    String[]
-  imageUrl       String?
-  companyId      String?
-  cuerpoId       String?
-  cuerpo         Cuerpo?                    @relation(fields: [cuerpoId], references: [id], onDelete: SetNull)
-  createdAt      DateTime                   @default(now())
-  updatedAt      DateTime                   @updatedAt
+  id               String                     @id @default(cuid())
+  title            String
+  content          String
+  type             AnnouncementType           @default(ANNOUNCEMENT)
+  priority         AnnouncementPriority       @default(MEDIUM)
+  eventDate        DateTime?
+  eventLocation    String?
+  publishedBy      String
+  publishedAt      DateTime                   @default(now())
+  expiresAt        DateTime?
+  isActive         Boolean                    @default(true)
+  targetAudience   AnnouncementTargetAudience @default(ALL)
+  targetCompanyIds String[]                   @default([])
+  targetRoles      String[]                   @default([])
+  requireAck       Boolean                    @default(false)
+  pollQuestion     String?
+  pollOptions      String[]                   @default([])
+  pollClosesAt     DateTime?
+  attachments      String[]
+  imageUrl         String?
+  companyId        String?
+  cuerpoId         String?
+  cuerpo           Cuerpo?                    @relation(fields: [cuerpoId], references: [id], onDelete: SetNull)
+  receipts         AnnouncementReceipt[]
+  votes            AnnouncementVote[]
+  createdAt        DateTime                   @default(now())
+  updatedAt        DateTime                   @updatedAt
 
   @@index([cuerpoId])
   @@index([publishedAt])
+}
+
+model AnnouncementReceipt {
+  id             String       @id @default(cuid())
+  announcementId String
+  userId         String
+  readAt         DateTime     @default(now())
+  ackedAt        DateTime?
+  announcement   Announcement @relation(fields: [announcementId], references: [id], onDelete: Cascade)
+  user           User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([announcementId, userId])
+  @@index([userId])
+}
+
+model AnnouncementVote {
+  id             String       @id @default(cuid())
+  announcementId String
+  userId         String
+  optionIndex    Int
+  createdAt      DateTime     @default(now())
+  announcement   Announcement @relation(fields: [announcementId], references: [id], onDelete: Cascade)
+  user           User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([announcementId, userId])
+  @@index([announcementId])
 }
 
 model Hydrant {
@@ -1055,6 +1091,15 @@ enum AnnouncementType {
   ANNOUNCEMENT
   OFFICIAL
   EVENT
+  NEWS
+  URGENT_NOTICE
+  TRAINING
+  CITATION
+  SAFETY
+  FLEET
+  GUARD
+  ADMIN
+  WELFARE
 }
 
 enum AnnouncementPriority {

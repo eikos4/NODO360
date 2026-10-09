@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
-import { Bell, Calendar, ChevronLeft, MapPin, Megaphone, User } from 'lucide-react';
-import { api } from './lib/api';
+import { Calendar, Check, ChevronLeft, MapPin, Megaphone, User } from 'lucide-react';
+import { announcementKind, announcementPriorityLabel } from '@nodo360/shared';
+import { api, errorMessage } from './lib/api';
 
 export type MobileAnnouncement = {
   id: string;
@@ -10,23 +11,19 @@ export type MobileAnnouncement = {
   priority: string;
   eventDate?: string | null;
   eventLocation?: string | null;
+  requireAck?: boolean;
   imageUrl?: string | null;
   attachments?: string[];
   publishedAt: string;
   publisher?: { firstName: string; lastName: string };
-};
-
-const TYPE_LABELS: Record<string, string> = {
-  ANNOUNCEMENT: 'Anuncio',
-  OFFICIAL: 'Oficial',
-  EVENT: 'Evento',
-};
-
-const PRIORITY_LABELS: Record<string, string> = {
-  LOW: 'Baja',
-  MEDIUM: 'Media',
-  HIGH: 'Alta',
-  URGENT: 'Urgente',
+  mine?: { read: boolean; acked: boolean; voteIndex: number | null };
+  poll?: {
+    question: string;
+    options: string[];
+    closed?: boolean;
+    results: number[];
+    totalVotes: number;
+  } | null;
 };
 
 function fmt(d?: string | null) {
@@ -42,25 +39,70 @@ export function AnnouncementsScreen({ onCount }: { onCount?: (n: number) => void
   const [items, setItems] = useState<MobileAnnouncement[]>([]);
   const [loading, setLoading] = useState(true);
   const [selected, setSelected] = useState<MobileAnnouncement | null>(null);
+  const [busy, setBusy] = useState(false);
+  const [notice, setNotice] = useState('');
+
+  const load = async () => {
+    const { data } = await api.get<MobileAnnouncement[]>('/announcements');
+    setItems(data);
+    onCount?.(data.length);
+    return data;
+  };
 
   useEffect(() => {
     let cancelled = false;
-    void api.get<MobileAnnouncement[]>('/announcements')
-      .then(({ data }) => {
-        if (cancelled) return;
-        setItems(data);
-        onCount?.(data.length);
-      })
-      .catch(() => {
-        if (!cancelled) setItems([]);
-      })
-      .finally(() => {
-        if (!cancelled) setLoading(false);
-      });
+    void load()
+      .catch(() => { if (!cancelled) setItems([]); })
+      .finally(() => { if (!cancelled) setLoading(false); });
     return () => { cancelled = true; };
   }, [onCount]);
 
+  const open = async (item: MobileAnnouncement) => {
+    setSelected(item);
+    try {
+      await api.post(`/announcements/${item.id}/read`);
+      const { data } = await api.get<MobileAnnouncement>(`/announcements/${item.id}`);
+      setSelected(data);
+      setItems((list) => list.map((row) => (row.id === data.id ? data : row)));
+    } catch {
+      /* still show the card */
+    }
+  };
+
+  const ack = async () => {
+    if (!selected) return;
+    setBusy(true);
+    try {
+      await api.post(`/announcements/${selected.id}/ack`);
+      const { data } = await api.get<MobileAnnouncement>(`/announcements/${selected.id}`);
+      setSelected(data);
+      setItems((list) => list.map((row) => (row.id === data.id ? data : row)));
+      setNotice('Confirmado');
+    } catch (error) {
+      setNotice(errorMessage(error));
+    } finally {
+      setBusy(false);
+      window.setTimeout(() => setNotice(''), 2500);
+    }
+  };
+
+  const vote = async (optionIndex: number) => {
+    if (!selected) return;
+    setBusy(true);
+    try {
+      const { data } = await api.post<MobileAnnouncement>(`/announcements/${selected.id}/vote`, { optionIndex });
+      setSelected(data);
+      setItems((list) => list.map((row) => (row.id === data.id ? data : row)));
+    } catch (error) {
+      setNotice(errorMessage(error));
+      window.setTimeout(() => setNotice(''), 2500);
+    } finally {
+      setBusy(false);
+    }
+  };
+
   if (selected) {
+    const kind = announcementKind(selected.type);
     return (
       <article className="announce-detail">
         <button type="button" className="announce-back" onClick={() => setSelected(null)}>
@@ -68,8 +110,8 @@ export function AnnouncementsScreen({ onCount }: { onCount?: (n: number) => void
         </button>
         {selected.imageUrl && <img src={selected.imageUrl} alt="" className="announce-hero" />}
         <div className="announce-meta">
-          <b className={selected.priority === 'URGENT' ? 'hot' : ''}>{PRIORITY_LABELS[selected.priority]}</b>
-          <span>{TYPE_LABELS[selected.type]}</span>
+          <b className={selected.priority === 'URGENT' ? 'hot' : ''}>{announcementPriorityLabel(selected.priority)}</b>
+          <span>{kind.icon} {kind.label}</span>
         </div>
         <h2>{selected.title}</h2>
         <p className="announce-body">{selected.content}</p>
@@ -79,11 +121,42 @@ export function AnnouncementsScreen({ onCount }: { onCount?: (n: number) => void
             {selected.eventLocation && <span><MapPin /> {selected.eventLocation}</span>}
           </div>
         )}
+        {selected.poll && (
+          <div className="announce-event" style={{ display: 'block' }}>
+            <b>{selected.poll.question}</b>
+            <div style={{ display: 'grid', gap: 8, marginTop: 8 }}>
+              {selected.poll.options.map((option, index) => {
+                const mine = selected.mine?.voteIndex === index;
+                const total = selected.poll?.totalVotes || 0;
+                const count = selected.poll?.results[index] ?? 0;
+                const show = selected.mine?.voteIndex != null || selected.poll?.closed;
+                return (
+                  <button
+                    key={option}
+                    type="button"
+                    disabled={busy || selected.poll?.closed}
+                    onClick={() => void vote(index)}
+                    className="announce-poll-opt"
+                  >
+                    <span>{mine ? <Check /> : null} {option}</span>
+                    {show ? <small>{count}{total ? ` / ${total}` : ''}</small> : null}
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+        )}
+        {selected.requireAck && (
+          <button type="button" className="primary" disabled={busy || selected.mine?.acked} onClick={() => void ack()}>
+            <Check /> {selected.mine?.acked ? 'Confirmado' : 'Confirmar lectura'}
+          </button>
+        )}
         {selected.attachments?.length ? (
           <div className="announce-gallery">
             {selected.attachments.map((url) => <img key={url} src={url} alt="" />)}
           </div>
         ) : null}
+        {notice ? <p className="empty">{notice}</p> : null}
         <small><User /> {author(selected)} · {fmt(selected.publishedAt)}</small>
       </article>
     );
@@ -96,7 +169,7 @@ export function AnnouncementsScreen({ onCount }: { onCount?: (n: number) => void
       <section className="standby radio-idle">
         <span><Megaphone /></span>
         <h2>No hay comunicados vigentes</h2>
-        <p>El tablón se actualiza cuando el comando publica un aviso oficial o un evento.</p>
+        <p>El tablón se actualiza cuando Central o el comando publica un aviso.</p>
       </section>
     );
   }
@@ -110,20 +183,23 @@ export function AnnouncementsScreen({ onCount }: { onCount?: (n: number) => void
           <small>{items.length} vigente{items.length === 1 ? '' : 's'}</small>
         </div>
       </header>
-      {items.map((item) => (
-        <button key={item.id} type="button" className="announce-card" onClick={() => setSelected(item)}>
-          {item.imageUrl ? (
-            <img src={item.imageUrl} alt="" />
-          ) : (
-            <i>{item.type === 'EVENT' ? <Calendar /> : item.type === 'OFFICIAL' ? <Megaphone /> : <Bell />}</i>
-          )}
-          <span>
-            <em className={item.priority === 'URGENT' ? 'hot' : ''}>{PRIORITY_LABELS[item.priority]} · {TYPE_LABELS[item.type]}</em>
-            <b>{item.title}</b>
-            <small>{item.content}</small>
-          </span>
-        </button>
-      ))}
+      {items.map((item) => {
+        const kind = announcementKind(item.type);
+        return (
+          <button key={item.id} type="button" className="announce-card" onClick={() => void open(item)}>
+            {item.imageUrl ? (
+              <img src={item.imageUrl} alt="" />
+            ) : (
+              <i>{kind.icon}</i>
+            )}
+            <span>
+              <em className={item.priority === 'URGENT' ? 'hot' : ''}>{announcementPriorityLabel(item.priority)} · {kind.icon} {kind.label}</em>
+              <b>{item.title}</b>
+              <small>{item.content}</small>
+            </span>
+          </button>
+        );
+      })}
     </section>
   );
 }

@@ -16,13 +16,14 @@ import {
 import { AnnouncementsService } from './announcements.service';
 import { CreateAnnouncementDto } from './dto/create-announcement.dto';
 import { UpdateAnnouncementDto } from './dto/update-announcement.dto';
+import { VoteAnnouncementDto } from './dto/vote-announcement.dto';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { RolesGuard } from '../auth/guards/roles.guard';
 import { Roles } from '../auth/decorators/roles.decorator';
 import { StorageService } from '../storage/storage.service';
 import { memoryUpload } from '../storage/upload.interceptor';
 
-const EDITORS = ['SUPER_ADMIN', 'COMANDANTE', 'CAPITAN', 'SECRETARIO'] as const;
+const EDITORS = ['SUPER_ADMIN', 'COMANDANTE', 'CAPITAN', 'SECRETARIO', 'OPERADOR_CENTRAL'] as const;
 
 @Controller('announcements')
 @UseGuards(JwtAuthGuard, RolesGuard)
@@ -42,12 +43,37 @@ export class AnnouncementsController {
 
   @Post('upload')
   @Roles(...EDITORS)
-  @UseInterceptors(memoryUpload({ maxBytes: 5 * 1024 * 1024, kind: 'image' }))
+    @UseInterceptors(memoryUpload({ maxBytes: 12 * 1024 * 1024, kind: 'image' }))
   async upload(@UploadedFile() file: any, @Req() req: any) {
     if (!file) throw new BadRequestException('Imagen requerida');
     const hostUrl = `${req.protocol}://${req.get('host')}`;
     const imageUrl = await this.storage.uploadFile(file, hostUrl, 'nodo360/announcements');
     return { imageUrl };
+  }
+
+  @Post(':id/read')
+  markRead(
+    @Param('id') id: string,
+    @Req() req: { user: { id: string; role?: string; companyId?: string | null; cuerpoId?: string | null } },
+  ) {
+    return this.announcementsService.markRead(id, req.user);
+  }
+
+  @Post(':id/ack')
+  markAck(
+    @Param('id') id: string,
+    @Req() req: { user: { id: string; role?: string; companyId?: string | null; cuerpoId?: string | null } },
+  ) {
+    return this.announcementsService.markAck(id, req.user);
+  }
+
+  @Post(':id/vote')
+  vote(
+    @Param('id') id: string,
+    @Body() dto: VoteAnnouncementDto,
+    @Req() req: { user: { id: string; role?: string; companyId?: string | null; cuerpoId?: string | null } },
+  ) {
+    return this.announcementsService.vote(id, dto.optionIndex, req.user);
   }
 
   @Get(':id')

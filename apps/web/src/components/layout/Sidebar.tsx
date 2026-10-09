@@ -34,6 +34,7 @@ export const navItems: NavItem[] = [
   { to: '/dashboard',  label: 'Dashboard',   icon: LayoutDashboard, roles: ['ALL'] },
   { to: '/alerts',     label: 'Alertas',      icon: Bell,            roles: ['ALL'] },
   { to: '/announcements', label: 'Comunicados', icon: Megaphone,     roles: ['ALL'] },
+  { to: '/central-avisos', label: 'Avisos a la app', icon: Megaphone, roles: ['OPERADOR_CENTRAL', 'SUPER_ADMIN', 'COMANDANTE', 'CAPITAN'] },
   { to: '/operational-map', label: 'Mapa 360', icon: Map, roles: ['SUPER_ADMIN', 'COMANDANTE', 'CAPITAN', 'ENCARGADO_MATERIAL', 'SECRETARIO', 'OPERADOR_CENTRAL'] },
   { to: '/hydrants',   label: 'Hidrantes',    icon: Droplets,        roles: ['SUPER_ADMIN', 'COMANDANTE', 'CAPITAN', 'ENCARGADO_MATERIAL', 'OPERADOR_CENTRAL'] },
   { to: '/emergency-plans', label: 'Planes Emergencia', icon: Shield, roles: ['SUPER_ADMIN', 'COMANDANTE', 'CAPITAN', 'SECRETARIO'] },

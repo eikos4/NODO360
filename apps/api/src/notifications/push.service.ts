@@ -422,4 +422,126 @@ export class PushService {
     return { sent };
   }
 
+  async notifyAnnouncement(payload: {
+    announcementId: string;
+    title: string;
+    body: string;
+    priority?: string;
+    cuerpoId?: string | null;
+    companyId?: string | null;
+    companyIds?: string[];
+    roles?: string[];
+    senderUserId?: string;
+  }) {
+    const title = payload.title?.trim();
+    const body = payload.body?.trim();
+    if (!title || !body || (!payload.cuerpoId && !payload.companyId && !payload.companyIds?.length)) return { sent: 0 };
+
+    const companyIds = payload.companyIds?.filter(Boolean) ?? [];
+    const roles = payload.roles?.filter(Boolean) ?? [];
+    const devices = await this.prisma.devicePushToken.findMany({
+      where: {
+        user: {
+          isActive: true,
+          ...(payload.senderUserId ? { id: { not: payload.senderUserId } } : {}),
+          AND: [
+            {
+              OR: [
+                payload.cuerpoId ? { company: { cuerpoId: payload.cuerpoId } } : undefined,
+                payload.cuerpoId ? { supportCompany: { cuerpoId: payload.cuerpoId } } : undefined,
+                payload.companyId ? { companyId: payload.companyId } : undefined,
+                payload.companyId ? { supportCompanyId: payload.companyId } : undefined,
+                companyIds.length ? { companyId: { in: companyIds } } : undefined,
+                companyIds.length ? { supportCompanyId: { in: companyIds } } : undefined,
+              ].filter(Boolean) as object[],
+            },
+            companyIds.length
+              ? {
+                  OR: [
+                    { companyId: { in: companyIds } },
+                    { supportCompanyId: { in: companyIds } },
+                  ],
+                }
+              : {},
+            roles.length
+              ? {
+                  OR: [
+                    { role: { in: roles as never } },
+                    { roles: { hasSome: roles as never } },
+                  ],
+                }
+              : {},
+          ],
+        },
+      },
+      select: { token: true },
+    });
+
+    if (!devices.length) return { sent: 0 };
+    if (!this.ready || !this.messaging) {
+      this.logger.warn(`Aviso ${payload.announcementId}: ${devices.length} teléfonos listos, pero FCM no está configurado`);
+      return { sent: 0 };
+    }
+
+    const urgent = payload.priority === 'URGENT' || payload.priority === 'HIGH';
+    const tone = resolveAlarmTone('NODO', 'AVISO', 'CENTRAL');
+    const tokens = devices.map((item) => item.token);
+    const stale: string[] = [];
+    let sent = 0;
+    const preview = body.length > 140 ? `${body.slice(0, 137)}...` : body;
+
+    for (let i = 0; i < tokens.length; i += 500) {
+      const chunk = tokens.slice(i, i + 500);
+      const res = await this.messaging.sendEachForMulticast({
+        tokens: chunk,
+        notification: { title: `Central · ${title}`, body: preview },
+        data: {
+          kind: 'ANNOUNCEMENT',
+          announcementId: payload.announcementId,
+          title,
+          body: preview,
+          url: '/announcements',
+        },
+        android: {
+          priority: 'high',
+          notification: urgent
+            ? { channelId: tone.channelId, sound: tone.sound, priority: 'high' }
+            : { sound: 'default', priority: 'default' },
+        },
+        apns: {
+          headers: { 'apns-priority': urgent ? '10' : '5', 'apns-push-type': 'alert' },
+          payload: {
+            aps: {
+              sound: urgent ? resolveApnsSound(tone.sound, this.config) : 'default',
+              alert: { title: `Central · ${title}`, body: preview },
+            },
+          },
+        },
+        webpush: {
+          notification: { title: `Central · ${title}`, body: preview },
+          fcmOptions: { link: '/announcements' },
+        },
+      });
+      sent += res.successCount;
+      res.responses.forEach((response, idx) => {
+        if (response.error) {
+          const code = response.error.code ?? '';
+          if (
+            code.includes('registration-token-not-registered')
+            || code.includes('invalid-registration-token')
+          ) {
+            stale.push(chunk[idx]);
+          }
+        }
+      });
+    }
+
+    if (stale.length) {
+      await this.prisma.devicePushToken.deleteMany({ where: { token: { in: stale } } });
+    }
+
+    this.logger.log(`Aviso ${payload.announcementId}: push ${sent}/${tokens.length}`);
+    return { sent };
+  }
+
 }

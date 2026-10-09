@@ -109,7 +109,7 @@ export class StorageService {
 }
 
 const ALLOWED_EXT = new Set([
-  '.jpg', '.jpeg', '.png', '.gif', '.webp',
+  '.jpg', '.jpeg', '.png', '.gif', '.webp', '.heic', '.heif', '.bmp', '.avif', '.tif', '.tiff',
   '.pdf', '.doc', '.docx', '.xls', '.xlsx', '.ppt', '.pptx', '.txt', '.csv', '.zip',
   '.webm', '.ogg', '.mp3', '.m4a', '.aac', '.wav', '.mp4', '.3gp',
 ]);

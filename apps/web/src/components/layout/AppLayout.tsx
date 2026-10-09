@@ -28,6 +28,7 @@ const IMMERSIVE_ROUTES = [
   '/vision360-cuarteles',
   '/companias-tv',
   '/hydrants',
+  '/central-avisos',
 ];
 
 export default function AppLayout() {

@@ -31,6 +31,12 @@ import { getAlarmToneMode, setAlarmToneMode, type AlarmToneMode } from './lib/al
 
 type Screen = 'alarms' | 'radio' | 'history' | 'settings' | 'announcements' | 'help' | 'recap' | 'codes';
 
+function isAnnouncementPush(data: Record<string, string> | undefined) {
+  const kind = data?.kind ?? '';
+  const url = data?.url ?? '';
+  return kind === 'ANNOUNCEMENT' || url === '/announcements' || url.includes('/announcements');
+}
+
 function ThemeToggle({ compact = false }: { compact?: boolean }) {
   const { theme, toggleTheme } = useAppTheme();
   const nextLabel = theme === 'light' ? 'Tema Nodo' : theme === 'nodo' ? 'Modo humo' : 'Tema claro';
@@ -841,10 +847,23 @@ export default function App() {
       }));
       listeners.push(await FirebaseMessaging.addListener('notificationActionPerformed', ({ notification }) => {
         const data = (notification.data ?? {}) as Record<string, string>;
+        if (isAnnouncementPush(data)) {
+          setScreen('announcements');
+          return;
+        }
         openAlarmLink(data.url || `nodo360://emergency/${data.incidentId || ''}`, data.notificationId);
       }));
       listeners.push(await FirebaseMessaging.addListener('notificationReceived', ({ notification }) => {
         const data = (notification.data ?? {}) as Record<string, string>;
+        if (isAnnouncementPush(data) || data.kind === 'RADIO_TX') {
+          if (isAnnouncementPush(data)) {
+            setAnnounceCount((count) => count + 1);
+            setNotice(notification.body || notification.title || 'Nuevo aviso de Central');
+            setScreen('announcements');
+            window.setTimeout(() => setNotice(''), 4000);
+          }
+          return;
+        }
         void playEmergencyAlarm({
           id: data.standbyId || data.incidentId || data.notificationId,
           kind: data.kind,

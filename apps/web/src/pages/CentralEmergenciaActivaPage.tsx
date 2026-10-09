@@ -2,7 +2,7 @@ import { useEffect, useMemo, useState } from 'react';
 import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import {
-  Bell, BookOpen, CheckCircle2, Clock, Cloud, CloudRain, CloudSun, Droplets, FileDown, HelpCircle, Loader2, LocateFixed, Map as MapIcon,
+  Bell, BookOpen, CheckCircle2, Clock, Cloud, CloudRain, CloudSun, Droplets, FileDown, HelpCircle, Loader2, LocateFixed, Map as MapIcon, Megaphone,
   MapPin, MessageSquarePlus, Navigation, Radio, RefreshCw, Shield, Siren, Sun, Truck, Tv, Users, X, Zap,
 } from 'lucide-react';
 import toast from 'react-hot-toast';
@@ -315,6 +315,7 @@ const IDLE_SHORTCUTS = [
   { to: '/hydrants', label: 'Hidrantes', hint: 'Inventario de agua', icon: Droplets },
   { to: '/companias-tv', label: 'Muro TV', hint: 'Cuarteles en vivo', icon: Tv },
   { to: '/central-express', label: 'Central Express', hint: 'Despacho rápido', icon: Zap },
+  { to: '/central-avisos', label: 'Avisos a la app', hint: 'Mensaje a los celulares', icon: Megaphone },
   { to: '/ayuda', label: 'Ayuda', hint: 'Guía NODO360', icon: HelpCircle },
 ] as const;
 

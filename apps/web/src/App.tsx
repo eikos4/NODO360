@@ -49,6 +49,7 @@ import CompaniasTvPage from './pages/CompaniasTvPage';
 import SuperAdminImplementacionPage from './pages/SuperAdminImplementacionPage';
 import Nodo360AlarmsPage from './pages/Nodo360AlarmsPage';
 import CentralEmergenciaActivaPage from './pages/CentralEmergenciaActivaPage';
+import CentralAvisosPage from './pages/CentralAvisosPage';
 import AyudaPage from './pages/AyudaPage';
 import CarroTabletPage from './pages/CarroTabletPage';
 
@@ -118,6 +119,7 @@ export default function App() {
         <Route path="inventory-audits" element={<InventoryAuditsPage />} />
         <Route path="alerts" element={<AlertsPage />} />
         <Route path="announcements" element={<AnnouncementsPage />} />
+        <Route path="central-avisos" element={<RequireRoles roles={['OPERADOR_CENTRAL', 'SUPER_ADMIN', 'COMANDANTE', 'CAPITAN']}><CentralAvisosPage /></RequireRoles>} />
         <Route path="hydrants" element={<RequireRoles roles={['SUPER_ADMIN', 'COMANDANTE', 'CAPITAN', 'ENCARGADO_MATERIAL', 'OPERADOR_CENTRAL']}><HydrantsPage /></RequireRoles>} />
         <Route path="emergency-plans" element={<RequireRoles roles={['SUPER_ADMIN', 'COMANDANTE', 'CAPITAN', 'SECRETARIO']}><EmergencyPlansPage /></RequireRoles>} />
         <Route path="evacuation" element={<EvacuationPage />} />

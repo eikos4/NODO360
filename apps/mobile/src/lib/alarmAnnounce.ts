@@ -108,6 +108,7 @@ function stillFresh(id: string) {
 }
 
 export async function playEmergencyAlarm(input: AlarmAnnounceInput) {
+  if (input.kind === 'ANNOUNCEMENT' || input.kind === 'RADIO_TX') return;
   const id = input.id || `${input.emergencyCodeId || input.code || 'alarm'}:${input.address || input.title || Date.now()}`;
   if (stillFresh(id)) return;
   played.set(id, Date.now());

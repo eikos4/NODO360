@@ -1,5 +1,5 @@
 import { Link, useLocation, useNavigate } from 'react-router-dom';
-import { Flame, HelpCircle, LogOut, Moon, Siren, Map, ShieldAlert, Radio, Sun, Zap, Droplets, Globe, Eye, BookOpen, Bell, ClipboardList, Tv, LayoutDashboard } from 'lucide-react';
+import { Flame, HelpCircle, LogOut, Moon, Siren, Map, ShieldAlert, Radio, Sun, Zap, Droplets, Globe, Eye, BookOpen, Bell, ClipboardList, Tv, LayoutDashboard, Megaphone } from 'lucide-react';
 import { useAuthStore } from '../../store/authStore';
 import { useThemeStore } from '../../store/themeStore';
 import { cn } from '../../lib/utils';
@@ -21,6 +21,7 @@ const TABS = [
   { to: '/operational-map', label: 'Mapa', icon: Map },
   { to: '/hydrants', label: 'Hidrantes', icon: Droplets },
   { to: '/incidents', label: 'Emergencias', icon: ShieldAlert },
+  { to: '/central-avisos', label: 'Avisos a la app', icon: Megaphone },
 ] as const;
 
 export default function CentralOperatorBar() {

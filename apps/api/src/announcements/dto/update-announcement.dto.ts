@@ -51,4 +51,31 @@ export class UpdateAnnouncementDto extends PartialType(CreateAnnouncementDto) {
   @IsString()
   @IsOptional()
   companyId?: string;
+
+  @IsArray()
+  @IsString({ each: true })
+  @IsOptional()
+  targetCompanyIds?: string[];
+
+  @IsArray()
+  @IsString({ each: true })
+  @IsOptional()
+  targetRoles?: string[];
+
+  @IsBoolean()
+  @IsOptional()
+  requireAck?: boolean;
+
+  @IsString()
+  @IsOptional()
+  pollQuestion?: string;
+
+  @IsArray()
+  @IsString({ each: true })
+  @IsOptional()
+  pollOptions?: string[];
+
+  @IsDateString()
+  @IsOptional()
+  pollClosesAt?: string;
 }
