@@ -156,7 +156,7 @@ export default function SalaPinGate({
                 type="button"
                 disabled={unlocking || key === ''}
                 onClick={() => press(key)}
-                className={`h-14 rounded-xl text-xl font-bold transition-colors ${
+                className={`h-14 rounded-xl text-xl font-bold transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/70 ${
                   key === ''
                     ? 'invisible'
                     : key === 'del'
@@ -178,7 +178,7 @@ export default function SalaPinGate({
             type="button"
             disabled={unlocking || pin.length < 4}
             onClick={() => onSubmit(pin)}
-            className={`relative w-64 h-12 rounded-xl disabled:opacity-50 font-black ${
+            className={`relative w-64 h-12 rounded-xl disabled:opacity-50 font-black focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/70 ${
               carro
                 ? 'bg-emerald-500 hover:bg-emerald-400 text-emerald-950'
                 : 'bg-amber-500 hover:bg-amber-400 text-amber-950'

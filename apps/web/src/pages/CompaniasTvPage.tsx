@@ -5,6 +5,7 @@ import {
   AlertTriangle, CheckCircle2, ChevronLeft, ChevronRight, Maximize2, Minimize2, Radio, Siren, Truck, Users,
 } from 'lucide-react';
 import { api } from '../lib/api';
+import { salaAuthHeaders } from '../lib/sala-auth';
 import { cn } from '../lib/utils';
 import FirefighterAvatar from '../components/FirefighterAvatar';
 import { subscribeAnyDispatchLive } from '../lib/dispatch-live-sync';
@@ -155,7 +156,15 @@ function fmtClock(d: Date) {
   return d.toLocaleTimeString('es-CL', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
 }
 
-export default function CompaniasTvPage() {
+const apiBase = import.meta.env.VITE_API_URL?.replace(/\/$/, '') || '/api';
+
+export default function CompaniasTvPage({
+  kioskSlug,
+  hideAdminLinks,
+}: {
+  kioskSlug?: string;
+  hideAdminLinks?: boolean;
+} = {}) {
   const qc = useQueryClient();
   const [now, setNow] = useState(() => new Date());
   const [fullscreen, setFullscreen] = useState(false);
@@ -172,17 +181,29 @@ export default function CompaniasTvPage() {
   }, []);
 
   const { data, isLoading } = useQuery({
-    queryKey: ['companias-tv'],
-    queryFn: () => api.get<GlobalPayload>('/dispatch/central/global').then((r) => r.data),
+    queryKey: ['companias-tv', kioskSlug ?? 'central'],
+    queryFn: async () => {
+      if (kioskSlug) {
+        const res = await fetch(`${apiBase}/dispatch/public/${kioskSlug}/cuerpo-wall`, {
+          headers: salaAuthHeaders(kioskSlug),
+        });
+        const json = await res.json();
+        if (!res.ok) throw new Error(json?.message ?? 'Muro no disponible');
+        if (json?.locked) throw new Error('PIN_REQUIRED');
+        return json as GlobalPayload;
+      }
+      return api.get<GlobalPayload>('/dispatch/central/global').then((r) => r.data);
+    },
     refetchInterval: 5_000,
   });
 
   useEffect(() => {
     const unsub = subscribeAnyDispatchLive(() => {
       void qc.invalidateQueries({ queryKey: ['companias-tv'] });
+      void qc.invalidateQueries({ queryKey: ['companias-tv', kioskSlug ?? 'central'] });
     });
     return unsub;
-  }, [qc]);
+  }, [qc, kioskSlug]);
 
   const companies = data?.companies ?? [];
   const emergencies = (data?.activeEmergencies ?? []).filter((e) => e.status === 'ACTIVA');
@@ -204,9 +225,10 @@ export default function CompaniasTvPage() {
   );
 
   const slides = useMemo<Slide[]>(() => {
+    if (kioskSlug || hideAdminLinks) return [{ kind: 'mural' }];
     const salida = companies.filter((c) => c.dispatchSlug);
     return [{ kind: 'mural' }, ...salida.map((c) => ({ kind: 'salida' as const, company: c }))];
-  }, [companies]);
+  }, [companies, kioskSlug, hideAdminLinks]);
 
   const [slideIndex, setSlideIndex] = useState(0);
   const current = slides[slideIndex] ?? slides[0];
@@ -312,20 +334,24 @@ export default function CompaniasTvPage() {
             En vivo
           </span>
           <p className="keep-on-color font-mono text-3xl font-black tabular-nums tracking-tight text-white">{fmtClock(now)}</p>
-          <button
-            type="button"
-            onClick={toggleFullscreen}
-            className="rounded-lg border border-white/20 p-2 text-white hover:bg-white/10"
-            title={fullscreen ? 'Salir de pantalla completa' : 'Pantalla completa'}
-          >
-            {fullscreen ? <Minimize2 className="h-4 w-4" /> : <Maximize2 className="h-4 w-4" />}
-          </button>
-          <Link
-            to="/vision360-cuarteles"
-            className="keep-on-color hidden rounded-lg border border-white/20 px-2.5 py-1.5 text-[11px] font-semibold text-white hover:bg-white/10 sm:inline"
-          >
-            Vision360
-          </Link>
+          {!hideAdminLinks && (
+            <button
+              type="button"
+              onClick={toggleFullscreen}
+              className="rounded-lg border border-white/20 p-2 text-white hover:bg-white/10"
+              title={fullscreen ? 'Salir de pantalla completa' : 'Pantalla completa'}
+            >
+              {fullscreen ? <Minimize2 className="h-4 w-4" /> : <Maximize2 className="h-4 w-4" />}
+            </button>
+          )}
+          {!hideAdminLinks && (
+            <Link
+              to="/vision360-cuarteles"
+              className="keep-on-color hidden rounded-lg border border-white/20 px-2.5 py-1.5 text-[11px] font-semibold text-white hover:bg-white/10 sm:inline"
+            >
+              Vision360
+            </Link>
+          )}
         </div>
       </header>
       )}

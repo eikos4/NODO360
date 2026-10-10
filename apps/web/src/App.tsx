@@ -46,6 +46,7 @@ import BomberoEmergencyPage from './pages/BomberoEmergencyPage';
 import CompanyPublicProfilePage from './pages/CompanyPublicProfilePage';
 import Vision360CuartelesPage from './pages/Vision360CuartelesPage';
 import CompaniasTvPage from './pages/CompaniasTvPage';
+import CompaniasTvKioskPage from './pages/CompaniasTvKioskPage';
 import SuperAdminImplementacionPage from './pages/SuperAdminImplementacionPage';
 import Nodo360AlarmsPage from './pages/Nodo360AlarmsPage';
 import CentralEmergenciaActivaPage from './pages/CentralEmergenciaActivaPage';
@@ -91,6 +92,9 @@ export default function App() {
   if (import.meta.env.VITE_CARRO_KIOSK === '1' && !location.pathname.startsWith('/carro')) {
     return <Navigate to="/carro" replace />;
   }
+  if (import.meta.env.VITE_TV_KIOSK === '1' && !location.pathname.startsWith('/muro')) {
+    return <Navigate to="/muro" replace />;
+  }
 
   return (
     <ErrorBoundary>
@@ -103,6 +107,8 @@ export default function App() {
       <Route path="/localizar/:token" element={<IncidentLocationPinPage />} />
       <Route path="/carro" element={<CarroTabletPage />} />
       <Route path="/carro/:slug" element={<CarroTabletPage />} />
+      <Route path="/muro" element={<CompaniasTvKioskPage />} />
+      <Route path="/muro/:slug" element={<CompaniasTvKioskPage />} />
       <Route
         element={
           <PrivateRoute>

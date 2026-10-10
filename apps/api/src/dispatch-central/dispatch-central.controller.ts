@@ -43,6 +43,12 @@ export class DispatchCentralController {
     return this.service.unlockPublic(slug, dto.pin);
   }
 
+  /** Muro TV del cuerpo: se abre con el PIN de cualquier compañía del cuartel. */
+  @Get('public/:slug/cuerpo-wall')
+  getCuerpoWall(@Param('slug') slug: string, @Req() req: HeaderRequest) {
+    return this.service.getCuerpoWall(slug, req);
+  }
+
   @Post('public/:slug/vehicle-location')
   async reportVehicleLocation(
     @Param('slug') slug: string,

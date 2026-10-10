@@ -1565,6 +1565,18 @@ export class DispatchCentralService {
     );
   }
 
+  async getCuerpoWall(slug: string, req: HeaderRequest) {
+    const access = await this.peekPublicAccess(slug, req);
+    if (access === 'locked') return this.getPublicLocked(slug);
+    const company = await this.getCompanyBySlug(slug);
+    return this.getGlobalDispatch({
+      companyId: company.id,
+      cuerpoId: company.cuerpoId,
+      role: 'OPERADOR_CENTRAL',
+      roles: ['OPERADOR_CENTRAL'],
+    });
+  }
+
   async getGlobalDispatch(actor?: Actor) {
     const ids = actor ? await companyIdsForActor(this.prisma, actor) : null;
     const companies = await this.prisma.company.findMany({
