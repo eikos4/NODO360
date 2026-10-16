@@ -129,7 +129,7 @@ const ROLES = [
   {
     icon: Headphones,
     title: 'Centralista / Operador central',
-    sees: 'Consola activa, Nodo360 Alarms, despacho, mapa, Quién va, radio, bitácora, muro de compañías.',
+    sees: 'Consola activa, Llamados operativos, Nodo360 Alarms, despacho, mapa, Quién va, radio, bitácora, muro de compañías.',
     tip: 'Si no ves un módulo, es porque tu rol no lo incluye. Pedí acceso a administración del cuerpo.',
   },
   {
@@ -228,6 +228,7 @@ const OPS = [
     body: [
       'En el móvil: Voy (vas), No voy (no respondés), En el lugar (ya estás en el siniestro).',
       'La central ve la lista en vivo en Consola activa: dotación, estados y GPS si compartieron.',
+      'En Llamados operativos (pantalla de Central) se ve a cuántos teléfonos salió la alarma, cuántos la recibieron y quién confirmó o va.',
       'Sirve para saber si hay gente suficiente y quién está en camino sin preguntar por radio una por una.',
     ],
   },
@@ -369,6 +370,7 @@ const FAQ = [
 const MODULES = [
   { name: 'Despacho360 / Alarms', tip: 'Botonera y consola de claves' },
   { name: 'Consola activa', tip: 'Puesto unificado de la emergencia' },
+  { name: 'Llamados operativos', tip: 'Pantalla: a cuántos les llegó la alarma' },
   { name: 'Bitácora360', tip: 'Fases y cierre con PDF' },
   { name: 'Mapa 360 / Hidrantes', tip: 'Terreno y recursos' },
   { name: 'Radio PTT', tip: 'Canal por emergencia' },

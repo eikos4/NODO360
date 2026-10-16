@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef, useCallback, useMemo } from 'react';
+import { createElement, useState, useEffect, useRef, useCallback, useMemo } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { api } from '../lib/api';
 import toast from 'react-hot-toast';
@@ -217,8 +217,26 @@ export function useQuickDispatch(options: QuickDispatchOptions = {}) {
       qc.invalidateQueries({ queryKey: ['operational-map'] });
       qc.invalidateQueries({ queryKey: ['dispatch-live'] });
       qc.invalidateQueries({ queryKey: ['emergency-response-active'] });
+      qc.invalidateQueries({ queryKey: ['call-board'] });
       refetchLive();
-      toast.success(`Emergencia ${d.code} despachada`, { duration: 4000 });
+      toast.success(
+        (t) =>
+          createElement(
+            'div',
+            { className: 'text-sm' },
+            createElement('p', { className: 'font-bold' }, `Emergencia ${d.code} despachada`),
+            createElement(
+              'a',
+              {
+                href: `/central-llamados?id=${d.id}`,
+                className: 'font-semibold text-red-200 underline',
+                onClick: () => toast.dismiss(t.id),
+              },
+              'Ver llamados · teléfonos',
+            ),
+          ),
+        { duration: 8000 },
+      );
     },
     onError: (e: { response?: { data?: { message?: string } } }) => {
       toast.error(e.response?.data?.message ?? 'Error al registrar despacho');

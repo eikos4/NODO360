@@ -33,6 +33,13 @@ export class IncidentsController {
     return this.service.findAllAuthorized(req.user, companyId);
   }
 
+  /** Pantalla operativa: alarmas activas, teléfonos notificados y quién responde. */
+  @Get('call-board')
+  @Roles('SUPER_ADMIN', 'COMANDANTE', 'CAPITAN', 'OPERADOR_CENTRAL', 'KODESK')
+  getCallBoard(@Req() req: { user: IncidentAuthUser }) {
+    return this.service.getCallBoard(req.user);
+  }
+
   @Get(':id/report')
   @Roles('SUPER_ADMIN', 'COMANDANTE', 'CAPITAN', 'OPERADOR_CENTRAL', 'SECRETARIO', 'KODESK')
   getReport(@Param('id') id: string, @Req() req: { user: IncidentAuthUser }) {

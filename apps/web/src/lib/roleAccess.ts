@@ -22,6 +22,7 @@ export const CENTRAL_OPERATOR_ROUTES = [
   '/vision360-cuarteles',
   '/companias-tv',
   '/central-avisos',
+  '/central-llamados',
   '/announcements',
 ] as const;
 

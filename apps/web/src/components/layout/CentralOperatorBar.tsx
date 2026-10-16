@@ -1,5 +1,5 @@
 import { Link, useLocation, useNavigate } from 'react-router-dom';
-import { Flame, HelpCircle, LogOut, Moon, Siren, Map, ShieldAlert, Radio, Sun, Zap, Droplets, Globe, Eye, BookOpen, Bell, ClipboardList, Tv, LayoutDashboard, Megaphone } from 'lucide-react';
+import { Flame, HelpCircle, LogOut, Moon, Siren, Map, ShieldAlert, Radio, Sun, Zap, Droplets, Globe, Eye, BookOpen, Bell, ClipboardList, Tv, LayoutDashboard, Megaphone, Phone } from 'lucide-react';
 import { useAuthStore } from '../../store/authStore';
 import { useThemeStore } from '../../store/themeStore';
 import { cn } from '../../lib/utils';
@@ -8,6 +8,7 @@ import { canViewCuartelesOverview } from '../../hooks/useCuartelesOverview';
 
 const TABS = [
   { to: '/central-emergencia', label: 'Consola activa', icon: LayoutDashboard },
+  { to: '/central-llamados', label: 'Llamados', icon: Phone },
   { to: '/despacho360', label: 'Despacho360', icon: Siren },
   { to: '/nodo360-alarms', label: 'Nodo360 Alarms', icon: Bell },
   { to: '/central-express', label: 'Central Express', icon: Zap },
@@ -44,7 +45,7 @@ export default function CentralOperatorBar() {
     )}>
       <div className="h-12 sm:h-14 flex items-center justify-between gap-2 px-2 sm:px-4">
         <div className="flex items-center gap-2 min-w-0">
-          <div className="w-8 h-8 bg-red-600 rounded-lg flex items-center justify-center shrink-0">
+          <div className="keep-on-color w-8 h-8 bg-red-600 rounded-lg flex items-center justify-center shrink-0">
             <Flame className="w-4 h-4 text-white" />
           </div>
           <div className="min-w-0 hidden md:block">
@@ -64,7 +65,7 @@ export default function CentralOperatorBar() {
                 className={cn(
                   'flex items-center justify-center w-8 h-8 sm:w-9 sm:h-9 rounded-lg transition-colors shrink-0',
                   active
-                    ? 'bg-red-600 !text-white shadow-md shadow-red-600/25'
+                    ? 'keep-on-color bg-red-600 !text-white shadow-md shadow-red-600/25'
                     : isDark
                       ? 'text-slate-400 hover:text-white hover:bg-slate-800'
                       : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100',
@@ -88,7 +89,7 @@ export default function CentralOperatorBar() {
             className={cn(
               'p-2 rounded-lg transition-colors',
               location.pathname.startsWith('/ayuda')
-                ? 'bg-red-600 !text-white'
+                ? 'keep-on-color bg-red-600 !text-white'
                 : isDark
                   ? 'text-slate-500 hover:text-white hover:bg-slate-800'
                   : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100',

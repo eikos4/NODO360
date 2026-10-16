@@ -22,6 +22,7 @@ const GROUPS = [
       { label: 'Central Pública', icon: Flame, route: '/central-despachos-parral' },
       { label: 'Muro compañías TV', icon: Building2, route: '/companias-tv' },
       { label: 'Avisos a la app', icon: Megaphone, route: '/central-avisos' },
+      { label: 'Llamados operativos', icon: Siren, route: '/central-llamados' },
       { label: 'Alertas', icon: Bell, route: '/alerts' },
     ],
   },

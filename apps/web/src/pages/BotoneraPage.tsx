@@ -465,6 +465,7 @@ export default function BotoneraPage() {
       qc.invalidateQueries({ queryKey: ['operational-map'] });
       qc.invalidateQueries({ queryKey: ['guard-log-dashboard'] });
       qc.invalidateQueries({ queryKey: ['emergency-response-active'] });
+      qc.invalidateQueries({ queryKey: ['call-board'] });
       setLastDispatch((prev: any) => ({
         type: prev?.type ?? (d.code ? `${d.code} — ${d.type}` : d.type),
         code: prev?.code ?? d.code,
@@ -496,12 +497,33 @@ export default function BotoneraPage() {
               >
                 Abrir bitácora del día →
               </Link>
+              <Link
+                to={`/central-llamados?id=${d.id}`}
+                className="text-xs font-semibold underline"
+                onClick={() => toast.dismiss(t.id)}
+              >
+                Ver llamados · teléfonos →
+              </Link>
             </span>
           ),
           { duration: 8000 },
         );
       } else {
-        toast.success(`Emergencia ${d.code} registrada`);
+        toast.success(
+          (t) => (
+            <span className="flex flex-col gap-1">
+              <span>Emergencia <strong>{d.code}</strong> registrada</span>
+              <Link
+                to={`/central-llamados?id=${d.id}`}
+                className="text-xs font-semibold underline"
+                onClick={() => toast.dismiss(t.id)}
+              >
+                Ver llamados · teléfonos →
+              </Link>
+            </span>
+          ),
+          { duration: 8000 },
+        );
       }
     },
     onError: (e: any) => {

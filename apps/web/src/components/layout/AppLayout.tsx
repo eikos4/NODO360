@@ -29,6 +29,7 @@ const IMMERSIVE_ROUTES = [
   '/companias-tv',
   '/hydrants',
   '/central-avisos',
+  '/central-llamados',
 ];
 
 export default function AppLayout() {

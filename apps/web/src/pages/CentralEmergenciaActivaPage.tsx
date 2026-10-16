@@ -2,7 +2,7 @@ import { useEffect, useMemo, useState } from 'react';
 import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import {
-  Bell, BookOpen, CheckCircle2, Clock, Cloud, CloudRain, CloudSun, Droplets, FileDown, HelpCircle, Loader2, LocateFixed, Map as MapIcon, Megaphone,
+  Bell, BookOpen, CheckCircle2, Clock, Cloud, CloudRain, CloudSun, Droplets, FileDown, HelpCircle, Image as ImageIcon, Loader2, LocateFixed, Map as MapIcon, Megaphone,
   MapPin, MessageSquarePlus, Navigation, Radio, RefreshCw, Shield, Siren, Sun, Truck, Tv, Users, X, Zap,
 } from 'lucide-react';
 import toast from 'react-hot-toast';
@@ -27,9 +27,11 @@ import LocateEmergencyStudio from '../components/dispatch/LocateEmergencyStudio'
 import { incidentNavigatePoint, openGoogleMapsDirections } from '../lib/incident-location-pin';
 import DoubleDispatchConfirmModal from '../components/dispatch/DoubleDispatchConfirmModal';
 import type { CentralParralThemeTokens } from '../lib/central-parral-theme';
+import { useCentralSceneBackground } from '../lib/central-scene-backgrounds';
 
 const POLL_MS = 8_000;
 const HAS_GOOGLE_MAPS = Boolean(import.meta.env.VITE_GOOGLE_MAPS_API_KEY);
+const SCENE_FONDO_KEY = 'nodo360_central_emergencia_fondo';
 
 type IncidentRow = {
   id: string;
@@ -322,6 +324,7 @@ const IDLE_SHORTCUTS = [
 function IdleHome({
   th,
   isDark,
+  sceneBg,
   recentClosed,
   onDispatch,
   onLocate,
@@ -330,6 +333,7 @@ function IdleHome({
 }: {
   th: CentralParralThemeTokens;
   isDark: boolean;
+  sceneBg: boolean;
   recentClosed: IncidentRow[];
   onDispatch: () => void;
   onLocate: () => void;
@@ -337,13 +341,16 @@ function IdleHome({
   onRefresh: () => void;
 }) {
   const user = useAuthStore((s) => s.user);
+  const darkUi = isDark || sceneBg;
   return (
-    <div className="flex-1 min-h-0 overflow-y-auto">
+    <div className="relative z-10 flex-1 min-h-0 overflow-y-auto">
       <div
         className={`relative min-h-full px-4 sm:px-8 py-8 sm:py-12 ${
-          isDark
-            ? 'bg-[radial-gradient(900px_420px_at_50%_-10%,rgba(16,185,129,0.14),transparent_55%),radial-gradient(700px_360px_at_80%_80%,rgba(14,165,233,0.08),transparent_50%)]'
-            : 'bg-[radial-gradient(900px_420px_at_50%_-10%,rgba(16,185,129,0.12),transparent_55%),radial-gradient(700px_360px_at_80%_80%,rgba(14,165,233,0.08),transparent_50%)]'
+          sceneBg
+            ? ''
+            : isDark
+              ? 'bg-[radial-gradient(900px_420px_at_50%_-10%,rgba(16,185,129,0.14),transparent_55%),radial-gradient(700px_360px_at_80%_80%,rgba(14,165,233,0.08),transparent_50%)]'
+              : 'bg-[radial-gradient(900px_420px_at_50%_-10%,rgba(16,185,129,0.12),transparent_55%),radial-gradient(700px_360px_at_80%_80%,rgba(14,165,233,0.08),transparent_50%)]'
         }`}
       >
         <div className="max-w-5xl mx-auto">
@@ -357,27 +364,27 @@ function IdleHome({
             <button
               type="button"
               onClick={onRefresh}
-              className={`p-2 rounded-lg border ${th.refreshBtn}`}
+              className={`p-2 rounded-lg border ${sceneBg ? 'keep-on-color border-white/25 bg-white/10 text-white' : th.refreshBtn}`}
               title="Actualizar"
             >
               <RefreshCw className={`w-4 h-4 ${isFetching ? 'animate-spin' : ''}`} />
             </button>
           </div>
 
-          <div className="text-center mb-4">
-            <p className={`text-sm font-semibold ${isDark ? 'text-slate-400' : 'text-slate-600'}`}>
+          <div className={`text-center mb-4 ${sceneBg ? 'keep-on-color text-white' : ''}`}>
+            <p className={`text-sm font-semibold ${sceneBg ? 'text-white/80' : darkUi ? 'text-slate-400' : 'text-slate-600'}`}>
               Hola{user?.firstName ? `, ${user.firstName}` : ''}
             </p>
-            <h1 className={`mt-1 text-2xl sm:text-3xl font-black ${th.title}`}>
+            <h1 className={`mt-1 text-2xl sm:text-3xl font-black ${sceneBg ? 'text-white' : th.title}`}>
               Sin novedades
             </h1>
-            <p className={`mt-2 text-sm sm:text-base max-w-md mx-auto ${th.subtitle}`}>
+            <p className={`mt-2 text-sm sm:text-base max-w-md mx-auto ${sceneBg ? 'text-white/80' : th.subtitle}`}>
               Todo tranquilo. No hay emergencias activas. La central está lista para despachar cuando haga falta.
             </p>
           </div>
 
-          <div className="flex justify-center mb-10 sm:mb-14">
-            <IdleHomeClock isDark={isDark} />
+          <div className={`flex justify-center mb-10 sm:mb-14 ${sceneBg ? 'keep-on-color' : ''}`}>
+            <IdleHomeClock isDark={darkUi} />
           </div>
 
           <div className="flex flex-wrap justify-center gap-3 mb-12">
@@ -392,9 +399,11 @@ function IdleHome({
             <Link
               to="/nodo360-alarms"
               className={`inline-flex items-center gap-2 px-5 py-3.5 rounded-2xl border text-sm font-bold ${
-                isDark
-                  ? 'border-white/15 text-slate-200 hover:bg-white/5'
-                  : 'border-slate-300 text-slate-800 hover:bg-white'
+                sceneBg
+                  ? 'keep-on-color border-white/30 bg-white/10 text-white hover:bg-white/15'
+                  : isDark
+                    ? 'border-white/15 text-slate-200 hover:bg-white/5'
+                    : 'border-slate-300 text-slate-800 hover:bg-white'
               }`}
             >
               <Bell className="w-4 h-4" />
@@ -411,7 +420,7 @@ function IdleHome({
           </div>
 
           <div className="mb-10">
-            <p className={`text-[10px] font-black uppercase tracking-widest mb-3 ${th.sectionLabel}`}>
+            <p className={`text-[10px] font-black uppercase tracking-widest mb-3 ${sceneBg ? 'keep-on-color text-white/80' : th.sectionLabel}`}>
               Accesos directos
             </p>
             <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5">
@@ -420,25 +429,29 @@ function IdleHome({
                   key={to}
                   to={to}
                   className={`group rounded-2xl border p-3.5 transition ${
-                    isDark
-                      ? 'border-white/10 bg-white/[0.03] hover:border-emerald-500/35 hover:bg-emerald-500/10'
-                      : 'border-slate-200 bg-white/80 hover:border-emerald-400 hover:bg-emerald-50 shadow-sm'
+                    sceneBg
+                      ? 'keep-on-color border-white/20 bg-black/20 text-white hover:border-emerald-400/50 hover:bg-black/30 backdrop-blur-[2px]'
+                      : isDark
+                        ? 'border-white/10 bg-white/[0.03] hover:border-emerald-500/35 hover:bg-emerald-500/10'
+                        : 'border-slate-200 bg-white/80 hover:border-emerald-400 hover:bg-emerald-50 shadow-sm'
                   }`}
                 >
-                  <Icon className={`w-5 h-5 mb-2 ${isDark ? 'text-emerald-400' : 'text-emerald-600'}`} />
-                  <p className={`text-sm font-bold leading-tight ${th.title}`}>{label}</p>
-                  <p className={`text-[11px] mt-0.5 ${th.subtitle}`}>{hint}</p>
+                  <Icon className={`w-5 h-5 mb-2 ${sceneBg || isDark ? 'text-emerald-400' : 'text-emerald-600'}`} />
+                  <p className={`text-sm font-bold leading-tight ${sceneBg ? 'text-white' : th.title}`}>{label}</p>
+                  <p className={`text-[11px] mt-0.5 ${sceneBg ? 'text-white/75' : th.subtitle}`}>{hint}</p>
                 </Link>
               ))}
             </div>
           </div>
 
           <div className={`rounded-2xl border p-4 sm:p-5 ${
-            isDark ? 'border-white/10 bg-white/[0.03]' : 'border-slate-200 bg-white/90 shadow-sm'
+            sceneBg
+              ? 'keep-on-color border-white/20 bg-black/20 text-white backdrop-blur-[2px]'
+              : isDark ? 'border-white/10 bg-white/[0.03]' : 'border-slate-200 bg-white/90 shadow-sm'
           }`}>
             <div className="flex items-center gap-2 mb-3">
-              <Shield className={`w-4 h-4 ${isDark ? 'text-emerald-400' : 'text-emerald-600'}`} />
-              <p className={`text-[10px] font-black uppercase tracking-widest ${th.sectionLabel}`}>
+              <Shield className={`w-4 h-4 ${sceneBg || isDark ? 'text-emerald-400' : 'text-emerald-600'}`} />
+              <p className={`text-[10px] font-black uppercase tracking-widest ${sceneBg ? 'text-white/80' : th.sectionLabel}`}>
                 Estado operativo
               </p>
             </div>
@@ -451,16 +464,18 @@ function IdleHome({
                 <div
                   key={row.label}
                   className={`rounded-xl border px-3 py-3 ${
-                    isDark ? 'border-emerald-500/20 bg-emerald-500/10' : 'border-emerald-200 bg-emerald-50'
+                    sceneBg
+                      ? 'border-emerald-400/30 bg-emerald-500/15'
+                      : isDark ? 'border-emerald-500/20 bg-emerald-500/10' : 'border-emerald-200 bg-emerald-50'
                   }`}
                 >
                   <div className="flex items-center gap-1.5 mb-1">
                     <CheckCircle2 className="w-3.5 h-3.5 text-emerald-500" />
-                    <p className={`text-[10px] font-bold uppercase ${isDark ? 'text-emerald-300/80' : 'text-emerald-800'}`}>
+                    <p className={`text-[10px] font-bold uppercase ${sceneBg ? 'text-emerald-200' : isDark ? 'text-emerald-300/80' : 'text-emerald-800'}`}>
                       {row.label}
                     </p>
                   </div>
-                  <p className={`text-lg font-black ${isDark ? 'text-emerald-100' : 'text-emerald-950'}`}>
+                  <p className={`text-lg font-black ${sceneBg ? 'text-white' : isDark ? 'text-emerald-100' : 'text-emerald-950'}`}>
                     {row.value}
                   </p>
                 </div>
@@ -477,7 +492,7 @@ function IdleHome({
                     <div
                       key={inc.id}
                       className={`flex items-center justify-between gap-3 rounded-xl px-3 py-2 border ${
-                        isDark ? 'border-white/5 bg-black/20' : 'border-slate-100 bg-slate-50'
+                        sceneBg ? 'border-white/15 bg-black/25' : isDark ? 'border-white/5 bg-black/20' : 'border-slate-100 bg-slate-50'
                       }`}
                     >
                       <div className="min-w-0">
@@ -519,6 +534,25 @@ export default function CentralEmergenciaActivaPage() {
   const [flyToken, setFlyToken] = useState(0);
   const [locateOpen, setLocateOpen] = useState(false);
   const [nowTick, setNowTick] = useState(0);
+  const [sceneBg, setSceneBg] = useState(() => {
+    try {
+      return localStorage.getItem(SCENE_FONDO_KEY) === '1';
+    } catch {
+      return false;
+    }
+  });
+  const toggleSceneBg = () => {
+    setSceneBg((v) => {
+      const next = !v;
+      try {
+        localStorage.setItem(SCENE_FONDO_KEY, next ? '1' : '0');
+      } catch {
+        /* ignore */
+      }
+      return next;
+    });
+  };
+  const sceneSrc = useCentralSceneBackground(sceneBg);
 
   const d = useQuickDispatch({
     autoDispatchOnKey: false,
@@ -751,8 +785,16 @@ export default function CentralEmergenciaActivaPage() {
   };
 
   return (
-    <div className={`flex flex-col h-full min-h-0 overflow-hidden transition-colors ${th.shell}`}>
-      <header className={`shrink-0 px-3 sm:px-5 py-3 border-b ${th.shellHeader} ${th.borderSubtle}`}>
+    <div className={`central-emergencia-page relative flex flex-col h-full min-h-0 overflow-hidden transition-colors ${sceneBg ? 'scene-fondo bg-black' : th.shell}`}>
+      {sceneBg && (
+        <>
+          <img src={sceneSrc} alt="" className="pointer-events-none absolute inset-0 h-full w-full object-cover" />
+          <div className="pointer-events-none absolute inset-0 bg-gradient-to-b from-black/45 via-black/15 to-black/35" />
+        </>
+      )}
+      <header className={`relative z-10 shrink-0 px-3 sm:px-5 py-3 border-b ${
+        sceneBg ? 'border-white/15 bg-black/20 backdrop-blur-[2px]' : `${th.shellHeader} ${th.borderSubtle}`
+      }`}>
         <div className="flex flex-wrap items-start justify-between gap-3">
           <div className="min-w-0">
             <div className="flex items-center gap-2 mb-1">
@@ -763,7 +805,7 @@ export default function CentralEmergenciaActivaPage() {
                 {idleHome ? 'Central en espera' : 'Consola de emergencia activa'}
               </span>
             </div>
-            <h1 className={`text-lg sm:text-xl font-bold truncate ${th.title}`}>
+            <h1 className={`text-lg sm:text-xl font-bold truncate ${sceneBg ? 'keep-on-color text-white' : th.title}`}>
               {selected
                 ? `${selected.code} · ${selected.type}`
                 : pinPending
@@ -772,7 +814,7 @@ export default function CentralEmergenciaActivaPage() {
                     ? 'Sin novedades'
                     : 'Despacho rápido'}
             </h1>
-            <p className={`text-xs mt-0.5 flex items-center gap-1 truncate ${th.subtitle}`}>
+            <p className={`text-xs mt-0.5 flex items-center gap-1 truncate ${sceneBg ? 'keep-on-color text-white/80' : th.subtitle}`}>
               <MapPin className="w-3 h-3 shrink-0" />
               {selected?.address
                 || (pinPending
@@ -796,6 +838,19 @@ export default function CentralEmergenciaActivaPage() {
                 <WeatherChip isDark={isDark} />
               </div>
             )}
+            <button
+              type="button"
+              onClick={toggleSceneBg}
+              title={sceneBg ? 'Quitar fondo del centro de comando' : 'Poner fondo del centro de comando'}
+              className={`flex items-center gap-1.5 px-3 py-2 rounded-xl border text-xs font-black uppercase tracking-wide ${
+                sceneBg
+                  ? 'keep-on-color border-white/30 bg-white/10 text-white'
+                  : th.refreshBtn
+              }`}
+            >
+              <ImageIcon className="w-3.5 h-3.5" />
+              {sceneBg ? 'Quitar fondo' : 'Fondo'}
+            </button>
             <button
               type="button"
               onClick={() => setShowDispatch((v) => !v)}
@@ -859,6 +914,7 @@ export default function CentralEmergenciaActivaPage() {
         <IdleHome
           th={th}
           isDark={isDark}
+          sceneBg={sceneBg}
           recentClosed={recentClosed}
           onDispatch={() => setShowDispatch(true)}
           onLocate={() => setLocateOpen(true)}
@@ -866,7 +922,7 @@ export default function CentralEmergenciaActivaPage() {
           onRefresh={() => void refetch()}
         />
       ) : (
-      <div className="flex-1 min-h-0 grid grid-cols-1 xl:grid-cols-[280px_minmax(0,1fr)_340px] gap-0 overflow-hidden">
+      <div className="relative z-10 flex-1 min-h-0 grid grid-cols-1 xl:grid-cols-[280px_minmax(0,1fr)_340px] gap-0 overflow-hidden">
         {/* Left: emergencias + despacho */}
         <aside className={`min-h-0 flex flex-col border-b xl:border-b-0 xl:border-r overflow-hidden ${th.borderSubtle} ${th.panelAside}`}>
           <div className="shrink-0 px-3 py-2.5 border-b flex items-center justify-between gap-2" style={{ borderColor: 'inherit' }}>

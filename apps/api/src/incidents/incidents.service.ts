@@ -1,5 +1,5 @@
 import { Injectable, NotFoundException, ConflictException, BadRequestException, ForbiddenException } from '@nestjs/common';
-import { DispatchSource, IncidentStatus, Prisma } from '@prisma/client';
+import { AlarmDeliveryStatus, DispatchSource, IncidentStatus, Prisma } from '@prisma/client';
 import { createHash, randomUUID } from 'crypto';
 import { PrismaService } from '../prisma/prisma.service';
 import { GuardLogService } from '../guard-log/guard-log.service';
@@ -745,4 +745,309 @@ export class IncidentsService {
       byType: byType.map((b) => ({ type: b.type, count: b._count.id })),
     };
   }
+
+  async getCallBoard(user: IncidentAuthUser) {
+    if (!hasAnyRole(user, 'SUPER_ADMIN', 'COMANDANTE', 'CAPITAN', 'OPERADOR_CENTRAL', 'KODESK')) {
+      throw new ForbiddenException('Sin permiso para el tablero de llamados');
+    }
+
+    const cuerpoId = hasAnyRole(user, 'KODESK') ? null : await this.actorCuerpoId(user);
+    const where: Prisma.IncidentWhereInput = {
+      status: { in: [IncidentStatus.ACTIVE, IncidentStatus.ARRIVED] },
+    };
+    if (cuerpoId) where.company = { cuerpoId };
+    else if (!hasAnyRole(user, 'KODESK') && user.companyId) where.companyId = user.companyId;
+
+    const incidents = await this.prisma.incident.findMany({
+      where,
+      orderBy: { dispatchedAt: 'desc' },
+      take: 12,
+      select: {
+        id: true,
+        code: true,
+        type: true,
+        address: true,
+        status: true,
+        dispatchedAt: true,
+        latitude: true,
+        longitude: true,
+        company: { select: { id: true, number: true, name: true } },
+        vehicles: {
+          select: {
+            vehicle: { select: { patent: true, type: true } },
+          },
+        },
+        alarmNotifications: {
+          where: { eventType: 'DISPATCH' },
+          orderBy: { createdAt: 'desc' },
+          take: 1,
+          select: {
+            id: true,
+            createdAt: true,
+            deliveries: {
+              select: {
+                status: true,
+                sentAt: true,
+                openedAt: true,
+                acknowledgedAt: true,
+                failedAt: true,
+                platform: true,
+                lastError: true,
+                userId: true,
+                user: {
+                  select: {
+                    id: true,
+                    firstName: true,
+                    lastName: true,
+                    photoUrl: true,
+                    operativeNumber: true,
+                    phone: true,
+                    company: { select: { number: true, name: true } },
+                  },
+                },
+              },
+            },
+          },
+        },
+        emergencyResponses: {
+          select: {
+            status: true,
+            respondedAt: true,
+            onSceneAt: true,
+            user: {
+              select: {
+                id: true,
+                firstName: true,
+                lastName: true,
+                photoUrl: true,
+                operativeNumber: true,
+                phone: true,
+                company: { select: { number: true, name: true } },
+              },
+            },
+          },
+        },
+      },
+    });
+
+    return {
+      generatedAt: new Date().toISOString(),
+      incidents: incidents.map((incident) => this.mapCallBoardIncident(incident)),
+    };
+  }
+
+  private mapCallBoardIncident(incident: {
+    id: string;
+    code: string;
+    type: string;
+    address: string;
+    status: IncidentStatus;
+    dispatchedAt: Date;
+    latitude: number | null;
+    longitude: number | null;
+    company: { id: string; number: number; name: string };
+    vehicles: { vehicle: { patent: string; type: string } }[];
+    alarmNotifications: {
+      id: string;
+      createdAt: Date;
+      deliveries: {
+        status: AlarmDeliveryStatus;
+        sentAt: Date | null;
+        openedAt: Date | null;
+        acknowledgedAt: Date | null;
+        failedAt: Date | null;
+        platform: string;
+        lastError: string | null;
+        userId: string;
+        user: CallBoardUser;
+      }[];
+    }[];
+    emergencyResponses: {
+      status: string | null;
+      respondedAt: Date;
+      onSceneAt: Date | null;
+      user: CallBoardUser;
+    }[];
+  }) {
+    const wave = incident.alarmNotifications[0] ?? null;
+    const byUser = new Map<string, CallBoardPerson>();
+
+    const touch = (user: CallBoardUser) => {
+      const existing = byUser.get(user.id);
+      if (existing) return existing;
+      const created: CallBoardPerson = {
+        userId: user.id,
+        firstName: user.firstName,
+        lastName: user.lastName,
+        fullName: `${user.firstName} ${user.lastName}`.trim(),
+        photoUrl: user.photoUrl,
+        operativeNumber: user.operativeNumber,
+        phone: user.phone,
+        companyNumber: user.company?.number ?? null,
+        companyName: user.company?.name ?? null,
+        devices: 0,
+        push: 'none',
+        pushLabel: 'Sin app',
+        sentAt: null,
+        openedAt: null,
+        acknowledgedAt: null,
+        failed: false,
+        response: null,
+        responseLabel: 'Sin respuesta',
+        respondedAt: null,
+      };
+      byUser.set(user.id, created);
+      return created;
+    };
+
+    for (const delivery of wave?.deliveries ?? []) {
+      const row = touch(delivery.user);
+      row.devices += 1;
+      const next = rankPush(delivery.status);
+      if (next > rankPush(row.push)) {
+        row.push = toPushKey(delivery.status);
+        row.pushLabel = PUSH_LABEL[row.push];
+      }
+      if (delivery.sentAt && (!row.sentAt || delivery.sentAt > new Date(row.sentAt))) {
+        row.sentAt = delivery.sentAt.toISOString();
+      }
+      if (delivery.openedAt && (!row.openedAt || delivery.openedAt > new Date(row.openedAt))) {
+        row.openedAt = delivery.openedAt.toISOString();
+      }
+      if (delivery.acknowledgedAt && (!row.acknowledgedAt || delivery.acknowledgedAt > new Date(row.acknowledgedAt))) {
+        row.acknowledgedAt = delivery.acknowledgedAt.toISOString();
+      }
+      if (delivery.status === AlarmDeliveryStatus.FAILED || delivery.status === AlarmDeliveryStatus.EXPIRED) {
+        row.failed = true;
+      }
+    }
+
+    for (const response of incident.emergencyResponses) {
+      const row = touch(response.user);
+      row.response = response.status;
+      row.responseLabel = response.status ? RESPONSE_BOARD_LABELS[response.status] ?? response.status : 'Sin respuesta';
+      row.respondedAt = response.respondedAt.toISOString();
+    }
+
+    const people = [...byUser.values()].sort(sortCallBoardPeople);
+    const devices = wave?.deliveries.length ?? 0;
+    const queued = people.filter((p) => p.push === 'queued').length;
+    const sent = people.filter((p) => p.push === 'sent' || p.push === 'opened' || p.push === 'acked').length;
+    const opened = people.filter((p) => p.push === 'opened' || p.push === 'acked').length;
+    const acked = people.filter((p) => p.push === 'acked').length;
+    const failed = people.filter((p) => p.push === 'failed').length;
+    const going = people.filter((p) => p.response === 'GOING').length;
+    const onScene = people.filter((p) => p.response === 'ON_SCENE' || p.response === 'LOCATION_MARKED').length;
+    const notGoing = people.filter((p) => p.response === 'NOT_GOING' || p.response === 'NOT_AVAILABLE').length;
+
+    return {
+      id: incident.id,
+      code: incident.code,
+      type: incident.type,
+      address: incident.address,
+      status: incident.status,
+      dispatchedAt: incident.dispatchedAt.toISOString(),
+      latitude: incident.latitude,
+      longitude: incident.longitude,
+      company: incident.company,
+      vehicles: incident.vehicles.map((row) => row.vehicle),
+      alarm: {
+        notificationId: wave?.id ?? null,
+        queuedAt: wave?.createdAt.toISOString() ?? null,
+        targeted: people.filter((p) => p.push !== 'none').length,
+        devices,
+        queued,
+        sent,
+        opened,
+        acked,
+        failed,
+        going,
+        onScene,
+        notGoing,
+      },
+      people,
+    };
+  }
+}
+
+const PUSH_RANK: Record<string, number> = {
+  none: 0,
+  failed: 1,
+  queued: 2,
+  sent: 3,
+  opened: 4,
+  acked: 5,
+};
+
+const PUSH_LABEL: Record<string, string> = {
+  none: 'Sin app',
+  failed: 'No llegó',
+  queued: 'Enviando',
+  sent: 'Enviada',
+  opened: 'Recibida',
+  acked: 'Confirmó',
+};
+
+const RESPONSE_BOARD_LABELS: Record<string, string> = {
+  GOING: 'Voy',
+  NOT_GOING: 'No voy',
+  NOT_AVAILABLE: 'No disponible',
+  ON_SCENE: 'En el lugar',
+  LOCATION_MARKED: 'Ubicación marcada',
+};
+
+type CallBoardUser = {
+  id: string;
+  firstName: string;
+  lastName: string;
+  photoUrl: string | null;
+  operativeNumber: number | null;
+  phone: string | null;
+  company: { number: number; name: string } | null;
+};
+
+type CallBoardPerson = {
+  userId: string;
+  firstName: string;
+  lastName: string;
+  fullName: string;
+  photoUrl: string | null;
+  operativeNumber: number | null;
+  phone: string | null;
+  companyNumber: number | null;
+  companyName: string | null;
+  devices: number;
+  push: string;
+  pushLabel: string;
+  sentAt: string | null;
+  openedAt: string | null;
+  acknowledgedAt: string | null;
+  failed: boolean;
+  response: string | null;
+  responseLabel: string;
+  respondedAt: string | null;
+};
+
+function toPushKey(status: AlarmDeliveryStatus): string {
+  if (status === AlarmDeliveryStatus.ACKNOWLEDGED) return 'acked';
+  if (status === AlarmDeliveryStatus.OPENED) return 'opened';
+  if (status === AlarmDeliveryStatus.SENT) return 'sent';
+  if (status === AlarmDeliveryStatus.FAILED || status === AlarmDeliveryStatus.EXPIRED) return 'failed';
+  return 'queued';
+}
+
+function rankPush(key: string) {
+  return PUSH_RANK[key] ?? 0;
+}
+
+function sortCallBoardPeople(a: CallBoardPerson, b: CallBoardPerson) {
+  const responseRank = (value: string | null) => {
+    if (value === 'ON_SCENE' || value === 'LOCATION_MARKED') return 5;
+    if (value === 'GOING') return 4;
+    if (value === 'NOT_GOING' || value === 'NOT_AVAILABLE') return 1;
+    return 2;
+  };
+  const delta = responseRank(b.response) - responseRank(a.response) || rankPush(b.push) - rankPush(a.push);
+  if (delta) return delta;
+  return a.fullName.localeCompare(b.fullName, 'es');
 }

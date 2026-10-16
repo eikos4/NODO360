@@ -133,6 +133,51 @@ html:not(.dark) {
   .central-parral-page .keep-on-color * {
     color: #ffffff !important;
   }
+
+}
+
+/* Llamados: letras blancas sobre foto, celular y botones de color */
+html:not(.dark) .llamados-board .keep-on-color,
+html:not(.dark) .llamados-board .keep-on-color *,
+html:not(.dark) .llamados-board .text-white {
+  color: #ffffff !important;
+}
+html:not(.dark) .llamados-board .keep-on-color .text-red-400 {
+  color: #f87171 !important;
+}
+html:not(.dark) .llamados-board .keep-on-color .text-red-500,
+html:not(.dark) .llamados-board .keep-on-color .text-red-600 {
+  color: #ef4444 !important;
+}
+html:not(.dark) .llamados-board .keep-on-color .text-amber-300 {
+  color: #fcd34d !important;
+}
+html:not(.dark) .llamados-board .keep-on-color .text-sky-300 {
+  color: #7dd3fc !important;
+}
+html:not(.dark) .llamados-board .keep-on-color .text-emerald-300 {
+  color: #6ee7b7 !important;
+}
+html:not(.dark) .llamados-board .keep-on-color .text-emerald-400 {
+  color: #34d399 !important;
+}
+html:not(.dark) .llamados-board .keep-on-color .text-white\/70 {
+  color: rgba(255, 255, 255, 0.7) !important;
+}
+html:not(.dark) .llamados-board .keep-on-color .text-white\/80 {
+  color: rgba(255, 255, 255, 0.8) !important;
+}
+
+/* Barra Central: iconos blancos sobre rojo en tema claro */
+html:not(.dark) header .keep-on-color,
+html:not(.dark) header .keep-on-color *,
+html:not(.dark) header a.bg-red-600,
+html:not(.dark) header a.bg-red-600 *,
+html:not(.dark) header button.bg-red-600,
+html:not(.dark) header button.bg-red-600 *,
+html:not(.dark) header .bg-red-600,
+html:not(.dark) header .bg-red-600 * {
+  color: #ffffff !important;
 }
 
 /* CTA Despachar: rojo sólido en ambos temas, sin opacity lavada */
@@ -223,6 +268,24 @@ html:not(.dark) .nodotrack-root .text-emerald-950 {
 html:not(.dark) .central-operativa-page .keep-on-color,
 html:not(.dark) .central-operativa-page .keep-on-color * {
   color: #ffffff !important;
+}
+
+html:not(.dark) .central-emergencia-page.scene-fondo .keep-on-color,
+html:not(.dark) .central-emergencia-page.scene-fondo .keep-on-color * {
+  color: #ffffff !important;
+}
+html:not(.dark) .central-emergencia-page.scene-fondo .keep-on-color .text-white\/80,
+html:not(.dark) .central-emergencia-page.scene-fondo .keep-on-color .text-white\/75 {
+  color: rgba(255, 255, 255, 0.8) !important;
+}
+html:not(.dark) .central-emergencia-page.scene-fondo .keep-on-color .text-emerald-200 {
+  color: #a7f3d0 !important;
+}
+html:not(.dark) .central-emergencia-page.scene-fondo .keep-on-color .text-emerald-400 {
+  color: #34d399 !important;
+}
+html:not(.dark) .central-emergencia-page.scene-fondo .keep-on-color .text-emerald-500 {
+  color: #10b981 !important;
 }
 
 /* Modales oscuros de sala pública: no heredar el remap de .text-white */
