@@ -831,6 +831,7 @@ export default function BotoneraPage() {
   const selectTtsVoice = (id: DispatchTtsVoiceId) => {
     setTtsVoiceId(id);
     saveDispatchTtsSettings(id, ttsRate);
+    if (voiceEnabled) void previewDispatchVoice(id, ttsRate);
   };
 
   const changeTtsRate = (rate: number) => {

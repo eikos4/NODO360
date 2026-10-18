@@ -121,20 +121,66 @@ export function saveDispatchTtsSettings(voiceId: DispatchTtsVoiceId, ratePercent
   localStorage.setItem('nodo360_dispatch_tts_rate', String(ratePercent));
 }
 
-export function previewDispatchVoice(voiceId: DispatchTtsVoiceId, ratePercent: number) {
+function loadBrowserVoices(): Promise<SpeechSynthesisVoice[]> {
+  if (!window.speechSynthesis) return Promise.resolve([]);
+  const existing = window.speechSynthesis.getVoices();
+  if (existing.length) return Promise.resolve(existing);
+  return new Promise((resolve) => {
+    const finish = () => resolve(window.speechSynthesis.getVoices());
+    window.speechSynthesis.addEventListener('voiceschanged', finish, { once: true });
+    window.setTimeout(finish, 500);
+  });
+}
+
+async function playBrowserVoice(text: string, voiceId: DispatchTtsVoiceId, ratePercent: number) {
+  if (!window.speechSynthesis) throw new Error('sin voz del navegador');
+  window.speechSynthesis.cancel();
+  const voice = getDispatchTtsVoice(voiceId);
+  const voices = await loadBrowserVoices();
+  const needle = voice.label.replace('Microsoft ', '').toLowerCase();
+  const match =
+    voices.find((v) => v.name.toLowerCase().includes(needle))
+    ?? voices.find((v) => v.lang.startsWith(voice.locale))
+    ?? voices.find((v) => v.lang.startsWith('es'));
+  const utt = new SpeechSynthesisUtterance(text);
+  if (match) utt.voice = match;
+  utt.lang = voice.locale;
+  utt.rate = 1 + ratePercent / 100;
+  utt.pitch = 1;
+  utt.volume = 1;
+  return new Promise<void>((resolve, reject) => {
+    utt.onend = () => resolve();
+    utt.onerror = (event) => {
+      if (event.error === 'interrupted' || event.error === 'canceled') {
+        resolve();
+        return;
+      }
+      reject(new Error('voz del navegador'));
+    };
+    window.speechSynthesis.speak(utt);
+    if (window.speechSynthesis.paused) window.speechSynthesis.resume();
+  });
+}
+
+export async function previewDispatchVoice(voiceId: DispatchTtsVoiceId, ratePercent: number) {
   const sample = '10 2 SECTOR CATILLO CONCURRE BR 12';
   const voice = getDispatchTtsVoice(voiceId);
-  return api.post(
-    '/tts/synthesize',
-    { text: sample, voiceId: voice.neuralId, ratePercent },
-    { responseType: 'blob' },
-  ).then((res) => {
+  try {
+    const res = await api.post(
+      '/tts/synthesize',
+      { text: sample, voiceId: voice.neuralId, ratePercent },
+      { responseType: 'blob' },
+    );
     const url = URL.createObjectURL(res.data);
     const audio = new Audio(url);
     audio.onended = () => URL.revokeObjectURL(url);
     audio.onerror = () => URL.revokeObjectURL(url);
-    return audio.play();
-  }).catch(() => {
-    toast.error('No se pudo reproducir la voz. Verifica conexión con la API.');
-  });
+    await audio.play();
+  } catch {
+    try {
+      await playBrowserVoice(sample, voiceId, ratePercent);
+    } catch {
+      toast.error('No se pudo reproducir la voz. Verifica conexión con la API.');
+    }
+  }
 }

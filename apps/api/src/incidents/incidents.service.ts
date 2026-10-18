@@ -712,7 +712,7 @@ export class IncidentsService {
       this.prisma.incident.count({ where: { ...where, dispatchSource: DispatchSource.BOTONERA } }),
       this.prisma.incident.count({ where: { ...where, emergencyPlanId: { not: null } } }),
       this.prisma.incident.findMany({
-        where: { ...where, arrivedAt: { not: null }, dispatchedAt: { not: null } },
+        where: { ...where, arrivedAt: { not: null } },
         select: { arrivedAt: true, dispatchedAt: true },
         orderBy: { dispatchedAt: 'desc' },
         take: 100, // calc average of last 100

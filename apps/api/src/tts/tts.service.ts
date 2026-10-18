@@ -1,7 +1,8 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, ServiceUnavailableException } from '@nestjs/common';
 import { MsEdgeTTS, OUTPUT_FORMAT } from 'msedge-tts';
 import { Readable } from 'stream';
 import type { TtsVoiceId } from './dto/synthesize-tts.dto';
+import './patch-msedge-tts';
 
 function escapeXml(text: string): string {
   return text
@@ -29,13 +30,23 @@ export class TtsService {
     ratePercent = 0,
   ): Promise<{ buffer: Buffer; mime: string }> {
     const tts = new MsEdgeTTS();
-    await tts.setMetadata(voiceId, OUTPUT_FORMAT.AUDIO_24KHZ_48KBITRATE_MONO_MP3);
-
-    const rate = `${ratePercent >= 0 ? '+' : ''}${ratePercent}%`;
-    const { audioStream } = tts.toStream(escapeXml(text.trim()), { rate });
-    const buffer = await streamToBuffer(audioStream);
-    tts.close();
-
-    return { buffer, mime: 'audio/mpeg' };
+    try {
+      await tts.setMetadata(voiceId, OUTPUT_FORMAT.AUDIO_24KHZ_48KBITRATE_MONO_MP3);
+      const rate = `${ratePercent >= 0 ? '+' : ''}${ratePercent}%`;
+      const { audioStream } = tts.toStream(escapeXml(text.trim()), { rate });
+      const buffer = await streamToBuffer(audioStream);
+      return { buffer, mime: 'audio/mpeg' };
+    } catch (error) {
+      const message = error instanceof Error ? error.message : 'TTS no disponible';
+      throw new ServiceUnavailableException(
+        message.includes('429')
+          ? 'El servicio de voz está ocupado. Reintentá en unos segundos.'
+          : message.includes('403')
+            ? 'El servicio de voz de Microsoft rechazó la conexión. Reintentá en unos segundos.'
+            : 'No se pudo generar la voz de despacho.',
+      );
+    } finally {
+      tts.close();
+    }
   }
 }
