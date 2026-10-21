@@ -1,6 +1,11 @@
 import { Capacitor } from '@capacitor/core';
 import { NativeAlarm } from '../platform/nativeAlarm';
 import { getAlarmToneMode } from './alarm-tone-preference';
+import { api } from './api';
+
+/** Misma voz que NodoTrack / sala al despachar. */
+const DISPATCH_VOICE_ID = 'es-ES-ElviraNeural';
+const DISPATCH_VOICE_RATE = 5;
 
 const CODE_LABELS: Record<string, string> = {
   '10-0': 'Incendio estructural',
@@ -107,6 +112,68 @@ function stillFresh(id: string) {
   return true;
 }
 
+function normalizeSpeechText(text: string) {
+  return text.replace(/-/g, ' ').replace(/\./g, ' ').replace(/\s+/g, ' ').trim();
+}
+
+function delay(ms: number) {
+  return new Promise<void>((resolve) => window.setTimeout(resolve, ms));
+}
+
+function speakWithDevice(text: string) {
+  try {
+    if (!window.speechSynthesis) return;
+    const utter = new SpeechSynthesisUtterance(text);
+    utter.lang = 'es-ES';
+    utter.rate = 0.95;
+    window.speechSynthesis.cancel();
+    window.speechSynthesis.speak(utter);
+  } catch { /* sin voz del dispositivo */ }
+}
+
+async function fetchDispatchVoice(text: string): Promise<Blob | null> {
+  const normalized = normalizeSpeechText(text);
+  if (!normalized) return null;
+  try {
+    const res = await api.post(
+      '/tts/synthesize',
+      { text: normalized, voiceId: DISPATCH_VOICE_ID, ratePercent: DISPATCH_VOICE_RATE },
+      { responseType: 'blob', timeout: 20_000 },
+    );
+    if (!res.data || (res.data as Blob).size < 200) return null;
+    return res.data as Blob;
+  } catch {
+    return null;
+  }
+}
+
+async function playVoiceBlob(blob: Blob) {
+  const url = URL.createObjectURL(blob);
+  try {
+    await new Promise<void>((resolve) => {
+      const audio = new Audio(url);
+      audio.setAttribute('playsinline', 'true');
+      audio.volume = 1;
+      audio.onended = () => resolve();
+      audio.onerror = () => resolve();
+      void audio.play().catch(() => resolve());
+    });
+  } finally {
+    URL.revokeObjectURL(url);
+  }
+}
+
+/** Voz neuronal Elvira, la misma que suena en NodoTrack al despachar. */
+export async function speakDispatchVoice(text: string) {
+  const blob = await fetchDispatchVoice(text);
+  if (blob) {
+    await playVoiceBlob(blob);
+    return true;
+  }
+  speakWithDevice(text);
+  return false;
+}
+
 export async function playEmergencyAlarm(input: AlarmAnnounceInput) {
   if (input.kind === 'ANNOUNCEMENT' || input.kind === 'RADIO_TX') return;
   const id = input.id || `${input.emergencyCodeId || input.code || 'alarm'}:${input.address || input.title || Date.now()}`;
@@ -114,27 +181,29 @@ export async function playEmergencyAlarm(input: AlarmAnnounceInput) {
   played.set(id, Date.now());
 
   const speech = buildAlarmSpeech(input);
-  if (!Capacitor.isNativePlatform()) {
-    try {
-      const utter = new SpeechSynthesisUtterance(speech.spoken);
-      utter.lang = 'es-CL';
-      utter.rate = 0.92;
-      window.speechSynthesis.cancel();
-      window.speechSynthesis.speak(utter);
-    } catch { /* preview web */ }
-    return;
+  const voiceTask = fetchDispatchVoice(speech.spoken);
+
+  if (Capacitor.isNativePlatform()) {
+    const toneMode = await getAlarmToneMode();
+    const notificationId = Math.abs(hashId(id)) % 900_000 + 10_000;
+    await NativeAlarm.testAlarm({
+      id,
+      code: toneMode === 'nodo' ? 'NODO' : speech.code,
+      title: speech.title,
+      body: speech.body,
+      spoken: '',
+      notificationId,
+      repeatCount: toneMode === 'nodo' ? 3 : 1,
+    });
+    await delay(toneMode === 'nodo' ? 4200 : 3200);
   }
 
-  const notificationId = Math.abs(hashId(id)) % 900_000 + 10_000;
-  const toneMode = await getAlarmToneMode();
-  await NativeAlarm.testAlarm({
-    code: toneMode === 'nodo' ? 'NODO' : speech.code,
-    title: speech.title,
-    body: speech.body,
-    spoken: speech.spoken,
-    notificationId,
-    repeatCount: toneMode === 'nodo' ? 3 : 1,
-  });
+  const blob = await voiceTask;
+  if (blob) {
+    await playVoiceBlob(blob);
+    return;
+  }
+  speakWithDevice(speech.spoken);
 }
 
 function hashId(value: string) {

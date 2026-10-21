@@ -403,6 +403,44 @@ export class EmergencyResponseService {
     };
   }
 
+  async getSmsBackup(userId: string, incidentId: string) {
+    const user = await this.getUserOrThrow(userId);
+    const companyId = user.companyId!;
+    const incident = await this.prisma.incident.findFirst({
+      where: { id: incidentId, ...this.incidentsForCompany(companyId) },
+      select: {
+        id: true,
+        code: true,
+        type: true,
+        address: true,
+        companyId: true,
+        vehicles: { select: { vehicle: { select: { companyId: true } } } },
+      },
+    });
+    if (!incident) throw new NotFoundException('Emergencia no encontrada o ya cerrada');
+
+    const companyIds = new Set<string>([incident.companyId]);
+    incident.vehicles.forEach((row) => companyIds.add(row.vehicle.companyId));
+    const roster = await this.prisma.user.findMany({
+      where: {
+        isActive: true,
+        phone: { not: null },
+        OR: [
+          { companyId: { in: [...companyIds] } },
+          { supportCompanyId: { in: [...companyIds] } },
+        ],
+      },
+      select: { phone: true },
+    });
+    const phones = [...new Set(roster.map((row) => normalizeChileMobile(row.phone)).filter(Boolean))] as string[];
+    return {
+      incidentId: incident.id,
+      code: incident.code,
+      phones,
+      smsBody: buildAlarmSmsBody(incident),
+    };
+  }
+
   async respond(
     userId: string,
     incidentId: string,
@@ -969,4 +1007,30 @@ export class EmergencyResponseService {
     if (/^10(-\d+)+$/.test(head)) return head;
     return null;
   }
+}
+
+export function normalizeChileMobile(value: string | null | undefined): string | null {
+  const digits = (value ?? '').replace(/\D/g, '');
+  if (!digits) return null;
+  let local = digits.startsWith('56') ? digits.slice(2) : digits;
+  if (local.startsWith('0')) local = local.slice(1);
+  if (local.length === 8) local = `9${local}`;
+  if (!/^9\d{8}$/.test(local)) return null;
+  return `+56${local}`;
+}
+
+export function buildAlarmSmsBody(incident: {
+  id: string;
+  code: string;
+  type: string;
+  address: string;
+}) {
+  const type = incident.type.replace(incident.code, '').replace(/^[\s—-]+/, '').trim();
+  const core = ['NODO360', incident.code, type, incident.address.trim()].filter(Boolean).join(' ');
+  let body = `${core} #${incident.id}`;
+  if (body.length > 160) {
+    const address = incident.address.trim().slice(0, Math.max(20, 160 - incident.code.length - incident.id.length - 14));
+    body = `NODO360 ${incident.code} ${address} #${incident.id}`;
+  }
+  return body;
 }

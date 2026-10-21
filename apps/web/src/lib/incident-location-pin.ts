@@ -1,4 +1,8 @@
 export function buildLocationPinUrl(token: string, origin = typeof window !== 'undefined' ? window.location.origin : '') {
+  const api = import.meta.env.VITE_API_URL?.replace(/\/$/, '') || '';
+  if (/^https?:\/\//i.test(api)) {
+    return `${api}/location-pin/${encodeURIComponent(token)}/open`;
+  }
   return `${origin}/localizar/${token}`;
 }
 
@@ -9,23 +13,28 @@ export function buildLocationPinWhatsAppMessage(opts: {
   url: string;
   company?: string;
 }) {
-  const lines = [`🚨 Bomberos — ${opts.code}`, opts.type];
-  if (opts.address.trim() && opts.address.trim() !== 'Por confirmar') {
-    lines.push(`📍 ${opts.address.trim()}`);
+  const address = opts.address.trim();
+  const lines = [`🚨 ${opts.code} · ${opts.type}`];
+  if (address && address !== 'Por confirmar' && address !== 'Sin dirección') {
+    lines.push(`📍 ${address}`);
   }
   if (opts.company?.trim()) {
     lines.push(opts.company.trim());
   }
-  lines.push(
-    '',
-    'Abre el enlace, toca «Obtener mi ubicación» y confirma el punto exacto para que lleguen los carros:',
-    opts.url,
-  );
+  lines.push('', 'Ver punto y cómo llegar:', opts.url);
   return lines.join('\n');
 }
 
+/** Chile: 9XXXXXXX o 9 XXXX XXXX → 569... */
+export function normalizeWhatsAppPhone(phone: string) {
+  let digits = phone.replace(/\D/g, '');
+  if (digits.length === 9 && digits.startsWith('9')) digits = `56${digits}`;
+  if (digits.length === 11 && digits.startsWith('9')) digits = `56${digits.slice(0, 9)}`;
+  return digits;
+}
+
 export function buildWhatsAppShareUrl(phone: string, message: string) {
-  const digits = phone.replace(/\D/g, '');
+  const digits = normalizeWhatsAppPhone(phone);
   if (!digits) return null;
   return `https://wa.me/${digits}?text=${encodeURIComponent(message)}`;
 }
@@ -62,6 +71,10 @@ export function incidentNavigatePoint(incident: {
     return null;
   }
   return { lat: destLat, lng: destLng };
+}
+
+export function wazeNavigateUrl(lat: number, lng: number) {
+  return `https://waze.com/ul?ll=${lat},${lng}&navigate=yes`;
 }
 
 export function googleMapsNavigateUrl(lat: number, lng: number, origin?: MapsOrigin) {

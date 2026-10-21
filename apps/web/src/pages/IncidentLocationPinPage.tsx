@@ -1,12 +1,10 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useParams } from 'react-router-dom';
 import {
-  MapPin, Navigation, CheckCircle2, Loader2, AlertTriangle, Siren, ExternalLink,
+  MapPin, Navigation, CheckCircle2, Loader2, AlertTriangle, Siren, Phone,
 } from 'lucide-react';
 import toast from 'react-hot-toast';
 import PublicOsmMap, { PARRAL_CENTER, type OsmMarker } from '../components/map/PublicOsmMap';
-import { openGoogleMapsDirections } from '../lib/incident-location-pin';
-
 const apiBase = import.meta.env.VITE_API_URL?.replace(/\/$/, '') || '/api';
 
 type PinData = {
@@ -38,33 +36,30 @@ export default function IncidentLocationPinPage() {
   const [submitting, setSubmitting] = useState(false);
   const [note, setNote] = useState('');
   const [confirmedPre, setConfirmedPre] = useState(false);
+  const [justConfirmed, setJustConfirmed] = useState(false);
+  const [mapBump, setMapBump] = useState(0);
 
   const isPreDispatch = token?.startsWith('pre_');
 
-  const load = useCallback(async () => {
+  const load = useCallback(async (opts?: { silent?: boolean }) => {
     if (!token) return;
-    setLoading(true);
+    if (!opts?.silent) setLoading(true);
     try {
       const res = await fetch(`${apiBase}/location-pin/${token}`);
       if (!res.ok) {
-        if (isPreDispatch) {
-          setLoading(false);
-          return;
-        }
+        if (isPreDispatch) return;
         const body = await res.json().catch(() => ({}));
         throw new Error(body.message ?? 'Enlace no válido');
       }
       setData(await res.json());
       setError(null);
     } catch (e: unknown) {
-      if (isPreDispatch) {
-        setLoading(false);
-        return;
-      }
+      if (isPreDispatch) return;
+      if (opts?.silent) return;
       setError(e instanceof Error ? e.message : 'No se pudo cargar la emergencia');
       setData(null);
     } finally {
-      setLoading(false);
+      if (!opts?.silent) setLoading(false);
     }
   }, [token, isPreDispatch]);
 
@@ -104,7 +99,9 @@ export default function IncidentLocationPinPage() {
         });
         if (!res.ok) throw new Error('No se pudo enviar');
         setConfirmedPre(true);
-        toast.success('Ubicación enviada a la central');
+        setJustConfirmed(true);
+        setMapBump((n) => n + 1);
+        toast.success('Ubicación recibida. No cortes el teléfono.');
         return;
       }
 
@@ -117,8 +114,10 @@ export default function IncidentLocationPinPage() {
         const body = await res.json().catch(() => ({}));
         throw new Error(body.message ?? 'No se pudo confirmar');
       }
-      toast.success('Ubicación enviada a la central');
-      await load();
+      setJustConfirmed(true);
+      setMapBump((n) => n + 1);
+      toast.success('Ubicación recibida. No cortes el teléfono.');
+      await load({ silent: true });
     } catch (e: unknown) {
       toast.error(e instanceof Error ? e.message : 'Error al confirmar');
     } finally {
@@ -126,7 +125,7 @@ export default function IncidentLocationPinPage() {
     }
   };
 
-  const confirmed = isPreDispatch ? confirmedPre : Boolean(data?.alreadyConfirmed && data?.fieldGps);
+  const confirmed = justConfirmed || confirmedPre || Boolean(data?.alreadyConfirmed && data?.fieldGps);
 
   const markers = useMemo((): OsmMarker[] => {
     const list: OsmMarker[] = [];
@@ -191,7 +190,7 @@ export default function IncidentLocationPinPage() {
     : null;
 
   return (
-    <div className="localizar-publico min-h-screen flex flex-col">
+    <div className="localizar-publico min-h-screen flex flex-col" data-theme="light">
       <header className="shrink-0 bg-white border-b border-slate-200 px-4 py-4">
         <div className="max-w-lg mx-auto flex items-start gap-3">
           {data?.company.logoUrl ? (
@@ -226,13 +225,14 @@ export default function IncidentLocationPinPage() {
         )}
 
         <div className="rounded-2xl border border-slate-200 overflow-hidden bg-white shadow-sm">
-          <div className="h-[280px] w-full">
+          <div className="h-[280px] min-h-[280px] w-full">
             <PublicOsmMap
               theme="light"
               baseStyle="osm"
               center={mapCenter}
-              focus={pos ? [pos.lat, pos.lng] : null}
-              zoom={15}
+              focus={pos ? [pos.lat, pos.lng] : data?.fieldGps ? [data.fieldGps.latitude, data.fieldGps.longitude] : null}
+              zoom={16}
+              flyToken={mapBump}
               markers={markers}
               pickActive={!confirmed}
               onPick={confirmed ? undefined : (lat, lng) => setPos({ lat, lng })}
@@ -248,22 +248,33 @@ export default function IncidentLocationPinPage() {
         </div>
 
         {confirmed ? (
-          <div className="rounded-2xl border border-emerald-200 bg-emerald-50 p-5 text-center space-y-3">
-            <CheckCircle2 className="w-12 h-12 text-emerald-600 mx-auto" />
-            <h2 className="text-lg font-semibold text-emerald-800">Ubicación enviada</h2>
-            <p className="text-sm text-slate-600">
-              La central ya recibió las coordenadas GPS del punto.
-            </p>
-            {data?.fieldGps && (
-              <button
-                type="button"
-                onClick={() => openGoogleMapsDirections(data.fieldGps!.latitude, data.fieldGps!.longitude)}
-                className="localizar-btn inline-flex items-center gap-2 text-sm font-semibold bg-emerald-600 hover:bg-emerald-500 px-4 py-2.5 rounded-xl mt-1"
-              >
-                <ExternalLink className="w-4 h-4" />
-                Abrir en Google Maps
-              </button>
-            )}
+          <div className="rounded-2xl border border-emerald-200 bg-emerald-50 p-5 space-y-4">
+            <div className="text-center space-y-2">
+              <CheckCircle2 className="w-12 h-12 text-emerald-600 mx-auto" />
+              <h2 className="text-lg font-semibold text-emerald-800">Ubicación recibida</h2>
+              <p className="text-sm text-slate-700">
+                Bomberos ya tiene tu punto. Ahora quédate en la llamada.
+              </p>
+            </div>
+            <div className="rounded-xl bg-white border border-emerald-100 p-4 text-left space-y-3">
+              <p className="text-base font-semibold text-slate-900 leading-snug">
+                Mantén la calma. No cuelgues hasta que la centralista te lo diga.
+              </p>
+              <ul className="text-sm text-slate-700 space-y-2 leading-snug">
+                <li className="flex gap-2">
+                  <Phone className="w-4 h-4 text-red-600 shrink-0 mt-0.5" />
+                  <span>Sigue en el teléfono. Pueden pedirte más datos o indicarte qué hacer.</span>
+                </li>
+                <li className="flex gap-2">
+                  <span className="w-4 h-4 shrink-0 text-center text-red-600 font-bold">1</span>
+                  <span>Si estás en peligro, aléjate a un lugar seguro y avísale a la centralista.</span>
+                </li>
+                <li className="flex gap-2">
+                  <span className="w-4 h-4 shrink-0 text-center text-red-600 font-bold">2</span>
+                  <span>No te pongas en riesgo para guiar a los carros. Ellos ya van en camino.</span>
+                </li>
+              </ul>
+            </div>
           </div>
         ) : (
           <div className="space-y-3">

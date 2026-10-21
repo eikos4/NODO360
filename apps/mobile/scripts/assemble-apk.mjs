@@ -1,5 +1,5 @@
 import { spawn } from 'node:child_process';
-import { existsSync, readFileSync, writeFileSync } from 'node:fs';
+import { copyFileSync, existsSync, readFileSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
@@ -63,7 +63,15 @@ child.on('exit', (code) => {
       mode === 'release'
         ? path.join(android, 'app', 'build', 'outputs', 'apk', 'release', 'app-release.apk')
         : path.join(android, 'app', 'build', 'outputs', 'apk', 'debug', 'app-debug.apk');
-    console.log(`\nAPK lista:\n  ${out}`);
+    const named = path.join(path.dirname(out), 'Nodo360.apk');
+    copyFileSync(out, named);
+    const desktop = path.join(process.env.USERPROFILE || process.env.HOME || '', 'Desktop', 'Nodo360.apk');
+    try {
+      copyFileSync(out, desktop);
+      console.log(`\nAPK lista:\n  ${named}\n  ${desktop}`);
+    } catch {
+      console.log(`\nAPK lista:\n  ${named}`);
+    }
   }
   process.exit(code ?? 1);
 });

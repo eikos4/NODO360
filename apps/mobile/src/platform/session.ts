@@ -1,6 +1,5 @@
 import { Capacitor } from '@capacitor/core';
 import { Preferences } from '@capacitor/preferences';
-import { SecureStorage } from '@aparajita/capacitor-secure-storage';
 
 const TOKEN_KEY = 'nodo360.mobile.session';
 
@@ -10,18 +9,15 @@ const webFallback = {
   remove: () => sessionStorage.removeItem(TOKEN_KEY),
 };
 
-async function prefsGet() {
-  const { value } = await Preferences.get({ key: TOKEN_KEY });
-  return value;
-}
-
+/** Solo Preferences: SecureStorage en HyperOS/Redmi puede trabar el WebView y dejar la app en azul. */
 export async function getSessionToken(): Promise<string | null> {
   if (!Capacitor.isNativePlatform()) return webFallback.get();
   try {
-    const secure = (await SecureStorage.get(TOKEN_KEY)) as string | null;
-    if (secure) return secure;
-  } catch { /* Keystore no disponible: usar Preferences. */ }
-  return prefsGet();
+    const { value } = await Preferences.get({ key: TOKEN_KEY });
+    return value;
+  } catch {
+    return null;
+  }
 }
 
 export async function setSessionToken(token: string): Promise<void> {
@@ -29,11 +25,7 @@ export async function setSessionToken(token: string): Promise<void> {
     webFallback.set(token);
     return;
   }
-  try {
-    await SecureStorage.set(TOKEN_KEY, token);
-  } catch {
-    await Preferences.set({ key: TOKEN_KEY, value: token });
-  }
+  await Preferences.set({ key: TOKEN_KEY, value: token });
 }
 
 export async function clearSessionToken(): Promise<void> {
@@ -42,7 +34,6 @@ export async function clearSessionToken(): Promise<void> {
     return;
   }
   try {
-    await SecureStorage.remove(TOKEN_KEY);
+    await Preferences.remove({ key: TOKEN_KEY });
   } catch { /* ignore */ }
-  await Preferences.remove({ key: TOKEN_KEY });
 }

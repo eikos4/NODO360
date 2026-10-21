@@ -200,7 +200,8 @@
 }
 
 * { box-sizing: border-box; }
-html, body, #root { min-height: 100%; margin: 0; }
+html, body, #root { min-height: 100%; margin: 0; touch-action: manipulation; }
+html { -webkit-text-size-adjust: 100%; text-size-adjust: 100%; }
 html, body, button, input, select, textarea {
   font-family: Roboto, "Noto Sans", system-ui, sans-serif;
   font-synthesis: none;
@@ -243,6 +244,47 @@ svg { width: 1.2em; height: 1.2em; flex: none; }
 }
 .splash-mark svg, .splash svg { width: 30px; height: 30px; }
 .splash b { font-size: 22px; font-weight: 700; }
+.splash-boot, .splash-fail {
+  background: #0A1A2E;
+  color: #f8fafc;
+  text-align: center;
+}
+.splash-boot p, .splash-fail p {
+  margin: 0;
+  max-width: 320px;
+  font-size: 14px;
+  font-weight: 600;
+  line-height: 1.45;
+  color: #cbd5e1;
+}
+.splash-fail h1 {
+  margin: 8px 0 0;
+  font-size: 20px;
+  font-weight: 800;
+}
+.splash-fail-icon {
+  display: grid;
+  place-items: center;
+  color: #fbbf24;
+}
+.splash-fail-icon svg { width: 28px; height: 28px; }
+.splash-fail-actions {
+  display: grid;
+  gap: 10px;
+  width: min(100%, 320px);
+  margin-top: 8px;
+}
+.splash-fail-primary, .splash-fail-ghost {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  min-height: 48px;
+  border-radius: 14px;
+  font-weight: 800;
+}
+.splash-fail-primary { border: 0; background: #dc2626; color: #fff; }
+.splash-fail-ghost { border: 1px solid #64748b; background: transparent; color: #f8fafc; }
 
 .auth-shell { position: relative; }
 .auth-shell.light {

@@ -6,7 +6,7 @@ export const PARRAL_CENTER: [number, number] = [-36.1415, -71.8228];
 
 export type OsmBaseStyle = 'osm' | 'voyager' | 'dark';
 
-export type OsmMarkerTone = 'active' | 'idle' | 'dispatch' | 'field' | 'you' | 'hydrant' | 'truck' | 'poi';
+export type OsmMarkerTone = 'active' | 'idle' | 'dispatch' | 'field' | 'you' | 'hydrant' | 'truck' | 'poi' | 'company' | 'meeting';
 
 export type OsmMarker = {
   id: string;
@@ -17,11 +17,18 @@ export type OsmMarker = {
   tone?: OsmMarkerTone;
 };
 
+export type OsmPolyline = {
+  id: string;
+  path: [number, number][];
+  color?: string;
+};
+
 type Props = {
   center?: [number, number] | null;
   /** Si hay varios pines, prioriza este punto en vez de fitBounds. */
   focus?: [number, number] | null;
   markers?: OsmMarker[];
+  polylines?: OsmPolyline[];
   zoom?: number;
   /** Incrementar para volver a centrar aunque el foco no haya cambiado. */
   flyToken?: number;
@@ -29,6 +36,8 @@ type Props = {
   baseStyle?: OsmBaseStyle;
   className?: string;
   pickActive?: boolean;
+  /** Recentrar cuando cambian los pines. En mapas en vivo déjalo apagado. */
+  autoFit?: boolean;
   onPick?: (lat: number, lng: number) => void;
   onMarkerClick?: (id: string) => void;
 };
@@ -36,6 +45,10 @@ type Props = {
 const OSM_TILE = {
   url: 'https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',
   attr: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>',
+};
+const FALLBACK_TILE = {
+  url: 'https://server.arcgisonline.com/ArcGIS/rest/services/World_Street_Map/MapServer/tile/{z}/{y}/{x}',
+  attr: 'Tiles &copy; Esri',
 };
 
 /** Carto exige API key; usamos OSM en todos los estilos. */
@@ -59,12 +72,14 @@ export default function PublicOsmMap({
   center,
   focus = null,
   markers = [],
+  polylines = [],
   zoom = 14,
   flyToken = 0,
   theme = 'light',
   baseStyle,
   className = 'h-full w-full',
   pickActive = false,
+  autoFit = true,
   onPick,
   onMarkerClick,
 }: Props) {
@@ -83,6 +98,8 @@ export default function PublicOsmMap({
     const map = L.map(elRef.current, {
       zoomControl: false,
       attributionControl: true,
+      center: PARRAL_CENTER,
+      zoom: 14,
     });
     mapRef.current = map;
     L.control.zoom({ position: 'bottomright' }).addTo(map);
@@ -111,7 +128,16 @@ export default function PublicOsmMap({
     if (!map) return;
     const spec = TILES[resolved];
     if (tileRef.current) map.removeLayer(tileRef.current);
-    tileRef.current = L.tileLayer(spec.url, { attribution: spec.attr, maxZoom: 19 }).addTo(map);
+    const layer = L.tileLayer(spec.url, { attribution: spec.attr, maxZoom: 19 });
+    layer.on('tileerror', () => {
+      if (!mapRef.current || tileRef.current !== layer) return;
+      map.removeLayer(layer);
+      tileRef.current = L.tileLayer(FALLBACK_TILE.url, {
+        attribution: FALLBACK_TILE.attr,
+        maxZoom: 19,
+      }).addTo(map);
+    });
+    tileRef.current = layer.addTo(map);
   }, [resolved]);
 
   useEffect(() => {
@@ -130,21 +156,45 @@ export default function PublicOsmMap({
         .on('click', () => markerClickRef.current?.(m.id))
         .addTo(layer);
     });
+    polylines.forEach((line) => {
+      const path = line.path.filter((p) => Number.isFinite(p[0]) && Number.isFinite(p[1]));
+      if (path.length < 2) return;
+      L.polyline(path, { color: line.color || '#3b82f6', weight: 4, opacity: 0.75 }).addTo(layer);
+    });
     layer.addTo(map);
     layerRef.current = layer;
+    requestAnimationFrame(() => map.invalidateSize());
+  }, [markers, polylines]);
 
+  useEffect(() => {
+    const map = mapRef.current;
+    if (!map) return;
     if (focus && Number.isFinite(focus[0]) && Number.isFinite(focus[1])) {
       map.setView(focus, Math.max(zoom, 15));
-    } else {
-      const start = center ?? (pts[0] ? ([pts[0].lat, pts[0].lng] as [number, number]) : PARRAL_CENTER);
-      if (pts.length > 1) {
-        map.fitBounds(L.latLngBounds(pts.map((p) => [p.lat, p.lng])), { padding: [36, 36], maxZoom: 15 });
-      } else {
-        map.setView(start, zoom);
-      }
+      return;
     }
-    requestAnimationFrame(() => map.invalidateSize());
-  }, [markers, center, focus, zoom, flyToken]);
+    if (!autoFit) return;
+    const pts = markers.filter((m) => Number.isFinite(m.lat) && Number.isFinite(m.lng) && (m.lat !== 0 || m.lng !== 0));
+    const start = center ?? (pts[0] ? ([pts[0].lat, pts[0].lng] as [number, number]) : PARRAL_CENTER);
+    if (pts.length > 1) {
+      map.fitBounds(L.latLngBounds(pts.map((p) => [p.lat, p.lng])), { padding: [36, 36], maxZoom: 15 });
+    } else {
+      map.setView(start, zoom);
+    }
+  }, [autoFit, center, focus, flyToken, markers, zoom]);
+
+  useEffect(() => {
+    const map = mapRef.current;
+    if (!map) return;
+    const kick = () => map.invalidateSize();
+    kick();
+    const t1 = window.setTimeout(kick, 200);
+    const t2 = window.setTimeout(kick, 700);
+    return () => {
+      window.clearTimeout(t1);
+      window.clearTimeout(t2);
+    };
+  }, [flyToken, pickActive]);
 
   return (
     <div

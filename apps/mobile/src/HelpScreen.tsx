@@ -61,7 +61,7 @@ export function HelpScreen({ onBack, onOpenCodes }: { onBack: () => void; onOpen
           </li>
           <li>
             <BellRing />
-            <span>El celular suena y anuncia el tipo de emergencia.</span>
+            <span>El celular suena y anuncia el tipo de emergencia. Si no hay datos, llega por SMS.</span>
           </li>
           <li>
             <Truck />
@@ -88,7 +88,8 @@ export function HelpScreen({ onBack, onOpenCodes }: { onBack: () => void; onOpen
           <li><b>Ayuda:</b> esta guía de Nodo360 y Kodesk.</li>
         </ul>
         <p className="help-note">
-          En Configuraciones revisa notificaciones, No molestar y batería para que la alarma suene aunque el celular esté bloqueado.
+          En Perfil → Alertas críticas revisa notificaciones, No molestar y batería para que la alarma suene aunque el celular esté bloqueado.
+          Ahí también se activa la alarma por SMS: si no hay internet, un mensaje NODO360 hace sonar el mismo tono.
         </p>
         <p className="help-note">
           Actualizaciones: la compañía envía un APK por Drive/WhatsApp. En Perfil ves la versión instalada; debe coincidir con el nombre del archivo.

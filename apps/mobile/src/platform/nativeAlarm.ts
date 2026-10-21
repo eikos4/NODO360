@@ -22,15 +22,29 @@ export type AlarmDiagnostics = {
   note?: string;
 };
 
+export type SmsBackupState = {
+  permission: boolean;
+  receiveEnabled: boolean;
+  gatewayEnabled: boolean;
+  granted?: boolean;
+};
+
 interface NativeAlarmPlugin {
-  configure(): Promise<AlarmDiagnostics>;
+  configure(options?: { apiUrl?: string; token?: string }): Promise<AlarmDiagnostics>;
+  configureSmsBackup(options: { apiUrl?: string; token?: string }): Promise<SmsBackupState>;
   getDiagnostics(): Promise<AlarmDiagnostics>;
   requestCriticalAlerts(): Promise<{ granted: boolean }>;
   openDndSettings(): Promise<void>;
   openNotificationSettings(): Promise<void>;
   openFullScreenSettings(): Promise<void>;
   openBatterySettings(): Promise<void>;
+  getSmsBackupState(): Promise<SmsBackupState>;
+  requestSmsBackup(): Promise<SmsBackupState>;
+  setSmsGateway(options: { enabled: boolean; apiUrl?: string; token?: string }): Promise<SmsBackupState>;
+  sendBackupSms(options: { incidentId: string; apiUrl?: string; token?: string }): Promise<SmsBackupState>;
+  testSmsAlarm(options?: { code?: string }): Promise<SmsBackupState>;
   testAlarm(options: {
+    id?: string;
     code: string;
     title?: string;
     body?: string;

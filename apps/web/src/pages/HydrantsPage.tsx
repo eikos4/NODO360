@@ -9,7 +9,7 @@ import toast from 'react-hot-toast';
 import { useAuthStore } from '../store/authStore';
 import { useHydrantsTheme } from '../hooks/useHydrantsTheme';
 import type { HydrantsThemeTokens, StatusKey, StatusStyle } from '../lib/hydrants-theme';
-import { Map, AdvancedMarker, InfoWindow, useMap } from '@vis.gl/react-google-maps';
+import PublicOsmMap, { PARRAL_CENTER, type OsmMarker } from '../components/map/PublicOsmMap';
 
 const TYPE_LABELS: Record<string, string> = {
   PIBA: 'Piba',
@@ -32,15 +32,15 @@ const TYPE_MARKER_SHAPE: Record<string, string> = {
 };
 
 const BASE_LAYERS = {
-  streets: { label: 'Calles', icon: Map, mapTypeId: 'roadmap' },
+  streets: { label: 'Calles', icon: MapIcon, mapTypeId: 'roadmap' },
   satellite: { label: 'Satélite', icon: Satellite, mapTypeId: 'satellite' },
-  dark: { label: 'Oscuro', icon: Moon, mapTypeId: 'roadmap' }, // Requires Map Style
+  dark: { label: 'Oscuro', icon: Moon, mapTypeId: 'roadmap' },
   topo: { label: 'Topográfico', icon: Mountain, mapTypeId: 'terrain' },
 } as const;
 
 type BaseLayerKey = keyof typeof BASE_LAYERS;
 
-const DEFAULT_CENTER: [number, number] = [-35.6632, -71.4392];
+const DEFAULT_CENTER = PARRAL_CENTER;
 
 const DROPLET_SVG = (color: string, size: number) =>
   `<svg xmlns="http://www.w3.org/2000/svg" width="${size}" height="${size}" viewBox="0 0 24 24" fill="${color}" stroke="white" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22a7 7 0 0 0 7-7c0-2-1-3.9-3-5.5s-3.5-4-4-6.5c-.5 2.5-2 4.9-4 6.5C6 11.1 5 13 5 15a7 7 0 0 0 7 7z"/></svg>`;
@@ -62,109 +62,6 @@ function HydrantMarkerIcon({ type, status, statusColors, opacity = 1 }: { type: 
   );
 }
 
-function MapFitBounds({ points }: { points: [number, number][] }) {
-  const map = useMap();
-  useEffect(() => {
-    if (map && points.length > 0) {
-      const bounds = new google.maps.LatLngBounds();
-      points.forEach(p => bounds.extend({ lat: p[0], lng: p[1] }));
-      map.fitBounds(bounds, { bottom: 32, left: 32, right: 32, top: 32 });
-    }
-  }, [points, map]);
-  return null;
-}
-
-function MapRecenter({ center, zoom = 15 }: { center: [number, number]; zoom?: number }) {
-  const map = useMap();
-  useEffect(() => {
-    if (!map) return;
-    map.setCenter({ lat: center[0], lng: center[1] });
-    map.setZoom(zoom);
-  }, [center, map, zoom]);
-  return null;
-}
-
-function DraftLocationMarker({
-  latitude,
-  longitude,
-  type,
-  status,
-  statusColors,
-}: {
-  latitude: string;
-  longitude: string;
-  type: string;
-  status: string;
-  statusColors: Record<StatusKey, StatusStyle>;
-}) {
-  const lat = parseFloat(latitude);
-  const lng = parseFloat(longitude);
-  if (Number.isNaN(lat) || Number.isNaN(lng)) return null;
-  return (
-    <AdvancedMarker
-      position={{ lat, lng }}
-      zIndex={1000}
-    >
-      <HydrantMarkerIcon type={type} status={status} statusColors={statusColors} />
-    </AdvancedMarker>
-  );
-}
-
-type LocationPickerMapProps = {
-  center: [number, number];
-  pickOnMap: boolean;
-  onPick: (lat: number, lng: number) => void;
-  form: typeof EMPTY;
-  hydrantsOnMap: { id: string; latitude: number; longitude: number; type: string; status: string }[];
-  th: HydrantsThemeTokens;
-  statusColors: Record<StatusKey, StatusStyle>;
-};
-
-function LocationPickerMap({ center, pickOnMap, onPick, form, hydrantsOnMap, th, statusColors }: LocationPickerMapProps) {
-  return (
-    <div className={`relative rounded-xl overflow-hidden border h-[min(240px,42vh)] sm:h-[min(380px,55vh)] ${th.mapPickerWrap}`}>
-      <Map
-        defaultCenter={{ lat: center[0], lng: center[1] }}
-        defaultZoom={15}
-        mapId="hydrant-picker-map"
-        style={{ height: '100%', width: '100%' }}
-        className={`z-0 ${pickOnMap ? 'cursor-crosshair' : ''}`}
-        disableDefaultUI
-        onClick={pickOnMap ? (e) => { if (e.detail.latLng) { onPick(e.detail.latLng.lat, e.detail.latLng.lng) } } : undefined}
-      >
-        <MapRecenter center={center} />
-        <DraftLocationMarker
-          latitude={form.latitude}
-          longitude={form.longitude}
-          type={form.type}
-          status={form.status}
-          statusColors={statusColors}
-        />
-        {hydrantsOnMap.map(h => (
-          <AdvancedMarker
-            key={h.id}
-            position={{ lat: h.latitude, lng: h.longitude }}
-          >
-            <HydrantMarkerIcon type={h.type} status={h.status} statusColors={statusColors} opacity={0.45} />
-          </AdvancedMarker>
-        ))}
-      </Map>
-      {pickOnMap && (
-        <div className="absolute top-2 left-1/2 -translate-x-1/2 z-[1000] pointer-events-none max-w-[calc(100%-1rem)]">
-          <span className="block bg-sky-600 !text-white text-[11px] sm:text-xs font-bold px-3 py-1.5 rounded-full shadow-lg animate-pulse text-center">
-            Clic en el mapa para marcar el hidrante
-          </span>
-        </div>
-      )}
-      {form.latitude && form.longitude && !pickOnMap && (
-        <div className="absolute bottom-3 left-3 z-[1000] bg-emerald-600/90 !text-white text-[10px] font-semibold px-3 py-1.5 rounded-lg">
-          Ubicación definida
-        </div>
-      )}
-    </div>
-  );
-}
-
 const EMPTY = {
   code: '',
   type: 'COLUMNAR',
@@ -179,6 +76,77 @@ const EMPTY = {
   notes: '',
   companyId: '',
 };
+
+function hydrantTone(status: string, selected?: boolean): OsmMarker['tone'] {
+  if (selected) return 'you';
+  if (status === 'NO_OPERATIVO') return 'idle';
+  if (status === 'EN_MANTENCION') return 'poi';
+  return 'hydrant';
+}
+
+type LocationPickerMapProps = {
+  center: [number, number];
+  pickOnMap: boolean;
+  onPick: (lat: number, lng: number) => void;
+  form: typeof EMPTY;
+  hydrantsOnMap: { id: string; latitude: number; longitude: number; type: string; status: string; code?: string }[];
+  th: HydrantsThemeTokens;
+};
+
+function LocationPickerMap({ center, pickOnMap, onPick, form, hydrantsOnMap, th }: LocationPickerMapProps) {
+  const draftLat = parseFloat(form.latitude);
+  const draftLng = parseFloat(form.longitude);
+  const hasDraft = Number.isFinite(draftLat) && Number.isFinite(draftLng);
+  const markers: OsmMarker[] = [
+    ...hydrantsOnMap.map((h) => ({
+      id: h.id,
+      lat: h.latitude,
+      lng: h.longitude,
+      tone: hydrantTone(h.status),
+      label: h.code || 'Hidrante',
+    })),
+    ...(hasDraft ? [{
+      id: 'draft',
+      lat: draftLat,
+      lng: draftLng,
+      tone: 'you' as const,
+      label: 'Nuevo hidrante',
+    }] : []),
+  ];
+  return (
+    <div className={`relative rounded-xl overflow-hidden border h-[min(280px,46vh)] sm:h-[min(380px,55vh)] ${th.mapPickerWrap}`}>
+      <PublicOsmMap
+        className="h-full w-full"
+        center={center}
+        focus={hasDraft ? [draftLat, draftLng] : center}
+        zoom={hasDraft ? 17 : 14}
+        autoFit={!hasDraft}
+        pickActive={pickOnMap}
+        onPick={onPick}
+        markers={markers}
+      />
+      {pickOnMap && (
+        <div className="absolute top-2 left-1/2 -translate-x-1/2 z-[1000] pointer-events-none max-w-[calc(100%-1rem)]">
+          <span className="block bg-sky-600 !text-white text-[11px] sm:text-xs font-bold px-3 py-1.5 rounded-full shadow-lg animate-pulse text-center">
+            Clic en el mapa para marcar el hidrante
+          </span>
+        </div>
+      )}
+      {hasDraft && !pickOnMap && (
+        <div className="absolute bottom-3 left-3 z-[1000] bg-emerald-600/90 !text-white text-[10px] font-semibold px-3 py-1.5 rounded-lg">
+          Ubicación definida
+        </div>
+      )}
+    </div>
+  );
+}
+
+function apiError(error: unknown, fallback: string) {
+  const data = (error as { response?: { data?: { message?: string | string[] } } })?.response?.data;
+  const message = data?.message;
+  if (Array.isArray(message)) return message.join('. ');
+  return message || fallback;
+}
 
 export default function HydrantsPage() {
   const qc = useQueryClient();
@@ -250,13 +218,13 @@ export default function HydrantsPage() {
   const create = useMutation({
     mutationFn: (d: unknown) => api.post('/hydrants', d),
     onSuccess: () => { qc.invalidateQueries({ queryKey: ['hydrants'] }); toast.success('Hidrante creado'); reset(); },
-    onError: () => toast.error('Error al crear hidrante'),
+    onError: (error: unknown) => toast.error(apiError(error, 'Error al crear hidrante')),
   });
 
   const update = useMutation({
     mutationFn: ({ id, data }: { id: string; data: unknown }) => api.put(`/hydrants/${id}`, data),
     onSuccess: () => { qc.invalidateQueries({ queryKey: ['hydrants'] }); toast.success('Hidrante actualizado'); reset(); },
-    onError: () => toast.error('Error al actualizar hidrante'),
+    onError: (error: unknown) => toast.error(apiError(error, 'Error al actualizar hidrante')),
   });
 
   const remove = useMutation({
@@ -277,7 +245,13 @@ export default function HydrantsPage() {
       return;
     }
     const payload = {
-      ...form,
+      code: String(form.code || '').trim(),
+      type: form.type,
+      status: form.status,
+      address: String(form.address || '').trim(),
+      location: form.location || undefined,
+      notes: form.notes || undefined,
+      companyId: form.companyId,
       diameter: form.diameter ? Number(form.diameter) : undefined,
       pressure: form.pressure ? Number(form.pressure) : undefined,
       flowRate: form.flowRate ? Number(form.flowRate) : undefined,
@@ -341,10 +315,8 @@ export default function HydrantsPage() {
     setStatusLayers(prev => ({ ...prev, [status]: !prev[status] }));
   };
 
-  const base = BASE_LAYERS[baseLayer];
-
   return (
-    <div className="flex flex-col h-full min-h-0 overflow-hidden px-3 pt-3 sm:px-5 sm:pt-4 pb-20 md:pb-4">
+    <div className="flex flex-col flex-1 h-full min-h-0 overflow-hidden px-3 pt-3 sm:px-5 sm:pt-4 pb-20 md:pb-4">
       <div className="shrink-0 space-y-3">
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div className="min-w-0">
@@ -408,7 +380,7 @@ export default function HydrantsPage() {
       </div>
 
       {showForm && (
-        <div className={`mt-3 shrink-0 max-h-[min(52vh,560px)] overflow-y-auto border rounded-2xl ${th.formCard}`}>
+        <div className={`mt-3 shrink-0 max-h-[min(42vh,420px)] xl:max-h-[min(48vh,480px)] overflow-y-auto border rounded-2xl ${th.formCard}`}>
           <div className={`flex flex-wrap items-center justify-between gap-3 p-4 border-b ${th.formHeader}`}>
             <div>
               <h2 className={`text-sm font-semibold ${th.formTitle}`}>{editing ? 'Editar hidrante' : 'Nuevo hidrante'}</h2>
@@ -498,7 +470,6 @@ export default function HydrantsPage() {
                 form={form}
                 hydrantsOnMap={filteredForMap}
                 th={th}
-                statusColors={statusColors}
               />
               <p className={`text-[10px] mt-2 ${th.mapPickerHint}`}>
                 Los hidrantes existentes se muestran atenuados. El marcador resaltado es la nueva ubicación.
@@ -670,76 +641,83 @@ export default function HydrantsPage() {
             </div>
           </div>
 
-          <div className="flex-1 relative min-h-[220px] lg:min-h-0">
-            <Map
-              key={baseLayer}
-              defaultCenter={{ lat: mapCenter[0], lng: mapCenter[1] }}
-              defaultZoom={14}
-              mapId="hydrants-main-map"
-              mapTypeId={base.mapTypeId}
-              style={{ height: '100%', width: '100%' }}
-              className={`z-0 ${pickOnMap ? 'cursor-crosshair' : ''}`}
-              disableDefaultUI
-              onClick={pickOnMap ? (e) => onMapPick(e.detail.latLng!.lat, e.detail.latLng!.lng) : undefined}
-            >
-              <MapFitBounds points={mapPoints} />
-
-              {filteredForMap.map((h: { id: string; code: string; type: string; status: string; address: string; location?: string; diameter?: number; pressure?: number; flowRate?: number; latitude: number; longitude: number; company?: { number: number; name: string } }) => (
-                <AdvancedMarker
-                  key={h.id}
-                  position={{ lat: h.latitude, lng: h.longitude }}
-                  onClick={() => setSelectedId(h.id)}
-                >
-                  <HydrantMarkerIcon type={h.type} status={h.status} statusColors={statusColors} opacity={selectedId && selectedId !== h.id ? 0.65 : 1} />
-                </AdvancedMarker>
-              ))}
-
-              {selectedId && (() => {
+          <div className="flex-1 relative min-h-[280px] lg:min-h-[320px]">
+            <PublicOsmMap
+              className="absolute inset-0 h-full w-full"
+              theme={th.defaultMapTile === 'dark' ? 'dark' : 'light'}
+              baseStyle={baseLayer === 'dark' ? 'dark' : 'osm'}
+              center={mapCenter}
+              focus={selectedId ? (() => {
+                const h = filteredForMap.find((x: { id: string }) => x.id === selectedId);
+                return h ? [h.latitude, h.longitude] as [number, number] : pickerCenter;
+              })() : showForm ? pickerCenter : mapCenter}
+              zoom={selectedId || showForm ? 16 : 14}
+              autoFit={!selectedId && !showForm}
+              pickActive={pickOnMap}
+              onPick={onMapPick}
+              onMarkerClick={setSelectedId}
+              flyToken={selectedId ? 1 : showForm ? 2 : 0}
+              markers={[
+                ...filteredForMap.map((h: { id: string; code: string; status: string; latitude: number; longitude: number; address?: string }) => ({
+                  id: h.id,
+                  lat: h.latitude,
+                  lng: h.longitude,
+                  tone: hydrantTone(h.status, selectedId === h.id),
+                  label: `${h.code} · ${h.address || ''}`.trim(),
+                })),
+                ...(showForm && form.latitude && form.longitude && !Number.isNaN(parseFloat(form.latitude))
+                  ? [{
+                      id: 'draft',
+                      lat: parseFloat(form.latitude),
+                      lng: parseFloat(form.longitude),
+                      tone: 'you' as const,
+                      label: 'Nuevo hidrante',
+                    }]
+                  : []),
+              ]}
+            />
+            {selectedId && (() => {
                 const h = filteredForMap.find((x: any) => x.id === selectedId);
                 if (!h) return null;
                 return (
-                  <InfoWindow
-                    position={{ lat: h.latitude, lng: h.longitude }}
-                    onCloseClick={() => setSelectedId(null)}
-                    pixelOffset={[0, -20]}
-                  >
-                    <div className="min-w-[180px] max-w-[min(260px,calc(100vw-3rem))] text-slate-900">
-                      <div className="flex items-center gap-2 mb-2">
-                        <span
-                          className="w-8 h-8 flex items-center justify-center border-2 border-white shadow"
-                          style={{ backgroundColor: statusColors[h.status as StatusKey].markerColor, borderRadius: TYPE_MARKER_SHAPE[h.type] }}
-                        >
-                          <Droplets className="w-4 h-4 !text-white" />
-                        </span>
-                        <div>
-                          <h3 className="font-bold text-sm text-slate-900">{h.code}</h3>
-                          <p className="text-[10px] text-slate-600">{TYPE_LABELS[h.type]}</p>
-                        </div>
-                      </div>
-                      <span className={`inline-block text-[10px] font-bold px-2 py-0.5 rounded-full mb-2 ${statusColors[h.status as StatusKey].bg} ${statusColors[h.status as StatusKey].text}`}>
-                        {STATUS_LABELS[h.status]}
+                  <div className="absolute bottom-3 left-3 z-[1000] min-w-[180px] max-w-[min(260px,calc(100vw-3rem))] rounded-xl bg-white text-slate-900 shadow-xl border border-slate-200 p-3">
+                    <div className="flex items-center gap-2 mb-2">
+                      <span
+                        className="w-8 h-8 flex items-center justify-center border-2 border-white shadow"
+                        style={{ backgroundColor: statusColors[h.status as StatusKey].markerColor, borderRadius: TYPE_MARKER_SHAPE[h.type] }}
+                      >
+                        <Droplets className="w-4 h-4 !text-white" />
                       </span>
-                      <p className="text-xs text-slate-700 mb-1">{h.address}</p>
-                      {h.location && <p className="text-[10px] text-slate-500 mb-2">{h.location}</p>}
-                      <div className="flex flex-wrap gap-1 mb-3">
-                        {h.diameter && <span className="text-[10px] bg-slate-100 px-1.5 py-0.5 rounded text-slate-700">Ø{h.diameter}mm</span>}
-                        {h.pressure && <span className="text-[10px] bg-slate-100 px-1.5 py-0.5 rounded text-slate-700">{h.pressure} PSI</span>}
-                        {h.flowRate && <span className="text-[10px] bg-slate-100 px-1.5 py-0.5 rounded text-slate-700">{h.flowRate} LPM</span>}
-                      </div>
-                      <p className="text-[10px] text-slate-500 mb-2">Cía. {h.company?.number} — {h.company?.name}</p>
-                      <div className="flex gap-2">
-                        <button type="button" onClick={() => openEdit(h as Parameters<typeof openEdit>[0])} className="text-xs bg-sky-600 !text-white px-2.5 py-1 rounded-lg hover:bg-sky-700">
-                          Editar
-                        </button>
-                        <button type="button" onClick={() => remove.mutate(h.id)} className="text-xs bg-red-600 !text-white px-2.5 py-1 rounded-lg hover:bg-red-700">
-                          Eliminar
-                        </button>
+                      <div>
+                        <h3 className="font-bold text-sm text-slate-900">{h.code}</h3>
+                        <p className="text-[10px] text-slate-600">{TYPE_LABELS[h.type]}</p>
                       </div>
                     </div>
-                  </InfoWindow>
+                    <span className={`inline-block text-[10px] font-bold px-2 py-0.5 rounded-full mb-2 ${statusColors[h.status as StatusKey].bg} ${statusColors[h.status as StatusKey].text}`}>
+                      {STATUS_LABELS[h.status]}
+                    </span>
+                    <p className="text-xs text-slate-700 mb-1">{h.address}</p>
+                    {h.location && <p className="text-[10px] text-slate-500 mb-2">{h.location}</p>}
+                    <div className="flex flex-wrap gap-1 mb-3">
+                      {h.diameter && <span className="text-[10px] bg-slate-100 px-1.5 py-0.5 rounded text-slate-700">Ø{h.diameter}mm</span>}
+                      {h.pressure && <span className="text-[10px] bg-slate-100 px-1.5 py-0.5 rounded text-slate-700">{h.pressure} PSI</span>}
+                      {h.flowRate && <span className="text-[10px] bg-slate-100 px-1.5 py-0.5 rounded text-slate-700">{h.flowRate} LPM</span>}
+                    </div>
+                    <p className="text-[10px] text-slate-500 mb-2">Cía. {h.company?.number} — {h.company?.name}</p>
+                    <div className="flex gap-2">
+                      <button type="button" onClick={() => openEdit(h as Parameters<typeof openEdit>[0])} className="text-xs bg-sky-600 !text-white px-2.5 py-1 rounded-lg hover:bg-sky-700">
+                        Editar
+                      </button>
+                      <button type="button" onClick={() => remove.mutate(h.id)} className="text-xs bg-red-600 !text-white px-2.5 py-1 rounded-lg hover:bg-red-700">
+                        Eliminar
+                      </button>
+                      <button type="button" onClick={() => setSelectedId(null)} className="ml-auto text-xs text-slate-500 px-2 py-1">
+                        Cerrar
+                      </button>
+                    </div>
+                  </div>
                 );
               })()}
-            </Map>
 
             {pickOnMap && (
               <div className="absolute top-2 left-1/2 -translate-x-1/2 z-[1000] max-w-[calc(100%-1.5rem)] bg-sky-600 !text-white text-[11px] sm:text-xs font-bold px-3 py-1.5 rounded-full shadow-lg animate-pulse text-center">

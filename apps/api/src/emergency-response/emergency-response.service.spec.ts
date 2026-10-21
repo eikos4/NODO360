@@ -236,4 +236,34 @@ describe('EmergencyResponseService operational contract', () => {
       report: { title: 'Incendio controlado', outcome: 'Extinto' },
     });
   });
+
+  it('builds an SMS backup roster for the dispatched companies', async () => {
+    const prisma = {
+      user: {
+        findUnique: vi.fn().mockResolvedValue(user),
+        findMany: vi.fn().mockResolvedValue([
+          { phone: '9 8765 4321' },
+          { phone: '+56 9 1111 2222' },
+          { phone: '123' },
+        ]),
+      },
+      incident: {
+        findFirst: vi.fn().mockResolvedValue({
+          id: 'incident-1',
+          code: '10-0',
+          type: '10-0 — Incendio estructural',
+          address: 'Aníbal Pinto 100',
+          companyId: 'company-1',
+          vehicles: [],
+        }),
+      },
+    };
+    const { service } = makeService(prisma);
+
+    await expect(service.getSmsBackup('user-1', 'incident-1')).resolves.toMatchObject({
+      incidentId: 'incident-1',
+      phones: ['+56987654321', '+56911112222'],
+      smsBody: expect.stringMatching(/^NODO360 10-0 Incendio estructural Aníbal Pinto 100 #incident-1$/),
+    });
+  });
 });

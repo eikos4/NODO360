@@ -130,7 +130,13 @@ export default function AppLayout() {
           )}
         >
           {!isImmersive && <PushAlarmBanner />}
-          <Outlet />
+          {isImmersive ? (
+            <div className="flex-1 min-h-0 flex flex-col overflow-hidden">
+              <Outlet />
+            </div>
+          ) : (
+            <Outlet />
+          )}
         </main>
 
         {/* MOBILE BOTTOM NAVIGATION BAR */}

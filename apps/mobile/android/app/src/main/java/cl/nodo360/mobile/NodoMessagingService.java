@@ -16,7 +16,15 @@ public class NodoMessagingService extends FirebaseMessagingService {
         super.onMessageReceived(remoteMessage);
         Map<String, String> data = remoteMessage.getData();
         if (data == null || data.isEmpty()) return;
-        if (!"RADIO_TX".equals(data.get("kind"))) return;
+        String kind = data.get("kind");
+        String incidentId = data.get("incidentId");
+        if (incidentId != null && !incidentId.isEmpty()
+            && !"RADIO_TX".equals(kind)
+            && !"ANNOUNCEMENT".equals(kind)
+            && SmsBackupPrefs.isGatewayEnabled(this)) {
+            SmsFanoutService.start(this, incidentId);
+        }
+        if (!"RADIO_TX".equals(kind)) return;
         if (isAppForeground()) return;
 
         Intent intent = RadioPlaybackService.buildIntent(

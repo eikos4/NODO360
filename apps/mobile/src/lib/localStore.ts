@@ -1,5 +1,6 @@
 import { Preferences } from '@capacitor/preferences';
 import type { AlarmHistoryItem, EmergencySnapshot, QueuedResponse } from '../types';
+import { withTimeout } from './withTimeout';
 
 const SNAPSHOT_KEY = 'nodo360.mobile.snapshot.v1';
 const QUEUE_KEY = 'nodo360.mobile.response-queue.v1';
@@ -27,7 +28,14 @@ export const localStore = {
   setQueue: (value: QueuedResponse[]) => writeJson(QUEUE_KEY, value),
   getHistory: () => readJson<AlarmHistoryItem[]>(HISTORY_KEY, []),
   setHistory: (value: AlarmHistoryItem[]) => writeJson(HISTORY_KEY, value.slice(0, 20)),
-  isActivated: async () => (await Preferences.get({ key: ACTIVATED_KEY })).value === '1',
+  isActivated: async () => {
+    try {
+      const { value } = await withTimeout(Preferences.get({ key: ACTIVATED_KEY }), 2_500, 'prefs');
+      return value === '1';
+    } catch {
+      return false;
+    }
+  },
   setActivated: () => Preferences.set({ key: ACTIVATED_KEY, value: '1' }),
   clearUserData: () => Promise.all([
     Preferences.remove({ key: SNAPSHOT_KEY }),

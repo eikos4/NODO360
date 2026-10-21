@@ -5,14 +5,14 @@ import { Capacitor } from '@capacitor/core';
 import { Geolocation } from '@capacitor/geolocation';
 import {
   AlertTriangle, BatteryCharging, BellRing, Building2, Check, ChevronRight, Clock3, Crosshair, Eye, EyeOff,
-  HelpCircle, History, Loader2, MapPin, Megaphone, Moon, Navigation, Radio, RefreshCw, ShieldCheck, Siren,
+  HelpCircle, History, Loader2, MapPin, Megaphone, MessageSquare, Moon, Navigation, Radio, RefreshCw, ShieldCheck, Siren,
   Sun, Truck, UserRound, Users, Volume2, Wifi, WifiOff, X,
 } from 'lucide-react';
 import type { EmergencyResponseStatus } from '@nodo360/shared';
-import { api, errorMessage } from './lib/api';
+import { API_URL, api, errorMessage } from './lib/api';
 import { localStore } from './lib/localStore';
 import { clearSessionToken, getSessionToken, setSessionToken } from './platform/session';
-import { configureNativeAlarms, NativeAlarm, type AlarmDiagnostics } from './platform/nativeAlarm';
+import { configureNativeAlarms, NativeAlarm, type AlarmDiagnostics, type SmsBackupState } from './platform/nativeAlarm';
 import { useEmergencySync } from './hooks/useEmergencySync';
 import { buildAlarmSpeech, isStandbyAlarm, playEmergencyAlarm } from './lib/alarmAnnounce';
 import { estimateEtaMinutes, getCurrentCoords, haversineKm } from './lib/geo';
@@ -257,20 +257,26 @@ function AlarmSettings({ onOpenHelp }: { onOpenHelp: () => void }) {
   const [code, setCode] = useState('10-0');
   const [message, setMessage] = useState('');
   const [toneMode, setToneModeState] = useState<AlarmToneMode>('official');
+  const [sms, setSms] = useState<SmsBackupState | null>(null);
   const native = Capacitor.isNativePlatform();
   const platform = Capacitor.getPlatform();
 
   const refresh = useCallback(async () => {
     if (!native) return;
     try {
-      setDiagnostics(await NativeAlarm.getDiagnostics());
+      setDiagnostics((await configureNativeAlarms()) ?? await NativeAlarm.getDiagnostics());
+      if (platform === 'android') {
+        const token = await getSessionToken().catch(() => null);
+        if (token) await NativeAlarm.configureSmsBackup({ apiUrl: API_URL, token });
+        setSms(await NativeAlarm.getSmsBackupState());
+      }
       setMessage('');
     } catch {
       setMessage('Diagnóstico nativo no disponible en este build.');
     }
-  }, [native]);
+  }, [native, platform]);
 
-  useEffect(() => { void configureNativeAlarms().then((value) => setDiagnostics(value)); }, []);
+  useEffect(() => { void refresh(); }, [refresh]);
   useEffect(() => { void getAlarmToneMode().then(setToneModeState); }, []);
 
   const changeToneMode = async (next: AlarmToneMode) => {
@@ -301,18 +307,13 @@ function AlarmSettings({ onOpenHelp }: { onOpenHelp: () => void }) {
         title: `PRUEBA ALARMA ${code}`,
         body: 'Prueba local de tono y voz Nodo360',
       });
-      const result = await NativeAlarm.testAlarm({
-        code: toneMode === 'nodo' ? 'NODO' : speech.code,
+      await playEmergencyAlarm({
+        id: `test:${code}:${Date.now()}`,
+        code,
         title: speech.title,
         body: speech.body,
-        spoken: speech.spoken,
-        repeatCount: toneMode === 'nodo' ? 3 : 1,
       });
-      setMessage(
-        result.fullScreenRequested === false
-          ? 'Prueba enviada sin pantalla completa: Android no la autorizó.'
-          : 'Prueba: tono y voz programados.',
-      );
+      setMessage('Prueba: tono y la misma voz de NodoTrack.');
     } catch {
       setMessage('No se pudo emitir la prueba. Revisa el permiso de notificaciones.');
     }
@@ -395,6 +396,44 @@ function AlarmSettings({ onOpenHelp }: { onOpenHelp: () => void }) {
           <button onClick={() => void refresh()}><RefreshCw /> Actualizar diagnóstico</button>
         </div>
       </div>
+      {platform === 'android' && (
+        <div className="settings-card">
+          <h3>Alarma sin internet (SMS)</h3>
+          <p>
+            Si el celular no tiene datos, igual puede sonar: llega un SMS que empieza con NODO360
+            y este teléfono toca el tono y habla con la voz del aparato.
+          </p>
+          <div className="diagnostic"><MessageSquare /><span>Permiso SMS</span><b>{sms?.permission ? 'Permitido' : 'Pendiente'}</b></div>
+          <div className="diagnostic"><BellRing /><span>Escuchar SMS</span><b>{sms?.receiveEnabled ? 'Activo' : 'Apagado'}</b></div>
+          <div className="diagnostic"><Building2 /><span>Pasarela del cuartel</span><b>{sms?.gatewayEnabled ? 'Este celular envía' : 'No'}</b></div>
+          <p className="settings-note">
+            Activalo en todos los teléfonos de la compañía. La pasarela solo en el celular del cuartel
+            (con chip y datos): cuando Central despacha, ese teléfono manda el SMS al resto.
+          </p>
+          <div className="settings-actions">
+            <button onClick={() => void NativeAlarm.requestSmsBackup().then(setSms).then(() => setMessage('SMS de respaldo activado. Android va a pedir el permiso.'))}>
+              Activar alarma por SMS
+            </button>
+            <button onClick={() => void (async () => {
+              const token = await getSessionToken().catch(() => null);
+              const next = await NativeAlarm.setSmsGateway({
+                enabled: !sms?.gatewayEnabled,
+                apiUrl: API_URL,
+                token: token || undefined,
+              });
+              setSms(next);
+              setMessage(next.gatewayEnabled
+                ? 'Este celular enviará el SMS de alarma al despachar. Dejalo con chip y la app abierta en el cuartel.'
+                : 'Pasarela SMS apagada.');
+            })()}>
+              {sms?.gatewayEnabled ? 'Quitar pasarela del cuartel' : 'Este celular es la pasarela'}
+            </button>
+            <button onClick={() => void NativeAlarm.testSmsAlarm({ code }).then(() => setMessage('Prueba local de alarma por SMS (no envía mensajes).'))}>
+              Probar alarma SMS
+            </button>
+          </div>
+        </div>
+      )}
       <div className="settings-card">
         <h3>Prueba local</h3>
         <p>Comprueba el tono 10-X y que el teléfono anuncie el tipo de alarma.</p>
@@ -736,7 +775,6 @@ function IncidentView({
 export default function App() {
   const { theme } = useAppTheme();
   const [user, setUser] = useState<AuthUser | null>(null);
-  const [booting, setBooting] = useState(true);
   const [activated, setActivated] = useState(false);
   const [screen, setScreen] = useState<Screen>('alarms');
   const [settingsHelp, setSettingsHelp] = useState(false);
@@ -769,7 +807,14 @@ export default function App() {
     emergencyCodeId?: string | null;
   }) => {
     void playEmergencyAlarm(incident);
-    if (incident.id) setSelectedId(incident.id);
+    if (incident.id) {
+      setSelectedId(incident.id);
+      if (Capacitor.getPlatform() === 'android') {
+        void getSessionToken()
+          .then((token) => NativeAlarm.sendBackupSms({ incidentId: incident.id!, apiUrl: API_URL, token: token || undefined }))
+          .catch(() => undefined);
+      }
+    }
     setScreen('alarms');
   }, []);
   const announceStandby = useCallback((alert: { id: string; companyLabel: string; message: string }) => {
@@ -812,18 +857,25 @@ export default function App() {
   }, [user, activated, screen]);
 
   useEffect(() => {
-    void Promise.all([getSessionToken(), localStore.isActivated()]).then(async ([token, ready]) => {
-      setActivated(ready);
-      if (token) {
-        try {
-          const { data } = await api.get<AuthUser>('/auth/me');
-          setUser(data);
-        } catch {
-          await clearSessionToken();
-        }
+    let cancelled = false;
+    void (async () => {
+      try {
+        const [token, ready] = await Promise.all([
+          getSessionToken().catch(() => null),
+          localStore.isActivated().catch(() => false),
+        ]);
+        if (cancelled) return;
+        setActivated(ready);
+        if (!token) return;
+        const { data } = await api.get<AuthUser>('/auth/me');
+        if (!cancelled) setUser(data);
+      } catch {
+        await clearSessionToken();
       }
-      setBooting(false);
-    });
+    })();
+    return () => {
+      cancelled = true;
+    };
   }, []);
 
   const openAlarmLink = useCallback((url: string, notificationId?: string) => {
@@ -841,6 +893,10 @@ export default function App() {
     const listeners: Array<{ remove: () => Promise<void> }> = [];
     void (async () => {
       await configureNativeAlarms();
+      if (Capacitor.getPlatform() === 'android') {
+        const token = await getSessionToken().catch(() => null);
+        if (token) await NativeAlarm.configureSmsBackup({ apiUrl: API_URL, token }).catch(() => undefined);
+      }
       listeners.push(await NativeApp.addListener('appUrlOpen', ({ url }) => openAlarmLink(url)));
       listeners.push(await FirebaseMessaging.addListener('tokenReceived', ({ token }) => {
         void api.post('/notifications/register', { token, platform: Capacitor.getPlatform() });
@@ -1031,15 +1087,6 @@ export default function App() {
   useEffect(() => {
     if (!user) disconnectRadioSocket();
   }, [user]);
-
-  if (booting) {
-    return (
-      <main className={`splash ${theme}`}>
-        <span className="splash-mark"><HelmetIcon /></span>
-        <b>NODO360</b>
-      </main>
-    );
-  }
 
   if (!user) return <Login onLogin={setUser} />;
   if (!activated) return <Activation onReady={() => setActivated(true)} />;

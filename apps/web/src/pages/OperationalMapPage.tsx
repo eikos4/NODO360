@@ -6,7 +6,7 @@ import {
   Maximize2, RefreshCw, ChevronRight, Radio, Siren, UserCheck,
   Moon, Truck, Navigation, Satellite, Mountain
 } from 'lucide-react';
-import { Map, AdvancedMarker, InfoWindow, useMap } from '@vis.gl/react-google-maps';
+import PublicOsmMap, { type OsmMarker, type OsmPolyline } from '../components/map/PublicOsmMap';
 import { api } from '../lib/api';
 import { useAuthStore } from '../store/authStore';
 import { useOperationalMapTheme } from '../hooks/useOperationalMapTheme';
@@ -42,95 +42,10 @@ const BASE_LAYERS = {
 
 type BaseLayerKey = keyof typeof BASE_LAYERS;
 
-const HYDRANT_STATUS: Record<string, { label: string; color: string }> = {
-  OPERATIVO: { label: 'Operativo', color: '#0ea5e9' },
-  NO_OPERATIVO: { label: 'No operativo', color: '#ef4444' },
-  EN_MANTENCION: { label: 'En mantención', color: '#f59e0b' },
-};
-
-const DivIcon = ({ color, shape = 'circle' }: { color: string, shape?: 'circle' | 'square' | 'diamond' }) => {
-  const radius = shape === 'circle' ? '50%' : '4px';
-  const transform = shape === 'diamond' ? 'rotate(45deg)' : 'none';
-  return (
-    <div style={{ background: color, width: 22, height: 22, borderRadius: radius, transform, border: '3px solid white', boxShadow: '0 2px 8px rgba(0,0,0,.35)' }}></div>
-  );
-};
-
-const AlarmIcon = ({ approximate, fieldConfirmed }: { approximate?: boolean, fieldConfirmed?: boolean }) => (
-  <div style={{ position: 'relative', width: 34, height: 34 }}>
-    <div className="om-alarm-ring" style={{ position: 'absolute', inset: 0, background: fieldConfirmed ? '#22c55e' : '#ef4444', borderRadius: '50%' }}></div>
-    <div style={{ position: 'absolute', inset: 7, background: fieldConfirmed ? '#16a34a' : '#dc2626', borderRadius: '50%', border: '3px solid white', boxShadow: `0 2px 10px rgba(${fieldConfirmed ? '34,197,94' : '220,38,38'},.55)` }}></div>
-    {approximate && <div style={{ position: 'absolute', inset: -4, border: '2px dashed #fbbf24', borderRadius: '50%' }}></div>}
-  </div>
-);
-
-const DispatchPinIcon = () => (
-  <div style={{ background: '#f97316', width: 16, height: 16, borderRadius: '50%', border: '3px solid white', boxShadow: '0 2px 8px rgba(0,0,0,.35)' }}></div>
-);
-
-const TruckIcon = ({ patent }: { patent: string }) => {
-  const label = patent.slice(-4);
-  return (
-    <div style={{ background: '#7c3aed', color: 'white', fontSize: 9, fontWeight: 800, padding: '2px 5px', borderRadius: 6, border: '2px solid white', boxShadow: '0 2px 8px rgba(0,0,0,.35)', whiteSpace: 'nowrap' }}>
-      {label}
-    </div>
-  );
-};
-
-const VolunteerIcon = ({ photoUrl, firstName, lastName }: { photoUrl: string | null, firstName: string, lastName: string }) => (
-  photoUrl
-    ? <img src={photoUrl} alt="" style={{ width: 30, height: 30, borderRadius: '50%', objectFit: 'cover', border: '3px solid #22c55e', boxShadow: '0 2px 8px rgba(0,0,0,.3)' }} />
-    : <div style={{ background: '#22c55e', width: 30, height: 30, borderRadius: '50%', border: '3px solid white', boxShadow: '0 2px 8px rgba(0,0,0,.3)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'white', fontSize: 10, fontWeight: 'bold' }}>{firstName[0]}{lastName[0]}</div>
-);
-
 function vehicleOffset(lat: number, lng: number, index: number, total: number): [number, number] {
   const angle = (index / Math.max(total, 1)) * 2 * Math.PI - Math.PI / 2;
   const radius = 0.0018 + (index % 3) * 0.0004;
   return [lat + Math.cos(angle) * radius, lng + Math.sin(angle) * radius];
-}
-
-function MapFitBounds({ bounds }: { bounds: [[number, number], [number, number]] | null }) {
-  const map = useMap();
-  useEffect(() => {
-    if (bounds && map) {
-      const b = new google.maps.LatLngBounds();
-      b.extend({ lat: bounds[0][0], lng: bounds[0][1] });
-      b.extend({ lat: bounds[1][0], lng: bounds[1][1] });
-      map.fitBounds(b, { bottom: 48, left: 48, right: 48, top: 48 });
-    }
-  }, [bounds, map]);
-  return null;
-}
-
-function MapFlyTo({ target }: { target: [number, number] | null }) {
-  const map = useMap();
-  useEffect(() => {
-    if (target && map) {
-      map.panTo({ lat: target[0], lng: target[1] });
-      map.setZoom(Math.max(map.getZoom() || 0, 15));
-    }
-  }, [target, map]);
-  return null;
-}
-
-function MapPolyline({ positions, color }: { positions: { lat: number; lng: number }[], color: string }) {
-  const map = useMap();
-  const [polyline, setPolyline] = useState<google.maps.Polyline | null>(null);
-
-  useEffect(() => {
-    if (!map) return;
-    const pl = new google.maps.Polyline({
-      path: positions,
-      strokeColor: color,
-      strokeWeight: 4,
-      strokeOpacity: 0.75,
-      map,
-    });
-    setPolyline(pl);
-    return () => { pl.setMap(null); };
-  }, [map, positions, color]);
-
-  return null;
 }
 
 type LayersOn = {
@@ -202,6 +117,7 @@ export default function OperationalMapPage() {
   });
   const [selected, setSelected] = useState<{ type: string; data: any } | null>(null);
   const [flyTarget, setFlyTarget] = useState<[number, number] | null>(null);
+  const [flyToken, setFlyToken] = useState(0);
 
   useEffect(() => {
     const id = 'operational-map-pulse';
@@ -248,6 +164,12 @@ export default function OperationalMapPage() {
   }, [refetch]);
 
   useEffect(() => {
+    if (flyToken > 0 || !data?.center) return;
+    setFlyTarget(data.center as [number, number]);
+    setFlyToken(1);
+  }, [data?.center, flyToken]);
+
+  useEffect(() => {
     const onVisible = () => {
       if (document.visibilityState === 'visible') void refetch();
     };
@@ -279,7 +201,70 @@ export default function OperationalMapPage() {
   const focusOnMap = (lat: number, lng: number, type: string, item: any) => {
     setSelected({ type, data: item });
     setFlyTarget([lat, lng]);
+    setFlyToken((n) => n + 1);
   };
+
+  const osmMarkers = useMemo<OsmMarker[]>(() => {
+    const out: OsmMarker[] = [];
+    if (layers.companies) {
+      for (const c of data?.layers?.companies ?? []) {
+        if (c.lat == null || c.lng == null) continue;
+        out.push({ id: `c-${c.id}`, lat: c.lat, lng: c.lng, tone: 'company', label: `${c.number}ª ${c.name}` });
+      }
+    }
+    if (layers.hydrants) {
+      for (const h of data?.layers?.hydrants ?? []) {
+        if (h.lat == null || h.lng == null) continue;
+        out.push({ id: `h-${h.id}`, lat: h.lat, lng: h.lng, tone: 'hydrant', label: h.code });
+      }
+    }
+    if (layers.meetingPoints) {
+      for (const p of data?.layers?.meetingPoints ?? []) {
+        if (p.lat == null || p.lng == null) continue;
+        out.push({ id: `m-${p.id}`, lat: p.lat, lng: p.lng, tone: 'meeting', label: p.name });
+      }
+    }
+    if (layers.incidents) {
+      for (const i of data?.layers?.incidents ?? []) {
+        if (i.lat == null || i.lng == null) continue;
+        out.push({ id: `i-${i.id}`, lat: i.lat, lng: i.lng, tone: i.isOpen ? 'dispatch' : 'idle', label: i.code });
+      }
+    }
+    if (layers.activeAlarms) {
+      for (const a of liveAlarms) {
+        if (a.lat == null || a.lng == null) continue;
+        out.push({ id: `live-${a.id}`, lat: a.lat, lng: a.lng, tone: 'active', label: `${a.code} · ${a.address || ''}` });
+        if (a.dispatchLat != null && a.dispatchLng != null && a.hasFieldGps) {
+          const same = Math.abs(a.dispatchLat - a.lat) < 0.00005 && Math.abs(a.dispatchLng - a.lng) < 0.00005;
+          if (!same) out.push({ id: `dispatch-pin-${a.id}`, lat: a.dispatchLat, lng: a.dispatchLng, tone: 'dispatch', label: 'Despacho' });
+        }
+        if (layers.dispatchedVehicles) {
+          (a.vehicles ?? []).forEach((v: { patent: string }, idx: number) => {
+            const [vLat, vLng] = vehicleOffset(a.lat, a.lng, idx, a.vehicles.length);
+            out.push({ id: `veh-${a.id}-${v.patent}`, lat: vLat, lng: vLng, tone: 'truck', label: v.patent });
+          });
+        }
+      }
+    }
+    if (layers.volunteers) {
+      for (const v of liveVolunteers) {
+        if (v.lat == null || v.lng == null) continue;
+        out.push({ id: `v-${v.id}`, lat: v.lat, lng: v.lng, tone: 'field', label: `${v.firstName} ${v.lastName}` });
+      }
+    }
+    return out;
+  }, [data, layers, liveAlarms, liveVolunteers]);
+
+  const osmLines = useMemo<OsmPolyline[]>(() => {
+    if (!layers.routes) return [];
+    return (data?.layers?.routes ?? [])
+      .map((r: { id: string; path?: { lat: number; lng: number }[] }) => ({
+        id: `r-${r.id}`,
+        color: '#3b82f6',
+        path: (r.path ?? []).map((p) => [p.lat, p.lng] as [number, number]),
+      }))
+      .filter((line: OsmPolyline) => line.path.length > 1);
+  }, [data, layers.routes]);
 
   const lastUpdate = dataUpdatedAt
     ? new Date(dataUpdatedAt).toLocaleTimeString('es-CL', { hour: '2-digit', minute: '2-digit', second: '2-digit' })
@@ -391,133 +376,59 @@ export default function OperationalMapPage() {
               <RefreshCw className="w-8 h-8 animate-spin mr-2" /> Cargando mapa...
             </div>
           ) : (
-            <Map
-              key={`${center[0]}-${center[1]}-${companyId}-${isDark ? 'd' : 'l'}`}
-              defaultCenter={{ lat: center[0], lng: center[1] }}
-              defaultZoom={13}
-              style={{ height: '100%', width: '100%' }}
-              className="z-0"
-              mapId="operational-map"
-              mapTypeId={BASE_LAYERS[baseLayer].mapTypeId as any}
-              disableDefaultUI
-            >
-              <MapFitBounds bounds={data?.bounds ?? null} />
-              <MapFlyTo target={flyTarget} />
-
-              {layers.companies &&
-                data?.layers?.companies?.map((c: any) => (
-                  <AdvancedMarker
-                    key={`c-${c.id}`}
-                    position={{ lat: c.lat, lng: c.lng }}
-                    onClick={() => setSelected({ type: 'company', data: c })}
-                  >
-                    <DivIcon color="#ef4444" shape="square" />
-                  </AdvancedMarker>
-                ))}
-
-              {layers.routes &&
-                data?.layers?.routes?.map((r: any) => (
-                  <MapPolyline
-                    key={`r-${r.id}`}
-                    positions={r.path.map((p: { lat: number; lng: number }) => ({ lat: p.lat, lng: p.lng }))}
-                    color="#3b82f6"
-                  />
-                ))}
-
-              {layers.hydrants &&
-                data?.layers?.hydrants?.map((h: any) => {
-                  const col = HYDRANT_STATUS[h.status]?.color ?? '#0ea5e9';
-                  return (
-                    <AdvancedMarker
-                      key={`h-${h.id}`}
-                      position={{ lat: h.lat, lng: h.lng }}
-                      onClick={() => setSelected({ type: 'hydrant', data: h })}
-                    >
-                      <DivIcon color={col} />
-                    </AdvancedMarker>
-                  );
-                })}
-
-              {layers.meetingPoints &&
-                data?.layers?.meetingPoints?.map((p: any) => (
-                  <AdvancedMarker
-                    key={`m-${p.id}`}
-                    position={{ lat: p.lat, lng: p.lng }}
-                    onClick={() => setSelected({ type: 'meeting', data: p })}
-                  >
-                    <DivIcon color="#10b981" shape="diamond" />
-                  </AdvancedMarker>
-                ))}
-
-              {layers.incidents &&
-                data?.layers?.incidents?.map((i: any) => (
-                  <AdvancedMarker
-                    key={`i-${i.id}`}
-                    position={{ lat: i.lat, lng: i.lng }}
-                    onClick={() => setSelected({ type: 'incident', data: i })}
-                  >
-                    <DivIcon color={i.isOpen ? '#f97316' : '#94a3b8'} shape="square" />
-                  </AdvancedMarker>
-                ))}
-
-              {layers.activeAlarms &&
-                liveAlarms.map((a: any) => (
-                  <AdvancedMarker
-                    key={`live-${a.id}`}
-                    position={{ lat: a.lat, lng: a.lng }}
-                    zIndex={1000}
-                    onClick={() => setSelected({ type: 'alarm', data: a })}
-                  >
-                    <AlarmIcon approximate={a.approximate} fieldConfirmed={a.hasFieldGps} />
-                  </AdvancedMarker>
-                ))}
-
-              {layers.activeAlarms &&
-                liveAlarms.map((a: any) => {
-                  if (a.dispatchLat == null || a.dispatchLng == null || !a.hasFieldGps) return null;
-                  const same =
-                    Math.abs(a.dispatchLat - a.lat) < 0.00005 &&
-                    Math.abs(a.dispatchLng - a.lng) < 0.00005;
-                  if (same) return null;
-                  return (
-                    <AdvancedMarker
-                      key={`dispatch-pin-${a.id}`}
-                      position={{ lat: a.dispatchLat, lng: a.dispatchLng }}
-                      zIndex={950}
-                    >
-                      <DispatchPinIcon />
-                    </AdvancedMarker>
-                  );
-                })}
-
-              {layers.dispatchedVehicles &&
-                liveAlarms.flatMap((a: any) =>
-                  (a.vehicles ?? []).map((v: any, idx: number) => {
-                    const [vLat, vLng] = vehicleOffset(a.lat, a.lng, idx, a.vehicles.length);
-                    return (
-                      <AdvancedMarker
-                        key={`veh-${a.id}-${v.patent}`}
-                        position={{ lat: vLat, lng: vLng }}
-                        zIndex={900}
-                        onClick={() => setSelected({ type: 'vehicle', data: { ...v, alarm: a } })}
-                      >
-                        <TruckIcon patent={v.patent} />
-                      </AdvancedMarker>
-                    );
-                  }),
-                )}
-
-              {layers.volunteers &&
-                liveVolunteers.map((v: any) => (
-                  <AdvancedMarker
-                    key={`v-${v.id}`}
-                    position={{ lat: v.lat, lng: v.lng }}
-                    onClick={() => setSelected({ type: 'volunteer', data: v })}
-                  >
-                    <VolunteerIcon photoUrl={v.photoUrl} firstName={v.firstName} lastName={v.lastName} />
-                  </AdvancedMarker>
-                ))}
-            </Map>
+            <PublicOsmMap
+              className="absolute inset-0 h-full w-full"
+              theme={isDark ? 'dark' : 'light'}
+              baseStyle={baseLayer === 'dark' ? 'dark' : 'osm'}
+              center={center}
+              focus={flyTarget}
+              flyToken={flyToken}
+              zoom={13}
+              autoFit={false}
+              markers={osmMarkers}
+              polylines={osmLines}
+              onMarkerClick={(id) => {
+                if (id.startsWith('live-')) {
+                  const a = liveAlarms.find((x: { id: string }) => `live-${x.id}` === id);
+                  if (a) setSelected({ type: 'alarm', data: a });
+                  return;
+                }
+                if (id.startsWith('h-')) {
+                  const h = data?.layers?.hydrants?.find((x: { id: string }) => `h-${x.id}` === id);
+                  if (h) setSelected({ type: 'hydrant', data: h });
+                  return;
+                }
+                if (id.startsWith('c-')) {
+                  const c = data?.layers?.companies?.find((x: { id: string }) => `c-${x.id}` === id);
+                  if (c) setSelected({ type: 'company', data: c });
+                  return;
+                }
+                if (id.startsWith('m-')) {
+                  const p = data?.layers?.meetingPoints?.find((x: { id: string }) => `m-${x.id}` === id);
+                  if (p) setSelected({ type: 'meeting', data: p });
+                  return;
+                }
+                if (id.startsWith('i-')) {
+                  const i = data?.layers?.incidents?.find((x: { id: string }) => `i-${x.id}` === id);
+                  if (i) setSelected({ type: 'incident', data: i });
+                  return;
+                }
+                if (id.startsWith('v-')) {
+                  const v = liveVolunteers.find((x: { id: string }) => `v-${x.id}` === id);
+                  if (v) setSelected({ type: 'volunteer', data: v });
+                  return;
+                }
+                if (id.startsWith('veh-')) {
+                  for (const a of liveAlarms) {
+                    const v = (a.vehicles ?? []).find((item: { patent: string }) => `veh-${a.id}-${item.patent}` === id);
+                    if (v) {
+                      setSelected({ type: 'vehicle', data: { ...v, alarm: a } });
+                      return;
+                    }
+                  }
+                }
+              }}
+            />
           )}
 
           <div className="absolute top-4 right-4 z-[1000] flex flex-col gap-2 items-end pointer-events-none">

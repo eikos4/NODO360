@@ -1,92 +1,64 @@
 package cl.nodo360.mobile;
 
 import android.Manifest;
-import android.app.Notification;
 import android.app.NotificationChannel;
 import android.app.NotificationManager;
-import android.app.PendingIntent;
 import android.content.Context;
 import android.content.Intent;
 import android.content.pm.PackageManager;
-import android.media.AudioAttributes;
-import android.media.MediaPlayer;
 import android.net.Uri;
 import android.os.Build;
-import android.os.Handler;
-import android.os.Looper;
-import android.os.VibrationEffect;
-import android.os.Vibrator;
-import android.os.VibratorManager;
 import android.provider.Settings;
-import android.speech.tts.TextToSpeech;
 
-import androidx.core.app.NotificationCompat;
-import androidx.core.app.NotificationManagerCompat;
 import androidx.core.content.ContextCompat;
 
 import com.getcapacitor.JSArray;
 import com.getcapacitor.JSObject;
+import com.getcapacitor.PermissionState;
 import com.getcapacitor.Plugin;
 import com.getcapacitor.PluginCall;
 import com.getcapacitor.PluginMethod;
 import com.getcapacitor.annotation.CapacitorPlugin;
+import com.getcapacitor.annotation.Permission;
+import com.getcapacitor.annotation.PermissionCallback;
 
-import java.util.ArrayList;
-import java.util.List;
-import java.util.Locale;
-import java.util.regex.Matcher;
-import java.util.regex.Pattern;
-
-@CapacitorPlugin(name = "NativeAlarm")
+@CapacitorPlugin(
+    name = "NativeAlarm",
+    permissions = {
+        @Permission(
+            alias = "sms",
+            strings = {
+                Manifest.permission.RECEIVE_SMS,
+                Manifest.permission.READ_SMS,
+                Manifest.permission.SEND_SMS
+            }
+        )
+    }
+)
 public class NativeAlarmPlugin extends Plugin {
-    private static final Pattern CODE_PATTERN = Pattern.compile("10[-_ ]?(1[0-2]|[0-9])");
-    private static final long[] VIBRATION = {0, 900, 350, 900, 350, 1400};
-
-    private static final String[] CODES = {
-        "10-0", "10-1", "10-2", "10-3", "10-4", "10-5", "10-6",
-        "10-7", "10-8", "10-9", "10-10", "10-11", "10-12", "NODO"
-    };
-
-    private TextToSpeech tts;
-    private boolean ttsReady = false;
-    private String pendingSpeech;
-    private MediaPlayer player;
-    private final Handler mainHandler = new Handler(Looper.getMainLooper());
-
     @Override
     public void load() {
         super.load();
-        tts = new TextToSpeech(getContext(), status -> {
-            if (status != TextToSpeech.SUCCESS || tts == null) return;
-            int lang = tts.setLanguage(new Locale("es", "CL"));
-            if (lang == TextToSpeech.LANG_MISSING_DATA || lang == TextToSpeech.LANG_NOT_SUPPORTED) {
-                tts.setLanguage(new Locale("es", "ES"));
-            }
-            tts.setSpeechRate(0.92f);
-            ttsReady = true;
-            if (pendingSpeech != null) {
-                speakNow(pendingSpeech);
-                pendingSpeech = null;
-            }
-        });
+        AlarmPlayback.createChannels(getContext());
     }
 
     @Override
     protected void handleOnDestroy() {
-        mainHandler.removeCallbacksAndMessages(null);
-        stopTone();
-        if (tts != null) {
-            tts.stop();
-            tts.shutdown();
-            tts = null;
-        }
+        AlarmPlayback.stop();
         super.handleOnDestroy();
     }
 
     @PluginMethod
     public void configure(PluginCall call) {
-        createChannels();
+        AlarmPlayback.createChannels(getContext());
+        applySmsConfig(call);
         getDiagnostics(call);
+    }
+
+    @PluginMethod
+    public void configureSmsBackup(PluginCall call) {
+        applySmsConfig(call);
+        call.resolve(smsState());
     }
 
     @PluginMethod
@@ -111,8 +83,8 @@ public class NativeAlarmPlugin extends Plugin {
 
         JSArray channels = new JSArray();
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-            for (String code : CODES) {
-                String id = channelId(code);
+            for (String code : AlarmPlayback.CODES) {
+                String id = AlarmPlayback.channelId(code);
                 NotificationChannel channel = manager.getNotificationChannel(id);
                 JSObject item = new JSObject();
                 item.put("id", id);
@@ -172,177 +144,124 @@ public class NativeAlarmPlugin extends Plugin {
 
     @PluginMethod
     public void testAlarm(PluginCall call) {
-        createChannels();
-        String code = normalizeCode(call.getString("code", "10-0"));
-        String channelId = channelId(code);
-        String spoken = call.getString("spoken");
+        AlarmPlayback.createChannels(getContext());
+        String code = AlarmPlayback.normalizeCode(call.getString("code", "10-0"));
         int notifyId = call.getInt("notificationId", 10360);
         int repeatCount = Math.max(1, call.getInt("repeatCount", 1));
-        Context context = getContext();
-        Intent launch = context.getPackageManager().getLaunchIntentForPackage(context.getPackageName());
-        if (launch == null) {
-            call.reject("No se encontró la actividad principal");
-            return;
-        }
-        launch.setFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_CLEAR_TOP);
-        PendingIntent pendingIntent = PendingIntent.getActivity(
-            context,
-            notifyId,
-            launch,
-            PendingIntent.FLAG_UPDATE_CURRENT | PendingIntent.FLAG_IMMUTABLE
-        );
-
-        NotificationCompat.Builder builder = new NotificationCompat.Builder(context, channelId)
-            .setSmallIcon(android.R.drawable.ic_dialog_alert)
-            .setContentTitle(call.getString("title", "PRUEBA ALARMA " + code))
-            .setContentText(call.getString("body", "Prueba local de tono crítico Nodo360"))
-            .setCategory(NotificationCompat.CATEGORY_ALARM)
-            .setPriority(NotificationCompat.PRIORITY_MAX)
-            .setVisibility(NotificationCompat.VISIBILITY_PUBLIC)
-            .setSilent(true)
-            .setAutoCancel(true)
-            .setContentIntent(pendingIntent);
-
-        NotificationManager manager =
-            (NotificationManager) context.getSystemService(Context.NOTIFICATION_SERVICE);
-        boolean canFullScreen = Build.VERSION.SDK_INT < 34 || manager.canUseFullScreenIntent();
-        if (canFullScreen) {
-            builder.setFullScreenIntent(pendingIntent, true);
-        }
         try {
-            NotificationManagerCompat.from(context).notify(notifyId, builder.build());
-            vibrate(context);
-            playToneThenSpeak(code, spoken, repeatCount);
+            AlarmPlayback.play(
+                getContext(),
+                code,
+                call.getString("title", "PRUEBA ALARMA " + code),
+                call.getString("body", "Prueba local de tono crítico Nodo360"),
+                call.getString("spoken"),
+                notifyId,
+                repeatCount,
+                call.getString("id")
+            );
             JSObject result = new JSObject();
             result.put("code", code);
-            result.put("channelId", channelId);
-            result.put("fullScreenRequested", canFullScreen);
+            result.put("channelId", AlarmPlayback.channelId(code));
             call.resolve(result);
-        } catch (SecurityException error) {
-            call.reject("Notificaciones no autorizadas", error);
-        }
-    }
-
-    private void playToneThenSpeak(String code, String spoken, int repeatCount) {
-        stopTone();
-        List<Integer> queue = new ArrayList<>();
-        int ident = rawRes("tone_nodo360");
-        if ("NODO".equals(code)) {
-            for (int i = 0; i < repeatCount; i++) {
-                if (ident != 0) queue.add(ident);
-            }
-        } else {
-            if (ident != 0) queue.add(ident);
-            int tone = rawRes("tone_" + code.replace('-', '_'));
-            if (tone != 0) queue.add(tone);
-        }
-        if (queue.isEmpty()) {
-            scheduleSpeech(spoken, 800);
-            return;
-        }
-        playQueue(queue, 0, spoken);
-    }
-
-    private void playQueue(List<Integer> queue, int index, String spoken) {
-        if (index >= queue.size()) {
-            scheduleSpeech(spoken, 250);
-            return;
-        }
-        try {
-            player = MediaPlayer.create(getContext(), queue.get(index));
-            if (player == null) {
-                playQueue(queue, index + 1, spoken);
-                return;
-            }
-            player.setAudioAttributes(new AudioAttributes.Builder()
-                .setUsage(AudioAttributes.USAGE_ALARM)
-                .setContentType(AudioAttributes.CONTENT_TYPE_SONIFICATION)
-                .build());
-            player.setVolume(1f, 1f);
-            player.setOnCompletionListener(mp -> {
-                stopTone();
-                playQueue(queue, index + 1, spoken);
-            });
-            player.start();
         } catch (Exception error) {
-            scheduleSpeech(spoken, 800);
+            call.reject("No se pudo emitir la alarma", error);
         }
     }
 
-    private int rawRes(String name) {
-        return getContext().getResources().getIdentifier(name, "raw", getContext().getPackageName());
+    @PluginMethod
+    public void getSmsBackupState(PluginCall call) {
+        call.resolve(smsState());
     }
 
-    private void scheduleSpeech(String spoken, int delayMs) {
-        if (spoken == null || spoken.trim().isEmpty()) return;
-        mainHandler.postDelayed(() -> speakNow(spoken), delayMs);
-    }
-
-    private void speakNow(String text) {
-        if (!ttsReady || tts == null) {
-            pendingSpeech = text;
+    @PluginMethod
+    public void requestSmsBackup(PluginCall call) {
+        if (getPermissionState("sms") != PermissionState.GRANTED) {
+            requestPermissionForAlias("sms", call, "onSmsPermission");
             return;
         }
-        tts.speak(text, TextToSpeech.QUEUE_FLUSH, null, "nodo360-alarm");
+        SmsBackupPrefs.setReceiveEnabled(getContext(), true);
+        call.resolve(smsState());
     }
 
-    private void stopTone() {
-        if (player == null) return;
-        try {
-            if (player.isPlaying()) player.stop();
-        } catch (Exception ignored) { /* already released */ }
-        player.release();
-        player = null;
+    @PermissionCallback
+    private void onSmsPermission(PluginCall call) {
+        boolean granted = getPermissionState("sms") == PermissionState.GRANTED;
+        if (granted) SmsBackupPrefs.setReceiveEnabled(getContext(), true);
+        JSObject result = smsState();
+        result.put("granted", granted);
+        call.resolve(result);
     }
 
-    private void vibrate(Context context) {
-        try {
-            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
-                VibratorManager manager =
-                    (VibratorManager) context.getSystemService(Context.VIBRATOR_MANAGER_SERVICE);
-                manager.getDefaultVibrator().vibrate(
-                    VibrationEffect.createWaveform(VIBRATION, -1)
-                );
-                return;
-            }
-            Vibrator vibrator = (Vibrator) context.getSystemService(Context.VIBRATOR_SERVICE);
-            if (vibrator == null) return;
-            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-                vibrator.vibrate(VibrationEffect.createWaveform(VIBRATION, -1));
-            } else {
-                vibrator.vibrate(VIBRATION, -1);
-            }
-        } catch (Exception ignored) { /* fabricante sin vibrador */ }
-    }
-
-    private void createChannels() {
-        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.O) return;
-        Context context = getContext();
-        NotificationManager manager =
-            (NotificationManager) context.getSystemService(Context.NOTIFICATION_SERVICE);
-        boolean policyAccess = manager.isNotificationPolicyAccessGranted();
-        AudioAttributes attributes = new AudioAttributes.Builder()
-            .setUsage(AudioAttributes.USAGE_ALARM)
-            .setContentType(AudioAttributes.CONTENT_TYPE_SONIFICATION)
-            .build();
-        for (String code : CODES) {
-            NotificationChannel channel = new NotificationChannel(
-                channelId(code),
-                "NODO".equals(code) ? "Aviso Nodo360" : "Alarma " + code,
-                NotificationManager.IMPORTANCE_HIGH
-            );
-            channel.setDescription(
-                "NODO".equals(code)
-                    ? "Ident Nodo360 — preaviso extraordinario"
-                    : "Tono operativo " + code + " de Nodo360"
-            );
-            channel.setSound(soundUri(code), attributes);
-            channel.enableVibration(true);
-            channel.setVibrationPattern(VIBRATION);
-            channel.setLockscreenVisibility(Notification.VISIBILITY_PUBLIC);
-            if (policyAccess) channel.setBypassDnd(true);
-            manager.createNotificationChannel(channel);
+    @PluginMethod
+    public void setSmsGateway(PluginCall call) {
+        boolean enabled = Boolean.TRUE.equals(call.getBoolean("enabled", false));
+        if (enabled && getPermissionState("sms") != PermissionState.GRANTED) {
+            requestPermissionForAlias("sms", call, "onGatewayPermission");
+            return;
         }
+        SmsBackupPrefs.setGatewayEnabled(getContext(), enabled);
+        if (enabled) SmsBackupPrefs.setReceiveEnabled(getContext(), true);
+        applySmsConfig(call);
+        call.resolve(smsState());
+    }
+
+    @PermissionCallback
+    private void onGatewayPermission(PluginCall call) {
+        boolean granted = getPermissionState("sms") == PermissionState.GRANTED;
+        SmsBackupPrefs.setGatewayEnabled(getContext(), granted);
+        if (granted) SmsBackupPrefs.setReceiveEnabled(getContext(), true);
+        JSObject result = smsState();
+        result.put("granted", granted);
+        call.resolve(result);
+    }
+
+    @PluginMethod
+    public void sendBackupSms(PluginCall call) {
+        applySmsConfig(call);
+        String incidentId = call.getString("incidentId", "");
+        if (SmsBackupPrefs.isGatewayEnabled(getContext()) && incidentId != null && !incidentId.isEmpty()) {
+            SmsFanoutService.start(getContext(), incidentId);
+        }
+        call.resolve(smsState());
+    }
+
+    @PluginMethod
+    public void testSmsAlarm(PluginCall call) {
+        String code = AlarmPlayback.normalizeCode(call.getString("code", "10-0"));
+        String spoken = "Atención. Diez " + code.replace("10-", "") + ". Prueba de alarma por SMS, sin internet.";
+        AlarmPlayback.play(
+            getContext(),
+            code,
+            "ALARMA " + code,
+            "Prueba SMS Nodo360",
+            spoken,
+            10361,
+            1,
+            "sms-test:" + System.currentTimeMillis()
+        );
+        call.resolve(smsState());
+    }
+
+    private void applySmsConfig(PluginCall call) {
+        String apiUrl = call.getString("apiUrl");
+        String token = call.getString("token");
+        if ((apiUrl != null && !apiUrl.isEmpty()) || (token != null && !token.isEmpty())) {
+            SmsBackupPrefs.setApiConfig(getContext(), apiUrl, token);
+        }
+    }
+
+    private JSObject smsState() {
+        Context context = getContext();
+        boolean permission = getPermissionState("sms") == PermissionState.GRANTED
+            || (
+                ContextCompat.checkSelfPermission(context, Manifest.permission.RECEIVE_SMS)
+                    == PackageManager.PERMISSION_GRANTED
+            );
+        JSObject result = new JSObject();
+        result.put("permission", permission);
+        result.put("receiveEnabled", SmsBackupPrefs.isReceiveEnabled(context));
+        result.put("gatewayEnabled", SmsBackupPrefs.isGatewayEnabled(context));
+        return result;
     }
 
     private void openSettings(String action) {
@@ -352,24 +271,5 @@ public class NativeAlarmPlugin extends Plugin {
     private void startActivity(Intent intent) {
         intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
         getContext().startActivity(intent);
-    }
-
-    private String normalizeCode(String value) {
-        String raw = value == null ? "" : value;
-        if (raw.toUpperCase(Locale.ROOT).matches(".*(NODO|STANDBY|PREAVISO).*")) {
-            return "NODO";
-        }
-        Matcher matcher = CODE_PATTERN.matcher(raw);
-        return matcher.find() ? "10-" + matcher.group(1) : "10-0";
-    }
-
-    private String channelId(String code) {
-        if ("NODO".equals(code)) return "nodo360_alarm_nodo360";
-        return "nodo360_alarm_" + code.replace('-', '_');
-    }
-
-    private Uri soundUri(String code) {
-        String name = "NODO".equals(code) ? "tone_nodo360" : "tone_" + code.replace('-', '_');
-        return Uri.parse("android.resource://" + getContext().getPackageName() + "/raw/" + name);
     }
 }
