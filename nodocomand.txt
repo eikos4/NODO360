@@ -1,0 +1,799 @@
+# NODOCOMMAND — Puesto de Comando Digital
+
+## 1. Objetivo
+
+Crear dentro de **NODO360** un módulo denominado **NodoCommand**, destinado a administrar emergencias de gran magnitud directamente desde terreno cuando se constituye un Puesto de Comando.
+
+El módulo debe permitir gestionar en tiempo real:
+
+- Mando de la emergencia.
+- Compañías participantes.
+- Carros y otros vehículos.
+- Bomberos y dotaciones.
+- Recursos externos no registrados previamente en NODO360.
+- Organismos de apoyo.
+- Sectores operacionales.
+- Misiones y tareas.
+- Ubicación de recursos.
+- Estados operacionales.
+- Bitácora completa de decisiones y movimientos.
+
+Debe estar optimizado para visualizarse en **notebook, tablet o pantalla grande instalada en un Puesto de Comando**.
+
+---
+
+# 2. Inicio del Puesto de Comando
+
+Dentro de una emergencia activa debe existir:
+
+### CONSTITUIR PUESTO DE COMANDO
+
+Al presionarlo solicitar:
+
+- Emergencia asociada.
+- Nombre del responsable que asume el mando.
+- Cargo.
+- Fecha y hora automática.
+- Ubicación GPS del Puesto de Comando.
+- Observación inicial opcional.
+
+Confirmación:
+
+**“¿Confirma que asumirá el mando de esta emergencia?”**
+
+Una vez confirmado:
+
+`PUESTO DE COMANDO ACTIVO`
+
+Mostrar permanentemente:
+
+**Mando actual:** Comandante / Oficial  
+**Desde:** 14:32 hrs  
+**Duración:** 00:26:42
+
+Toda esta acción debe registrarse automáticamente en la bitácora.
+
+---
+
+# 3. Perfiles y permisos
+
+## Administrador NODO360
+
+Puede:
+
+- Configurar el módulo.
+- Ver todas las emergencias.
+- Consultar bitácoras.
+- Administrar permisos.
+- Corregir datos administrativos.
+- Exportar información.
+
+No debería alterar silenciosamente información operacional histórica.
+
+## Comandante / Mando de emergencia
+
+Control completo de NodoCommand.
+
+Puede:
+
+- Constituir Puesto de Comando.
+- Transferir mando.
+- Crear sectores.
+- Asignar recursos.
+- Registrar recursos externos.
+- Cambiar misiones.
+- Cambiar estados.
+- Solicitar recursos.
+- Finalizar sectores.
+- Finalizar Puesto de Comando.
+
+## Oficial autorizado
+
+Puede:
+
+- Registrar recursos.
+- Actualizar dotaciones.
+- Asignar recursos si tiene autorización.
+- Modificar estados.
+- Registrar novedades.
+- Trabajar sobre sectores asignados.
+
+## Operador del Puesto de Comando
+
+Perfil pensado para la persona que manipula el computador mientras el comandante dirige.
+
+Puede ejecutar acciones operacionales **en nombre del mando**, quedando registrado:
+
+`Acción realizada por: Operador X`
+
+## Solo lectura
+
+Puede visualizar:
+
+- Mapa.
+- Recursos.
+- Sectores.
+- Dotaciones.
+- Estado operacional.
+- Bitácora.
+
+No puede modificar información.
+
+---
+
+# 4. Pantalla principal
+
+La interfaz debe funcionar prácticamente como un **tablero táctico digital**.
+
+## Encabezado
+
+Mostrar:
+
+**NODO360 | PUESTO DE COMANDO**
+
+Emergencia:
+
+`INCENDIO FORESTAL`
+
+ID:
+
+`IF-2026-1047`
+
+Mando actual:
+
+`Comandante Juan Pérez`
+
+Hora actual:
+
+`14:58`
+
+Duración:
+
+`00:26:42`
+
+Botones principales:
+
+`Transferir mando`  
+`+ Recurso`  
+`+ Sector`  
+`Novedad`  
+`Finalizar puesto de comando`
+
+---
+
+# 5. Mapa táctico
+
+El centro de la pantalla debe contener un mapa de gran tamaño.
+
+Capas:
+
+- Mapa normal.
+- Satélite.
+- Terreno.
+
+Mostrar:
+
+- Ubicación de la emergencia.
+- Puesto de Comando.
+- Carros.
+- Compañías.
+- Recursos externos.
+- Organismos colaboradores.
+- Sectores operacionales.
+- Puntos de abastecimiento.
+- Puntos de seguridad.
+- Otros puntos definidos durante la emergencia.
+
+Los recursos deben identificarse visualmente mediante iconos.
+
+Ejemplo:
+
+`🚒 B-1`
+
+Al seleccionar:
+
+**B-1**  
+1ª Compañía  
+7 bomberos  
+Sector Alfa  
+Ataque directo  
+En operación
+
+---
+
+# 6. Recursos NODO360
+
+El sistema debe cargar automáticamente los recursos que ya existen dentro de NODO360 y que fueron despachados a la emergencia.
+
+Ejemplo:
+
+| Unidad | Compañía | Dotación | Estado |
+|---|---|---:|---|
+| B-1 | 1ª Compañía | 7 | En terreno |
+| B-2 | 2ª Compañía | 6 | Sector Alfa |
+| Z-1 | 3ª Compañía | 4 | Abastecimiento |
+| R-1 | 4ª Compañía | 5 | Disponible |
+
+---
+
+# 7. Recursos externos
+
+Función crítica:
+
+## + REGISTRAR RECURSO EXTERNO
+
+Debe permitir incorporar rápidamente recursos que **no existen en la base de datos de NODO360**.
+
+No debe ser necesario crear una cuenta o compañía permanente.
+
+Campos:
+
+**Institución / Cuerpo:**  
+Bomberos de Linares
+
+**Compañía:**  
+2ª Compañía
+
+**Unidad:**  
+Z-2
+
+**Tipo:**  
+Carro bomba / Aljibe / Rescate / Escala / Ambulancia / Forestal / Policía / Otro
+
+**Responsable:**  
+Capitán Juan Pérez
+
+**Dotación:**  
+5
+
+**Contacto:**  
+Opcional
+
+**Estado:**  
+Disponible / En traslado / En operación / Fuera de servicio
+
+Botón:
+
+`Registrar en emergencia`
+
+Debe aparecer inmediatamente dentro del tablero.
+
+---
+
+# 8. Organismos externos
+
+Debe aceptar recursos provenientes de:
+
+- Otros Cuerpos de Bomberos.
+- SAMU.
+- Carabineros.
+- PDI.
+- CONAF.
+- SENAPRED.
+- Municipalidad.
+- Empresas privadas.
+- Maquinaria pesada.
+- Helicópteros.
+- Aeronaves.
+- Otros organismos.
+
+Estos recursos existirán únicamente dentro de esa emergencia salvo que posteriormente un administrador decida incorporarlos permanentemente.
+
+---
+
+# 9. Sectores operacionales
+
+Permitir crear sectores libremente.
+
+Ejemplos:
+
+### Sector Alfa
+**Misión:** Ataque directo
+
+### Sector Bravo
+**Misión:** Contención
+
+### Sector Charlie
+**Misión:** Apoyo / Reserva
+
+### Sector Delta
+**Misión:** Seguridad
+
+Otros posibles:
+
+- Abastecimiento.
+- Evacuación.
+- Búsqueda.
+- Rescate.
+- Rehabilitación.
+- Materiales peligrosos.
+- Protección de exposiciones.
+- Puesto médico.
+- Reserva.
+
+Cada sector debe mostrar:
+
+- Nombre.
+- Responsable.
+- Misión.
+- Recursos asignados.
+- Bomberos asignados.
+- Estado.
+
+Estados:
+
+`En operación`  
+`En espera`  
+`Completado`  
+`Suspendido`
+
+---
+
+# 10. Asignación mediante Drag & Drop
+
+Idealmente debe ser posible tomar:
+
+`B-2 · 7 bomberos`
+
+y arrastrarlo hacia:
+
+`SECTOR ALFA`
+
+El sistema solicitará:
+
+**Asignar B-2 a Sector Alfa**
+
+Misión:
+
+`Ataque directo`
+
+Confirmar.
+
+Nodo360 registra automáticamente:
+
+`14:58 — B-2 asignado a Sector Alfa / Ataque directo.`
+
+---
+
+# 11. Estado de recursos
+
+Cada recurso debe poder estar en:
+
+- Solicitado.
+- Despachado.
+- En traslado.
+- Arribando.
+- Disponible.
+- Asignado.
+- En operación.
+- Rehabilitación.
+- Retornando.
+- Fuera de servicio.
+- Retirado de la emergencia.
+
+Los cambios deben registrar automáticamente la hora.
+
+---
+
+# 12. Bomberos y dotaciones
+
+Debe ser posible conocer:
+
+**Bomberos totales en emergencia: 63**
+
+Separados por:
+
+- Compañía.
+- Carro.
+- Sector.
+- Función.
+
+No es obligatorio registrar individualmente a todos los bomberos externos.
+
+Debe permitirse:
+
+`B-7 | Dotación: 7`
+
+Pero si son usuarios NODO360 se podrá visualizar individualmente la dotación cuando exista esa información.
+
+---
+
+# 13. Transferencia de mando
+
+Botón:
+
+## TRANSFERIR MANDO
+
+Solicitar:
+
+**Mando actual:**  
+Comandante Juan Pérez
+
+**Nuevo mando:**  
+Comandante Pedro González
+
+**Hora:**  
+Automática
+
+**Observaciones:**  
+Opcional
+
+Confirmación obligatoria.
+
+Registrar:
+
+`15:32 — Juan Pérez transfiere el mando de la emergencia a Pedro González.`
+
+Nunca sobrescribir quién estuvo anteriormente al mando.
+
+---
+
+# 14. Bitácora automática
+
+Esta es una de las funciones más importantes.
+
+Nodo360 debe registrar automáticamente cualquier acción operacional.
+
+Ejemplo:
+
+`14:40 — Puesto de Comando constituido.`
+
+`14:43 — BRIF CONAF incorporada como recurso externo.`
+
+`14:45 — Juan Pérez asume el mando.`
+
+`14:48 — B-5 asignado a Sector Bravo.`
+
+`14:52 — Z-1 inicia abastecimiento.`
+
+`14:55 — B-7 arriba desde San Javier.`
+
+`14:58 — B-7 asignado a Sector Alfa.`
+
+Cada registro debe almacenar:
+
+- Fecha.
+- Hora.
+- Acción.
+- Usuario.
+- Recurso afectado.
+- Estado anterior.
+- Estado nuevo.
+- Observaciones.
+
+La bitácora histórica **no debe eliminarse ni sobrescribirse** desde la operación normal.
+
+---
+
+# 15. Novedades manuales
+
+Botón:
+
+## + REGISTRAR NOVEDAD
+
+Ejemplo:
+
+`15:03 — Se informa propagación hacia sector norte.`
+
+Categorías:
+
+- Operacional.
+- Seguridad.
+- Mando.
+- Recurso.
+- Clima.
+- Evacuación.
+- Lesionado.
+- Solicitud.
+- Información general.
+
+---
+
+# 16. Alertas
+
+Mostrar visualmente situaciones relevantes.
+
+Ejemplos:
+
+⚠️ Unidad sin asignación.
+
+⚠️ Sector sin responsable.
+
+⚠️ Recurso solicitado aún no arribado.
+
+⚠️ Bombero o unidad reportada con problema.
+
+🚨 Emergencia de seguridad.
+
+Las alertas críticas deben quedar registradas en la bitácora.
+
+---
+
+# 17. Solicitud de recursos
+
+Desde NodoCommand:
+
+`+ Solicitar recurso`
+
+Seleccionar:
+
+- Tipo.
+- Cantidad.
+- Motivo.
+- Prioridad.
+- Destino / sector.
+
+Ejemplo:
+
+**Solicitud:** 2 carros aljibe  
+**Destino:** Sector Alfa  
+**Prioridad:** Alta  
+**Hora:** 15:14
+
+Estado:
+
+`Solicitado → Despachado → En traslado → Arribado`
+
+---
+
+# 18. Contadores principales
+
+Mostrar permanentemente:
+
+**63 Bomberos**
+
+**11 Unidades**
+
+**6 Compañías**
+
+**4 Recursos externos**
+
+**4 Sectores activos**
+
+**2 Recursos disponibles**
+
+**1 Recurso en traslado**
+
+Esto permite entender la situación en segundos.
+
+---
+
+# 19. Funcionamiento en tiempo real
+
+Todos los equipos conectados a la misma emergencia deben actualizarse automáticamente.
+
+Ejemplo:
+
+El operador cambia:
+
+`B-1 → Sector Alfa`
+
+La modificación debe aparecer inmediatamente en:
+
+- Notebook del Puesto de Comando.
+- Tablet.
+- Pantalla secundaria.
+- Usuarios autorizados.
+
+Evitar depender de refrescar manualmente la página.
+
+---
+
+# 20. Modo pantalla grande
+
+Agregar:
+
+## MODO COMANDO / PANTALLA COMPLETA
+
+Oculta navegación normal de NODO360.
+
+Solo muestra:
+
+- Emergencia.
+- Mando.
+- Mapa.
+- Sectores.
+- Recursos.
+- Alertas.
+- Bitácora.
+
+Pensado para monitor o televisión instalada en un carro o Puesto de Comando.
+
+---
+
+# 21. Pérdida de Internet
+
+NodoCommand debe considerar que puede utilizarse en lugares con conectividad deficiente.
+
+Ideal:
+
+`ONLINE ●`
+
+o
+
+`SIN CONEXIÓN ●`
+
+Cuando se pierda conexión:
+
+- Mantener la última información disponible.
+- Permitir registrar determinadas acciones localmente.
+- Guardarlas temporalmente.
+- Sincronizarlas al recuperar Internet.
+- Indicar claramente qué cambios están pendientes de sincronización.
+
+Nunca mostrar información desactualizada como si fuera información confirmada en tiempo real.
+
+---
+
+# 22. Cierre del Puesto de Comando
+
+Botón:
+
+## FINALIZAR PUESTO DE COMANDO
+
+Mostrar resumen:
+
+**Duración:** 04:32:17  
+**Compañías:** 9  
+**Unidades:** 17  
+**Bomberos:** 104  
+**Sectores creados:** 6  
+**Recursos externos:** 8  
+**Cambios de mando:** 2
+
+Solicitar observación final.
+
+Confirmación:
+
+**Finalizar operación de NodoCommand**
+
+Después del cierre la información queda disponible en modo histórico y no debe seguir modificándose como una emergencia activa.
+
+---
+
+# 23. Informe posterior
+
+Nodo360 debería poder generar automáticamente un resumen con:
+
+- Datos de la emergencia.
+- Inicio y término.
+- Mandos participantes.
+- Compañías.
+- Recursos.
+- Dotaciones.
+- Sectores.
+- Misiones.
+- Organismos externos.
+- Línea de tiempo.
+- Solicitudes realizadas.
+- Novedades.
+- Cambios de mando.
+- Horas de llegada y retiro.
+
+Botón:
+
+`Exportar bitácora`
+
+---
+
+# 24. Seguridad y auditoría
+
+Toda modificación relevante debe guardar:
+
+- ID usuario.
+- Nombre.
+- Fecha.
+- Hora.
+- Acción.
+- Dispositivo/sesión cuando corresponda.
+
+Las acciones críticas deben requerir confirmación:
+
+- Asumir mando.
+- Transferir mando.
+- Eliminar/cancelar un recurso.
+- Cerrar sector.
+- Finalizar Puesto de Comando.
+
+No realizar eliminación física de registros operacionales históricos.
+
+---
+
+# 25. Estructura visual
+
+### Izquierda
+**RECURSOS**
+
+Filtros:
+
+`Todos | Nodo360 | Externos`
+
+Listado de compañías, unidades y organismos.
+
+### Centro
+**MAPA TÁCTICO**
+
+Mapa / Satélite / Terreno.
+
+Unidades, sectores y puntos operacionales.
+
+### Derecha
+**SECTORES OPERACIONALES**
+
+Alfa  
+Bravo  
+Charlie  
+Delta
+
+Con recursos y dotaciones.
+
+### Inferior
+**BITÁCORA EN VIVO**
+
+Hora | Evento | Detalle | Usuario
+
+---
+
+# 26. Flujo principal
+
+`Emergencia despachada`
+
+↓
+
+`Emergencia aumenta de magnitud`
+
+↓
+
+`Se constituye Puesto de Comando`
+
+↓
+
+`Oficial asume mando`
+
+↓
+
+`Nodo360 importa recursos ya despachados`
+
+↓
+
+`Se incorporan recursos externos`
+
+↓
+
+`Se crean sectores`
+
+↓
+
+`Se asignan carros y dotaciones`
+
+↓
+
+`Se registran movimientos y decisiones`
+
+↓
+
+`Puede transferirse el mando`
+
+↓
+
+`Emergencia controlada`
+
+↓
+
+`Se cierra Puesto de Comando`
+
+↓
+
+`Nodo360 genera bitácora e informe`
+
+---
+
+# Principio fundamental
+
+**NodoCommand no reemplaza el mando operacional.**
+
+Su función es entregar al mando una representación digital, simple y en tiempo real de:
+
+> **Quién está en la emergencia, dónde está, bajo qué mando, qué recurso tiene y qué tarea está realizando.**
+
+La interfaz debe privilegiar rapidez operacional: una acción habitual debería poder realizarse en pocos clics y sin abandonar la pantalla principal.

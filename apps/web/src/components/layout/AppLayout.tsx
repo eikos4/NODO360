@@ -30,6 +30,7 @@ const IMMERSIVE_ROUTES = [
   '/hydrants',
   '/central-avisos',
   '/central-llamados',
+  '/nodo-command',
 ];
 
 export default function AppLayout() {

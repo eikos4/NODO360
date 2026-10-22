@@ -303,6 +303,7 @@ model Incident {
   participants             IncidentParticipant[]
   vehicles                 IncidentVehicle[]
   alarmNotifications       AlarmNotification[]
+  commandPost              CommandPost?
 
   @@index([companyId])
   @@index([companyId, status])
@@ -1337,4 +1338,231 @@ enum AlarmDeliveryStatus {
   EXPIRED
   OPENED
   ACKNOWLEDGED
+}
+
+enum CommandPostStatus {
+  ACTIVE
+  CLOSED
+}
+
+enum CommandResourceOrigin {
+  NODO360
+  EXTERNAL
+}
+
+enum CommandResourceStatus {
+  SOLICITADO
+  DESPACHADO
+  EN_TRASLADO
+  ARRIBANDO
+  DISPONIBLE
+  ASIGNADO
+  EN_OPERACION
+  REHABILITACION
+  RETORNANDO
+  FUERA_DE_SERVICIO
+  RETIRADO
+}
+
+enum CommandSectorStatus {
+  EN_OPERACION
+  EN_ESPERA
+  COMPLETADO
+  SUSPENDIDO
+}
+
+enum CommandLogKind {
+  SYSTEM
+  COMMAND
+  RESOURCE
+  SECTOR
+  NOVELTY
+  REQUEST
+  ALERT
+  CLOSE
+}
+
+enum CommandNoveltyCategory {
+  OPERACIONAL
+  SEGURIDAD
+  MANDO
+  RECURSO
+  CLIMA
+  EVACUACION
+  LESIONADO
+  SOLICITUD
+  INFORMACION
+}
+
+enum CommandRequestPriority {
+  BAJA
+  MEDIA
+  ALTA
+  CRITICA
+}
+
+enum CommandRequestStatus {
+  SOLICITADO
+  DESPACHADO
+  EN_TRASLADO
+  ARRIBADO
+  CANCELADO
+}
+
+enum CommandPointKind {
+  ABASTECIMIENTO
+  FUENTE_AGUA
+  HIDRANTE
+  SEGURIDAD
+  PUESTO_MEDICO
+  REHABILITACION
+  HELIPUERTO
+  EVACUACION
+  PUNTO_ENCUENTRO
+  ACCESO
+  AREA_ESPERA
+  PELIGRO
+  CORTAFUEGO
+  LOGISTICA
+  COMUNICACIONES
+  ALBERGUE
+  OTRO
+}
+
+model CommandPost {
+  id            String             @id @default(cuid())
+  incidentId    String             @unique
+  status        CommandPostStatus  @default(ACTIVE)
+  openedAt      DateTime           @default(now())
+  closedAt      DateTime?
+  closeNote     String?
+  latitude      Float?
+  longitude     Float?
+  openedById    String?
+  openedByName  String
+  openedByRank  String?
+  initialNote   String?
+  createdAt     DateTime           @default(now())
+  updatedAt     DateTime           @updatedAt
+  incident      Incident           @relation(fields: [incidentId], references: [id], onDelete: Cascade)
+  commands      CommandPostCommand[]
+  sectors       CommandPostSector[]
+  resources     CommandPostResource[]
+  logs          CommandPostLog[]
+  requests      CommandPostRequest[]
+  points        CommandPostPoint[]
+
+  @@index([status])
+}
+
+model CommandPostCommand {
+  id                 String      @id @default(cuid())
+  postId             String
+  assumedAt          DateTime    @default(now())
+  releasedAt         DateTime?
+  userId             String?
+  name               String
+  rank               String?
+  note               String?
+  transferredByName  String?
+  post               CommandPost @relation(fields: [postId], references: [id], onDelete: Cascade)
+
+  @@index([postId, assumedAt])
+}
+
+model CommandPostSector {
+  id               String               @id @default(cuid())
+  postId           String
+  name             String
+  mission          String?
+  responsibleName  String?
+  status           CommandSectorStatus  @default(EN_OPERACION)
+  sortOrder        Int                  @default(0)
+  polygon          Json?
+  color            String               @default("#dc2626")
+  closedAt         DateTime?
+  createdAt        DateTime             @default(now())
+  updatedAt        DateTime             @updatedAt
+  post             CommandPost          @relation(fields: [postId], references: [id], onDelete: Cascade)
+  resources        CommandPostResource[]
+  requests         CommandPostRequest[]
+
+  @@index([postId])
+}
+
+model CommandPostResource {
+  id               String                 @id @default(cuid())
+  postId           String
+  origin           CommandResourceOrigin  @default(EXTERNAL)
+  vehicleId        String?
+  label            String
+  type             String
+  companyName      String?
+  institution      String?
+  responsibleName  String?
+  contact          String?
+  staffing         Int                    @default(0)
+  status           CommandResourceStatus  @default(DISPONIBLE)
+  sectorId         String?
+  mission          String?
+  latitude         Float?
+  longitude        Float?
+  arrivedAt        DateTime?
+  withdrawnAt      DateTime?
+  createdAt        DateTime               @default(now())
+  updatedAt        DateTime               @updatedAt
+  post             CommandPost            @relation(fields: [postId], references: [id], onDelete: Cascade)
+  sector           CommandPostSector?     @relation(fields: [sectorId], references: [id], onDelete: SetNull)
+
+  @@index([postId])
+  @@index([sectorId])
+}
+
+model CommandPostLog {
+  id              String          @id @default(cuid())
+  postId          String
+  occurredAt      DateTime        @default(now())
+  kind            CommandLogKind  @default(SYSTEM)
+  action          String
+  detail          String?
+  actorId         String?
+  actorName       String
+  resourceId      String?
+  sectorId        String?
+  previousStatus  String?
+  nextStatus      String?
+  category        CommandNoveltyCategory?
+  post            CommandPost     @relation(fields: [postId], references: [id], onDelete: Cascade)
+
+  @@index([postId, occurredAt])
+}
+
+model CommandPostRequest {
+  id        String                 @id @default(cuid())
+  postId    String
+  type      String
+  quantity  Int                    @default(1)
+  reason    String?
+  priority  CommandRequestPriority @default(MEDIA)
+  status    CommandRequestStatus   @default(SOLICITADO)
+  sectorId  String?
+  createdAt DateTime               @default(now())
+  updatedAt DateTime               @updatedAt
+  post      CommandPost            @relation(fields: [postId], references: [id], onDelete: Cascade)
+  sector    CommandPostSector?     @relation(fields: [sectorId], references: [id], onDelete: SetNull)
+
+  @@index([postId])
+}
+
+model CommandPostPoint {
+  id        String           @id @default(cuid())
+  postId    String
+  kind      CommandPointKind @default(OTRO)
+  name      String
+  latitude  Float
+  longitude Float
+  createdAt DateTime         @default(now())
+  post      CommandPost      @relation(fields: [postId], references: [id], onDelete: Cascade)
+
+  @@index([postId])
 }

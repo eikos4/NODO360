@@ -23,6 +23,7 @@ export const CENTRAL_OPERATOR_ROUTES = [
   '/companias-tv',
   '/central-avisos',
   '/central-llamados',
+  '/nodo-command',
   '/announcements',
 ] as const;
 

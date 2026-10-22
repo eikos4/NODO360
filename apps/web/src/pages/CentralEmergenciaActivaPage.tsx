@@ -2,7 +2,7 @@ import { useEffect, useMemo, useState } from 'react';
 import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import {
-  Bell, BookOpen, CheckCircle2, Clock, Cloud, CloudRain, CloudSun, Droplets, FileDown, HelpCircle, Image as ImageIcon, Loader2, LocateFixed, Map as MapIcon, Megaphone,
+  Bell, BookOpen, CheckCircle2, Clock, Cloud, CloudRain, CloudSun, Droplets, FileDown, Flag, HelpCircle, Image as ImageIcon, Loader2, LocateFixed, Map as MapIcon, Megaphone,
   MapPin, MessageSquarePlus, Navigation, Radio, RefreshCw, Shield, Siren, Sun, Truck, Tv, Users, X, Zap,
 } from 'lucide-react';
 import toast from 'react-hot-toast';
@@ -873,6 +873,16 @@ export default function CentralEmergenciaActivaPage() {
             )}
             {selected && (
               <>
+                <Link
+                  to={`/nodo-command/${selected.id}`}
+                  className={`flex items-center gap-1.5 px-3 py-2 rounded-xl border text-xs font-black uppercase tracking-wide ${
+                    isDark ? 'border-amber-400/40 text-amber-200' : 'border-amber-700 text-amber-900'
+                  }`}
+                  title="Constituir o abrir el puesto de comando"
+                >
+                  <Flag className="w-3.5 h-3.5" />
+                  Puesto de comando
+                </Link>
                 <button
                   type="button"
                   onClick={locateEmergency}

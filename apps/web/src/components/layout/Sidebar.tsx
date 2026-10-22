@@ -4,7 +4,7 @@ import {
   LayoutDashboard, Building2, Users, Package,
   Truck, FileText, ShieldAlert, Wrench, DollarSign,
   Flame, Bell, ShoppingCart, Zap, Gauge, Network, Siren, Megaphone, Droplets, Shield, HandCoins, Signpost,
-  GraduationCap, Map, BookOpen, ClipboardCheck, ClipboardList, Fuel, HeartPulse, PanelLeftClose, PanelLeft, Radio, Globe, Eye, Crown, Tv, HelpCircle, Phone
+  GraduationCap, Map, BookOpen, ClipboardCheck, ClipboardList, Fuel, HeartPulse, PanelLeftClose, PanelLeft, Radio, Globe, Eye, Crown, Tv, HelpCircle, Phone, Flag
 } from 'lucide-react';
 import { useAuthStore } from '../../store/authStore';
 import { cn } from '../../lib/utils';
@@ -22,6 +22,7 @@ export const navItems: NavItem[] = [
   { to: '/nodo360',    label: 'NODO360',      icon: Zap,             roles: ['SUPER_ADMIN', 'COMANDANTE', 'CAPITAN', 'OPERADOR_CENTRAL'] },
   { to: '/central-emergencia', label: 'Consola activa', icon: Siren, roles: ['OPERADOR_CENTRAL', 'SUPER_ADMIN', 'COMANDANTE', 'CAPITAN'] },
   { to: '/central-llamados', label: 'Llamados operativos', icon: Phone, roles: ['OPERADOR_CENTRAL', 'SUPER_ADMIN', 'COMANDANTE', 'CAPITAN'] },
+  { to: '/nodo-command', label: 'NodoCommand', icon: Flag, roles: ['OPERADOR_CENTRAL', 'SUPER_ADMIN', 'COMANDANTE', 'CAPITAN'] },
   { to: '/central-operativa', label: 'Central en vivo', icon: Radio, roles: ['OPERADOR_CENTRAL', 'SUPER_ADMIN', 'COMANDANTE', 'CAPITAN'] },
   { to: '/bitacora360', label: 'Bitácora360', icon: BookOpen, roles: ['OPERADOR_CENTRAL', 'SUPER_ADMIN', 'COMANDANTE', 'CAPITAN'] },
   { to: '/central-bitacora/registro', label: 'Bitácora botonera', icon: ClipboardList, roles: ['OPERADOR_CENTRAL', 'SUPER_ADMIN', 'COMANDANTE', 'CAPITAN'] },
