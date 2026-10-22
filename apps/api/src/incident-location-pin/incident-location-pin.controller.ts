@@ -1,4 +1,4 @@
-import { Body, Controller, Get, Param, Post } from '@nestjs/common';
+import { Body, Controller, Get, Param, Post, Redirect } from '@nestjs/common';
 import { IncidentLocationPinService } from './incident-location-pin.service';
 import { ConfirmIncidentLocationDto } from './dto/confirm-incident-location.dto';
 
@@ -10,6 +10,13 @@ export class IncidentLocationPinController {
   @Get('pre-dispatch/:token')
   pollPreDispatch(@Param('token') token: string) {
     return this.service.pollPreDispatch(token);
+  }
+
+  /** WhatsApp / links viejos de la API → página pública /localizar */
+  @Get(':token/open')
+  @Redirect()
+  openPublicPage(@Param('token') token: string) {
+    return { url: this.service.publicPageUrl(token), statusCode: 302 };
   }
 
   /** PRE-DISPATCH: Confirmar ubicación desde el teléfono sin incidente creado */

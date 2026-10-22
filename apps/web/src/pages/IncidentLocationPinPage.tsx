@@ -43,6 +43,10 @@ export default function IncidentLocationPinPage() {
 
   const load = useCallback(async (opts?: { silent?: boolean }) => {
     if (!token) return;
+    if (isPreDispatch) {
+      if (!opts?.silent) setLoading(false);
+      return;
+    }
     if (!opts?.silent) setLoading(true);
     try {
       const res = await fetch(`${apiBase}/location-pin/${token}`);

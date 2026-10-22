@@ -1,9 +1,23 @@
-export function buildLocationPinUrl(token: string, origin = typeof window !== 'undefined' ? window.location.origin : '') {
-  const api = import.meta.env.VITE_API_URL?.replace(/\/$/, '') || '';
-  if (/^https?:\/\//i.test(api)) {
-    return `${api}/location-pin/${encodeURIComponent(token)}/open`;
+const DEFAULT_PUBLIC_SITE = 'https://nodo360.net';
+
+function publicSiteOrigin(origin?: string) {
+  const fromEnv = (import.meta.env.VITE_PUBLIC_SITE_URL as string | undefined)?.replace(/\/$/, '');
+  if (fromEnv && /^https?:\/\//i.test(fromEnv)) return fromEnv;
+  if (origin && /^https?:\/\//i.test(origin) && !/onrender\.com$/i.test(new URL(origin).hostname)) {
+    return origin.replace(/\/$/, '');
   }
-  return `${origin}/localizar/${token}`;
+  if (typeof window !== 'undefined' && window.location?.origin) {
+    const host = window.location.hostname;
+    if (host && !host.includes('onrender.com') && host !== 'localhost') {
+      return window.location.origin;
+    }
+  }
+  return DEFAULT_PUBLIC_SITE;
+}
+
+/** Página pública que abre el reportante. Nunca la API: /open no es una pantalla. */
+export function buildLocationPinUrl(token: string, origin = typeof window !== 'undefined' ? window.location.origin : '') {
+  return `${publicSiteOrigin(origin)}/localizar/${encodeURIComponent(token)}`;
 }
 
 export function buildLocationPinWhatsAppMessage(opts: {

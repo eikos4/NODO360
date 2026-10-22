@@ -32,6 +32,24 @@ export class IncidentLocationPinService {
     return { found: !!data, data: data || null };
   }
 
+  publicPageUrl(token: string) {
+    const listed = (process.env.FRONTEND_URL ?? '')
+      .split(',')
+      .map((value) => value.trim().replace(/\/$/, ''))
+      .filter(Boolean);
+    const preferred =
+      listed.find((origin) => {
+        try {
+          return /nodo360\.net$/i.test(new URL(origin).hostname);
+        } catch {
+          return false;
+        }
+      }) ??
+      listed[0] ??
+      'https://nodo360.net';
+    return `${preferred}/localizar/${encodeURIComponent(token)}`;
+  }
+
   async getByToken(token: string) {
     const incident = await this.prisma.incident.findUnique({
       where: { locationPinToken: token },
