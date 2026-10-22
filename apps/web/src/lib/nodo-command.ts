@@ -248,6 +248,9 @@ export type CommandResource = {
   mission: string | null;
   latitude: number | null;
   longitude: number | null;
+  arrivedAt?: string | null;
+  withdrawnAt?: string | null;
+  createdAt?: string | null;
 };
 
 export type CommandSector = {

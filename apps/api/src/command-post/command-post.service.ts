@@ -597,7 +597,7 @@ export class CommandPostService {
         commands: { orderBy: { assumedAt: 'desc' } },
         sectors: { orderBy: { sortOrder: 'asc' } },
         resources: { orderBy: { createdAt: 'asc' } },
-        logs: { orderBy: { occurredAt: 'desc' }, take: 200 },
+        logs: { orderBy: { occurredAt: 'desc' }, take: 2000 },
         requests: { orderBy: { createdAt: 'desc' } },
         points: { orderBy: { createdAt: 'asc' } },
       },
