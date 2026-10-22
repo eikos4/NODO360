@@ -13,6 +13,7 @@ export class DispatchIncidentDto {
   @IsOptional() @IsNumber() longitude?: number;
   @IsString() @IsNotEmpty() companyId: string;
   @IsOptional() @IsArray() @IsString({ each: true }) vehicleIds?: string[];
+  @IsOptional() @IsArray() @IsString({ each: true }) supportCompanyIds?: string[];
   @IsOptional() @IsArray() @IsString({ each: true }) participantIds?: string[];
   @IsOptional() @IsString() dispatchNotes?: string;
   @IsOptional() @IsEnum(DispatchSourceDto) dispatchSource?: DispatchSourceDto;

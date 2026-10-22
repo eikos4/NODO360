@@ -1,5 +1,5 @@
 import { Truck } from 'lucide-react';
-import { MAX_DISPATCH_VEHICLES } from '../../lib/dispatch-selection';
+import { MAX_DISPATCH_COMPANIES, MAX_DISPATCH_VEHICLES } from '../../lib/dispatch-selection';
 import type { CentralParralThemeTokens } from '../../lib/central-parral-theme';
 
 type Company = { id: string; number: number; name: string };
@@ -91,7 +91,7 @@ export default function DispatchCompanyVehiclePicker({
       </div>
 
       <p className={`text-[10px] ${th.hint}`}>
-        Hasta {MAX_DISPATCH_VEHICLES} carros de hasta 2 compañías · {selectedVehicles.length}/{MAX_DISPATCH_VEHICLES} seleccionados
+        Hasta {MAX_DISPATCH_VEHICLES} carros de hasta {MAX_DISPATCH_COMPANIES} compañías · {selectedVehicles.length}/{MAX_DISPATCH_VEHICLES} seleccionados
       </p>
 
       {selectedRows.length > 0 && (

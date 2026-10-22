@@ -254,6 +254,24 @@ function CommandBoard({ incidentId }: { incidentId: string }) {
     return list;
   }, [data?.resources, filter]);
 
+  const groupedResources = useMemo(() => {
+    const groups = new Map<string, typeof visibleResources>();
+    for (const resource of visibleResources) {
+      const key = resource.companyName || resource.institution || 'Otros';
+      const items = groups.get(key) ?? [];
+      items.push(resource);
+      groups.set(key, items);
+    }
+    return [...groups.entries()].map(([name, items]) => [
+      name,
+      [...items].sort((a, b) => {
+        const rank = (item: typeof a) => (item.type === 'Compañía' ? 0 : 1);
+        const delta = rank(a) - rank(b);
+        return delta !== 0 ? delta : a.label.localeCompare(b.label, 'es');
+      }),
+    ] as const);
+  }, [visibleResources]);
+
   const requestedKeys = useMemo(() => {
     const keys = new Set<string>();
     for (const resource of data?.resources ?? []) {
@@ -548,8 +566,13 @@ function CommandBoard({ incidentId }: { incidentId: string }) {
               }}
             />
           ) : (
-          <div className="space-y-1.5">
-            {visibleResources.map((resource) => (
+          <div className="space-y-3">
+            {groupedResources.map(([company, resources]) => (
+              <div key={company} className="space-y-1.5">
+                <p className="text-[10px] font-black uppercase tracking-widest text-red-400 px-1">
+                  {company}
+                </p>
+                {resources.map((resource) => (
               <div
                 key={resource.id}
                 draggable={canWrite}
@@ -559,7 +582,13 @@ function CommandBoard({ incidentId }: { incidentId: string }) {
                 }}
                 onClick={() => setSelectedResourceId(resource.id)}
                 className={`rounded-xl border px-3 py-2 cursor-pointer ${
-                  selectedResourceId === resource.id ? 'border-red-400 bg-red-500/10' : 'border-white/10 bg-white/5'
+                  resource.type === 'Compañía'
+                    ? selectedResourceId === resource.id
+                      ? 'border-red-400 bg-red-600/20'
+                      : 'border-red-500/40 bg-red-500/10'
+                    : selectedResourceId === resource.id
+                      ? 'border-red-400 bg-red-500/10'
+                      : 'border-white/10 bg-white/5'
                 }`}
               >
                 <div className="flex items-center justify-between gap-2">
@@ -567,7 +596,9 @@ function CommandBoard({ incidentId }: { incidentId: string }) {
                   <span className="text-[10px] font-bold text-slate-400">{statusLabel(resource.status)}</span>
                 </div>
                 <p className="text-[11px] text-slate-400 truncate">
-                  {resource.companyName || resource.institution} · {resource.staffing} bomberos
+                  {resource.type === 'Compañía'
+                    ? `${resource.staffing} bomberos en respuesta`
+                    : `${resource.type} · ${resource.staffing} bomberos`}
                 </p>
                 {resource.mission && (
                   <p className="text-[11px] text-slate-900 dark:text-amber-300 truncate mt-0.5">
@@ -605,6 +636,8 @@ function CommandBoard({ incidentId }: { incidentId: string }) {
                     </button>
                   </>
                 )}
+              </div>
+                ))}
               </div>
             ))}
             {visibleResources.length === 0 && (
@@ -930,11 +963,14 @@ function CommandBoard({ incidentId }: { incidentId: string }) {
       </div>
 
       {modal && (
-        <ModalShell onClose={() => setModal(null)}>
+        <ModalShell onClose={() => setModal(null)} wide={modal.type === 'transfer'}>
           {modal.type === 'transfer' && (
             <TransferForm
               current={data.post.command?.name ?? ''}
               defaultRank={rankFromRole(user?.role)}
+              incident={data.incident}
+              postLat={data.post.latitude}
+              postLng={data.post.longitude}
               busy={mutate.isPending}
               onSubmit={(body) => mutate.mutate({ method: 'post', path: `/command-posts/${postId}/transfer`, body })}
             />
@@ -1084,20 +1120,34 @@ function ConstituteView({
   const [commanderName, setCommanderName] = useState(`${user?.firstName ?? ''} ${user?.lastName ?? ''}`.trim());
   const [rank, setRank] = useState(rankFromRole(user?.role));
   const [note, setNote] = useState('');
-  const [lat, setLat] = useState<number | ''>(snapshot.incident.latitude ?? '');
-  const [lng, setLng] = useState<number | ''>(snapshot.incident.longitude ?? '');
+  const [lat, setLat] = useState<number | null>(snapshot.incident.latitude);
+  const [lng, setLng] = useState<number | null>(snapshot.incident.longitude);
+  const [locating, setLocating] = useState(false);
 
-  useEffect(() => {
-    if (!navigator.geolocation) return;
+  const pickPc = (nextLat: number, nextLng: number) => {
+    setLat(nextLat);
+    setLng(nextLng);
+  };
+
+  const useMyGps = () => {
+    if (!navigator.geolocation) {
+      toast.error('Tu navegador no soporta geolocalización');
+      return;
+    }
+    setLocating(true);
     navigator.geolocation.getCurrentPosition(
       (pos) => {
-        setLat(pos.coords.latitude);
-        setLng(pos.coords.longitude);
+        pickPc(pos.coords.latitude, pos.coords.longitude);
+        setLocating(false);
+        toast.success('Puesto de comando marcado con tu GPS');
       },
-      () => undefined,
-      { enableHighAccuracy: true, timeout: 8000 },
+      () => {
+        setLocating(false);
+        toast.error('No se pudo obtener el GPS. Marca el punto en el mapa.');
+      },
+      { enableHighAccuracy: true, timeout: 12000, maximumAge: 0 },
     );
-  }, []);
+  };
 
   const submit = (e: FormEvent) => {
     e.preventDefault();
@@ -1107,14 +1157,38 @@ function ConstituteView({
       commanderName,
       rank,
       note: note || undefined,
-      latitude: lat === '' ? undefined : Number(lat),
-      longitude: lng === '' ? undefined : Number(lng),
+      latitude: lat ?? undefined,
+      longitude: lng ?? undefined,
     });
   };
 
+  const mapCenter: [number, number] =
+    lat != null && lng != null ? [lat, lng] : PARRAL_CENTER;
+  const markers: OsmMarker[] = [];
+  if (snapshot.incident.latitude != null && snapshot.incident.longitude != null) {
+    markers.push({
+      id: 'incident',
+      lat: snapshot.incident.latitude,
+      lng: snapshot.incident.longitude,
+      tone: 'active',
+      badge: snapshot.incident.code,
+      label: snapshot.incident.address,
+    });
+  }
+  if (lat != null && lng != null) {
+    markers.push({
+      id: 'pc',
+      lat,
+      lng,
+      tone: 'ops',
+      badge: 'PC',
+      label: 'Puesto de comando',
+    });
+  }
+
   return (
     <div className="flex-1 min-h-0 overflow-y-auto bg-slate-950 text-slate-100 p-4 md:p-8">
-      <form onSubmit={submit} className="max-w-xl mx-auto space-y-4">
+      <form onSubmit={submit} className="max-w-3xl mx-auto space-y-4">
         <Link to="/nodo-command" className="text-xs text-slate-400">← Volver</Link>
         <p className="text-[10px] font-black uppercase tracking-[0.28em] text-red-400">Constituir puesto de comando</p>
         <h1 className="text-2xl font-black">{snapshot.incident.type}</h1>
@@ -1126,13 +1200,44 @@ function ConstituteView({
         <Field label="Cargo">
           <input required value={rank} onChange={(e) => setRank(e.target.value)} className={inputClass} />
         </Field>
-        <div className="grid grid-cols-2 gap-3">
-          <Field label="Latitud PC">
-            <input value={lat} onChange={(e) => setLat(e.target.value === '' ? '' : Number(e.target.value))} className={inputClass} />
-          </Field>
-          <Field label="Longitud PC">
-            <input value={lng} onChange={(e) => setLng(e.target.value === '' ? '' : Number(e.target.value))} className={inputClass} />
-          </Field>
+        <div>
+          <div className="flex items-center justify-between gap-2 mb-1">
+            <span className="text-[10px] font-black uppercase tracking-widest text-slate-500">
+              Ubicación del Puesto de Comando
+            </span>
+            <button
+              type="button"
+              onClick={useMyGps}
+              disabled={locating}
+              className="inline-flex items-center gap-1 rounded-md bg-white/10 px-2 py-1 text-[10px] font-black uppercase tracking-wide disabled:opacity-60"
+            >
+              <LocateFixed className={`w-3 h-3 ${locating ? 'animate-pulse' : ''}`} />
+              Mi GPS
+            </button>
+          </div>
+          <div className="relative h-[280px] rounded-xl overflow-hidden border border-white/10">
+            <PublicOsmMap
+              theme="dark"
+              baseStyle="osm"
+              center={mapCenter}
+              focus={lat != null && lng != null ? mapCenter : null}
+              zoom={lat != null && lng != null ? 17 : 13}
+              pickActive
+              onPick={pickPc}
+              className="h-full w-full"
+              markers={markers}
+            />
+            <div className="absolute top-2 left-1/2 -translate-x-1/2 z-[500] pointer-events-none">
+              <span className="bg-red-600 text-white text-[10px] font-bold px-3 py-1 rounded-full shadow-md">
+                Toque el mapa para ubicar el PC
+              </span>
+            </div>
+          </div>
+          <p className="mt-1.5 text-xs text-slate-400">
+            {lat != null && lng != null
+              ? 'Puesto de comando marcado en el mapa.'
+              : 'Marque en el mapa el punto donde se constituye el mando.'}
+          </p>
         </div>
         <Field label="Observación inicial">
           <textarea value={note} onChange={(e) => setNote(e.target.value)} rows={3} className={inputClass} />
@@ -1163,10 +1268,10 @@ function Field({ label, children }: { label: string; children: ReactNode }) {
   );
 }
 
-function ModalShell({ children, onClose }: { children: ReactNode; onClose: () => void }) {
+function ModalShell({ children, onClose, wide }: { children: ReactNode; onClose: () => void; wide?: boolean }) {
   return (
     <div className="fixed inset-0 z-[90] bg-black/70 flex items-end sm:items-center justify-center p-3">
-      <div className="w-full max-w-md rounded-2xl bg-slate-900 border border-white/10 p-4 relative">
+      <div className={`w-full ${wide ? 'max-w-2xl' : 'max-w-md'} rounded-2xl bg-slate-900 border border-white/10 p-4 relative`}>
         <button type="button" onClick={onClose} className="absolute top-3 right-3 text-slate-400">
           <X className="w-4 h-4" />
         </button>
@@ -1179,30 +1284,100 @@ function ModalShell({ children, onClose }: { children: ReactNode; onClose: () =>
 function TransferForm({
   current,
   defaultRank,
+  incident,
+  postLat,
+  postLng,
   busy,
   onSubmit,
 }: {
   current: string;
   defaultRank: string;
+  incident: CommandSnapshot['incident'];
+  postLat: number | null;
+  postLng: number | null;
   busy: boolean;
   onSubmit: (body: Record<string, unknown>) => void;
 }) {
   const [commanderName, setCommanderName] = useState('');
   const [rank, setRank] = useState(defaultRank);
   const [note, setNote] = useState('');
+  const [lat, setLat] = useState<number | null>(postLat ?? incident.latitude);
+  const [lng, setLng] = useState<number | null>(postLng ?? incident.longitude);
+
+  const mapCenter: [number, number] =
+    lat != null && lng != null ? [lat, lng] : PARRAL_CENTER;
+  const markers: OsmMarker[] = [];
+  if (incident.latitude != null && incident.longitude != null) {
+    markers.push({
+      id: 'incident',
+      lat: incident.latitude,
+      lng: incident.longitude,
+      tone: 'active',
+      badge: incident.code,
+      label: incident.address,
+    });
+  }
+  if (lat != null && lng != null) {
+    markers.push({
+      id: 'pc',
+      lat,
+      lng,
+      tone: 'ops',
+      badge: 'PC',
+      label: 'Puesto de comando',
+    });
+  }
+
   return (
     <form
       className="space-y-3"
       onSubmit={(e) => {
         e.preventDefault();
         if (!window.confirm(`¿Transferir el mando a ${commanderName}?`)) return;
-        onSubmit({ commanderName, rank, note: note || undefined });
+        onSubmit({
+          commanderName,
+          rank,
+          note: note || undefined,
+          latitude: lat ?? undefined,
+          longitude: lng ?? undefined,
+        });
       }}
     >
       <h2 className="font-black text-lg pr-6">Transferir mando</h2>
       <p className="text-xs text-slate-400">Mando actual: {current || '—'}</p>
       <Field label="Nuevo mando"><input required value={commanderName} onChange={(e) => setCommanderName(e.target.value)} className={inputClass} /></Field>
       <Field label="Cargo"><input value={rank} onChange={(e) => setRank(e.target.value)} className={inputClass} /></Field>
+      <div>
+        <span className="block text-[10px] font-black uppercase tracking-widest text-slate-500 mb-1">
+          Ubicación del Puesto de Comando
+        </span>
+        <div className="relative h-[220px] rounded-xl overflow-hidden border border-white/10">
+          <PublicOsmMap
+            theme="dark"
+            baseStyle="osm"
+            center={mapCenter}
+            focus={lat != null && lng != null ? mapCenter : null}
+            zoom={lat != null && lng != null ? 17 : 13}
+            pickActive
+            onPick={(nextLat, nextLng) => {
+              setLat(nextLat);
+              setLng(nextLng);
+            }}
+            className="h-full w-full"
+            markers={markers}
+          />
+          <div className="absolute top-2 left-1/2 -translate-x-1/2 z-[500] pointer-events-none">
+            <span className="bg-red-600 text-white text-[10px] font-bold px-3 py-1 rounded-full shadow-md">
+              Toque el mapa para ubicar el PC
+            </span>
+          </div>
+        </div>
+        <p className="mt-1.5 text-xs text-slate-400">
+          {lat != null && lng != null
+            ? 'Puesto de comando marcado en el mapa.'
+            : 'Marque en el mapa el punto donde queda el mando.'}
+        </p>
+      </div>
       <Field label="Observaciones"><textarea value={note} onChange={(e) => setNote(e.target.value)} rows={2} className={inputClass} /></Field>
       <button disabled={busy} className="w-full bg-red-600 text-white font-black rounded-xl py-2.5">Confirmar transferencia</button>
     </form>
@@ -1595,7 +1770,7 @@ function PointForm({
         <input required value={name} onChange={(e) => setName(e.target.value)} className={inputClass} />
       </Field>
       <p className="text-[11px] text-slate-500">
-        {meta.icon} {lat.toFixed(5)}, {lng.toFixed(5)}
+        {meta.icon} Punto marcado en el mapa
       </p>
       <button disabled={busy} className="w-full bg-red-600 text-white font-black rounded-xl py-2.5">Marcar punto</button>
     </form>

@@ -39,6 +39,8 @@ type Props = {
   emergencyLat?: number;
   emergencyLng?: number;
   selectedCompanyId?: string;
+  supportCompanyIds?: string[];
+  /** @deprecated use supportCompanyIds */
   supportCompanyId?: string;
   pickActive?: boolean;
   onPick?: (lat: number, lng: number) => void;
@@ -54,6 +56,7 @@ export default function CentralExpressMap({
   emergencyLat,
   emergencyLng,
   selectedCompanyId,
+  supportCompanyIds,
   supportCompanyId,
   pickActive = true,
   onPick,
@@ -76,7 +79,7 @@ export default function CentralExpressMap({
       id: `company:${c.id}`,
       lat: c.lat,
       lng: c.lng,
-      tone: c.id === selectedCompanyId ? 'active' : c.id === supportCompanyId ? 'you' : 'field',
+      tone: c.id === selectedCompanyId ? 'active' : (supportCompanyIds ?? []).concat(supportCompanyId ? [supportCompanyId] : []).includes(c.id) ? 'you' : 'field',
       label: `<strong>${c.number}ª ${c.name}</strong><br/>Voluntarios: ${c.rosterAvailable}<br/>Maquinistas: ${c.maquinistasAvailable}<br/>Carros op.: ${c.fleetOperativo}`,
     }));
     hydrants.forEach((h) => {
@@ -107,7 +110,7 @@ export default function CentralExpressMap({
       });
     }
     return list;
-  }, [companies, hydrants, incidents, hasEmergency, emergencyLat, emergencyLng, selectedCompanyId, supportCompanyId]);
+  }, [companies, hydrants, incidents, hasEmergency, emergencyLat, emergencyLng, selectedCompanyId, supportCompanyId, supportCompanyIds]);
 
   return (
     <div className="relative w-full h-full min-h-[220px]" style={{ height }}>

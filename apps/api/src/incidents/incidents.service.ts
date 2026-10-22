@@ -96,6 +96,7 @@ export class IncidentsService {
       where: {
         OR: [
           { companyId: user.companyId },
+          { supportCompanyIds: { has: user.companyId } },
           { vehicles: { some: { vehicle: { companyId: user.companyId } } } },
         ],
       },
@@ -127,6 +128,7 @@ export class IncidentsService {
     ];
     if (user.companyId) {
       or.push({ companyId: user.companyId });
+      or.push({ supportCompanyIds: { has: user.companyId } });
       or.push({ vehicles: { some: { vehicle: { companyId: user.companyId } } } });
     }
     const permitted = await this.prisma.incident.findFirst({
@@ -322,6 +324,9 @@ export class IncidentsService {
   async dispatch(dto: DispatchIncidentDto, userId?: string) {
     if (!dto.companyId) throw new BadRequestException('Compañía requerida para despacho');
 
+    const supportCompanyIds = [...new Set((dto.supportCompanyIds ?? []).filter((id) => id && id !== dto.companyId))];
+    const vehicleIds = await this.ensureVehiclesForCompanies(dto.companyId, supportCompanyIds, dto.vehicleIds);
+
     const code = await this.generateCode(dto.companyId);
     const description =
       dto.description?.trim() ||
@@ -339,7 +344,8 @@ export class IncidentsService {
         dispatchedAt: new Date().toISOString(),
         companyId: dto.companyId,
         participantIds: dto.participantIds,
-        vehicleIds: dto.vehicleIds,
+        vehicleIds,
+        supportCompanyIds,
         dispatchSource: dto.dispatchSource ?? 'BOTONERA',
         dispatchNotes: dto.dispatchNotes,
       },
@@ -395,8 +401,40 @@ export class IncidentsService {
     }
   }
 
+  private async ensureVehiclesForCompanies(
+    primaryCompanyId: string,
+    supportCompanyIds: string[],
+    selectedIds?: string[],
+  ) {
+    const vehicleIds = [...new Set((selectedIds ?? []).filter(Boolean))];
+    if (!supportCompanyIds.length) return vehicleIds;
+
+    const existing = vehicleIds.length
+      ? await this.prisma.vehicle.findMany({
+          where: { id: { in: vehicleIds } },
+          select: { companyId: true },
+        })
+      : [];
+    const covered = new Set(existing.map((row) => row.companyId));
+    covered.add(primaryCompanyId);
+
+    for (const companyId of supportCompanyIds) {
+      if (covered.has(companyId)) continue;
+      const car = await this.prisma.vehicle.findFirst({
+        where: { companyId, status: 'OPERATIVO' },
+        orderBy: { patent: 'asc' },
+        select: { id: true },
+      });
+      if (car) {
+        vehicleIds.push(car.id);
+        covered.add(companyId);
+      }
+    }
+    return vehicleIds;
+  }
+
   async create(dto: CreateIncidentDto, userId?: string) {
-    const { participantIds, vehicleIds, ...data } = dto;
+    const { participantIds, vehicleIds, supportCompanyIds, ...data } = dto;
     const exists = await this.prisma.incident.findUnique({ where: { code: dto.code } });
     if (exists) throw new ConflictException(`Código '${dto.code}' ya registrado`);
 
@@ -435,6 +473,7 @@ export class IncidentsService {
           report: data.report,
           imageUrl: data.imageUrl,
           companyId: data.companyId,
+          supportCompanyIds: [...new Set((supportCompanyIds ?? []).filter((id) => id && id !== data.companyId))],
           dispatchSource,
           dispatchNotes: data.dispatchNotes,
           emergencyPlanId: match?.planId,
@@ -460,6 +499,9 @@ export class IncidentsService {
       });
       const companyIds = new Set<string>([created.companyId]);
       created.vehicles.forEach((row) => companyIds.add(row.vehicle.companyId));
+      (supportCompanyIds ?? []).forEach((id) => {
+        if (id) companyIds.add(id);
+      });
       await this.alarms.enqueue(
         {
           incidentId: created.id,
@@ -482,6 +524,9 @@ export class IncidentsService {
 
     const companyIds = new Set<string>([incident.companyId]);
     incident.vehicles.forEach((row) => companyIds.add(row.vehicle.companyId));
+    (supportCompanyIds ?? []).forEach((id) => {
+      if (id) companyIds.add(id);
+    });
     this.emergencyBroadcaster.emit({
       event: EMERGENCY_EVENT_NAMES.dispatchCreated,
       incidentId: incident.id,

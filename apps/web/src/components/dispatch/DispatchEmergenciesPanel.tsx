@@ -26,7 +26,17 @@ export type PublicEmergency = {
   radioMessage?: string;
   emergencyCodeId?: string | null;
   hasBitacora?: boolean;
-  vehicles?: { id?: string; patent: string; type: string; brand?: string; model?: string; imageUrl?: string | null }[];
+  vehicles?: {
+    id?: string;
+    patent: string;
+    type: string;
+    brand?: string;
+    model?: string;
+    imageUrl?: string | null;
+    companyNumber?: number | null;
+    companyName?: string | null;
+  }[];
+  dispatchedCompanies?: { id: string; number: number; name: string; role: 'principal' | 'apoyo' }[];
   involvedAsSupport?: boolean;
   dispatchCompanyName?: string | null;
   dispatchCompanyNumber?: number | null;
@@ -213,6 +223,11 @@ export default function DispatchEmergenciesPanel({
                 <MapPin className="w-3 h-3 shrink-0 mt-0.5" />
                 {e.address}
               </p>
+              {e.dispatchedCompanies && e.dispatchedCompanies.length > 0 && (
+                <p className={`text-[10px] font-bold mb-1.5 ${s.rowTitle}`}>
+                  {e.dispatchedCompanies.map((c) => `${c.number}ª`).join(' · ')}
+                </p>
+              )}
               <div className={`flex flex-wrap gap-x-3 gap-y-1 text-[10px] mb-2 ${s.rowMeta}`}>
                 <span className="flex items-center gap-1">
                   <Clock className="w-3 h-3" />

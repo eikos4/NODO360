@@ -213,6 +213,12 @@ export class CommandPostService {
     const actorName = await this.actorName(actor);
     const current = await this.currentCommand(post.id);
 
+    const moved =
+      dto.latitude != null &&
+      dto.longitude != null &&
+      Number.isFinite(dto.latitude) &&
+      Number.isFinite(dto.longitude);
+
     await this.prisma.$transaction(async (tx) => {
       if (current) {
         await tx.commandPostCommand.update({
@@ -230,6 +236,12 @@ export class CommandPostService {
           transferredByName: actorName,
         },
       });
+      if (moved) {
+        await tx.commandPost.update({
+          where: { id: post.id },
+          data: { latitude: dto.latitude, longitude: dto.longitude },
+        });
+      }
       await tx.commandPostLog.create({
         data: {
           postId: post.id,
@@ -237,7 +249,9 @@ export class CommandPostService {
           action: current
             ? `${current.name} transfiere el mando de la emergencia a ${commanderName}.`
             : `${commanderName} asume el mando.`,
-          detail: dto.note?.trim() || null,
+          detail: moved
+            ? `${dto.note?.trim() ? `${dto.note.trim()} · ` : ''}Puesto de comando reubicado en el mapa.`
+            : dto.note?.trim() || null,
           actorId: actor.id,
           actorName,
         },
@@ -734,9 +748,14 @@ export class CommandPostService {
   ) {
     const existing = await this.prisma.commandPostResource.findMany({
       where: { postId, origin: CommandResourceOrigin.NODO360 },
-      select: { vehicleId: true },
+      select: { vehicleId: true, type: true, companyName: true, label: true },
     });
-    const known = new Set(existing.map((r) => r.vehicleId).filter(Boolean));
+    const knownVehicles = new Set(existing.map((r) => r.vehicleId).filter(Boolean));
+    const knownCompanyKeys = new Set(
+      existing
+        .filter((r) => !r.vehicleId && r.type === 'Compañía')
+        .map((r) => r.companyName || r.label),
+    );
     const respondersByCompany = new Map<string, number>();
     for (const response of incident.emergencyResponses) {
       if (!response.status || !ACTIVE_RESPONSES.includes(response.status)) continue;
@@ -744,10 +763,31 @@ export class CommandPostService {
       if (!companyId) continue;
       respondersByCompany.set(companyId, (respondersByCompany.get(companyId) ?? 0) + 1);
     }
+
+    const involvedIds = new Set<string>([
+      incident.companyId,
+      ...(incident.supportCompanyIds ?? []),
+    ]);
+    for (const row of incident.vehicles) {
+      if (row.vehicle.companyId) involvedIds.add(row.vehicle.companyId);
+    }
+
+    const companies = await this.prisma.company.findMany({
+      where: { id: { in: [...involvedIds] } },
+      select: { id: true, name: true, number: true },
+      orderBy: { number: 'asc' },
+    });
+
+    const lat = incident.confirmedLatitude ?? incident.latitude;
+    const lng = incident.confirmedLongitude ?? incident.longitude;
+    const vehicleStatus = incident.arrivedAt
+      ? CommandResourceStatus.EN_OPERACION
+      : CommandResourceStatus.EN_TRASLADO;
     const staffingAssigned = new Set<string>();
 
     for (const row of incident.vehicles) {
-      if (known.has(row.vehicleId)) continue;
+      if (knownVehicles.has(row.vehicleId)) continue;
+      knownVehicles.add(row.vehicleId);
       const companyId = row.vehicle.companyId;
       let staffing = 0;
       if (!staffingAssigned.has(companyId)) {
@@ -764,14 +804,39 @@ export class CommandPostService {
           companyName: companyLabel(row.vehicle.company),
           institution: 'NODO360',
           staffing,
-          status: incident.arrivedAt ? CommandResourceStatus.EN_OPERACION : CommandResourceStatus.EN_TRASLADO,
-          latitude: incident.confirmedLatitude ?? incident.latitude,
-          longitude: incident.confirmedLongitude ?? incident.longitude,
+          status: vehicleStatus,
+          latitude: lat,
+          longitude: lng,
         },
       });
       await this.log(postId, {
         kind: CommandLogKind.RESOURCE,
         action: `${row.vehicle.patent} importado desde NODO360 (${companyLabel(row.vehicle.company)}).`,
+        actorName: 'NODO360',
+      });
+    }
+
+    for (const company of companies) {
+      const name = companyLabel(company);
+      if (knownCompanyKeys.has(name)) continue;
+      knownCompanyKeys.add(name);
+      await this.prisma.commandPostResource.create({
+        data: {
+          postId,
+          origin: CommandResourceOrigin.NODO360,
+          label: `${company.number}ª Compañía`,
+          type: 'Compañía',
+          companyName: name,
+          institution: 'NODO360',
+          staffing: respondersByCompany.get(company.id) ?? 0,
+          status: CommandResourceStatus.DESPACHADO,
+          latitude: lat,
+          longitude: lng,
+        },
+      });
+      await this.log(postId, {
+        kind: CommandLogKind.RESOURCE,
+        action: `${company.number}ª ${company.name} incorporada al puesto de comando.`,
         actorName: 'NODO360',
       });
     }

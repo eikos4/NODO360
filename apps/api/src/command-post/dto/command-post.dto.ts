@@ -83,6 +83,16 @@ export class TransferCommandDto {
   @IsString()
   @MaxLength(2000)
   note?: string;
+
+  @IsOptional()
+  @IsNumber()
+  @Type(() => Number)
+  latitude?: number;
+
+  @IsOptional()
+  @IsNumber()
+  @Type(() => Number)
+  longitude?: number;
 }
 
 export class CreateExternalResourceDto {

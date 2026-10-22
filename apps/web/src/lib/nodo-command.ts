@@ -15,6 +15,7 @@ export const RESOURCE_STATUSES = [
 export const SECTOR_STATUSES = ['EN_OPERACION', 'EN_ESPERA', 'COMPLETADO', 'SUSPENDIDO'] as const;
 
 export const RESOURCE_TYPES = [
+  'Compañía',
   'Carro bomba',
   'Aljibe',
   'Rescate',

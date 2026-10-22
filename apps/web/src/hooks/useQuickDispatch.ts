@@ -95,7 +95,7 @@ export function useQuickDispatch(options: QuickDispatchOptions = {}) {
   const [notes, setNotes] = useState('');
   const [locationPinToken, setLocationPinToken] = useState<string | null>(null);
   const [selectedCia, setSelectedCiaState] = useState(user?.companyId ?? '');
-  const [secondaryCia, setSecondaryCiaState] = useState('');
+  const [supportCompanyIds, setSupportCompanyIds] = useState<string[]>([]);
   const [muted, setMuted] = useState(false);
   const [dispatching, setDispatching] = useState(false);
   const [geocoding, setGeocoding] = useState(false);
@@ -140,15 +140,45 @@ export function useQuickDispatch(options: QuickDispatchOptions = {}) {
   const company = (companies as { id: string; name: string; number: number; address?: string; city?: string }[])
     .find((c) => c.id === selectedCia);
 
-  const secondaryCompany = (companies as { id: string; name: string; number: number }[])
-    .find((c) => c.id === secondaryCia);
+  const secondaryCia = supportCompanyIds[0] ?? '';
+
+  const supportCompanies = useMemo(
+    () =>
+      supportCompanyIds
+        .map((id) => (companies as { id: string; name: string; number: number }[]).find((c) => c.id === id))
+        .filter((c): c is { id: string; name: string; number: number } => Boolean(c)),
+    [companies, supportCompanyIds],
+  );
+
+  const secondaryCompany = supportCompanies[0];
 
   const dispatchCompanyIds = useMemo(
-    () => [selectedCia, secondaryCia].filter(Boolean).slice(0, MAX_DISPATCH_COMPANIES),
-    [selectedCia, secondaryCia],
+    () => [selectedCia, ...supportCompanyIds].filter(Boolean).slice(0, MAX_DISPATCH_COMPANIES),
+    [selectedCia, supportCompanyIds],
   );
 
   const allVehicles = vehicles as DispatchVehicleRow[];
+
+  const addFirstVehicleOfCompany = useCallback((companyId: string) => {
+    const first = operativoVehiclesForCompanies(allVehicles, [companyId])[0];
+    if (!first) return;
+    setSelectedVehicles((prev) => {
+      if (prev.includes(first.id)) return prev;
+      const check = canToggleDispatchVehicle(allVehicles, prev, first.id);
+      if (!check.ok) return prev;
+      return [...prev, first.id];
+    });
+  }, [allVehicles]);
+
+  const dropVehiclesOfCompanies = useCallback((companyIds: string[]) => {
+    const drop = new Set(companyIds);
+    setSelectedVehicles((prev) =>
+      prev.filter((id) => {
+        const row = allVehicles.find((v) => v.id === id);
+        return row && !drop.has(row.companyId);
+      }),
+    );
+  }, [allVehicles]);
 
   const dispatchableVehicles = useMemo(
     () => operativoVehiclesForCompanies(allVehicles, dispatchCompanyIds),
@@ -159,13 +189,39 @@ export function useQuickDispatch(options: QuickDispatchOptions = {}) {
   const ciaVehicles = dispatchableVehicles;
 
   const setSelectedCia = useCallback((id: string) => {
-    setSecondaryCiaState((prev) => (prev === id ? '' : prev));
+    setSupportCompanyIds((prev) => {
+      if (!prev.includes(id)) return prev;
+      dropVehiclesOfCompanies([id]);
+      return prev.filter((cid) => cid !== id);
+    });
     setSelectedCiaState(id);
-  }, []);
+  }, [dropVehiclesOfCompanies]);
 
   const setSecondaryCia = useCallback((id: string) => {
-    setSecondaryCiaState(id === selectedCia ? '' : id);
-  }, [selectedCia]);
+    const next = id && id !== selectedCia ? [id] : [];
+    setSupportCompanyIds((prev) => {
+      const removed = prev.filter((cid) => !next.includes(cid));
+      if (removed.length) dropVehiclesOfCompanies(removed);
+      return next;
+    });
+    if (next[0]) addFirstVehicleOfCompany(next[0]);
+  }, [selectedCia, addFirstVehicleOfCompany, dropVehiclesOfCompanies]);
+
+  const toggleSupportCia = useCallback((id: string) => {
+    if (!id || id === selectedCia) return;
+    setSupportCompanyIds((prev) => {
+      if (prev.includes(id)) {
+        dropVehiclesOfCompanies([id]);
+        return prev.filter((cid) => cid !== id);
+      }
+      if (prev.length + 1 >= MAX_DISPATCH_COMPANIES) {
+        toast.error(`Máximo ${MAX_DISPATCH_COMPANIES} compañías por despacho`);
+        return prev;
+      }
+      addFirstVehicleOfCompany(id);
+      return [...prev, id];
+    });
+  }, [selectedCia, addFirstVehicleOfCompany, dropVehiclesOfCompanies]);
 
   const { data: dispatchConfig, refetch: refetchDispatch } = useQuery({
     queryKey: ['dispatch-central-config', selectedCia],
@@ -193,6 +249,12 @@ export function useQuickDispatch(options: QuickDispatchOptions = {}) {
     },
     enabled: !!slug,
     refetchInterval: 8000,
+  });
+
+  const { data: cuarteles = [], refetch: refetchCuarteles } = useQuery({
+    queryKey: ['dispatch-cuarteles-overview'],
+    queryFn: () => api.get('/dispatch/central/overview').then((r) => r.data),
+    refetchInterval: 12000,
   });
 
   const { data: incidents = [] } = useQuery({
@@ -250,7 +312,7 @@ export function useQuickDispatch(options: QuickDispatchOptions = {}) {
       const first = dispatchableVehicles[0];
       return first ? [first.id] : [];
     });
-  }, [selectedCia, secondaryCia, dispatchableVehicles, allVehicles, dispatchCompanyIds]);
+  }, [selectedCia, supportCompanyIds, dispatchableVehicles, allVehicles, dispatchCompanyIds]);
 
   const getVehicleIdsForDispatch = useCallback(
     (override?: string[]) => {
@@ -323,7 +385,13 @@ export function useQuickDispatch(options: QuickDispatchOptions = {}) {
     async (opts?: { typeId?: string; vehicleIds?: string[]; keyToneAlreadyPlayed?: boolean; confirmDouble?: boolean; skipMaquinistaConfirm?: boolean }) => {
       const typeId = opts?.typeId ?? selectedType;
       const emerg = findEmergencyEntry(typeId);
-      const vehicleIds = getVehicleIdsForDispatch(opts?.vehicleIds);
+      let vehicleIds = getVehicleIdsForDispatch(opts?.vehicleIds);
+      for (const cid of supportCompanyIds) {
+        const covered = companyIdsFromVehicleSelection(allVehicles, vehicleIds);
+        if (covered.includes(cid)) continue;
+        const first = operativoVehiclesForCompanies(allVehicles, [cid])[0];
+        if (first && vehicleIds.length < MAX_DISPATCH_VEHICLES) vehicleIds = [...vehicleIds, first.id];
+      }
       const addr = address.trim() || company?.address || 'Sin dirección — cuartel';
 
       if (!typeId || !emerg) {
@@ -350,12 +418,16 @@ export function useQuickDispatch(options: QuickDispatchOptions = {}) {
       if (!opts?.skipMaquinistaConfirm && !hasMaquinistaAvailable(dispatchConfig?.maquinistas)) {
         if (!confirmDispatchWithoutMaquinista(formatCompanyLabel(company))) return;
       }
-      if (
-        secondaryCia &&
-        secondaryDispatchConfig &&
-        !hasMaquinistaAvailable(secondaryDispatchConfig?.maquinistas)
-      ) {
-        if (!confirmDispatchWithoutMaquinista(formatCompanyLabel(secondaryCompany))) return;
+      for (const support of supportCompanies) {
+        const overview = (cuarteles as { id: string; maquinistas?: { available?: number } }[]).find(
+          (c) => c.id === support.id,
+        );
+        const available =
+          overview?.maquinistas?.available ??
+          (support.id === secondaryCia ? getMaquinistaAvailableCount(secondaryDispatchConfig?.maquinistas) : 1);
+        if (available === 0) {
+          if (!confirmDispatchWithoutMaquinista(formatCompanyLabel(support))) return;
+        }
       }
 
       // Evitar despachos dobles si ya hay una emergencia activa
@@ -371,10 +443,10 @@ export function useQuickDispatch(options: QuickDispatchOptions = {}) {
         return;
       }
 
-      const involvedCompanies = companyIdsFromVehicleSelection(allVehicles, vehicleIds);
+      const involvedCompanies = [...new Set([...dispatchCompanyIds, ...companyIdsFromVehicleSelection(allVehicles, vehicleIds)])];
       const apoyoNote =
         involvedCompanies.length > 1
-          ? `Apoyo mutuo: ${involvedCompanies.map((cid) => {
+          ? `Apoyo mutuo simultáneo: ${involvedCompanies.map((cid) => {
               const c = (companies as { id: string; number: number; name: string }[]).find((x) => x.id === cid);
               return c ? `${c.number}ª` : cid;
             }).join(' + ')}`
@@ -416,6 +488,7 @@ export function useQuickDispatch(options: QuickDispatchOptions = {}) {
         description: notes.trim() || radioMsg || `Despacho ${emerg.code}`,
         companyId: selectedCia,
         vehicleIds,
+        supportCompanyIds: supportCompanyIds.filter((id) => id && id !== selectedCia),
         latitude: lat != null && Number.isFinite(lat) ? lat : undefined,
         longitude: lng != null && Number.isFinite(lng) ? lng : undefined,
         dispatchNotes: [notes.trim(), apoyoNote].filter(Boolean).join(' · ') || undefined,
@@ -485,10 +558,13 @@ export function useQuickDispatch(options: QuickDispatchOptions = {}) {
       locationPinToken,
       requireExplicitAddress,
       dispatchConfig,
+      supportCompanyIds,
+      supportCompanies,
+      dispatchCompanyIds,
       secondaryCia,
       secondaryDispatchConfig,
-      secondaryCompany,
       allVehicles,
+      cuarteles,
       companies,
       incidents,
     ],
@@ -643,12 +719,6 @@ export function useQuickDispatch(options: QuickDispatchOptions = {}) {
     return () => window.removeEventListener('keydown', onKey);
   }, []);
 
-  const { data: cuarteles = [], refetch: refetchCuarteles } = useQuery({
-    queryKey: ['dispatch-cuarteles-overview'],
-    queryFn: () => api.get('/dispatch/central/overview').then((r) => r.data),
-    refetchInterval: 12000,
-  });
-
   const updateDispatchConfig = useMutation({
     mutationFn: (payload: { companyId: string; data: Record<string, unknown> }) =>
       api.patch(`/dispatch/central/${payload.companyId}`, payload.data),
@@ -678,6 +748,8 @@ export function useQuickDispatch(options: QuickDispatchOptions = {}) {
     user,
     company,
     secondaryCompany,
+    supportCompanies,
+    supportCompanyIds,
     companies,
     ciaVehicles,
     dispatchableVehicles,
@@ -701,6 +773,7 @@ export function useQuickDispatch(options: QuickDispatchOptions = {}) {
     setSelectedCia,
     secondaryCia,
     setSecondaryCia,
+    toggleSupportCia,
     muted,
     setMuted,
     dispatching,

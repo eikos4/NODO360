@@ -400,6 +400,7 @@ export class DispatchCentralService {
     return {
       OR: [
         { companyId },
+        { supportCompanyIds: { has: companyId } },
         { vehicles: { some: { vehicle: { companyId } } } },
       ],
     };
@@ -424,6 +425,7 @@ export class DispatchCentralService {
       take: limit,
       select: {
         companyId: true,
+        supportCompanyIds: true,
         id: true,
         status: true,
         code: true,
@@ -496,6 +498,7 @@ export class DispatchCentralService {
                 model: true,
                 imageUrl: true,
                 companyId: true,
+                company: { select: { number: true, name: true } },
               },
             },
           },
@@ -504,15 +507,44 @@ export class DispatchCentralService {
       },
     });
 
-    return this.mapIncidentsToPublic(incidents, companyId);
+    return this.decoratePublicIncidents(incidents, companyId);
   }
 
-  private mapIncidentsToPublic(incidents: any[], companyId: string | null) {
+  private async decoratePublicIncidents(incidents: any[], companyId: string | null) {
+    const extraIds = [...new Set(incidents.flatMap((inc) => inc.supportCompanyIds ?? []))];
+    const extra = extraIds.length
+      ? await this.prisma.company.findMany({
+          where: { id: { in: extraIds } },
+          select: { id: true, number: true, name: true },
+        })
+      : [];
+    return this.mapIncidentsToPublic(incidents, companyId, new Map(extra.map((row) => [row.id, row])));
+  }
+
+  private mapIncidentsToPublic(
+    incidents: any[],
+    companyId: string | null,
+    supportNames: Map<string, { id: string; number: number; name: string }> = new Map(),
+  ) {
     return incidents.map((inc) => {
       const isDispatchOwner = !companyId || inc.companyId === companyId;
-      const companyVehicleRows = isDispatchOwner
-        ? inc.vehicles
-        : inc.vehicles.filter((v: any) => v.vehicle.companyId === companyId);
+      const companyVehicleRows = inc.vehicles ?? [];
+      const supportIds: string[] = inc.supportCompanyIds ?? [];
+      const dispatchedCompanies = [
+        inc.company
+          ? { id: inc.companyId, number: inc.company.number, name: inc.company.name, role: 'principal' as const }
+          : null,
+        ...supportIds.map((id) => {
+          const row = supportNames.get(id);
+          const fromVehicle = companyVehicleRows.find((v: any) => v.vehicle.companyId === id)?.vehicle?.company;
+          return {
+            id,
+            number: row?.number ?? fromVehicle?.number ?? 0,
+            name: row?.name ?? fromVehicle?.name ?? 'Compañía',
+            role: 'apoyo' as const,
+          };
+        }),
+      ].filter(Boolean) as { id: string; number: number; name: string; role: 'principal' | 'apoyo' }[];
 
       let alarmBy = 'Central de despacho';
       const guardAuthor = inc.guardLogEntries?.author;
@@ -605,7 +637,13 @@ export class DispatchCentralService {
               : 'ACTIVA',
         alarmBy,
         dispatchSource: inc.dispatchSource,
-        vehicles,
+        vehicles: vehicles.map((v, i) => ({
+          ...v,
+          companyId: companyVehicleRows[i]?.vehicle?.companyId ?? null,
+          companyNumber: companyVehicleRows[i]?.vehicle?.company?.number ?? null,
+          companyName: companyVehicleRows[i]?.vehicle?.company?.name ?? null,
+        })),
+        dispatchedCompanies,
         crew: [...crewById.values()],
         participants: [...crewById.values()].map((p) => ({
           name: p.name,
@@ -621,6 +659,7 @@ export class DispatchCentralService {
           type: inc.type,
           address: inc.address,
           vehicles: companyVehicleRows,
+          companies: dispatchedCompanies,
         }),
         emergencyCodeId: this.parseEmergencyCodeId(inc.type),
         hasBitacora: !!inc.bitacoraEntry,
@@ -666,12 +705,13 @@ export class DispatchCentralService {
     type: string;
     address: string;
     vehicles: { vehicle: { patent: string; type: string } }[];
+    companies?: { number: number; role?: string }[];
   }): string {
     const desc = inc.description?.trim() ?? '';
     if (/SECTOR/i.test(desc) && /CONCURRE/i.test(desc)) return desc;
 
     const codeId = this.parseEmergencyCodeId(inc.type);
-    if (!codeId || !inc.address.trim() || !inc.vehicles.length) return desc;
+    if (!codeId || !inc.address.trim()) return desc;
 
     const codeSpoken = codeId.replace(/[-.]/g, ' ').replace(/\s+/g, ' ').trim();
     const sector = inc.address
@@ -685,14 +725,14 @@ export class DispatchCentralService {
       const num = v.vehicle.patent.match(/(\d+)/)?.[1] ?? '';
       return num ? `${abbrev} ${num}` : abbrev;
     });
-
-    const concurre =
-      callsigns.length <= 1
-        ? callsigns[0] ?? ''
-        : `${callsigns.slice(0, -1).join(', ')} Y ${callsigns[callsigns.length - 1]}`;
+    const ciaLabels = [...new Set((inc.companies ?? []).map((c) => `${c.number}ª`).filter((n) => n !== '0ª'))];
+    const spoken = (items: string[]) =>
+      items.length <= 1 ? items[0] ?? '' : `${items.slice(0, -1).join(', ')} Y ${items[items.length - 1]}`;
+    const concurre = spoken(callsigns.length ? callsigns : ciaLabels);
+    const apoyo = ciaLabels.length > 1 ? ` COMPAÑÍAS ${spoken(ciaLabels)}` : '';
 
     if (!concurre) return desc;
-    return `${codeSpoken} SECTOR ${sector} CONCURRE ${concurre}`;
+    return `${codeSpoken} SECTOR ${sector} CONCURRE ${concurre}${apoyo}`.trim();
   }
 
   private assertUnlockAllowed(slug: string) {
@@ -1613,12 +1653,21 @@ export class DispatchCentralService {
     const activeIncidents = await this.prisma.incident.findMany({
       where: {
         status: { in: [IncidentStatus.ACTIVE, IncidentStatus.ARRIVED] },
-        ...(ids ? { companyId: { in: ids } } : {}),
+        ...(ids
+          ? {
+              OR: [
+                { companyId: { in: ids } },
+                { supportCompanyIds: { hasSome: ids } },
+                { vehicles: { some: { vehicle: { companyId: { in: ids } } } } },
+              ],
+            }
+          : {}),
       },
       orderBy: { createdAt: 'desc' },
       select: {
         id: true,
         companyId: true,
+        supportCompanyIds: true,
         status: true,
         code: true,
         type: true,
@@ -1698,7 +1747,7 @@ export class DispatchCentralService {
       },
     });
 
-    const activeEmergencies = this.mapIncidentsToPublic(activeIncidents, null);
+    const activeEmergencies = await this.decoratePublicIncidents(activeIncidents, null);
 
     return {
       companies: mappedCompanies,

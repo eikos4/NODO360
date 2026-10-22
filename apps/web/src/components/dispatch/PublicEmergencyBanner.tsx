@@ -32,12 +32,17 @@ export default function PublicEmergencyBanner({ emergency, onFinalize, onReplayA
                 <MapPin className="w-4 h-4 shrink-0 mt-0.5" />
                 <span>{emergency.address}</span>
               </p>
+              {(emergency.dispatchedCompanies?.length ?? 0) > 0 && (
+                <p className="text-xs !text-red-100 font-black uppercase tracking-wide mt-2">
+                  Despacho: {emergency.dispatchedCompanies!.map((c) => `${c.number}ª`).join(' · ')}
+                </p>
+              )}
               {vehicles.length > 0 && (
                 <p className="text-xs !text-red-200/80 flex flex-wrap items-center gap-2 mt-2">
                   <Truck className="w-3.5 h-3.5" />
                   {vehicles.map((v) => (
                     <span key={v.patent} className="font-mono font-bold bg-red-600/30 border border-red-400/30 px-2 py-0.5 rounded">
-                      {v.patent}
+                      {v.companyNumber ? `${v.companyNumber}ª ` : ''}{v.patent}
                     </span>
                   ))}
                 </p>

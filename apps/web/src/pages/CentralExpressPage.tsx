@@ -18,7 +18,7 @@ import CentralExpressMap from '../components/central-express/CentralExpressMap';
 import CompanyMaquinistaAlert from '../components/dispatch/CompanyMaquinistaAlert';
 import DispatchVoiceConfigToggle from '../components/dispatch/DispatchVoiceConfigToggle';
 import DoubleDispatchConfirmModal from '../components/dispatch/DoubleDispatchConfirmModal';
-import { MAX_DISPATCH_VEHICLES } from '../lib/dispatch-selection';
+import { MAX_DISPATCH_COMPANIES, MAX_DISPATCH_VEHICLES } from '../lib/dispatch-selection';
 
 function LiveClock({ th }: { th: CentralExpressThemeTokens }) {
   const [now, setNow] = useState(() => new Date());
@@ -185,7 +185,7 @@ export default function CentralExpressPage() {
   }[];
 
   const selectedCuartel = cuarteles.find((c) => c.id === d.selectedCia);
-  const supportCuartel = cuarteles.find((c) => c.id === d.secondaryCia);
+  const supportCuarteles = cuarteles.filter((c) => d.supportCompanyIds.includes(c.id));
 
   const vehiclesByCompany = useMemo(() => {
     return d.dispatchCompanyIds.map((cid) => {
@@ -414,12 +414,13 @@ export default function CentralExpressPage() {
                 availableCount={d.maquinistasAvailable}
               />
             )}
-            {d.secondaryCia && supportCuartel && (
+            {supportCuarteles.map((c) => (
               <CompanyMaquinistaAlert
-                company={{ number: supportCuartel.number, name: supportCuartel.name }}
-                availableCount={d.secondaryMaquinistasAvailable}
+                key={c.id}
+                company={{ number: c.number, name: c.name }}
+                availableCount={c.maquinistas.available}
               />
-            )}
+            ))}
 
             <div className="flex gap-2">
               <button
@@ -450,7 +451,7 @@ export default function CentralExpressPage() {
               </span>
             </div>
             <p className={`text-[10px] mb-3 ${th.textMuted}`}>
-              Máx. {MAX_DISPATCH_VEHICLES} carros · {d.selectedCompanyIds.length || 1} compañía(s). Elige apoyo en las tarjetas del mapa.
+              Hasta {MAX_DISPATCH_VEHICLES} carros y {MAX_DISPATCH_COMPANIES} compañías juntas. Marque + Apoyo en varias tarjetas.
             </p>
             <div className="space-y-3 max-h-[320px] overflow-y-auto scrollbar-thin">
               {vehiclesByCompany.length === 0 ? (
@@ -502,16 +503,19 @@ export default function CentralExpressPage() {
             <h2 className={`text-[11px] font-bold uppercase tracking-widest mb-2 ${th.cardTitle}`}>
               Disponibilidad por compañía
             </h2>
+            <p className={`text-[10px] mb-2 ${th.textMuted}`}>
+              Una principal y todas las de apoyo que marque. Un solo despacho avisa a todas al mismo tiempo.
+            </p>
             <div className="flex gap-2 overflow-x-auto pb-1 scrollbar-thin sm:grid sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-3 sm:overflow-visible">
               {cuarteles.map((c) => (
                 <CompanyCard
                   key={c.id}
                   c={c}
                   isPrimary={c.id === d.selectedCia}
-                  isSupport={c.id === d.secondaryCia}
+                  isSupport={d.supportCompanyIds.includes(c.id)}
                   th={th}
                   onSetPrimary={() => d.setSelectedCia(c.id)}
-                  onSetSupport={() => d.setSecondaryCia(c.id === d.secondaryCia ? '' : c.id)}
+                  onSetSupport={() => d.toggleSupportCia(c.id)}
                 />
               ))}
             </div>
@@ -526,7 +530,7 @@ export default function CentralExpressPage() {
               emergencyLat={emergLat}
               emergencyLng={emergLng}
               selectedCompanyId={d.selectedCia}
-              supportCompanyId={d.secondaryCia}
+              supportCompanyIds={d.supportCompanyIds}
               onSelectCompany={d.setSelectedCia}
               onPick={d.onMapPick}
               pickActive
@@ -573,9 +577,9 @@ export default function CentralExpressPage() {
               {d.selectedVehicles.length}/{MAX_DISPATCH_VEHICLES} carro(s) · {d.selectedCompanyIds.length || 1} compañía(s) ·{' '}
               {cuarteles.find((c) => c.id === d.selectedCia)?.roster.available ?? 0} bomberos disp.
             </p>
-            {d.secondaryCia && supportCuartel && (
+            {supportCuarteles.length > 0 && (
               <p className={`text-[10px] ${th.textMuted}`}>
-                Apoyo: {supportCuartel.number}ª {supportCuartel.name}
+                Apoyo simultáneo: {supportCuarteles.map((c) => `${c.number}ª`).join(' · ')}
               </p>
             )}
 

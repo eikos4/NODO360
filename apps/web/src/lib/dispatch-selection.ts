@@ -1,5 +1,5 @@
-export const MAX_DISPATCH_VEHICLES = 2;
-export const MAX_DISPATCH_COMPANIES = 2;
+export const MAX_DISPATCH_VEHICLES = 16;
+export const MAX_DISPATCH_COMPANIES = 8;
 
 export type DispatchVehicleRow = {
   id: string;

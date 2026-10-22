@@ -18,6 +18,7 @@ export class CreateIncidentDto {
   @IsString() @IsNotEmpty() companyId: string;
   @IsOptional() @IsArray() @IsString({ each: true }) participantIds?: string[];
   @IsOptional() @IsArray() @IsString({ each: true }) vehicleIds?: string[];
+  @IsOptional() @IsArray() @IsString({ each: true }) supportCompanyIds?: string[];
   @IsOptional() @IsString() dispatchSource?: string;
   @IsOptional() @IsString() dispatchNotes?: string;
 }

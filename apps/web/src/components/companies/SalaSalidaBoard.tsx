@@ -302,7 +302,7 @@ function resolveVehicles(data: PublicCentral, emergency: PublicEmergency | null)
   };
 
   if (emergency?.vehicles?.length) {
-    return emergency.vehicles.slice(0, 3).map(toFleet);
+    return emergency.vehicles.slice(0, 12).map(toFleet);
   }
 
   const ranked = [...fleet].sort((a, b) => {

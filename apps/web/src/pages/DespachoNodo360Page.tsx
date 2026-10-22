@@ -33,6 +33,7 @@ import CompanyMaquinistaAlert from '../components/dispatch/CompanyMaquinistaAler
 import { useAuthStore } from '../store/authStore';
 import { useDespacho360Theme } from '../hooks/useDespacho360Theme';
 import DispatchTutorialOverlay from '../components/dispatch/DispatchTutorialOverlay';
+import { MAX_DISPATCH_VEHICLES } from '../lib/dispatch-selection';
 
 
 function LiveClock({ className }: { className?: string }) {
@@ -395,7 +396,7 @@ export default function DespachoNodo360Page() {
             <div id="step-carros" className="space-y-3 pt-2">
               <div className="flex items-center justify-between">
                 <h2 className={`text-xs font-semibold uppercase tracking-widest ${th.sectionLabel}`}>
-                  Material mayor (máx. 2 carros)
+                  Material mayor (máx. {MAX_DISPATCH_VEHICLES} carros)
                 </h2>
                 <button
                   type="button"
@@ -406,7 +407,7 @@ export default function DespachoNodo360Page() {
                       : th.btnGhost
                   }`}
                 >
-                  Máx. 2 carros
+                  Máx. {MAX_DISPATCH_VEHICLES} carros
                 </button>
               </div>
               <div className="flex flex-wrap gap-2">
