@@ -36,7 +36,7 @@ export class CompaniesPublicController {
       }),
 
       this.prisma.incident.findMany({
-        where: { companyId: company.id, closedAt: { not: null } },
+        where: { companyId: company.id, NOT: { closedAt: null } },
         orderBy: { dispatchedAt: 'desc' },
         take: 5,
         select: {
@@ -77,7 +77,7 @@ export class CompaniesPublicController {
       where: {
         companyId: company.id,
         dispatchedAt: { gte: startOfYear },
-        arrivedAt: { not: null },
+        NOT: { arrivedAt: null },
       },
       select: { dispatchedAt: true, arrivedAt: true },
     });

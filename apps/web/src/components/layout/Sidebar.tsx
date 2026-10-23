@@ -23,6 +23,7 @@ export const navItems: NavItem[] = [
   { to: '/central-emergencia', label: 'Consola activa', icon: Siren, roles: ['OPERADOR_CENTRAL', 'SUPER_ADMIN', 'COMANDANTE', 'CAPITAN'] },
   { to: '/central-llamados', label: 'Llamados operativos', icon: Phone, roles: ['OPERADOR_CENTRAL', 'SUPER_ADMIN', 'COMANDANTE', 'CAPITAN'] },
   { to: '/nodo-command', label: 'NodoCommand', icon: Flag, roles: ['OPERADOR_CENTRAL', 'SUPER_ADMIN', 'COMANDANTE', 'CAPITAN'] },
+  { to: '/nodo-enlace', label: 'NodoEnlace', icon: Radio, roles: ['KODESK', 'OPERADOR_CENTRAL', 'SUPER_ADMIN', 'COMANDANTE', 'CAPITAN'] },
   { to: '/central-operativa', label: 'Central en vivo', icon: Radio, roles: ['OPERADOR_CENTRAL', 'SUPER_ADMIN', 'COMANDANTE', 'CAPITAN'] },
   { to: '/bitacora360', label: 'Bitácora360', icon: BookOpen, roles: ['OPERADOR_CENTRAL', 'SUPER_ADMIN', 'COMANDANTE', 'CAPITAN'] },
   { to: '/central-bitacora/registro', label: 'Bitácora botonera', icon: ClipboardList, roles: ['OPERADOR_CENTRAL', 'SUPER_ADMIN', 'COMANDANTE', 'CAPITAN'] },

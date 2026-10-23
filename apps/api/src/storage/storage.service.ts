@@ -54,9 +54,18 @@ export class StorageService {
     const uniqueName = `${Date.now()}-${randomUUID()}${safeUploadExt(original, file.mimetype)}`;
 
     if (this.cloudinaryReady) {
-      return this.uploadToCloudinary(buffer, uniqueName, folder, file.mimetype);
+      try {
+        return await this.uploadToCloudinary(buffer, uniqueName, folder, file.mimetype);
+      } catch (err) {
+        const detail = err instanceof Error ? err.message : String(err);
+        this.logger.warn(`Cloudinary falló (${detail}). Se guarda en disco local.`);
+      }
     }
 
+    return this.saveLocal(buffer, uniqueName, hostUrl);
+  }
+
+  private saveLocal(buffer: Buffer, uniqueName: string, hostUrl?: string): string {
     const filePath = join(this.uploadsDir, uniqueName);
     writeFileSync(filePath, buffer);
     const base = (hostUrl ?? '').replace(/\/$/, '');
@@ -88,8 +97,12 @@ export class StorageService {
         },
         (err, result) => {
           if (err || !result?.secure_url) {
-            this.logger.error('Cloudinary upload falló', err);
-            reject(new Error('No se pudo subir el archivo'));
+            const detail =
+              (err as { error?: { message?: string }; message?: string } | undefined)?.error?.message
+              || (err as { message?: string } | undefined)?.message
+              || 'sin detalle';
+            this.logger.error(`Cloudinary upload falló: ${detail}`);
+            reject(new Error(detail));
             return;
           }
           resolve(result.secure_url);

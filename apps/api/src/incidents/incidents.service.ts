@@ -7,7 +7,7 @@ import { AlarmQueueService } from '../notifications/alarm-queue.service';
 import { AlarmWorkerService } from '../notifications/alarm-worker.service';
 import { EmergencyBroadcaster } from '../emergency-realtime/emergency-broadcaster.service';
 import { EMERGENCY_EVENT_NAMES } from '../emergency-realtime/emergency-events.contract';
-import { cuerpoIdForUser } from '../common/cuerpo-scope';
+import { cuerpoIdForUser, companyIdsInCuerpo } from '../common/cuerpo-scope';
 import { hasAnyRole } from '../common/user-roles';
 import { CreateIncidentDto } from './dto/create-incident.dto';
 import { UpdateIncidentDto } from './dto/update-incident.dto';
@@ -115,7 +115,7 @@ export class IncidentsService {
       });
       if (!incident) throw new NotFoundException('Emergencia no encontrada');
       const cuerpoId = await this.actorCuerpoId(user);
-      if (cuerpoId && cuerpoId !== incident.company.cuerpoId) {
+      if (cuerpoId && cuerpoId !== incident.company?.cuerpoId) {
         throw new NotFoundException('Emergencia no encontrada');
       }
       if (!cuerpoId && user.companyId && user.companyId !== incident.companyId) {
@@ -148,7 +148,7 @@ export class IncidentsService {
     if (!incident) throw new NotFoundException('Emergencia no encontrada');
     if (hasAnyRole(user, 'SUPER_ADMIN', 'COMANDANTE', 'OPERADOR_CENTRAL')) {
       const cuerpoId = await this.actorCuerpoId(user);
-      if (cuerpoId && cuerpoId === incident.company.cuerpoId) return;
+      if (cuerpoId && cuerpoId === incident.company?.cuerpoId) return;
       if (!cuerpoId && user.companyId === incident.companyId) return;
       throw new ForbiddenException('No puede modificar una emergencia de otro Cuerpo');
     }
@@ -182,6 +182,28 @@ export class IncidentsService {
 
   private async actorCuerpoId(user: IncidentAuthUser) {
     return user.cuerpoId ?? (await cuerpoIdForUser(this.prisma, user));
+  }
+
+  private formatGoingCompanies(rows: { number: number }[]) {
+    return [...new Set(rows.map((row) => row.number).filter((n) => n > 0))]
+      .sort((a, b) => a - b)
+      .map((n) => `${n}ª`)
+      .join(' · ');
+  }
+
+  private async goingCompaniesLabel(primary: { number: number }, supportIds: string[]) {
+    const extra = supportIds.length
+      ? await this.prisma.company.findMany({
+          where: { id: { in: supportIds } },
+          select: { number: true },
+        })
+      : [];
+    return this.formatGoingCompanies([primary, ...extra]);
+  }
+
+  private async dispatchAudience(primaryCompanyId: string, extraIds: string[] = []) {
+    const cuerpo = await companyIdsInCuerpo(this.prisma, primaryCompanyId);
+    return [...new Set([...cuerpo, ...extraIds.filter(Boolean)])];
   }
 
   async findById(id: string) {
@@ -497,24 +519,25 @@ export class IncidentsService {
           authorId: userId ?? null,
         },
       });
-      const companyIds = new Set<string>([created.companyId]);
-      created.vehicles.forEach((row) => companyIds.add(row.vehicle.companyId));
-      (supportCompanyIds ?? []).forEach((id) => {
-        if (id) companyIds.add(id);
-      });
+      const going = await this.goingCompaniesLabel(created.company, supportCompanyIds ?? []);
+      const audience = await this.dispatchAudience(created.companyId, [
+        ...created.vehicles.map((row) => row.vehicle.companyId),
+        ...(supportCompanyIds ?? []),
+      ]);
       await this.alarms.enqueue(
         {
           incidentId: created.id,
           eventType: 'DISPATCH',
           dedupKey: `incident:${created.id}:dispatch`,
-          title: `ALARMA ${created.code}`,
-          body: `${created.type} — ${created.address}`,
-          companyIds: [...companyIds],
+          title: going ? `ALARMA ${created.code} · Van ${going}` : `ALARMA ${created.code}`,
+          body: going ? `Van ${going} — ${created.type} — ${created.address}` : `${created.type} — ${created.address}`,
+          companyIds: audience,
           data: {
             code: created.code,
             type: created.type,
             address: created.address,
             emergencyCodeId: created.type.split(' — ')[0]?.trim() || created.code,
+            goingCompanies: going,
           },
         },
         tx,
@@ -522,17 +545,17 @@ export class IncidentsService {
       return created;
     });
 
-    const companyIds = new Set<string>([incident.companyId]);
-    incident.vehicles.forEach((row) => companyIds.add(row.vehicle.companyId));
-    (supportCompanyIds ?? []).forEach((id) => {
-      if (id) companyIds.add(id);
-    });
+    const audience = await this.dispatchAudience(incident.companyId, [
+      ...incident.vehicles.map((row) => row.vehicle.companyId),
+      ...(supportCompanyIds ?? []),
+    ]);
+    const going = await this.goingCompaniesLabel(incident.company, supportCompanyIds ?? []);
     this.emergencyBroadcaster.emit({
       event: EMERGENCY_EVENT_NAMES.dispatchCreated,
       incidentId: incident.id,
-      companyIds: [...companyIds],
+      companyIds: audience,
       snapshotVersion: incident.updatedAt,
-      data: { incident },
+      data: { incident, goingCompanies: going },
     });
     void this.alarmWorker.flushNow();
 
@@ -651,8 +674,12 @@ export class IncidentsService {
           : updated.status === IncidentStatus.CLOSED
             ? 'CLOSED'
             : 'CRITICAL_UPDATE';
-      const companyIds = new Set<string>([updated.companyId]);
-      updated.vehicles.forEach((row: any) => companyIds.add(row.vehicle.companyId));
+      const supportIds: string[] = updated.supportCompanyIds ?? [];
+      const going = await this.goingCompaniesLabel(updated.company, supportIds);
+      const audience = await this.dispatchAudience(updated.companyId, [
+        ...updated.vehicles.map((row: any) => row.vehicle.companyId),
+        ...supportIds,
+      ]);
       const fingerprint = createHash('sha256')
         .update(
           JSON.stringify({
@@ -678,15 +705,16 @@ export class IncidentsService {
         incidentId: updated.id,
         eventType,
         dedupKey: `incident:${updated.id}:${eventType.toLowerCase()}:${fingerprint}`,
-        title: `${label} ${updated.code}`,
-        body: `${updated.type} — ${updated.address}`,
-        companyIds: [...companyIds],
+        title: going ? `${label} ${updated.code} · Van ${going}` : `${label} ${updated.code}`,
+        body: going ? `Van ${going} — ${updated.type} — ${updated.address}` : `${updated.type} — ${updated.address}`,
+        companyIds: audience,
         data: {
           code: updated.code,
           type: updated.type,
           address: updated.address,
           status: updated.status,
           emergencyCodeId: updated.type.split(' — ')[0]?.trim() || updated.code,
+          goingCompanies: going,
         },
       });
       void this.alarmWorker.flushNow();
@@ -700,7 +728,10 @@ export class IncidentsService {
     this.emergencyBroadcaster.emit({
       event: realtimeEvent,
       incidentId: updated.id,
-      companyIds: [updated.companyId, ...updated.vehicles.map((row: any) => row.vehicle.companyId)],
+      companyIds: await this.dispatchAudience(updated.companyId, [
+        ...updated.vehicles.map((row: any) => row.vehicle.companyId),
+        ...(updated.supportCompanyIds ?? []),
+      ]),
       snapshotVersion: updated.updatedAt,
       data: { incident: updated },
     });
@@ -755,12 +786,12 @@ export class IncidentsService {
       this.prisma.incident.count({ where: { ...where, closedAt: null } }),
       this.prisma.incident.groupBy({ by: ['type'], where, _count: { id: true }, orderBy: { _count: { id: 'desc' } } }),
       this.prisma.incident.count({ where: { ...where, dispatchSource: DispatchSource.BOTONERA } }),
-      this.prisma.incident.count({ where: { ...where, emergencyPlanId: { not: null } } }),
+      this.prisma.incident.count({ where: { AND: [where, { NOT: { emergencyPlanId: null } }] } }),
       this.prisma.incident.findMany({
-        where: { ...where, arrivedAt: { not: null } },
+        where: { AND: [where, { NOT: { arrivedAt: null } }] },
         select: { arrivedAt: true, dispatchedAt: true },
         orderBy: { dispatchedAt: 'desc' },
-        take: 100, // calc average of last 100
+        take: 100,
       }),
       this.prisma.user.findMany({
         where: { stationAvailable: true, ...userWhere },

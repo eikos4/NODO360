@@ -24,6 +24,7 @@ export const CENTRAL_OPERATOR_ROUTES = [
   '/central-avisos',
   '/central-llamados',
   '/nodo-command',
+  '/nodo-enlace',
   '/announcements',
 ] as const;
 

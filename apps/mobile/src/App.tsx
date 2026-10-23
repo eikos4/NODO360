@@ -523,6 +523,9 @@ function IncidentView({
     ? `https://www.openstreetmap.org/export/embed.html?bbox=${destination.longitude - 0.008},${destination.latitude - 0.006},${destination.longitude + 0.008},${destination.latitude + 0.006}&layer=mapnik&marker=${destination.latitude},${destination.longitude}`
     : null;
   const vehicles = incident.vehicles ?? [];
+  const goingCompanies = (incident.dispatchedCompanies?.filter((c) => c.number > 0) ?? [])
+    .map((c) => `${c.number}ª`)
+    .join(' · ') || (incident.company?.number ? `${incident.company.number}ª` : '');
   const detail = incident.description?.trim();
   const radio = incident.radioMessage?.trim();
   const showDetail = detail && detail !== radio;
@@ -592,6 +595,14 @@ function IncidentView({
           )}
         </div>
         <h2>{incident.type}</h2>
+        {goingCompanies && (
+          <p className={`dispatch-cias ${incident.involvedAsSupport ? 'watch' : ''}`}>
+            <Building2 />
+            {incident.involvedAsSupport
+              ? `Van ${goingCompanies} · alarma de ${incident.company?.number ? `${incident.company.number}ª` : 'otra compañía'}`
+              : `Van ${goingCompanies}`}
+          </p>
+        )}
         <p className="address"><MapPin /> {incident.address}</p>
         {showDetail && <p className="brief">{detail}</p>}
         {radio && <p className="radio"><Radio /> {radio}</p>}
@@ -805,6 +816,7 @@ export default function App() {
     address?: string;
     radioMessage?: string;
     emergencyCodeId?: string | null;
+    goingCompanies?: string;
   }) => {
     void playEmergencyAlarm(incident);
     if (incident.id) {
@@ -928,6 +940,7 @@ export default function App() {
           type: data.type,
           address: data.address || data.companyLabel,
           radioMessage: data.radioMessage || notification.body,
+          goingCompanies: data.goingCompanies,
           title: notification.title,
           body: notification.body,
         });

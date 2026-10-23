@@ -23,6 +23,7 @@ type NewDispatchHandler = (incident: {
   address?: string;
   radioMessage?: string;
   emergencyCodeId?: string | null;
+  goingCompanies?: string;
 }) => void;
 
 type StandbyHandler = (alert: {
@@ -75,7 +76,13 @@ export function useEmergencySync(
       ]);
       for (const incident of next.incidents) {
         if (primedRef.current && !knownIdsRef.current.has(incident.id)) {
-          onNewDispatchRef.current?.(incident);
+          onNewDispatchRef.current?.({
+            ...incident,
+            goingCompanies: incident.dispatchedCompanies
+              ?.filter((c) => c.number > 0)
+              .map((c) => `${c.number}ª`)
+              .join(' · '),
+          });
         }
         knownIdsRef.current.add(incident.id);
       }
@@ -268,6 +275,9 @@ export function useEmergencySync(
             address: incident?.address as string | undefined,
             radioMessage: incident?.radioMessage as string | undefined,
             emergencyCodeId: (incident?.emergencyCodeId as string | undefined) || (incident?.type as string | undefined),
+            goingCompanies:
+              (incident?.goingCompanies as string | undefined)
+              || ((event.data as { goingCompanies?: string } | undefined)?.goingCompanies),
           };
           if (payload.id) knownIdsRef.current.add(payload.id);
           primedRef.current = true;

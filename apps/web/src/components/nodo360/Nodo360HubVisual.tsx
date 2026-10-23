@@ -2,7 +2,7 @@ import { Link } from 'react-router-dom';
 import {
   Zap, ShieldAlert, Siren, Bell, Building2, Users, Flame, Megaphone,
   Package, Wrench, Gauge, Droplets, Calendar, FileText, ShoppingCart,
-  DollarSign, HandCoins, BarChart3, GraduationCap, Map, BookOpen, ClipboardCheck, HeartPulse, Truck, ChevronRight
+  DollarSign, HandCoins, BarChart3, GraduationCap, Map, BookOpen, ClipboardCheck, HeartPulse, Truck, ChevronRight, Radio
 } from 'lucide-react';
 
 /* ── Data ── */
@@ -23,6 +23,7 @@ const GROUPS = [
       { label: 'Muro compañías TV', icon: Building2, route: '/companias-tv' },
       { label: 'Avisos a la app', icon: Megaphone, route: '/central-avisos' },
       { label: 'Llamados operativos', icon: Siren, route: '/central-llamados' },
+      { label: 'NodoEnlace', icon: Radio, route: '/nodo-enlace' },
       { label: 'Alertas', icon: Bell, route: '/alerts' },
     ],
   },

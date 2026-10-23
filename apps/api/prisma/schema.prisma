@@ -20,6 +20,10 @@ model Cuerpo {
   companies     Company[]
   logs          PlatformLog[]
   announcements Announcement[]
+  linksAsA         CuerpoLink[]        @relation("CuerpoLinkA")
+  linksAsB         CuerpoLink[]        @relation("CuerpoLinkB")
+  linksRequested   CuerpoLink[]        @relation("CuerpoLinkRequested")
+  linkMessages     CuerpoLinkMessage[]
 }
 
 model Company {
@@ -129,6 +133,8 @@ model User {
   alarmDeliveries               AlarmDelivery[]
   announcementReceipts          AnnouncementReceipt[]
   announcementVotes             AnnouncementVote[]
+  cuerpoLinksRequested          CuerpoLink[]
+  cuerpoLinkMessages            CuerpoLinkMessage[]
 
   @@unique([companyId, operativeNumber])
   @@index([companyId])
@@ -305,6 +311,8 @@ model Incident {
   vehicles                 IncidentVehicle[]
   alarmNotifications       AlarmNotification[]
   commandPost              CommandPost?
+  cuerpoLinks              CuerpoLink[]
+  cuerpoLinkMessages       CuerpoLinkMessage[]
 
   @@index([companyId])
   @@index([companyId, status])
@@ -1408,6 +1416,52 @@ enum CommandRequestStatus {
   EN_TRASLADO
   ARRIBADO
   CANCELADO
+}
+
+enum CuerpoLinkStatus {
+  PENDING
+  ACTIVE
+  CLOSED
+}
+
+model CuerpoLink {
+  id                  String           @id @default(cuid())
+  aCuerpoId           String
+  bCuerpoId           String
+  requestedByCuerpoId String
+  requestedById       String
+  status              CuerpoLinkStatus @default(PENDING)
+  incidentId          String?
+  note                String?
+  createdAt           DateTime         @default(now())
+  updatedAt           DateTime         @updatedAt
+  closedAt            DateTime?
+  aCuerpo             Cuerpo           @relation("CuerpoLinkA", fields: [aCuerpoId], references: [id], onDelete: Restrict)
+  bCuerpo             Cuerpo           @relation("CuerpoLinkB", fields: [bCuerpoId], references: [id], onDelete: Restrict)
+  requestedByCuerpo   Cuerpo           @relation("CuerpoLinkRequested", fields: [requestedByCuerpoId], references: [id], onDelete: Restrict)
+  requestedBy         User             @relation(fields: [requestedById], references: [id], onDelete: Restrict)
+  incident            Incident?        @relation(fields: [incidentId], references: [id], onDelete: SetNull)
+  messages            CuerpoLinkMessage[]
+
+  @@unique([aCuerpoId, bCuerpoId])
+  @@index([status])
+  @@index([requestedByCuerpoId])
+}
+
+model CuerpoLinkMessage {
+  id         String    @id @default(cuid())
+  linkId     String
+  cuerpoId   String
+  userId     String
+  body       String
+  incidentId String?
+  createdAt  DateTime  @default(now())
+  link       CuerpoLink @relation(fields: [linkId], references: [id], onDelete: Cascade)
+  cuerpo     Cuerpo     @relation(fields: [cuerpoId], references: [id], onDelete: Restrict)
+  user       User       @relation(fields: [userId], references: [id], onDelete: Restrict)
+  incident   Incident?  @relation(fields: [incidentId], references: [id], onDelete: SetNull)
+
+  @@index([linkId, createdAt])
 }
 
 enum CommandPointKind {

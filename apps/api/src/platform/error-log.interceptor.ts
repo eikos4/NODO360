@@ -18,6 +18,10 @@ export class ErrorLogInterceptor implements NestInterceptor {
         const status = err instanceof HttpException ? err.getStatus() : 500;
         if (status >= 500) {
           const req = context.switchToHttp().getRequest();
+          const path = String(req?.url ?? '');
+          if (status === 503 && path.includes('/tts')) {
+            return throwError(() => err);
+          }
           const message = err instanceof Error ? err.message : 'Error interno';
           void this.logs.write({
             level: 'ERROR',

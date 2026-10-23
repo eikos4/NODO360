@@ -11,6 +11,7 @@ import { DispatchCentralService } from '../dispatch-central/dispatch-central.ser
 import { AlarmQueueService } from '../notifications/alarm-queue.service';
 import { EmergencyBroadcaster } from '../emergency-realtime/emergency-broadcaster.service';
 import { EMERGENCY_EVENT_NAMES } from '../emergency-realtime/emergency-events.contract';
+import { companyIdsInCuerpo } from '../common/cuerpo-scope';
 import { hasAnyRole } from '../common/user-roles';
 
 const RESPONSE_LABELS: Record<EmergencyResponseStatus, string> = {
@@ -52,6 +53,7 @@ const INCIDENT_SELECT = {
   dispatchedAt: true,
   closedAt: true,
   companyId: true,
+  supportCompanyIds: true,
   company: { select: { id: true, name: true, number: true, city: true } },
   vehicles: {
     select: {
@@ -69,15 +71,17 @@ export class EmergencyResponseService {
     private emergencyBroadcaster: EmergencyBroadcaster,
   ) {}
 
-  private incidentsForCompany(companyId: string): Prisma.IncidentWhereInput {
+  private async incidentsForCompany(companyId: string): Promise<Prisma.IncidentWhereInput> {
+    const cuerpoIds = await companyIdsInCuerpo(this.prisma, companyId);
     return {
       closedAt: null,
       status: { in: ['ACTIVE', 'ARRIVED'] },
       AND: [
         {
           OR: [
-            { companyId },
-            { vehicles: { some: { vehicle: { companyId } } } },
+            { companyId: { in: cuerpoIds } },
+            { supportCompanyIds: { hasSome: cuerpoIds } },
+            { vehicles: { some: { vehicle: { companyId: { in: cuerpoIds } } } } },
           ],
         },
       ],
@@ -111,14 +115,20 @@ export class EmergencyResponseService {
 
   private mapIncident(inc: Prisma.IncidentGetPayload<{ select: typeof INCIDENT_SELECT }>, userCompanyId: string) {
     const isOwner = inc.companyId === userCompanyId;
-    const vehicles = inc.vehicles
-      .filter((v) => (isOwner ? true : v.vehicle.companyId === userCompanyId))
-      .map((v) => v.vehicle);
+    const vehicles = inc.vehicles.map((v) => v.vehicle);
 
     const hasFieldGps = inc.confirmedLatitude != null && inc.confirmedLongitude != null;
     const hasDispatchGps = inc.latitude != null && inc.longitude != null;
     const desc = inc.description?.trim() ?? '';
     const radioMessage = /SECTOR/i.test(desc) && /CONCURRE/i.test(desc) ? desc : desc || `${inc.type} — ${inc.address}`;
+    const dispatchedCompanies = [
+      {
+        id: inc.company?.id ?? inc.companyId,
+        number: inc.company?.number ?? 0,
+        name: inc.company?.name ?? 'Compañía',
+        role: 'principal' as const,
+      },
+    ];
 
     return {
       id: inc.id,
@@ -132,6 +142,7 @@ export class EmergencyResponseService {
       company: inc.company,
       vehicles,
       involvedAsSupport: !isOwner,
+      dispatchedCompanies,
       dispatchGps: hasDispatchGps ? { latitude: inc.latitude!, longitude: inc.longitude! } : null,
       fieldGps: hasFieldGps
         ? {
@@ -203,7 +214,7 @@ export class EmergencyResponseService {
       },
     });
 
-    const recent = await this.dispatchCentral.getRecentEmergencies(companyId, 20);
+    const recent = await this.dispatchCentral.getRecentEmergencies(companyId, 20, { cuerpoWide: true });
     const active = recent.filter((e) => e.status === 'ACTIVA');
     const incidentIds = active.map((e) => e.id);
 
@@ -278,6 +289,7 @@ export class EmergencyResponseService {
             },
         vehicles: inc.vehicles,
         involvedAsSupport: inc.involvedAsSupport,
+        dispatchedCompanies: inc.dispatchedCompanies ?? [],
         dispatchGps:
           inc.dispatchLatitude != null && inc.dispatchLongitude != null
             ? { latitude: inc.dispatchLatitude, longitude: inc.dispatchLongitude }
@@ -302,7 +314,7 @@ export class EmergencyResponseService {
   async getSnapshot(userId: string) {
     const user = await this.getUserOrThrow(userId);
     const companyId = user.companyId!;
-    const where = this.incidentsForCompany(companyId);
+    const where = await this.incidentsForCompany(companyId);
     const [active, incidentVersion, responseVersion] = await Promise.all([
       this.listActive(userId),
       this.prisma.incident.aggregate({ where, _max: { updatedAt: true } }),
@@ -379,7 +391,7 @@ export class EmergencyResponseService {
     const companyId = user.companyId!;
 
     const incident = await this.prisma.incident.findFirst({
-      where: { id: incidentId, ...this.incidentsForCompany(companyId) },
+      where: { id: incidentId, ...(await this.incidentsForCompany(companyId)) },
       select: INCIDENT_SELECT,
     });
     if (!incident) throw new NotFoundException('Emergencia no encontrada o ya cerrada');
@@ -407,7 +419,7 @@ export class EmergencyResponseService {
     const user = await this.getUserOrThrow(userId);
     const companyId = user.companyId!;
     const incident = await this.prisma.incident.findFirst({
-      where: { id: incidentId, ...this.incidentsForCompany(companyId) },
+      where: { id: incidentId, ...(await this.incidentsForCompany(companyId)) },
       select: {
         id: true,
         code: true,
@@ -424,7 +436,7 @@ export class EmergencyResponseService {
     const roster = await this.prisma.user.findMany({
       where: {
         isActive: true,
-        phone: { not: null },
+        NOT: { phone: null },
         OR: [
           { companyId: { in: [...companyIds] } },
           { supportCompanyId: { in: [...companyIds] } },
@@ -456,7 +468,7 @@ export class EmergencyResponseService {
     const companyId = user.companyId!;
 
     const incident = await this.prisma.incident.findFirst({
-      where: { id: incidentId, ...this.incidentsForCompany(companyId) },
+      where: { id: incidentId, ...(await this.incidentsForCompany(companyId)) },
       select: { id: true, companyId: true, closedAt: true },
     });
     if (!incident) throw new NotFoundException('Emergencia no encontrada o ya cerrada');
@@ -606,7 +618,7 @@ export class EmergencyResponseService {
     const companyId = user.companyId!;
 
     const incident = await this.prisma.incident.findFirst({
-      where: { id: incidentId, ...this.incidentsForCompany(companyId) },
+      where: { id: incidentId, ...(await this.incidentsForCompany(companyId)) },
       select: {
         id: true,
         code: true,
@@ -904,7 +916,7 @@ export class EmergencyResponseService {
     if (!user) throw new NotFoundException('Usuario no encontrado');
 
     const responses = await this.prisma.incidentEmergencyResponse.findMany({
-      where: { userId, status: { not: null } },
+      where: { userId, NOT: { status: null } },
       select: {
         status: true,
         respondedAt: true,
@@ -927,7 +939,7 @@ export class EmergencyResponseService {
 
     const counts = await this.prisma.incidentEmergencyResponse.groupBy({
       by: ['status'],
-      where: { userId, status: { not: null } },
+      where: { userId, NOT: { status: null } },
       _count: { _all: true },
     });
     const byStatus = Object.fromEntries(

@@ -138,8 +138,8 @@ export class OperationalMapService {
         where: {
           ...where,
           OR: [
-            { AND: [{ latitude: { not: null } }, { longitude: { not: null } }] },
-            { AND: [{ confirmedLatitude: { not: null } }, { confirmedLongitude: { not: null } }] },
+            { AND: [{ NOT: { latitude: null } }, { NOT: { longitude: null } }] },
+            { AND: [{ NOT: { confirmedLatitude: null } }, { NOT: { confirmedLongitude: null } }] },
           ],
           dispatchedAt: { gte: since },
         },
@@ -238,8 +238,8 @@ export class OperationalMapService {
         address: h.address,
         lat: h.latitude!,
         lng: h.longitude!,
-        companyName: h.company.name,
-        companyNumber: h.company.number,
+        companyName: h.company?.name ?? '',
+        companyNumber: h.company?.number ?? 0,
       }));
 
     const meetingFeatures = meetingPoints
@@ -254,8 +254,8 @@ export class OperationalMapService {
           capacity: mp.capacity,
           lat: loc.lat,
           lng: loc.lng,
-          companyName: mp.company.name,
-          companyNumber: mp.company.number,
+          companyName: mp.company?.name ?? '',
+          companyNumber: mp.company?.number ?? 0,
         };
       })
       .filter(Boolean);
@@ -277,8 +277,8 @@ export class OperationalMapService {
           description: r.description,
           buildingId: r.buildingId,
           path,
-          companyName: r.company.name,
-          companyNumber: r.company.number,
+          companyName: r.company?.name ?? '',
+          companyNumber: r.company?.number ?? 0,
         };
       })
       .filter(Boolean);
@@ -303,8 +303,8 @@ export class OperationalMapService {
       dispatchedAt: i.dispatchedAt,
       closedAt: i.closedAt,
       isOpen: !i.closedAt,
-      companyName: i.company.name,
-      companyNumber: i.company.number,
+      companyName: i.company?.name ?? '',
+      companyNumber: i.company?.number ?? 0,
     };
     });
 
@@ -326,7 +326,8 @@ export class OperationalMapService {
     const companyById = new Map(companyFeatures.map((c) => [c.id, c]));
 
     const activeAlarms = activeAlarmRows.map((i) => {
-      const companyLoc = companyCoords(i.company.city, i.company.number);
+      const companyNumber = i.company?.number ?? 0;
+      const companyLoc = companyCoords(i.company?.city ?? '', companyNumber);
       const hasFieldGps = i.confirmedLatitude != null && i.confirmedLongitude != null;
       const hasDispatchGps = i.latitude != null && i.longitude != null;
       const lat = hasFieldGps ? i.confirmedLatitude! : hasDispatchGps ? i.latitude! : companyLoc[0];
@@ -356,8 +357,8 @@ export class OperationalMapService {
           i.participants,
         ),
         dispatchSource: i.dispatchSource,
-        companyName: i.company.name,
-        companyNumber: i.company.number,
+        companyName: i.company?.name ?? '',
+        companyNumber,
         vehicles: i.vehicles.map((v) => ({
           patent: v.vehicle.patent,
           type: v.vehicle.type,
@@ -387,7 +388,9 @@ export class OperationalMapService {
         lng: pos.lng,
         nearCompany: company
           ? `${company.number}ª ${company.name}`
-          : u.company.name,
+          : u.company
+            ? `${u.company.number}ª ${u.company.name}`
+            : 'Compañía',
         companyId: u.companyId,
         approximate: true,
       };

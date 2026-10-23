@@ -91,3 +91,21 @@ export function companyIdWhere(ids: string[] | null): { companyId?: string | { i
   if (ids.length === 1) return { companyId: ids[0] };
   return { companyId: { in: ids } };
 }
+
+/** Todas las compañías activas del mismo Cuerpo (para alarmar a quien esté en otro cuartel). */
+export async function companyIdsInCuerpo(
+  prisma: PrismaService,
+  companyId: string,
+): Promise<string[]> {
+  const company = await prisma.company.findUnique({
+    where: { id: companyId },
+    select: { cuerpoId: true },
+  });
+  if (!company?.cuerpoId) return [companyId];
+  const rows = await prisma.company.findMany({
+    where: { cuerpoId: company.cuerpoId, isActive: true },
+    select: { id: true },
+    orderBy: { number: 'asc' },
+  });
+  return rows.length ? rows.map((row) => row.id) : [companyId];
+}

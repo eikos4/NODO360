@@ -12,7 +12,7 @@ import { EquipmentStatus, FleetLogType, DispatchSource, IncidentStatus, Emergenc
 import { PrismaService } from '../prisma/prisma.service';
 import { StandbyAlertService } from './standby-alert.service';
 import { UpdateDispatchCentralDto } from './dto/update-dispatch-central.dto';
-import { Actor, assertCompanyAccess, companyIdsForActor } from '../common/cuerpo-scope';
+import { Actor, assertCompanyAccess, companyIdsForActor, companyIdsInCuerpo } from '../common/cuerpo-scope';
 import { assignedRoles } from '../common/user-roles';
 import { EmergencyBroadcaster } from '../emergency-realtime/emergency-broadcaster.service';
 import { EMERGENCY_EVENT_NAMES } from '../emergency-realtime/emergency-events.contract';
@@ -406,16 +406,30 @@ export class DispatchCentralService {
     };
   }
 
-  async getRecentEmergencies(companyId: string, limit = 10) {
+  private async cuerpoIncidentFilter(companyId: string) {
+    const ids = await companyIdsInCuerpo(this.prisma, companyId);
+    return {
+      OR: [
+        { companyId: { in: ids } },
+        { supportCompanyIds: { hasSome: ids } },
+        { vehicles: { some: { vehicle: { companyId: { in: ids } } } } },
+      ],
+    };
+  }
+
+  async getRecentEmergencies(companyId: string, limit = 10, opts?: { cuerpoWide?: boolean }) {
+    const companyFilter = opts?.cuerpoWide
+      ? await this.cuerpoIncidentFilter(companyId)
+      : this.incidentsInvolvingCompany(companyId);
     const incidents = await this.prisma.incident.findMany({
       where: {
         AND: [
-          this.incidentsInvolvingCompany(companyId),
+          companyFilter,
           {
             OR: [
               { status: { in: [IncidentStatus.ACTIVE, IncidentStatus.ARRIVED] } },
               {
-                AND: [{ latitude: { not: null } }, { longitude: { not: null } }],
+                AND: [{ NOT: { latitude: null } }, { NOT: { longitude: null } }],
               },
             ],
           },
@@ -532,7 +546,7 @@ export class DispatchCentralService {
       const supportIds: string[] = inc.supportCompanyIds ?? [];
       const dispatchedCompanies = [
         inc.company
-          ? { id: inc.companyId, number: inc.company.number, name: inc.company.name, role: 'principal' as const }
+          ? { id: inc.companyId, number: inc.company.number ?? 0, name: inc.company.name ?? 'Compañía', role: 'principal' as const }
           : null,
         ...supportIds.map((id) => {
           const row = supportNames.get(id);
@@ -652,8 +666,8 @@ export class DispatchCentralService {
           lastName: p.lastName,
         })),
         involvedAsSupport: !isDispatchOwner,
-        dispatchCompanyName: isDispatchOwner ? null : inc.company.name,
-        dispatchCompanyNumber: isDispatchOwner ? null : inc.company.number,
+        dispatchCompanyName: isDispatchOwner ? null : inc.company?.name ?? null,
+        dispatchCompanyNumber: isDispatchOwner ? null : inc.company?.number ?? null,
         radioMessage: this.extractRadioMessage({
           description: inc.description,
           type: inc.type,
@@ -729,7 +743,9 @@ export class DispatchCentralService {
     const spoken = (items: string[]) =>
       items.length <= 1 ? items[0] ?? '' : `${items.slice(0, -1).join(', ')} Y ${items[items.length - 1]}`;
     const concurre = spoken(callsigns.length ? callsigns : ciaLabels);
-    const apoyo = ciaLabels.length > 1 ? ` COMPAÑÍAS ${spoken(ciaLabels)}` : '';
+    const apoyo = ciaLabels.length
+      ? ` ${ciaLabels.length > 1 ? 'COMPAÑÍAS' : 'COMPAÑÍA'} ${spoken(ciaLabels)}`
+      : '';
 
     if (!concurre) return desc;
     return `${codeSpoken} SECTOR ${sector} CONCURRE ${concurre}${apoyo}`.trim();
@@ -960,8 +976,7 @@ export class DispatchCentralService {
       where: {
         companyId: company.id,
         status: 'OPERATIVO',
-        latitude: { not: null },
-        longitude: { not: null },
+        NOT: [{ latitude: null }, { longitude: null }],
       },
       select: {
         id: true,

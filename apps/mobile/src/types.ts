@@ -31,6 +31,9 @@ export interface ActiveIncident {
   dispatchedAt: string;
   emergencyCodeId?: string | null;
   radioMessage?: string;
+  involvedAsSupport?: boolean;
+  company?: { number: number; name: string; city?: string };
+  dispatchedCompanies?: Array<{ id?: string; number: number; name: string; role?: string }>;
   vehicles?: Array<{ patent: string; type?: string | null; brand?: string | null }>;
   dispatchGps: { latitude: number; longitude: number } | null;
   fieldGps: { latitude: number; longitude: number; confirmedAt?: string | null } | null;

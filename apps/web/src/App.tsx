@@ -53,6 +53,7 @@ import CentralEmergenciaActivaPage from './pages/CentralEmergenciaActivaPage';
 import CentralAvisosPage from './pages/CentralAvisosPage';
 import CentralLlamadosPage from './pages/CentralLlamadosPage';
 import NodoCommandPage from './pages/NodoCommandPage';
+import NodoEnlacePage from './pages/NodoEnlacePage';
 import AyudaPage from './pages/AyudaPage';
 import CarroTabletPage from './pages/CarroTabletPage';
 
@@ -158,6 +159,7 @@ export default function App() {
         <Route path="central-llamados" element={<RequireRoles roles={['OPERADOR_CENTRAL', 'COMANDANTE', 'CAPITAN', 'SUPER_ADMIN']}><CentralLlamadosPage /></RequireRoles>} />
         <Route path="nodo-command" element={<RequireRoles roles={['OPERADOR_CENTRAL', 'COMANDANTE', 'CAPITAN', 'SUPER_ADMIN']}><NodoCommandPage /></RequireRoles>} />
         <Route path="nodo-command/:incidentId" element={<RequireRoles roles={['OPERADOR_CENTRAL', 'COMANDANTE', 'CAPITAN', 'SUPER_ADMIN']}><NodoCommandPage /></RequireRoles>} />
+        <Route path="nodo-enlace" element={<RequireRoles roles={['KODESK', 'OPERADOR_CENTRAL', 'COMANDANTE', 'CAPITAN', 'SUPER_ADMIN']}><NodoEnlacePage /></RequireRoles>} />
         <Route path="central-operativa" element={<RequireRoles roles={['OPERADOR_CENTRAL', 'COMANDANTE', 'CAPITAN', 'SUPER_ADMIN']}><CentralOperativaPage /></RequireRoles>} />
         <Route path="bitacora360" element={<RequireRoles roles={['OPERADOR_CENTRAL', 'COMANDANTE', 'CAPITAN', 'SUPER_ADMIN']}><Bitacora360Page /></RequireRoles>} />
         <Route path="central-bitacora" element={<RequireRoles roles={['OPERADOR_CENTRAL', 'COMANDANTE', 'CAPITAN', 'SUPER_ADMIN']}><Bitacora360Page /></RequireRoles>} />

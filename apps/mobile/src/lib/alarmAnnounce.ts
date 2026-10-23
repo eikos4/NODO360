@@ -35,6 +35,7 @@ export type AlarmAnnounceInput = {
   address?: string;
   radioMessage?: string;
   emergencyCodeId?: string | null;
+  goingCompanies?: string;
   title?: string;
   body?: string;
   kind?: string;
@@ -91,9 +92,11 @@ export function buildAlarmSpeech(input: AlarmAnnounceInput) {
   const label = alarmLabel(code, input.type);
   const address = input.address?.trim();
   const radio = input.radioMessage?.trim();
+  const going = input.goingCompanies?.trim();
+  const van = going ? `Van ${going}.` : '';
   const spoken = radio
-    ? `Atención. ${spokenCode(displayCode)}. ${radio}`
-    : ['Atención.', spokenCode(displayCode) + '.', label + '.', address].filter(Boolean).join(' ');
+    ? `Atención. ${spokenCode(displayCode)}. ${van && !/compa[nñ][ií]a/i.test(radio) ? `${van} ` : ''}${radio}`
+    : ['Atención.', spokenCode(displayCode) + '.', van, label + '.', address].filter(Boolean).join(' ');
   return {
     code,
     title: input.title || `ALARMA ${displayCode.toUpperCase()}`,

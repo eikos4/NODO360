@@ -10,6 +10,7 @@ const TABS = [
   { to: '/central-emergencia', label: 'Consola activa', icon: LayoutDashboard },
   { to: '/central-llamados', label: 'Llamados', icon: Phone },
   { to: '/nodo-command', label: 'NodoCommand', icon: Flag },
+  { to: '/nodo-enlace', label: 'NodoEnlace', icon: Radio },
   { to: '/despacho360', label: 'Despacho360', icon: Siren },
   { to: '/nodo360-alarms', label: 'Nodo360 Alarms', icon: Bell },
   { to: '/central-express', label: 'Central Express', icon: Zap },

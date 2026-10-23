@@ -38,6 +38,7 @@ import { NotificationsModule } from './notifications/notifications.module';
 import { OnboardingModule } from './onboarding/onboarding.module';
 import { PlatformModule } from './platform/platform.module';
 import { CommandPostModule } from './command-post/command-post.module';
+import { NodoEnlaceModule } from './nodo-enlace/nodo-enlace.module';
 import * as Joi from 'joi';
 
 @Module({
@@ -96,6 +97,7 @@ import * as Joi from 'joi';
     OnboardingModule,
     PlatformModule,
     CommandPostModule,
+    NodoEnlaceModule,
   ],
   providers: [
     {
