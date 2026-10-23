@@ -27,6 +27,7 @@ import LocateEmergencyStudio from '../components/dispatch/LocateEmergencyStudio'
 import { incidentNavigatePoint, openGoogleMapsDirections } from '../lib/incident-location-pin';
 import DoubleDispatchConfirmModal from '../components/dispatch/DoubleDispatchConfirmModal';
 import { EnlaceHeaderButton, EnlacePendingBanner, useNodoEnlaceInbox } from '../components/dispatch/CentralEnlaceBanner';
+import { NodoEnlaceMark } from '../components/nodo-enlace/NodoEnlaceMark';
 import type { CentralParralThemeTokens } from '../lib/central-parral-theme';
 import { useCentralSceneBackground } from '../lib/central-scene-backgrounds';
 
@@ -311,7 +312,7 @@ function IdleHomeClock({ isDark }: { isDark: boolean }) {
 }
 
 const IDLE_SHORTCUTS = [
-  { to: '/nodo-enlace', label: 'NodoEnlace', hint: 'Chat entre cuerpos', icon: Radio },
+  { to: '/nodo-enlace', label: 'NodoEnlace', hint: 'Chat entre cuerpos', icon: NodoEnlaceMark },
   { to: '/nodo360-alarms', label: 'Nodo360 Alarms', hint: 'Despacho con mapa', icon: Bell },
   { to: '/despacho360', label: 'Despacho360', hint: 'Botonera completa', icon: Siren },
   { to: '/bitacora360', label: 'Bitácora360', hint: 'Fases e informe', icon: BookOpen },
@@ -404,15 +405,15 @@ function IdleHome({
               to="/nodo-enlace"
               className={`relative inline-flex items-center gap-2 px-5 py-3.5 rounded-2xl border text-sm font-black uppercase tracking-wide ${
                 pendingEnlace > 0
-                  ? 'keep-on-color border-amber-400 bg-amber-500 text-amber-950'
+                  ? 'keep-on-color border-amber-500 bg-amber-500 text-white'
                   : sceneBg
                     ? 'keep-on-color border-white/30 bg-white/10 text-white hover:bg-white/15'
                     : isDark
-                      ? 'border-sky-400/40 text-sky-200 hover:bg-sky-500/10'
-                      : 'border-sky-600 text-sky-900 hover:bg-sky-50'
+                      ? 'border-cyan-400/40 text-cyan-200 hover:bg-cyan-500/10'
+                      : 'border-cyan-300 bg-white text-cyan-800 hover:bg-cyan-50 shadow-sm'
               }`}
             >
-              <Radio className="w-4 h-4" />
+              <NodoEnlaceMark className="w-4 h-4" />
               Enlace
               {pendingEnlace > 0 && (
                 <span className="min-w-[1.15rem] h-5 px-1 rounded-full bg-red-600 text-white text-[11px] leading-5 text-center">
@@ -456,11 +457,19 @@ function IdleHome({
                     sceneBg
                       ? 'keep-on-color border-white/20 bg-black/20 text-white hover:border-emerald-400/50 hover:bg-black/30 backdrop-blur-[2px]'
                       : isDark
-                        ? 'border-white/10 bg-white/[0.03] hover:border-emerald-500/35 hover:bg-emerald-500/10'
-                        : 'border-slate-200 bg-white/80 hover:border-emerald-400 hover:bg-emerald-50 shadow-sm'
+                        ? to === '/nodo-enlace'
+                          ? 'border-cyan-500/25 bg-cyan-500/5 hover:border-cyan-400/50 hover:bg-cyan-500/10'
+                          : 'border-white/10 bg-white/[0.03] hover:border-emerald-500/35 hover:bg-emerald-500/10'
+                        : to === '/nodo-enlace'
+                          ? 'border-cyan-200 bg-cyan-50/70 hover:border-cyan-400 hover:bg-cyan-50 shadow-sm'
+                          : 'border-slate-200 bg-white/80 hover:border-emerald-400 hover:bg-emerald-50 shadow-sm'
                   }`}
                 >
-                  <Icon className={`w-5 h-5 mb-2 ${sceneBg || isDark ? 'text-emerald-400' : 'text-emerald-600'}`} />
+                  <Icon className={`w-5 h-5 mb-2 ${
+                    to === '/nodo-enlace'
+                      ? sceneBg || isDark ? 'text-cyan-300' : 'text-cyan-700'
+                      : sceneBg || isDark ? 'text-emerald-400' : 'text-emerald-600'
+                  }`} />
                   <p className={`text-sm font-bold leading-tight ${sceneBg ? 'text-white' : th.title}`}>{label}</p>
                   <p className={`text-[11px] mt-0.5 ${sceneBg ? 'text-white/75' : th.subtitle}`}>{hint}</p>
                 </Link>

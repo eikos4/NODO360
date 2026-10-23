@@ -12,6 +12,7 @@ import SidebarCompanias360 from './SidebarCompanias360';
 import UserIdentityBlock from './UserIdentityBlock';
 import { useAuthCompany } from '../../hooks/useAuthCompany';
 import { canAccessNavRoles } from '../../lib/roleAccess';
+import { NodoEnlaceMark } from '../nodo-enlace/NodoEnlaceMark';
 
 const SIDEBAR_COMPACT_KEY = 'nodo360_sidebar_compact';
 
@@ -23,7 +24,7 @@ export const navItems: NavItem[] = [
   { to: '/central-emergencia', label: 'Consola activa', icon: Siren, roles: ['OPERADOR_CENTRAL', 'SUPER_ADMIN', 'COMANDANTE', 'CAPITAN'] },
   { to: '/central-llamados', label: 'Llamados operativos', icon: Phone, roles: ['OPERADOR_CENTRAL', 'SUPER_ADMIN', 'COMANDANTE', 'CAPITAN'] },
   { to: '/nodo-command', label: 'NodoCommand', icon: Flag, roles: ['OPERADOR_CENTRAL', 'SUPER_ADMIN', 'COMANDANTE', 'CAPITAN'] },
-  { to: '/nodo-enlace', label: 'NodoEnlace', icon: Radio, roles: ['KODESK', 'OPERADOR_CENTRAL', 'SUPER_ADMIN', 'COMANDANTE', 'CAPITAN'] },
+  { to: '/nodo-enlace', label: 'NodoEnlace', icon: NodoEnlaceMark, roles: ['KODESK', 'OPERADOR_CENTRAL', 'SUPER_ADMIN', 'COMANDANTE', 'CAPITAN'] },
   { to: '/central-operativa', label: 'Central en vivo', icon: Radio, roles: ['OPERADOR_CENTRAL', 'SUPER_ADMIN', 'COMANDANTE', 'CAPITAN'] },
   { to: '/bitacora360', label: 'Bitácora360', icon: BookOpen, roles: ['OPERADOR_CENTRAL', 'SUPER_ADMIN', 'COMANDANTE', 'CAPITAN'] },
   { to: '/central-bitacora/registro', label: 'Bitácora botonera', icon: ClipboardList, roles: ['OPERADOR_CENTRAL', 'SUPER_ADMIN', 'COMANDANTE', 'CAPITAN'] },
@@ -150,6 +151,29 @@ export default function Sidebar({ onStartTour: _onStartTour }: SidebarProps) {
                 <>
                   {item.label}
                   <span className="ml-auto text-[9px] font-semibold bg-red-500/30 px-1.5 py-0.5 rounded">HUB</span>
+                </>
+              )}
+            </NavLink>
+          ) : item.to === '/nodo-enlace' ? (
+            <NavLink
+              key={item.to}
+              to={item.to}
+              title={compact ? item.label : undefined}
+              className={({ isActive }) =>
+                cn(
+                  'flex items-center rounded-xl text-sm font-bold transition-all mb-1',
+                  itemLayout,
+                  isActive
+                    ? 'bg-cyan-600 !text-white shadow-lg shadow-cyan-600/30'
+                    : 'bg-cyan-500/10 text-cyan-300 border border-cyan-500/25 hover:bg-cyan-600 hover:!text-white',
+                )
+              }
+            >
+              <item.icon className="w-4 h-4 shrink-0" />
+              {!compact && (
+                <>
+                  {item.label}
+                  <span className="ml-auto text-[9px] font-semibold bg-cyan-500/25 px-1.5 py-0.5 rounded">RED</span>
                 </>
               )}
             </NavLink>

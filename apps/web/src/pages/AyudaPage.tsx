@@ -6,6 +6,7 @@ import {
   Radio, Shield, Smartphone, Siren, Tablet, Truck, Users, Zap, ArrowRight, Play, ExternalLink,
   UserCog, Building2, FileText, Mic, LifeBuoy, X,
 } from 'lucide-react';
+import { NodoEnlaceMark } from '../components/nodo-enlace/NodoEnlaceMark';
 import { useAuthStore } from '../store/authStore';
 import { useThemeStore } from '../store/themeStore';
 import { getDefaultRouteForUser } from '../lib/roleAccess';
@@ -330,6 +331,11 @@ const SCREENS = [
     title: 'Salas públicas / salida',
     text: 'Vistas de cuartel para ver dotación y salida sin entrar a la consola completa.',
   },
+  {
+    icon: NodoEnlaceMark,
+    title: 'NodoEnlace',
+    text: 'Red entre cuerpos: pedí enlace, mirá si el otro está en alarma y coordiná por chat de central.',
+  },
 ] as const;
 
 const FAQ = [
@@ -377,6 +383,7 @@ const MODULES = [
   { name: 'App móvil', tip: 'Alarma y respuesta' },
   { name: 'NodoTrack / Carro', tip: 'Tablet en el vehículo' },
   { name: 'Muro TV / Vision360', tip: 'Cuarteles en pantalla' },
+  { name: 'NodoEnlace', tip: 'Chat y red entre cuerpos' },
 ] as const;
 
 type ThemeTone = {

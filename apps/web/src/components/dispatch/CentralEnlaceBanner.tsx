@@ -1,6 +1,7 @@
 import { Link } from 'react-router-dom';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { Check, Link2, Radio, X } from 'lucide-react';
+import { Check, X } from 'lucide-react';
+import { NodoEnlaceMark } from '../nodo-enlace/NodoEnlaceMark';
 import toast from 'react-hot-toast';
 import { api } from '../../lib/api';
 import { cn } from '../../lib/utils';
@@ -47,30 +48,31 @@ export function EnlaceHeaderButton({
   isDark?: boolean;
   className?: string;
 }) {
+  const urgent = pendingCount > 0;
   return (
     <Link
       to="/nodo-enlace"
       title="Enlace entre cuerpos"
       className={cn(
-        'relative keep-on-color flex items-center gap-1.5 px-3 py-2 rounded-xl border text-xs font-black uppercase tracking-wide',
-        pendingCount > 0
-          ? 'border-amber-400 bg-amber-500 text-amber-950'
+        'relative flex items-center gap-1.5 px-3 py-2 rounded-xl border text-xs font-black uppercase tracking-wide',
+        urgent
+          ? 'keep-on-color border-amber-500 bg-amber-500 text-white'
           : sceneBg
-            ? 'border-white/30 bg-white/10 text-white'
+            ? 'keep-on-color border-white/30 bg-white/10 text-white'
             : isDark
-              ? 'border-sky-500/40 text-sky-200 bg-sky-500/10'
-              : 'border-sky-600 text-sky-800 bg-sky-50',
+              ? 'border-cyan-500/40 text-cyan-200 bg-cyan-500/10'
+              : 'border-cyan-300 bg-white text-cyan-800 hover:text-cyan-950 hover:bg-cyan-50 shadow-sm',
         className,
       )}
     >
-      <Link2 className="w-3.5 h-3.5" />
+      <NodoEnlaceMark className="w-3.5 h-3.5" />
       Enlace
-      {pendingCount > 0 ? (
-        <span className="min-w-[1.1rem] h-4 px-1 rounded-full bg-red-600 text-white text-[10px] leading-4 text-center">
+      {urgent ? (
+        <span className="keep-on-color min-w-[1.1rem] h-4 px-1 rounded-full bg-red-600 text-white text-[10px] leading-4 text-center">
           {pendingCount}
         </span>
       ) : activeCount ? (
-        <span className="w-2 h-2 rounded-full bg-emerald-400" />
+        <span className={cn('w-2 h-2 rounded-full', sceneBg || isDark ? 'bg-emerald-400' : 'bg-emerald-600')} />
       ) : null}
     </Link>
   );
@@ -107,15 +109,19 @@ export function EnlacePendingBanner({ sceneBg, isDark }: { sceneBg?: boolean; is
         pendingIn.length
           ? sceneBg
             ? 'border-amber-400/30 bg-amber-500/25'
-            : 'border-amber-400/40 bg-amber-500/15'
+            : isDark
+              ? 'border-amber-400/40 bg-amber-500/15'
+              : 'border-amber-300 bg-amber-50'
           : sceneBg
             ? 'border-white/15 bg-black/25'
-            : 'border-sky-500/20 bg-sky-500/10',
+            : isDark
+              ? 'border-sky-500/20 bg-sky-500/10'
+              : 'border-sky-200 bg-sky-50',
       )}
     >
       {pendingIn.map((link) => (
         <div key={link.id} className="flex flex-wrap items-center gap-2 py-0.5">
-          <Radio className="w-4 h-4 text-amber-300 shrink-0" />
+          <NodoEnlaceMark className={cn('w-4 h-4 shrink-0', sceneBg || isDark ? 'text-amber-300' : 'text-amber-700')} />
           <p className={cn('text-sm font-semibold min-w-0 flex-1', sceneBg || isDark ? 'keep-on-color text-white' : 'text-amber-950')}>
             {link.other.name} pide enlace
             {link.incident ? ` · ${link.incident.code}` : ''}
@@ -154,7 +160,7 @@ export function EnlacePendingBanner({ sceneBg, isDark }: { sceneBg?: boolean; is
       ))}
       {pendingIn.length === 0 && pendingOut.length > 0 && (
         <div className="flex flex-wrap items-center gap-2">
-          <Link2 className="w-4 h-4 text-sky-300 shrink-0" />
+          <NodoEnlaceMark className={cn('w-4 h-4 shrink-0', sceneBg || isDark ? 'text-sky-300' : 'text-sky-700')} />
           <p className={cn('text-sm min-w-0 flex-1', sceneBg || isDark ? 'keep-on-color text-white' : 'text-sky-900')}>
             Esperando que {pendingOut.map((l) => l.other.name).join(', ')} acepte el enlace.
           </p>

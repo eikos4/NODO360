@@ -1,11 +1,11 @@
 import { FormEvent, useEffect, useMemo, useRef, useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import {
-  Check, Link2, Loader2, Radio, Search, Send, Siren, X,
-} from 'lucide-react';
+import { Check, Loader2, Moon, Search, Send, Siren, Sun, X } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { api } from '../lib/api';
 import { cn } from '../lib/utils';
+import { useThemeStore } from '../store/themeStore';
+import { NodoEnlaceBrand, NodoEnlaceMark } from '../components/nodo-enlace/NodoEnlaceMark';
 
 type Emergency = {
   id: string;
@@ -74,6 +74,9 @@ function clock(value?: string | null) {
 
 export default function NodoEnlacePage() {
   const qc = useQueryClient();
+  const theme = useThemeStore((s) => s.theme);
+  const toggleTheme = useThemeStore((s) => s.toggleTheme);
+  const isDark = theme === 'dark';
   const [query, setQuery] = useState('');
   const [asCuerpoId, setAsCuerpoId] = useState('');
   const [selectedId, setSelectedId] = useState<string | null>(null);
@@ -172,63 +175,85 @@ export default function NodoEnlacePage() {
   };
 
   return (
-    <div className="h-full min-h-0 bg-slate-950 text-slate-100 flex flex-col">
-      <header className="shrink-0 border-b border-slate-800 px-4 py-4 sm:px-6">
-        <div className="flex flex-wrap items-end justify-between gap-3">
-          <div>
-            <p className="text-[10px] font-semibold uppercase tracking-[0.22em] text-red-400">Nodo360 · módulo especial</p>
-            <h1 className="text-xl font-bold text-white">NodoEnlace</h1>
-            <p className="text-sm text-slate-400">
-              Conectá cuerpos en emergencia, mirá si están en alarma y coordiná por chat de central.
+    <div className={cn('nodo-enlace-page h-full min-h-0 flex flex-col', isDark ? 'bg-[#061018] text-slate-100' : 'bg-slate-100 text-slate-900')}>
+      <div className={cn('h-1 shrink-0', isDark ? 'bg-gradient-to-r from-cyan-500 via-teal-400 to-cyan-600' : 'bg-gradient-to-r from-cyan-600 via-teal-500 to-cyan-500')} />
+      <header className={cn('shrink-0 border-b px-4 py-3.5 sm:px-6', isDark ? 'border-cyan-500/15 bg-[#07141c]' : 'border-slate-200 bg-white shadow-sm')}>
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <div className="min-w-0">
+            <NodoEnlaceBrand isDark={isDark} />
+            <p className={cn('mt-1.5 text-sm max-w-xl', isDark ? 'text-slate-400' : 'text-slate-600')}>
+              Red de cuerpos: pedí enlace, mirá si el otro está en alarma y coordiná por chat de central.
             </p>
           </div>
-          {network?.me ? (
-            <div className="rounded-xl border border-slate-800 bg-slate-900/80 px-4 py-2.5">
-              <p className="text-[10px] uppercase tracking-wider text-slate-500">Tu cuerpo</p>
-              <p className="text-sm font-semibold text-white">{network.me.name}</p>
-              <p className="text-xs text-slate-400">
-                {network.me.city} · {network.me.activeCount} emergencia{network.me.activeCount === 1 ? '' : 's'} activa{network.me.activeCount === 1 ? '' : 's'}
-              </p>
-            </div>
-          ) : network ? (
-            <label className="rounded-xl border border-slate-800 bg-slate-900/80 px-4 py-2.5 block">
-              <p className="text-[10px] uppercase tracking-wider text-slate-500 mb-1">Actuar como cuerpo</p>
-              <select
-                value={asCuerpoId}
-                onChange={(e) => setAsCuerpoId(e.target.value)}
-                className="bg-transparent text-sm text-white outline-none"
-              >
-                <option value="">Elegir cuerpo…</option>
-                {network.cuerpos.map((c) => (
-                  <option key={c.id} value={c.id} className="text-slate-900">
-                    {c.name}
-                  </option>
-                ))}
-              </select>
-            </label>
-          ) : null}
+          <div className="flex items-center gap-2">
+            {network?.me ? (
+              <div className={cn('rounded-xl border px-4 py-2.5', isDark ? 'border-white/10 bg-white/5' : 'border-slate-200 bg-slate-50')}>
+                <p className={cn('text-[10px] uppercase tracking-wider font-bold', isDark ? 'text-cyan-400/80' : 'text-cyan-700')}>Tu cuerpo</p>
+                <p className={cn('text-sm font-semibold', isDark ? 'text-white' : 'text-slate-900')}>{network.me.name}</p>
+                <p className={cn('text-xs', isDark ? 'text-slate-400' : 'text-slate-600')}>
+                  {network.me.city} · {network.me.activeCount} emergencia{network.me.activeCount === 1 ? '' : 's'} activa{network.me.activeCount === 1 ? '' : 's'}
+                </p>
+              </div>
+            ) : network ? (
+              <label className={cn('rounded-xl border px-4 py-2.5 block', isDark ? 'border-white/10 bg-white/5' : 'border-slate-200 bg-slate-50')}>
+                <p className={cn('text-[10px] uppercase tracking-wider font-bold mb-1', isDark ? 'text-cyan-400/80' : 'text-cyan-700')}>Actuar como cuerpo</p>
+                <select
+                  value={asCuerpoId}
+                  onChange={(e) => setAsCuerpoId(e.target.value)}
+                  className={cn('bg-transparent text-sm outline-none', isDark ? 'text-white' : 'text-slate-900')}
+                >
+                  <option value="">Elegir cuerpo…</option>
+                  {network.cuerpos.map((c) => (
+                    <option key={c.id} value={c.id} className="text-slate-900">
+                      {c.name}
+                    </option>
+                  ))}
+                </select>
+              </label>
+            ) : null}
+            <button
+              type="button"
+              onClick={toggleTheme}
+              className={cn(
+                'p-2.5 rounded-xl border',
+                isDark ? 'border-white/10 text-slate-300 hover:text-white hover:bg-white/5' : 'border-slate-200 text-slate-600 hover:text-slate-900 hover:bg-slate-50',
+              )}
+              title={isDark ? 'Tema claro' : 'Tema oscuro'}
+            >
+              {isDark ? <Sun className="w-4 h-4" /> : <Moon className="w-4 h-4" />}
+            </button>
+          </div>
         </div>
       </header>
 
       {network?.pendingIn?.length ? (
-        <div className="shrink-0 border-b border-amber-500/20 bg-amber-500/10 px-4 py-3 sm:px-6">
-          <p className="text-xs font-semibold uppercase tracking-wider text-amber-300 mb-2">Solicitudes entrantes</p>
+        <div className={cn('shrink-0 border-b px-4 py-3 sm:px-6', isDark ? 'border-amber-400/20 bg-amber-500/10' : 'border-amber-200 bg-amber-50')}>
+          <p className={cn('text-xs font-black uppercase tracking-wider mb-2', isDark ? 'text-amber-300' : 'text-amber-800')}>Solicitudes entrantes</p>
           <div className="flex flex-wrap gap-2">
             {network.pendingIn.map((link) => (
-              <div key={link.id} className="flex items-center gap-2 rounded-lg border border-amber-500/30 bg-slate-950/40 px-3 py-2">
-                <p className="text-sm text-white">{link.other.name}</p>
-                {link.note && <span className="text-xs text-slate-400 hidden sm:inline">{link.note}</span>}
+              <div
+                key={link.id}
+                className={cn(
+                  'flex items-center gap-2 rounded-lg border px-3 py-2',
+                  isDark ? 'border-amber-500/30 bg-[#061018]/50' : 'border-amber-200 bg-white',
+                )}
+              >
+                <p className={cn('text-sm font-semibold', isDark ? 'text-white' : 'text-slate-900')}>{link.other.name}</p>
+                {link.note && <span className={cn('text-xs hidden sm:inline', isDark ? 'text-slate-400' : 'text-slate-600')}>{link.note}</span>}
                 <button
                   type="button"
                   onClick={() => acceptM.mutate(link.id)}
-                  className="inline-flex items-center gap-1 rounded-md bg-emerald-600 px-2 py-1 text-xs font-semibold text-white"
+                  className="keep-on-color inline-flex items-center gap-1 rounded-md bg-emerald-600 px-2 py-1 text-xs font-semibold text-white"
                 >
                   <Check className="w-3 h-3" /> Aceptar
                 </button>
                 <button
                   type="button"
                   onClick={() => closeM.mutate(link.id)}
-                  className="inline-flex items-center gap-1 rounded-md bg-slate-800 px-2 py-1 text-xs text-slate-300"
+                  className={cn(
+                    'inline-flex items-center gap-1 rounded-md border px-2 py-1 text-xs',
+                    isDark ? 'border-white/10 bg-white/5 text-slate-300' : 'border-slate-200 bg-white text-slate-700',
+                  )}
                 >
                   <X className="w-3 h-3" /> Rechazar
                 </button>
@@ -239,26 +264,26 @@ export default function NodoEnlacePage() {
       ) : null}
 
       <div className="flex-1 min-h-0 grid grid-cols-1 lg:grid-cols-[340px_minmax(0,1fr)]">
-        <aside className="border-b lg:border-b-0 lg:border-r border-slate-800 min-h-0 flex flex-col">
+        <aside className={cn('border-b lg:border-b-0 lg:border-r min-h-0 flex flex-col', isDark ? 'border-white/10 bg-[#07141c]' : 'border-slate-200 bg-white')}>
           <div className="p-3">
-            <label className="flex items-center gap-2 rounded-xl border border-slate-800 bg-slate-900 px-3 py-2">
-              <Search className="w-4 h-4 text-slate-500" />
+            <label className={cn('flex items-center gap-2 rounded-xl border px-3 py-2', isDark ? 'border-white/10 bg-white/5' : 'border-slate-200 bg-slate-50')}>
+              <Search className={cn('w-4 h-4', isDark ? 'text-slate-500' : 'text-slate-400')} />
               <input
                 value={query}
                 onChange={(e) => setQuery(e.target.value)}
                 placeholder="Buscar cuerpo, ciudad o región"
-                className="w-full bg-transparent text-sm text-white placeholder:text-slate-500 outline-none"
+                className={cn('w-full bg-transparent text-sm outline-none placeholder:text-slate-500', isDark ? 'text-white' : 'text-slate-900')}
               />
             </label>
           </div>
           <div className="flex-1 overflow-y-auto px-3 pb-4 space-y-2">
             {networkQ.isLoading && (
-              <p className="flex items-center gap-2 text-sm text-slate-500 px-2 py-6">
+              <p className={cn('flex items-center gap-2 text-sm px-2 py-6', isDark ? 'text-slate-500' : 'text-slate-500')}>
                 <Loader2 className="w-4 h-4 animate-spin" /> Cargando red de cuerpos…
               </p>
             )}
             {!networkQ.isLoading && filtered.length === 0 && (
-              <p className="text-sm text-slate-500 px-2 py-6">
+              <p className={cn('text-sm px-2 py-6', isDark ? 'text-slate-500' : 'text-slate-600')}>
                 Todavía no hay otro cuerpo en Nodo360. Cuando se sume uno (por ejemplo Coihueco), aparece acá para pedir enlace y chatear.
               </p>
             )}
@@ -272,19 +297,23 @@ export default function NodoEnlacePage() {
                   className={cn(
                     'w-full text-left rounded-xl border px-3 py-3 transition-colors',
                     active
-                      ? 'border-red-500/50 bg-red-600/10'
-                      : 'border-slate-800 bg-slate-900/60 hover:border-slate-700',
+                      ? isDark
+                        ? 'border-cyan-400/50 bg-cyan-500/10'
+                        : 'border-cyan-500 bg-cyan-50 shadow-sm'
+                      : isDark
+                        ? 'border-white/10 bg-white/[0.03] hover:border-cyan-500/30'
+                        : 'border-slate-200 bg-white hover:border-cyan-300 hover:bg-cyan-50/50',
                   )}
                 >
                   <div className="flex items-start justify-between gap-2">
                     <div className="min-w-0">
-                      <p className="text-sm font-semibold text-white truncate">{cuerpo.name}</p>
-                      <p className="text-xs text-slate-400">{cuerpo.city} · {cuerpo.region}</p>
+                      <p className={cn('text-sm font-semibold truncate', isDark ? 'text-white' : 'text-slate-900')}>{cuerpo.name}</p>
+                      <p className={cn('text-xs', isDark ? 'text-slate-400' : 'text-slate-600')}>{cuerpo.city} · {cuerpo.region}</p>
                     </div>
-                    <StatusPill cuerpo={cuerpo} />
+                    <StatusPill cuerpo={cuerpo} isDark={isDark} />
                   </div>
                   {cuerpo.activeCount > 0 && (
-                    <p className="mt-2 flex items-center gap-1.5 text-xs text-red-300">
+                    <p className={cn('mt-2 flex items-center gap-1.5 text-xs font-semibold', isDark ? 'text-red-300' : 'text-red-700')}>
                       <Siren className="w-3 h-3" />
                       {cuerpo.activeCount} activa{cuerpo.activeCount === 1 ? '' : 's'}
                       {cuerpo.latestType ? ` · ${cuerpo.latestType}` : ''}
@@ -299,26 +328,39 @@ export default function NodoEnlacePage() {
         <section className="min-h-0 flex flex-col">
           {!selected ? (
             <div className="flex-1 grid place-items-center p-8 text-center">
-              <div className="max-w-md space-y-3">
-                <div className="mx-auto w-12 h-12 rounded-2xl bg-red-600/20 text-red-400 grid place-items-center">
-                  <Radio className="w-6 h-6" />
+              <div className="max-w-md space-y-4">
+                <div
+                  className={cn(
+                    'enlace-mark-pulse mx-auto h-20 w-20 rounded-3xl grid place-items-center',
+                    isDark ? 'bg-cyan-500/15 text-cyan-300 ring-1 ring-cyan-400/25' : 'bg-cyan-100 text-cyan-700 ring-1 ring-cyan-200',
+                  )}
+                >
+                  <NodoEnlaceMark className="w-10 h-10" />
                 </div>
-                <h2 className="text-lg font-bold text-white">Red de cuerpos Nodo360</h2>
-                <p className="text-sm text-slate-400">
+                <h2 className={cn('text-xl font-black', isDark ? 'text-white' : 'text-slate-900')}>
+                  Red de cuerpos
+                </h2>
+                <p className={cn('text-sm', isDark ? 'text-slate-400' : 'text-slate-600')}>
                   Elegí un cuerpo de la lista. Si hay alarma, se ve al toque. Pedí enlace y, al aceptar, queda el chat de coordinación.
                 </p>
               </div>
             </div>
           ) : (
             <>
-              <div className="shrink-0 border-b border-slate-800 px-4 py-4 sm:px-5">
+              <div className={cn('shrink-0 border-b px-4 py-4 sm:px-5', isDark ? 'border-white/10' : 'border-slate-200 bg-white/80')}>
                 <div className="flex flex-wrap items-start justify-between gap-3">
                   <div>
-                    <h2 className="text-lg font-bold text-white">{selected.name}</h2>
-                    <p className="text-sm text-slate-400">{selected.city} · {selected.region} · {selected.companyCount} cuartel{selected.companyCount === 1 ? '' : 'es'}</p>
-                    {selected.link?.note && <p className="text-xs text-slate-500 mt-1">{selected.link.note}</p>}
+                    <div className="flex items-center gap-2">
+                      <NodoEnlaceMark className={cn('w-5 h-5', isDark ? 'text-cyan-300' : 'text-cyan-700')} />
+                      <h2 className={cn('text-lg font-bold', isDark ? 'text-white' : 'text-slate-900')}>{selected.name}</h2>
+                    </div>
+                    <p className={cn('text-sm', isDark ? 'text-slate-400' : 'text-slate-600')}>
+                      {selected.city} · {selected.region} · {selected.companyCount} cuartel{selected.companyCount === 1 ? '' : 'es'}
+                    </p>
+                    {selected.link?.note && <p className={cn('text-xs mt-1', isDark ? 'text-slate-500' : 'text-slate-500')}>{selected.link.note}</p>}
                   </div>
                   <LinkActions
+                    isDark={isDark}
                     cuerpo={selected}
                     note={note}
                     setNote={setNote}
@@ -331,18 +373,28 @@ export default function NodoEnlacePage() {
               </div>
 
               {selected.link?.status === 'ACTIVE' && (
-                <div className="shrink-0 border-b border-slate-800 px-4 py-3 sm:px-5">
-                  <p className="text-[10px] font-semibold uppercase tracking-wider text-slate-500 mb-2">Emergencias activas de {selected.name}</p>
+                <div className={cn('shrink-0 border-b px-4 py-3 sm:px-5', isDark ? 'border-white/10' : 'border-slate-200')}>
+                  <p className={cn('text-[10px] font-black uppercase tracking-wider mb-2', isDark ? 'text-slate-500' : 'text-slate-500')}>
+                    Emergencias activas de {selected.name}
+                  </p>
                   <div className="flex gap-2 overflow-x-auto">
                     {(emergenciesQ.data?.activeEmergencies ?? selected.activeEmergencies).length === 0 ? (
-                      <p className="text-xs text-slate-500">Sin emergencias abiertas.</p>
+                      <p className={cn('text-xs', isDark ? 'text-slate-500' : 'text-slate-500')}>Sin emergencias abiertas.</p>
                     ) : (
                       (emergenciesQ.data?.activeEmergencies ?? selected.activeEmergencies).map((inc) => (
-                        <div key={inc.id} className="min-w-[220px] rounded-xl border border-red-500/25 bg-red-600/10 px-3 py-2">
-                          <p className="text-xs font-bold text-red-300">{inc.code}</p>
-                          <p className="text-sm text-white truncate">{inc.type}</p>
-                          <p className="text-[11px] text-slate-400 truncate">{inc.address}</p>
-                          <p className="text-[11px] text-slate-500">{inc.companyNumber}ª {inc.companyName} · {clock(inc.dispatchedAt)}</p>
+                        <div
+                          key={inc.id}
+                          className={cn(
+                            'min-w-[220px] rounded-xl border px-3 py-2',
+                            isDark ? 'border-red-500/25 bg-red-600/10' : 'border-red-200 bg-red-50',
+                          )}
+                        >
+                          <p className={cn('text-xs font-bold', isDark ? 'text-red-300' : 'text-red-700')}>{inc.code}</p>
+                          <p className={cn('text-sm truncate', isDark ? 'text-white' : 'text-slate-900')}>{inc.type}</p>
+                          <p className={cn('text-[11px] truncate', isDark ? 'text-slate-400' : 'text-slate-600')}>{inc.address}</p>
+                          <p className={cn('text-[11px]', isDark ? 'text-slate-500' : 'text-slate-500')}>
+                            {inc.companyNumber}ª {inc.companyName} · {clock(inc.dispatchedAt)}
+                          </p>
                         </div>
                       ))
                     )}
@@ -352,7 +404,7 @@ export default function NodoEnlacePage() {
 
               <div className="flex-1 min-h-0 overflow-y-auto px-4 py-4 sm:px-5 space-y-3">
                 {selected.link?.status !== 'ACTIVE' ? (
-                  <div className="h-full grid place-items-center text-center text-sm text-slate-500">
+                  <div className={cn('h-full grid place-items-center text-center text-sm', isDark ? 'text-slate-500' : 'text-slate-500')}>
                     {selected.link?.status === 'PENDING'
                       ? selected.link.incoming
                         ? 'Aceptá el enlace para abrir el chat.'
@@ -362,17 +414,27 @@ export default function NodoEnlacePage() {
                 ) : (
                   <>
                     {(messagesQ.data ?? []).map((msg) => (
-                      <div key={msg.id} className={cn('max-w-[85%] rounded-2xl px-3.5 py-2.5', msg.mine ? 'ml-auto bg-red-600 text-white' : 'bg-slate-800 text-slate-100')}>
-                        <p className={cn('text-[10px] font-semibold mb-0.5', msg.mine ? 'text-red-100' : 'text-slate-400')}>
+                      <div
+                        key={msg.id}
+                        className={cn(
+                          'max-w-[85%] rounded-2xl px-3.5 py-2.5',
+                          msg.mine
+                            ? 'ml-auto keep-on-color bg-cyan-600 text-white'
+                            : isDark
+                              ? 'bg-white/10 text-slate-100'
+                              : 'bg-white border border-slate-200 text-slate-900 shadow-sm',
+                        )}
+                      >
+                        <p className={cn('text-[10px] font-semibold mb-0.5', msg.mine ? 'text-cyan-50' : isDark ? 'text-slate-400' : 'text-slate-500')}>
                           {msg.cuerpoName} · {msg.author} · {ROLE_SHORT[msg.role] ?? msg.role}
                         </p>
                         <p className="text-sm whitespace-pre-wrap">{msg.body}</p>
                         {msg.incident && (
-                          <p className={cn('text-[10px] mt-1', msg.mine ? 'text-red-100' : 'text-slate-400')}>
+                          <p className={cn('text-[10px] mt-1', msg.mine ? 'text-cyan-50' : isDark ? 'text-slate-400' : 'text-slate-500')}>
                             Ref. {msg.incident.code} · {msg.incident.type}
                           </p>
                         )}
-                        <p className={cn('text-[10px] mt-1', msg.mine ? 'text-red-100/80' : 'text-slate-500')}>{clock(msg.createdAt)}</p>
+                        <p className={cn('text-[10px] mt-1', msg.mine ? 'text-cyan-100/80' : isDark ? 'text-slate-500' : 'text-slate-400')}>{clock(msg.createdAt)}</p>
                       </div>
                     ))}
                     <div ref={bottomRef} />
@@ -381,19 +443,24 @@ export default function NodoEnlacePage() {
               </div>
 
               {selected.link?.status === 'ACTIVE' && (
-                <form onSubmit={onSend} className="shrink-0 border-t border-slate-800 p-3 sm:p-4 flex items-end gap-2">
+                <form onSubmit={onSend} className={cn('shrink-0 border-t p-3 sm:p-4 flex items-end gap-2', isDark ? 'border-white/10 bg-[#07141c]' : 'border-slate-200 bg-white')}>
                   <textarea
                     value={draft}
                     onChange={(e) => setDraft(e.target.value)}
                     rows={2}
                     maxLength={1000}
                     placeholder="Mensaje a la central del otro cuerpo…"
-                    className="flex-1 resize-none rounded-xl border border-slate-800 bg-slate-900 px-3 py-2 text-sm text-white placeholder:text-slate-500 outline-none focus:border-red-500"
+                    className={cn(
+                      'flex-1 resize-none rounded-xl border px-3 py-2 text-sm outline-none',
+                      isDark
+                        ? 'border-white/10 bg-white/5 text-white placeholder:text-slate-500 focus:border-cyan-500'
+                        : 'border-slate-200 bg-slate-50 text-slate-900 placeholder:text-slate-400 focus:border-cyan-500',
+                    )}
                   />
                   <button
                     type="submit"
                     disabled={!draft.trim() || sendM.isPending}
-                    className="h-10 w-10 shrink-0 rounded-xl bg-red-600 text-white grid place-items-center disabled:opacity-40"
+                    className="keep-on-color h-10 w-10 shrink-0 rounded-xl bg-cyan-600 text-white grid place-items-center disabled:opacity-40"
                   >
                     {sendM.isPending ? <Loader2 className="w-4 h-4 animate-spin" /> : <Send className="w-4 h-4" />}
                   </button>
@@ -407,17 +474,22 @@ export default function NodoEnlacePage() {
   );
 }
 
-function StatusPill({ cuerpo }: { cuerpo: CuerpoCard }) {
+function StatusPill({ cuerpo, isDark }: { cuerpo: CuerpoCard; isDark: boolean }) {
   if (cuerpo.link?.status === 'ACTIVE') {
-    return <span className="text-[10px] font-bold uppercase tracking-wide text-emerald-400">Enlace</span>;
+    return <span className={cn('text-[10px] font-black uppercase tracking-wide', isDark ? 'text-emerald-400' : 'text-emerald-700')}>Enlace</span>;
   }
   if (cuerpo.link?.status === 'PENDING') {
-    return <span className="text-[10px] font-bold uppercase tracking-wide text-amber-300">{cuerpo.link.incoming ? 'Entrante' : 'Pendiente'}</span>;
+    return (
+      <span className={cn('text-[10px] font-black uppercase tracking-wide', isDark ? 'text-amber-300' : 'text-amber-700')}>
+        {cuerpo.link.incoming ? 'Entrante' : 'Pendiente'}
+      </span>
+    );
   }
-  return <span className="text-[10px] font-bold uppercase tracking-wide text-slate-500">Libre</span>;
+  return <span className={cn('text-[10px] font-black uppercase tracking-wide', isDark ? 'text-slate-500' : 'text-slate-400')}>Libre</span>;
 }
 
 function LinkActions({
+  isDark,
   cuerpo,
   note,
   setNote,
@@ -426,6 +498,7 @@ function LinkActions({
   onAccept,
   onClose,
 }: {
+  isDark: boolean;
   cuerpo: CuerpoCard;
   note: string;
   setNote: (value: string) => void;
@@ -436,7 +509,14 @@ function LinkActions({
 }) {
   if (cuerpo.link?.status === 'ACTIVE') {
     return (
-      <button type="button" onClick={onClose} className="rounded-lg border border-slate-700 px-3 py-2 text-xs text-slate-300 hover:bg-slate-800">
+      <button
+        type="button"
+        onClick={onClose}
+        className={cn(
+          'rounded-lg border px-3 py-2 text-xs font-semibold',
+          isDark ? 'border-white/15 text-slate-300 hover:bg-white/5' : 'border-slate-300 text-slate-700 hover:bg-slate-50',
+        )}
+      >
         Cerrar enlace
       </button>
     );
@@ -444,13 +524,21 @@ function LinkActions({
   if (cuerpo.link?.status === 'PENDING' && cuerpo.link.incoming) {
     return (
       <div className="flex gap-2">
-        <button type="button" onClick={onAccept} className="rounded-lg bg-emerald-600 px-3 py-2 text-xs font-semibold text-white">Aceptar</button>
-        <button type="button" onClick={onClose} className="rounded-lg border border-slate-700 px-3 py-2 text-xs text-slate-300">Rechazar</button>
+        <button type="button" onClick={onAccept} className="keep-on-color rounded-lg bg-emerald-600 px-3 py-2 text-xs font-semibold text-white">
+          Aceptar
+        </button>
+        <button
+          type="button"
+          onClick={onClose}
+          className={cn('rounded-lg border px-3 py-2 text-xs', isDark ? 'border-white/15 text-slate-300' : 'border-slate-300 text-slate-700')}
+        >
+          Rechazar
+        </button>
       </div>
     );
   }
   if (cuerpo.link?.status === 'PENDING') {
-    return <p className="text-xs text-amber-300">Esperando aceptación</p>;
+    return <p className={cn('text-xs font-semibold', isDark ? 'text-amber-300' : 'text-amber-700')}>Esperando aceptación</p>;
   }
   return (
     <div className="flex flex-col sm:flex-row gap-2 min-w-[220px]">
@@ -458,15 +546,20 @@ function LinkActions({
         value={note}
         onChange={(e) => setNote(e.target.value)}
         placeholder="Motivo (opcional)"
-        className="rounded-lg border border-slate-800 bg-slate-900 px-3 py-2 text-xs text-white placeholder:text-slate-500 outline-none"
+        className={cn(
+          'rounded-lg border px-3 py-2 text-xs outline-none',
+          isDark
+            ? 'border-white/10 bg-white/5 text-white placeholder:text-slate-500'
+            : 'border-slate-200 bg-white text-slate-900 placeholder:text-slate-400',
+        )}
       />
       <button
         type="button"
         onClick={onRequest}
         disabled={requesting}
-        className="inline-flex items-center justify-center gap-1.5 rounded-lg bg-red-600 px-3 py-2 text-xs font-semibold text-white disabled:opacity-40"
+        className="keep-on-color inline-flex items-center justify-center gap-1.5 rounded-lg bg-cyan-600 px-3 py-2 text-xs font-semibold text-white disabled:opacity-40"
       >
-        {requesting ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Link2 className="w-3.5 h-3.5" />}
+        {requesting ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <NodoEnlaceMark className="w-3.5 h-3.5" />}
         Pedir enlace
       </button>
     </div>

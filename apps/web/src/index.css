@@ -273,6 +273,38 @@ html:not(.dark) .nodo360-alarms-page .keep-on-color * {
   color: #ffffff !important;
 }
 
+/* NodoEnlace: identidad cian, contraste real en tema claro */
+html:not(.dark) .nodo-enlace-page .text-slate-900 { color: #0f172a !important; }
+html:not(.dark) .nodo-enlace-page .text-slate-800 { color: #1e293b !important; }
+html:not(.dark) .nodo-enlace-page .text-slate-700 { color: #334155 !important; }
+html:not(.dark) .nodo-enlace-page .text-slate-600 { color: #475569 !important; }
+html:not(.dark) .nodo-enlace-page .text-slate-500 { color: #64748b !important; }
+html:not(.dark) .nodo-enlace-page .text-cyan-700 { color: #0e7490 !important; }
+html:not(.dark) .nodo-enlace-page .keep-on-color,
+html:not(.dark) .nodo-enlace-page .keep-on-color * {
+  color: #ffffff !important;
+}
+html:not(.dark) .nodo-enlace-page .keep-on-color .text-cyan-50 {
+  color: #ecfeff !important;
+}
+html:not(.dark) .nodo-enlace-page .keep-on-color .text-cyan-100\/80 {
+  color: rgba(207, 250, 254, 0.85) !important;
+}
+html:not(.dark) aside nav a.bg-cyan-600,
+html:not(.dark) aside nav a.bg-cyan-600 svg,
+html:not(.dark) header a.bg-cyan-600,
+html:not(.dark) header a.bg-cyan-600 * {
+  color: #ffffff !important;
+}
+
+@keyframes enlace-mark-pulse {
+  0%, 100% { box-shadow: 0 0 0 0 rgba(8, 145, 178, 0.45); }
+  50% { box-shadow: 0 0 0 12px rgba(8, 145, 178, 0); }
+}
+.enlace-mark-pulse {
+  animation: enlace-mark-pulse 2.4s ease-in-out infinite;
+}
+
 /* Ayuda: el hero sobre video debe conservar texto claro aunque el tema global sea light */
 html:not(.dark) .nodo360-ayuda .ayuda-hero-copy,
 html:not(.dark) .nodo360-ayuda .ayuda-hero-copy *,

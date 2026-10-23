@@ -5,12 +5,13 @@ import { useThemeStore } from '../../store/themeStore';
 import { cn } from '../../lib/utils';
 import CentralQuickOverview from './CentralQuickOverview';
 import { canViewCuartelesOverview } from '../../hooks/useCuartelesOverview';
+import { NodoEnlaceMark } from '../nodo-enlace/NodoEnlaceMark';
 
 const TABS = [
   { to: '/central-emergencia', label: 'Consola activa', icon: LayoutDashboard },
   { to: '/central-llamados', label: 'Llamados', icon: Phone },
   { to: '/nodo-command', label: 'NodoCommand', icon: Flag },
-  { to: '/nodo-enlace', label: 'NodoEnlace', icon: Radio },
+  { to: '/nodo-enlace', label: 'NodoEnlace', icon: NodoEnlaceMark },
   { to: '/despacho360', label: 'Despacho360', icon: Siren },
   { to: '/nodo360-alarms', label: 'Nodo360 Alarms', icon: Bell },
   { to: '/central-express', label: 'Central Express', icon: Zap },
@@ -59,6 +60,7 @@ export default function CentralOperatorBar() {
         <nav className="flex items-center gap-1 sm:gap-1.5 flex-shrink justify-center overflow-x-auto scrollbar-none">
           {TABS.map(({ to, label, icon: Icon }) => {
             const active = location.pathname === to || location.pathname.startsWith(`${to}/`);
+            const enlace = to === '/nodo-enlace';
             return (
               <Link
                 key={to}
@@ -67,10 +69,16 @@ export default function CentralOperatorBar() {
                 className={cn(
                   'flex items-center justify-center w-8 h-8 sm:w-9 sm:h-9 rounded-lg transition-colors shrink-0',
                   active
-                    ? 'keep-on-color bg-red-600 !text-white shadow-md shadow-red-600/25'
+                    ? enlace
+                      ? 'keep-on-color bg-cyan-600 !text-white shadow-md shadow-cyan-600/25'
+                      : 'keep-on-color bg-red-600 !text-white shadow-md shadow-red-600/25'
                     : isDark
-                      ? 'text-slate-400 hover:text-white hover:bg-slate-800'
-                      : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100',
+                      ? enlace
+                        ? 'text-cyan-400 hover:text-cyan-200 hover:bg-cyan-500/10'
+                        : 'text-slate-400 hover:text-white hover:bg-slate-800'
+                      : enlace
+                        ? 'text-cyan-700 hover:text-cyan-900 hover:bg-cyan-50'
+                        : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100',
                 )}
               >
                 <Icon className="w-4 h-4 shrink-0" />

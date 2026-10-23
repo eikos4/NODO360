@@ -46,6 +46,7 @@ export default function AppLayout() {
   const toggleTheme = useThemeStore((s) => s.toggleTheme);
   const isDark = globalTheme === 'dark';
   const isDespacho360 = location.pathname.startsWith('/despacho360');
+  const isNodoEnlace = location.pathname.startsWith('/nodo-enlace');
   const isBitacora360 =
     location.pathname === '/bitacora360' ||
     location.pathname.startsWith('/bitacora360/') ||
@@ -67,7 +68,9 @@ export default function AppLayout() {
         ? isDespacho360
           ? 'bg-white'
           : 'bg-slate-100'
-        : 'bg-slate-950';
+        : isNodoEnlace
+          ? 'bg-[#061018]'
+          : 'bg-slate-950';
 
   useEffect(() => {
     if (isCentralOperator(user?.role)) return;
