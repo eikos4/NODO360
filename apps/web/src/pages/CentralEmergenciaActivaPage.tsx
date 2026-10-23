@@ -26,6 +26,7 @@ import PublicOsmMap, { PARRAL_CENTER } from '../components/map/PublicOsmMap';
 import LocateEmergencyStudio from '../components/dispatch/LocateEmergencyStudio';
 import { incidentNavigatePoint, openGoogleMapsDirections } from '../lib/incident-location-pin';
 import DoubleDispatchConfirmModal from '../components/dispatch/DoubleDispatchConfirmModal';
+import { EnlaceHeaderButton, EnlacePendingBanner, useNodoEnlaceInbox } from '../components/dispatch/CentralEnlaceBanner';
 import type { CentralParralThemeTokens } from '../lib/central-parral-theme';
 import { useCentralSceneBackground } from '../lib/central-scene-backgrounds';
 
@@ -310,6 +311,7 @@ function IdleHomeClock({ isDark }: { isDark: boolean }) {
 }
 
 const IDLE_SHORTCUTS = [
+  { to: '/nodo-enlace', label: 'NodoEnlace', hint: 'Chat entre cuerpos', icon: Radio },
   { to: '/nodo360-alarms', label: 'Nodo360 Alarms', hint: 'Despacho con mapa', icon: Bell },
   { to: '/despacho360', label: 'Despacho360', hint: 'Botonera completa', icon: Siren },
   { to: '/bitacora360', label: 'Bitácora360', hint: 'Fases e informe', icon: BookOpen },
@@ -330,6 +332,7 @@ function IdleHome({
   onLocate,
   isFetching,
   onRefresh,
+  pendingEnlace,
 }: {
   th: CentralParralThemeTokens;
   isDark: boolean;
@@ -339,6 +342,7 @@ function IdleHome({
   onLocate: () => void;
   isFetching: boolean;
   onRefresh: () => void;
+  pendingEnlace: number;
 }) {
   const user = useAuthStore((s) => s.user);
   const darkUi = isDark || sceneBg;
@@ -396,6 +400,26 @@ function IdleHome({
               <Siren className="w-5 h-5" />
               Despachar alarma
             </button>
+            <Link
+              to="/nodo-enlace"
+              className={`relative inline-flex items-center gap-2 px-5 py-3.5 rounded-2xl border text-sm font-black uppercase tracking-wide ${
+                pendingEnlace > 0
+                  ? 'keep-on-color border-amber-400 bg-amber-500 text-amber-950'
+                  : sceneBg
+                    ? 'keep-on-color border-white/30 bg-white/10 text-white hover:bg-white/15'
+                    : isDark
+                      ? 'border-sky-400/40 text-sky-200 hover:bg-sky-500/10'
+                      : 'border-sky-600 text-sky-900 hover:bg-sky-50'
+              }`}
+            >
+              <Radio className="w-4 h-4" />
+              Enlace
+              {pendingEnlace > 0 && (
+                <span className="min-w-[1.15rem] h-5 px-1 rounded-full bg-red-600 text-white text-[11px] leading-5 text-center">
+                  {pendingEnlace}
+                </span>
+              )}
+            </Link>
             <Link
               to="/nodo360-alarms"
               className={`inline-flex items-center gap-2 px-5 py-3.5 rounded-2xl border text-sm font-bold ${
@@ -553,6 +577,7 @@ export default function CentralEmergenciaActivaPage() {
     });
   };
   const sceneSrc = useCentralSceneBackground(sceneBg);
+  const enlaceInbox = useNodoEnlaceInbox();
 
   const d = useQuickDispatch({
     autoDispatchOnKey: false,
@@ -851,6 +876,12 @@ export default function CentralEmergenciaActivaPage() {
               <ImageIcon className="w-3.5 h-3.5" />
               {sceneBg ? 'Quitar fondo' : 'Fondo'}
             </button>
+            <EnlaceHeaderButton
+              pendingCount={enlaceInbox.pendingIn.length}
+              activeCount={enlaceInbox.activeCount}
+              sceneBg={sceneBg}
+              isDark={isDark}
+            />
             <button
               type="button"
               onClick={() => setShowDispatch((v) => !v)}
@@ -919,6 +950,7 @@ export default function CentralEmergenciaActivaPage() {
           </div>
         </div>
       </header>
+      <EnlacePendingBanner sceneBg={sceneBg} isDark={isDark} />
 
       {idleHome ? (
         <IdleHome
@@ -930,6 +962,7 @@ export default function CentralEmergenciaActivaPage() {
           onLocate={() => setLocateOpen(true)}
           isFetching={isFetching}
           onRefresh={() => void refetch()}
+          pendingEnlace={enlaceInbox.pendingIn.length}
         />
       ) : (
       <div className="relative z-10 flex-1 min-h-0 grid grid-cols-1 xl:grid-cols-[280px_minmax(0,1fr)_340px] gap-0 overflow-hidden">
