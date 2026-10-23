@@ -39,6 +39,7 @@ import { OnboardingModule } from './onboarding/onboarding.module';
 import { PlatformModule } from './platform/platform.module';
 import { CommandPostModule } from './command-post/command-post.module';
 import { NodoEnlaceModule } from './nodo-enlace/nodo-enlace.module';
+import { AyudaModule } from './ayuda/ayuda.module';
 import * as Joi from 'joi';
 
 @Module({
@@ -55,6 +56,9 @@ import * as Joi from 'joi';
         CLOUDINARY_API_KEY: Joi.string().optional(),
         CLOUDINARY_API_SECRET: Joi.string().optional(),
         FIREBASE_SERVICE_ACCOUNT_JSON: Joi.string().optional(),
+        INSTAGRAM_ACCESS_TOKEN: Joi.string().optional(),
+        INSTAGRAM_USER_ID: Joi.string().optional(),
+        INSTAGRAM_USERNAME: Joi.string().optional(),
       })
     }),
     ThrottlerModule.forRoot([{
@@ -98,6 +102,7 @@ import * as Joi from 'joi';
     PlatformModule,
     CommandPostModule,
     NodoEnlaceModule,
+    AyudaModule,
   ],
   providers: [
     {

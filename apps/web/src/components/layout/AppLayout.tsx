@@ -64,13 +64,15 @@ export default function AppLayout() {
         ? globalTheme === 'light'
           ? 'bg-[#f4f6f9]'
           : 'bg-[#070b12]'
+      : isNodoEnlace
+        ? globalTheme === 'light'
+          ? 'bg-slate-100'
+          : 'bg-[#061018]'
       : isImmersive && globalTheme === 'light'
         ? isDespacho360
           ? 'bg-white'
           : 'bg-slate-100'
-        : isNodoEnlace
-          ? 'bg-[#061018]'
-          : 'bg-slate-950';
+        : 'bg-slate-950';
 
   useEffect(() => {
     if (isCentralOperator(user?.role)) return;
