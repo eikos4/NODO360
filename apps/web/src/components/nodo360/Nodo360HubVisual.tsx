@@ -37,6 +37,7 @@ const GROUPS = [
     x: 32, y: 65,
     side: 'left' as const,
     modules: [
+      { label: 'Mi compañía', icon: Building2, route: '/compania' },
       { label: 'Personas', icon: Users, route: '/users' },
       { label: 'Guardias', icon: Calendar, route: '/shifts' },
       { label: 'Salud', icon: HeartPulse, route: '/health' },

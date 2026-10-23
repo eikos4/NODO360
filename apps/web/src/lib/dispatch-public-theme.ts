@@ -1,5 +1,5 @@
 export type DispatchPublicThemeId = 'dark' | 'light' | 'nodo' | 'verde';
-export type SalaLook = 'light' | 'nodo' | 'verde' | 'night' | 'salida' | 'comando';
+export type SalaLook = 'light' | 'nodo' | 'verde' | 'night' | 'salida' | 'comando' | 'compania';
 
 export type DispatchPublicThemeTokens = {
   page: string;

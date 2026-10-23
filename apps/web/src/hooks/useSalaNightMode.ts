@@ -4,7 +4,7 @@ import type { SalaLook } from '../lib/dispatch-public-theme';
 const LOOK_KEY = 'nodo360_sala_look';
 const LEGACY_KEY = 'nodo360_sala_night';
 
-const LOOKS: SalaLook[] = ['light', 'nodo', 'verde', 'night', 'salida', 'comando'];
+const LOOKS: SalaLook[] = ['light', 'nodo', 'verde', 'night', 'salida', 'comando', 'compania'];
 
 export type SalaNightPref = 'auto' | 'day' | 'night';
 
@@ -29,12 +29,17 @@ function readLook(): SalaLook {
 export function useSalaNightMode() {
   const [look, setLook] = useState<SalaLook>(readLook);
 
+  const persist = (next: SalaLook) => {
+    try { localStorage.setItem(LOOK_KEY, next); } catch { /* ignore */ }
+    return next;
+  };
+
   const cycle = useCallback(() => {
-    setLook((prev) => {
-      const next = LOOKS[(LOOKS.indexOf(prev) + 1) % LOOKS.length];
-      try { localStorage.setItem(LOOK_KEY, next); } catch { /* ignore */ }
-      return next;
-    });
+    setLook((prev) => persist(LOOKS[(LOOKS.indexOf(prev) + 1) % LOOKS.length]));
+  }, []);
+
+  const select = useCallback((next: SalaLook) => {
+    setLook(persist(next));
   }, []);
 
   const night = look === 'night';
@@ -42,6 +47,7 @@ export function useSalaNightMode() {
   const isVerde = look === 'verde';
   const isSalida = look === 'salida';
   const isComando = look === 'comando';
+  const isCompania = look === 'compania';
   const pref: SalaNightPref = look === 'night' ? 'night' : 'day';
   const label =
     look === 'light' ? 'Tema claro'
@@ -49,7 +55,8 @@ export function useSalaNightMode() {
         : look === 'verde' ? 'Tema verde'
           : look === 'salida' ? 'Tema salida'
             : look === 'comando' ? 'Tema comando'
+              : look === 'compania' ? 'Mi compañía'
               : 'Guardia nocturna';
 
-  return { look, night, isNodo, isVerde, isSalida, isComando, pref, cycle, label };
+  return { look, night, isNodo, isVerde, isSalida, isComando, isCompania, pref, cycle, select, label };
 }

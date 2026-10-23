@@ -40,6 +40,7 @@ import { PlatformModule } from './platform/platform.module';
 import { CommandPostModule } from './command-post/command-post.module';
 import { NodoEnlaceModule } from './nodo-enlace/nodo-enlace.module';
 import { AyudaModule } from './ayuda/ayuda.module';
+import { CompanyLifeModule } from './company-life/company-life.module';
 import * as Joi from 'joi';
 
 @Module({
@@ -103,6 +104,7 @@ import * as Joi from 'joi';
     CommandPostModule,
     NodoEnlaceModule,
     AyudaModule,
+    CompanyLifeModule,
   ],
   providers: [
     {

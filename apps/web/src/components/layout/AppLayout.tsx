@@ -106,7 +106,7 @@ export default function AppLayout() {
   const visibleItems = navItems.filter((item) => canAccessNavRoles(user, item.roles));
 
   // Dynamic Mobile Bottom Bar items
-  const PREFERRED_BOTTOM_ROUTES = ['/emergencia-respuesta', '/operational-map', '/nodo360', '/alerts'];
+  const PREFERRED_BOTTOM_ROUTES = ['/emergencia-respuesta', '/compania', '/operational-map', '/nodo360', '/alerts'];
   const bottomItems = visibleItems.filter((i) => PREFERRED_BOTTOM_ROUTES.includes(i.to));
   const remainingVisible = visibleItems.filter((i) => !PREFERRED_BOTTOM_ROUTES.includes(i.to));
   const finalBottomItems = [...bottomItems, ...remainingVisible].slice(0, 4);

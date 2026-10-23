@@ -8,6 +8,7 @@ import { PublicEmergency } from '../dispatch/DispatchEmergenciesPanel';
 import PublicEmergencySummaryModal, { type EmergencyOpen } from '../dispatch/PublicEmergencySummaryModal';
 import RoleBadge from '../RoleBadge';
 import PublicOsmMap, { PARRAL_CENTER } from '../map/PublicOsmMap';
+import SalaCompaniaLife from './SalaCompaniaLife';
 
 type NoveltyTone = 'red' | 'amber' | 'blue';
 
@@ -105,7 +106,7 @@ interface Props {
   onEmergency?: boolean;
   padActive?: boolean;
   night?: boolean;
-  look?: 'light' | 'nodo' | 'verde' | 'night' | 'salida' | 'comando';
+  look?: 'light' | 'nodo' | 'verde' | 'night' | 'salida' | 'comando' | 'compania';
   requestHeaders?: Record<string, string>;
   onDownloadPdf?: (emergency: PublicEmergency) => void;
 }
@@ -212,7 +213,6 @@ export default function PublicCompanyModernView({ data, onToggleMember, onToggle
   const [filterState, setFilterState] = useState<'all' | 'available' | 'unavailable'>('available');
   const [globalSearchResult, setGlobalSearchResult] = useState<any>(null);
   const [isSearchingGlobal, setIsSearchingGlobal] = useState(false);
-  const [noveltyOpen, setNoveltyOpen] = useState<Novelty | 'all' | null>(null);
   const [emergencyOpen, setEmergencyOpen] = useState<EmergencyOpen>(null);
   const searchRef = useRef<HTMLInputElement>(null);
 
@@ -676,124 +676,11 @@ export default function PublicCompanyModernView({ data, onToggleMember, onToggle
             </button>
           </div>
 
-          <div className="bg-white rounded-2xl border border-slate-100 shadow-sm p-5 flex flex-col flex-1">
-            <div className="flex items-center justify-between mb-4">
-              <button type="button" className="flex items-center gap-2 text-left" onClick={() => setNoveltyOpen('all')}>
-                <Calendar className="w-4 h-4 text-red-500" />
-                <h2 className="text-sm font-semibold uppercase text-slate-800">Novedades y anuncios</h2>
-              </button>
-              <button type="button" onClick={() => setNoveltyOpen('all')} className="text-xs font-bold text-blue-600 hover:underline flex items-center gap-1">
-                Ver todas <ChevronRight className="w-3 h-3" />
-              </button>
-            </div>
-            
-            <div className="space-y-4">
-              {NOVEDADES.map((item) => {
-                const tone = noveltyTones[item.tone];
-                const Icon = item.tone === 'red' ? Siren : item.tone === 'amber' ? Truck : Clock;
-                return (
-                  <button
-                    key={item.id}
-                    type="button"
-                    onClick={() => setNoveltyOpen(item)}
-                    className={`w-full flex gap-3 items-start text-left rounded-xl p-1 -mx-1 transition-colors ${chrome.hover}`}
-                  >
-                    <div className={`w-8 h-8 rounded-full flex items-center justify-center shrink-0 ${tone.iconBg} ${tone.icon}`}>
-                      <Icon className="w-4 h-4" />
-                    </div>
-                    <div className="flex-1 min-w-0">
-                      <div className="flex justify-between items-start gap-2">
-                        <p className={`text-xs font-semibold leading-tight ${chrome.text}`}>{item.title}</p>
-                        <span className={`text-[9px] shrink-0 ${chrome.muted}`}>{item.when}</span>
-                      </div>
-                      <p className={`text-[10px] mt-0.5 mb-1.5 ${chrome.muted}`}>{item.summary}</p>
-                      <span className={`text-[8px] font-semibold uppercase border px-2 py-0.5 rounded-full ${tone.badge}`}>{item.category}</span>
-                    </div>
-                  </button>
-                );
-              })}
-            </div>
-          </div>
+          <SalaCompaniaLife slug={data.slug} variant="compact" dark={inkDark || night} />
           
         </div>
       </div>
       
-      {noveltyOpen && (
-        <div
-          className={`sala-dark-modal fixed inset-0 z-[80] flex items-center justify-center p-4 ${inkDark ? 'bg-black/65' : 'bg-slate-900/50'} backdrop-blur-[2px]`}
-          onClick={() => setNoveltyOpen(null)}
-        >
-          <div
-            role="dialog"
-            aria-modal="true"
-            className={`w-full max-w-lg rounded-2xl shadow-2xl overflow-hidden ${inkDark ? `${chrome.card} border ${chrome.border}` : 'bg-white border border-slate-200'}`}
-            onClick={(e) => e.stopPropagation()}
-          >
-            <div className={`flex items-center justify-between px-5 py-4 border-b ${inkDark ? chrome.border : 'border-slate-100'}`}>
-              <div className="flex items-center gap-2">
-                <Calendar className="w-4 h-4 text-red-500" />
-                <h3 className={`text-sm font-semibold uppercase ${inkDark ? chrome.text : 'text-slate-800'}`}>
-                  {noveltyOpen === 'all' ? 'Novedades y anuncios' : 'Novedad'}
-                </h3>
-              </div>
-              <button type="button" onClick={() => setNoveltyOpen(null)} className={`p-1.5 rounded-lg ${inkDark ? `${chrome.hover} ${chrome.muted}` : 'hover:bg-slate-100 text-slate-500'}`} aria-label="Cerrar">
-                <X className="w-4 h-4" />
-              </button>
-            </div>
-
-            {noveltyOpen === 'all' ? (
-              <div className="p-3 max-h-[70vh] overflow-y-auto space-y-2">
-                {NOVEDADES.map((item) => {
-                  const tone = noveltyTones[item.tone];
-                  const Icon = item.tone === 'red' ? Siren : item.tone === 'amber' ? Truck : Clock;
-                  return (
-                    <button
-                      key={item.id}
-                      type="button"
-                      onClick={() => setNoveltyOpen(item)}
-                      className={`w-full flex gap-3 items-start text-left rounded-xl p-3 border ${inkDark ? `${chrome.hover} ${chrome.border}` : 'hover:bg-slate-50 border-slate-100'}`}
-                    >
-                      <div className={`w-9 h-9 rounded-full flex items-center justify-center shrink-0 ${tone.iconBg} ${tone.icon}`}>
-                        <Icon className="w-4 h-4" />
-                      </div>
-                      <div className="flex-1 min-w-0">
-                        <div className="flex justify-between gap-2">
-                          <p className={`text-sm font-semibold ${inkDark ? chrome.text : 'text-slate-800'}`}>{item.title}</p>
-                          <span className={`text-[10px] shrink-0 ${inkDark ? chrome.muted : 'text-slate-400'}`}>{item.when}</span>
-                        </div>
-                        <p className={`text-xs mt-0.5 ${inkDark ? chrome.muted : 'text-slate-500'}`}>{item.summary}</p>
-                        <span className={`inline-block mt-2 text-[9px] font-semibold uppercase border px-2 py-0.5 rounded-full ${tone.badge}`}>{item.category}</span>
-                      </div>
-                    </button>
-                  );
-                })}
-              </div>
-            ) : (
-              <div className="p-5 space-y-3">
-                <span className={`inline-flex text-[10px] font-semibold uppercase border px-2.5 py-1 rounded-full ${noveltyTones[noveltyOpen.tone].badge}`}>
-                  {noveltyOpen.category}
-                </span>
-                <h4 className={`text-lg font-semibold leading-snug ${inkDark ? chrome.text : 'text-slate-900'}`}>{noveltyOpen.title}</h4>
-                <div className={`flex flex-wrap gap-3 text-xs ${inkDark ? chrome.muted : 'text-slate-600'}`}>
-                  <span className="inline-flex items-center gap-1.5"><Clock className="w-3.5 h-3.5" />{noveltyOpen.datetime}</span>
-                  {noveltyOpen.place && (
-                    <span className="inline-flex items-center gap-1.5"><MapPin className="w-3.5 h-3.5" />{noveltyOpen.place}</span>
-                  )}
-                </div>
-                <p className={`text-sm leading-relaxed ${inkDark ? chrome.body : 'text-slate-700'}`}>{noveltyOpen.body}</p>
-                <button
-                  type="button"
-                  onClick={() => setNoveltyOpen(null)}
-                  className={`w-full mt-2 py-2.5 rounded-xl text-sm font-semibold ${chrome.close}`}
-                >
-                  Cerrar
-                </button>
-              </div>
-            )}
-          </div>
-        </div>
-      )}
-
       <PublicEmergencySummaryModal
         open={emergencyOpen}
         emergencies={data.recentEmergencies}

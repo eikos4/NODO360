@@ -1,4 +1,4 @@
-import { LogOut, Bell, Sun, Moon, HelpCircle, Compass } from 'lucide-react';
+import { LogOut, Bell, Sun, Moon, HelpCircle, Compass, Home } from 'lucide-react';
 import { useAuthStore } from '../../store/authStore';
 import { useThemeStore } from '../../store/themeStore';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
@@ -6,6 +6,8 @@ import { cn } from '../../lib/utils';
 import CentralQuickOverview from './CentralQuickOverview';
 import { canViewCuartelesOverview } from '../../hooks/useCuartelesOverview';
 import UserIdentityBlock from './UserIdentityBlock';
+import { useAuthCompany } from '../../hooks/useAuthCompany';
+import { COMPANIA_BOARD_PATH, companias360Path } from '../../lib/companias360';
 
 interface HeaderProps {
   onStartTour?: () => void;
@@ -13,6 +15,10 @@ interface HeaderProps {
 
 export default function Header({ onStartTour }: HeaderProps) {
   const { user, logout } = useAuthStore();
+  const company = useAuthCompany();
+  const companiaHref = company?.dispatchSlug
+    ? `${companias360Path(company.dispatchSlug)}?vista=compania`
+    : COMPANIA_BOARD_PATH;
   const navigate = useNavigate();
   const location = useLocation();
   const { theme, toggleTheme } = useThemeStore();
@@ -45,6 +51,18 @@ export default function Header({ onStartTour }: HeaderProps) {
         )}
 
         <div className="flex items-center gap-1 sm:gap-2 shrink-0">
+          <Link
+            to={companiaHref}
+            title="Mi compañía"
+            className={cn(
+              btnClass,
+              'hidden sm:inline-flex items-center gap-1.5 px-2.5',
+              (location.pathname.startsWith('/compania') || location.search.includes('vista=compania')) && 'bg-red-600 !text-white hover:bg-red-600',
+            )}
+          >
+            <Home className="w-4 h-4" />
+            <span className="hidden lg:inline text-xs font-bold">Mi compañía</span>
+          </Link>
           {onStartTour && (
             <button
               onClick={onStartTour}

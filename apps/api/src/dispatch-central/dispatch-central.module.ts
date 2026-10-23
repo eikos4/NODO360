@@ -7,12 +7,14 @@ import { StandbyAlertService } from './standby-alert.service';
 import { PrismaModule } from '../prisma/prisma.module';
 import { NotificationsModule } from '../notifications/notifications.module';
 import { EmergencyRealtimeModule } from '../emergency-realtime/emergency-realtime.module';
+import { CompanyLifeModule } from '../company-life/company-life.module';
 
 @Module({
   imports: [
     PrismaModule,
     NotificationsModule,
     EmergencyRealtimeModule,
+    CompanyLifeModule,
     JwtModule.registerAsync({
       imports: [ConfigModule],
       inject: [ConfigService],

@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { NavLink } from 'react-router-dom';
 import {
-  LayoutDashboard, Building2, Users, Package,
+  LayoutDashboard, Home, Building2, Users, Package,
   Truck, FileText, ShieldAlert, Wrench, DollarSign,
   Flame, Bell, ShoppingCart, Zap, Gauge, Network, Siren, Megaphone, Droplets, Shield, HandCoins, Signpost,
   GraduationCap, Map, BookOpen, ClipboardCheck, ClipboardList, Fuel, HeartPulse, PanelLeftClose, PanelLeft, Radio, Globe, Eye, Crown, Tv, HelpCircle, Phone, Flag
@@ -36,6 +36,7 @@ export const navItems: NavItem[] = [
   { to: '/central-despachos-parral', label: 'Central Parral', icon: Flame, roles: ['SUPER_ADMIN', 'COMANDANTE', 'CAPITAN', 'OPERADOR_CENTRAL'] },
   { to: '/dispatch/global', label: 'Central Global', icon: Globe, roles: ['SUPER_ADMIN', 'COMANDANTE', 'CAPITAN', 'OPERADOR_CENTRAL', 'SECRETARIO'] },
   { to: '/dashboard',  label: 'Dashboard',   icon: LayoutDashboard, roles: ['ALL'] },
+  { to: '/compania',   label: 'Mi compañía', icon: Home,            roles: ['KODESK', 'SUPER_ADMIN', 'COMANDANTE', 'CAPITAN', 'SECRETARIO', 'TESORERO', 'ENCARGADO_MATERIAL', 'AUDITOR', 'BOMBERO', 'BOMBERO_HONORARIO', 'BOMBERO_INICIAL', 'BOMBERO_PROFESIONAL'] },
   { to: '/alerts',     label: 'Alertas',      icon: Bell,            roles: ['ALL'] },
   { to: '/announcements', label: 'Comunicados', icon: Megaphone,     roles: ['ALL'] },
   { to: '/central-avisos', label: 'Avisos a la app', icon: Megaphone, roles: ['OPERADOR_CENTRAL', 'SUPER_ADMIN', 'COMANDANTE', 'CAPITAN'] },

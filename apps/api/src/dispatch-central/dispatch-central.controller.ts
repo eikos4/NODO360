@@ -2,6 +2,7 @@ import {
   BadRequestException,
   Body,
   Controller,
+  Delete,
   Get,
   Param,
   Patch,
@@ -23,6 +24,8 @@ import { RolesGuard } from '../auth/guards/roles.guard';
 import { Roles } from '../auth/decorators/roles.decorator';
 import { Actor } from '../common/cuerpo-scope';
 import { HeaderRequest } from '../common/sala-token';
+import { CreateLifeItemDto } from '../company-life/dto/create-life-item.dto';
+import { UpdateLifeItemDto } from '../company-life/dto/update-life-item.dto';
 
 const DISPATCH_ROLES = ['SUPER_ADMIN', 'COMANDANTE', 'CAPITAN', 'OPERADOR_CENTRAL'] as const;
 
@@ -138,6 +141,43 @@ export class DispatchCentralController {
       dto.operativeNumber,
       dto.available,
     );
+  }
+
+  @Get('public/:slug/life')
+  async getSalaLife(@Param('slug') slug: string, @Req() req: HeaderRequest) {
+    await this.service.assertPublicSalaAccess(slug, req);
+    return this.service.getSalaLife(slug);
+  }
+
+  @Post('public/:slug/life')
+  async createSalaLife(
+    @Param('slug') slug: string,
+    @Body() dto: CreateLifeItemDto,
+    @Req() req: HeaderRequest,
+  ) {
+    await this.service.assertPublicWriteAccess(slug, req);
+    return this.service.createSalaLife(slug, dto);
+  }
+
+  @Patch('public/:slug/life/:id')
+  async updateSalaLife(
+    @Param('slug') slug: string,
+    @Param('id') id: string,
+    @Body() dto: UpdateLifeItemDto,
+    @Req() req: HeaderRequest,
+  ) {
+    await this.service.assertPublicWriteAccess(slug, req);
+    return this.service.updateSalaLife(slug, id, dto);
+  }
+
+  @Delete('public/:slug/life/:id')
+  async removeSalaLife(
+    @Param('slug') slug: string,
+    @Param('id') id: string,
+    @Req() req: HeaderRequest,
+  ) {
+    await this.service.assertPublicWriteAccess(slug, req);
+    return this.service.removeSalaLife(slug, id);
   }
 
   @Patch('public/:slug/maquinista')

@@ -1,7 +1,9 @@
 import { Building2 } from 'lucide-react';
+import { Link } from 'react-router-dom';
 import { cn } from '../../lib/utils';
 import { useAuthStore } from '../../store/authStore';
 import { useAuthCompany } from '../../hooks/useAuthCompany';
+import { COMPANIA_BOARD_PATH, companias360Path } from '../../lib/companias360';
 
 const ROLE_LABELS: Record<string, string> = {
   KODESK: 'Kodesk · Plataforma',
@@ -79,9 +81,13 @@ export default function UserIdentityBlock({ variant, compact = false }: Props) {
         </p>
         {company ? (
           <>
-            <p className={cn('text-xs font-semibold truncate text-red-500', isHeader && 'dark:text-red-400')}>
+            <Link
+              to={company.dispatchSlug ? `${companias360Path(company.dispatchSlug)}?vista=compania` : COMPANIA_BOARD_PATH}
+              className={cn('text-xs font-semibold truncate text-red-500 hover:underline', isHeader && 'dark:text-red-400')}
+              title="Ir al tablero de mi compañía"
+            >
               {company.number}ª Compañía · {company.name}
-            </p>
+            </Link>
             <p className={cn('text-[11px] truncate', isHeader ? 'text-slate-600 dark:text-slate-500' : 'text-slate-500')}>
               {company.city} · {roleLabel}
             </p>

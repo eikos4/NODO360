@@ -8,12 +8,20 @@ export const COMPANIAS360 = [
   { number: 6, name: 'Sexta Remulcao', slug: 'parral-sexta-remulcao', short: '6ª Remulcao' },
 ] as const;
 
+export const COMPANIA_BOARD_PATH = '/compania';
+
 export function companias360Path(slug: string) {
   return `/central/${slug}`;
 }
 
 export function isCompanias360Path(pathname: string) {
   return pathname.startsWith('/central/') && pathname !== '/central-operativa';
+}
+
+export function isCompaniaBoardPath(pathname: string, search = '') {
+  if (pathname === COMPANIA_BOARD_PATH || pathname.startsWith(`${COMPANIA_BOARD_PATH}/`)) return true;
+  const vista = new URLSearchParams(search).get('vista');
+  return isCompanias360Path(pathname) && (vista === 'compania' || vista === 'compañia');
 }
 
 import { isBomberoRole } from './roles';

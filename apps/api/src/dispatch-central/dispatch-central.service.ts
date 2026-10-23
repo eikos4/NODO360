@@ -15,6 +15,9 @@ import { UpdateDispatchCentralDto } from './dto/update-dispatch-central.dto';
 import { Actor, assertCompanyAccess, companyIdsForActor, companyIdsInCuerpo } from '../common/cuerpo-scope';
 import { assignedRoles } from '../common/user-roles';
 import { EmergencyBroadcaster } from '../emergency-realtime/emergency-broadcaster.service';
+import { CompanyLifeService } from '../company-life/company-life.service';
+import { CreateLifeItemDto } from '../company-life/dto/create-life-item.dto';
+import { UpdateLifeItemDto } from '../company-life/dto/update-life-item.dto';
 import { EMERGENCY_EVENT_NAMES } from '../emergency-realtime/emergency-events.contract';
 import {
   HeaderRequest,
@@ -105,6 +108,7 @@ export class DispatchCentralService {
     private standbyAlerts: StandbyAlertService,
     private jwt: JwtService,
     private emergencies: EmergencyBroadcaster,
+    private companyLife: CompanyLifeService,
   ) {}
 
   private mapPublicStatus(
@@ -1787,5 +1791,48 @@ export class DispatchCentralService {
         status: true,
       },
     });
+  }
+
+  private async salaAuthorId(companyId: string) {
+    const officer = await this.prisma.user.findFirst({
+      where: {
+        companyId,
+        isActive: true,
+        OR: [
+          { role: { in: ['CAPITAN', 'SECRETARIO', 'COMANDANTE', 'SUPER_ADMIN'] } },
+          { roles: { hasSome: ['CAPITAN', 'SECRETARIO', 'COMANDANTE', 'SUPER_ADMIN'] } },
+        ],
+      },
+      select: { id: true },
+      orderBy: { updatedAt: 'desc' },
+    });
+    if (officer) return officer.id;
+    const any = await this.prisma.user.findFirst({
+      where: { companyId, isActive: true },
+      select: { id: true },
+    });
+    if (!any) throw new BadRequestException('No hay integrante en esta compañía para registrar el aviso');
+    return any.id;
+  }
+
+  async getSalaLife(slug: string) {
+    const company = await this.getCompanyBySlug(slug);
+    return this.companyLife.boardForCompany(company.id);
+  }
+
+  async createSalaLife(slug: string, dto: CreateLifeItemDto) {
+    const company = await this.getCompanyBySlug(slug);
+    const createdById = await this.salaAuthorId(company.id);
+    return this.companyLife.createInCompany(company.id, dto, createdById);
+  }
+
+  async updateSalaLife(slug: string, id: string, dto: UpdateLifeItemDto) {
+    const company = await this.getCompanyBySlug(slug);
+    return this.companyLife.updateInCompany(id, company.id, dto);
+  }
+
+  async removeSalaLife(slug: string, id: string) {
+    const company = await this.getCompanyBySlug(slug);
+    return this.companyLife.removeInCompany(id, company.id);
   }
 }

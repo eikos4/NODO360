@@ -33,6 +33,7 @@ const ROLE_MODULES: Record<string, { label: string; path: string; icon: React.El
     { label: 'Personal', path: '/users', icon: Users, color: 'text-emerald-400', desc: 'Nómina global' },
   ],
   SUPER_ADMIN: [
+    { label: 'Mi compañía', path: '/compania', icon: Building2, color: 'text-red-400', desc: 'Tablero privado: aseo, reuniones y anuncios' },
     { label: 'Comunicados', path: '/announcements', icon: Megaphone, color: 'text-violet-400', desc: 'Publicar avisos, oficiales y eventos' },
     { label: 'Compañías', path: '/companies', icon: Building2, color: 'text-blue-400', desc: 'Gestionar todas las compañías' },
     { label: 'Usuarios', path: '/users', icon: Users, color: 'text-emerald-400', desc: 'Administrar personal y roles' },
@@ -47,6 +48,7 @@ const ROLE_MODULES: Record<string, { label: string; path: string; icon: React.El
     { label: 'Alertas', path: '/alerts', icon: Siren, color: 'text-red-400', desc: 'Vencimientos críticos' },
   ],
   COMANDANTE: [
+    { label: 'Mi compañía', path: '/compania', icon: Building2, color: 'text-red-400', desc: 'Tablero privado: aseo, reuniones y anuncios' },
     { label: 'Comunicados', path: '/announcements', icon: Megaphone, color: 'text-violet-400', desc: 'Publicar avisos, oficiales y eventos' },
     { label: 'Compañías', path: '/companies', icon: Building2, color: 'text-blue-400', desc: 'Vista general de compañías' },
     { label: 'Personal', path: '/users', icon: Users, color: 'text-emerald-400', desc: 'Personal activo' },
@@ -65,6 +67,7 @@ const ROLE_MODULES: Record<string, { label: string; path: string; icon: React.El
     { label: 'Compras', path: '/purchases', icon: ShoppingCart, color: 'text-orange-400', desc: 'Órdenes de compra' },
   ],
   SECRETARIO: [
+    { label: 'Mi compañía', path: '/compania', icon: Building2, color: 'text-red-400', desc: 'Tablero privado: aseo, reuniones y anuncios' },
     { label: 'Comunicados', path: '/announcements', icon: Megaphone, color: 'text-violet-400', desc: 'Publicar avisos oficiales y eventos' },
     { label: 'Documentos', path: '/documents', icon: FileText, color: 'text-cyan-400', desc: 'Gestión documental' },
     { label: 'Personal', path: '/users', icon: Users, color: 'text-emerald-400', desc: 'Personal activo' },
@@ -78,6 +81,7 @@ const ROLE_MODULES: Record<string, { label: string; path: string; icon: React.El
     { label: 'Documentos', path: '/documents', icon: FileText, color: 'text-cyan-400', desc: 'Documentos financieros' },
   ],
   CAPITAN: [
+    { label: 'Mi compañía', path: '/compania', icon: Building2, color: 'text-red-400', desc: 'Tablero privado: aseo, reuniones y anuncios' },
     { label: 'Comunicados', path: '/announcements', icon: Megaphone, color: 'text-violet-400', desc: 'Publicar avisos y eventos de compañía' },
     { label: 'Emergencias', path: '/incidents', icon: FlameKindling, color: 'text-red-400', desc: 'Registro de incidentes' },
     { label: 'Turnos', path: '/shifts', icon: CalendarCheck, color: 'text-indigo-400', desc: 'Guardia y turnos' },
@@ -86,6 +90,7 @@ const ROLE_MODULES: Record<string, { label: string; path: string; icon: React.El
     { label: 'Alertas', path: '/alerts', icon: Siren, color: 'text-red-400', desc: 'Vencimientos críticos' },
   ],
   BOMBERO: [
+    { label: 'Mi compañía', path: '/compania', icon: Building2, color: 'text-red-400', desc: 'Anuncios, aseo, reuniones y cumpleaños del cuartel' },
     { label: 'Mi emergencia', path: '/emergencia-respuesta', icon: Siren, color: 'text-red-400', desc: 'Confirmar asistencia y marcar ubicación GPS' },
     { label: 'Turnos', path: '/shifts', icon: CalendarCheck, color: 'text-indigo-400', desc: 'Ver mi guardia' },
     { label: 'Bitácora', path: '/guard-log', icon: BookOpen, color: 'text-emerald-400', desc: 'Registrar novedades de guardia' },

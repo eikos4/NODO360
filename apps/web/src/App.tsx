@@ -55,6 +55,7 @@ import CentralLlamadosPage from './pages/CentralLlamadosPage';
 import NodoCommandPage from './pages/NodoCommandPage';
 import NodoEnlacePage from './pages/NodoEnlacePage';
 import AyudaPage from './pages/AyudaPage';
+import CompaniaPage from './pages/CompaniaPage';
 import CarroTabletPage from './pages/CarroTabletPage';
 
 function RequireRoles({ roles, children }: { roles: string[]; children: React.ReactNode }) {
@@ -121,6 +122,7 @@ export default function App() {
       >
         <Route path="ayuda" element={<AyudaPage />} />
         <Route path="dashboard" element={<DashboardPage />} />
+        <Route path="compania" element={<CompaniaPage />} />
         <Route path="implementacion" element={<SuperAdminImplementacionPage />} />
         <Route path="companies" element={<RequireRoles roles={['SUPER_ADMIN', 'COMANDANTE']}><CompaniesPage /></RequireRoles>} />
         <Route path="users" element={<RequireRoles roles={['KODESK', 'SUPER_ADMIN', 'COMANDANTE', 'CAPITAN']}><UsersPage /></RequireRoles>} />

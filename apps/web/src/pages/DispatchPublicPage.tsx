@@ -1,9 +1,9 @@
 ﻿import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { useParams, Link } from 'react-router-dom';
+import { useParams, Link, useSearchParams } from 'react-router-dom';
 import {
   Siren, ShieldAlert, Users, CheckCircle2, UserX, RefreshCw, Truck, Fuel, Star,
   Search, SlidersHorizontal, Clock, Calendar, Radio, Volume2, Hash,
-  Sun, Moon, Maximize2, Minimize2, Leaf, Lock, LayoutDashboard,
+  Moon, Leaf,
 } from 'lucide-react';
 import toast from 'react-hot-toast';
 import FirefighterAvatar, { FirefighterPlaceholder } from '../components/FirefighterAvatar';
@@ -15,6 +15,7 @@ import EmergencyBitacoraFinalizeModal from '../components/dispatch/EmergencyBita
 import PublicCompanyModernView from '../components/companies/PublicCompanyModernView';
 import SalaSalidaBoard from '../components/companies/SalaSalidaBoard';
 import SalaComandoBoard from '../components/companies/SalaComandoBoard';
+import SalaCompaniaLife from '../components/companies/SalaCompaniaLife';
 import SalaPinGate, { type SalaLockPreview } from '../components/dispatch/SalaPinGate';
 import { usePublicDispatchAlarm } from '../hooks/usePublicDispatchAlarm';
 import {
@@ -23,6 +24,7 @@ import {
   subscribeDispatchLive,
 } from '../lib/dispatch-live-sync';
 import { useSalaNightMode } from '../hooks/useSalaNightMode';
+import SalaToolsFab from '../components/dispatch/SalaToolsFab';
 import { useEmergencyLiveSocket } from '../hooks/useEmergencyLiveSocket';
 import {
   DISPATCH_PUBLIC_THEMES,
@@ -250,10 +252,11 @@ function CardPhoto({
 
 export default function DispatchPublicPage() {
   const { slug } = useParams<{ slug: string }>();
-  const { look, night, isNodo, isVerde, isSalida, isComando, cycle: cycleLook, label: lookLabel } = useSalaNightMode();
+  const { look, night, isNodo, isVerde, isSalida, isComando, isCompania, select: selectLook, label: lookLabel } = useSalaNightMode();
+  const [searchParams] = useSearchParams();
   const th = look === 'night'
     ? SALA_NIGHT_THEME
-    : DISPATCH_PUBLIC_THEMES[look === 'salida' || look === 'comando' ? 'nodo' : look];
+    : DISPATCH_PUBLIC_THEMES[look === 'salida' || look === 'comando' || look === 'compania' ? 'nodo' : look];
   const [data, setData] = useState<PublicCentral | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
@@ -271,6 +274,11 @@ export default function DispatchPublicPage() {
     setLayout(next);
     localStorage.setItem('public_view_layout', next);
   };
+
+  useEffect(() => {
+    const vista = searchParams.get('vista');
+    if (vista === 'compania' || vista === 'compañia') selectLook('compania');
+  }, [searchParams, selectLook]);
 
   const [isFullscreen, setIsFullscreen] = useState(false);
 
@@ -864,11 +872,11 @@ export default function DispatchPublicPage() {
 
   const { roster, maquinistas, fleet, emergencyStats } = data;
   const hqImage = data.headquartersImageUrl || DEFAULT_HQ;
-  const darkChrome = night || isNodo || isVerde || isSalida || isComando;
+  const darkChrome = night || isNodo || isVerde || isSalida || isComando || isCompania;
   const qrUrl = `https://api.qrserver.com/v1/create-qr-code/?size=100x100&data=${encodeURIComponent(publicUrl)}&bgcolor=${th.qrBg}&color=${darkChrome ? 'ffffff' : '0f172a'}`;
   const floatBtn = night
     ? 'bg-[#16101c]/90 border border-amber-500/30 text-amber-100 shadow-xl shadow-amber-950/40'
-    : isComando
+    : isComando || isCompania
       ? 'bg-[#0b1524] border border-red-500/40 text-red-300 shadow-xl shadow-red-950/40'
       : isNodo || isSalida
         ? 'bg-[#0d1924] border border-[#38bdf8]/50 text-[#67c8ff] shadow-xl shadow-sky-950/50'
@@ -938,78 +946,21 @@ export default function DispatchPublicPage() {
         onSaved={handleBitacoraSaved}
       />
 
-      <div className="fixed bottom-6 right-6 z-[100] flex items-center gap-2">
-        <Link
-          to={`/carro/${data.slug}`}
-          className={`${floatBtn} p-3 rounded-full hover:scale-105 transition-all`}
-          title="NodoTrack"
-          aria-label="NodoTrack"
-        >
-          <Truck className={`w-5 h-5 ${night ? 'text-amber-300' : isComando ? 'text-red-300' : isNodo || isSalida ? 'text-[#67c8ff]' : isVerde ? 'text-[#1ce783]' : 'text-slate-700'}`} />
-        </Link>
-        <button
-          type="button"
-          onClick={lockSala}
-          className={`${floatBtn} p-3 rounded-full hover:scale-105 transition-all`}
-          title="Bloquear sala"
-          aria-label="Bloquear sala"
-        >
-          <Lock className={`w-5 h-5 ${night ? 'text-amber-300' : isComando ? 'text-red-300' : isNodo || isSalida ? 'text-[#67c8ff]' : isVerde ? 'text-[#1ce783]' : 'text-slate-700'}`} />
-        </button>
-        <button
-          type="button"
-          onClick={cycleLook}
-          className={`${floatBtn} p-3 rounded-full hover:scale-105 transition-all relative`}
-          title={`${lookLabel} · toca para cambiar`}
-          aria-label={lookLabel}
-        >
-          {night ? (
-            <Moon className="w-5 h-5 text-amber-300" />
-          ) : isComando ? (
-            <LayoutDashboard className="w-5 h-5 text-red-300" />
-          ) : isSalida ? (
-            <Truck className="w-5 h-5 text-[#67c8ff]" />
-          ) : isNodo ? (
-            <Radio className="w-5 h-5 text-[#67c8ff]" />
-          ) : isVerde ? (
-            <Leaf className="w-5 h-5 text-[#1ce783]" />
-          ) : (
-            <Sun className="w-5 h-5 text-amber-500" />
-          )}
-          <span className={`absolute -top-1 -right-1 text-[8px] font-semibold uppercase px-1 rounded ${
-            night ? 'bg-amber-400 text-amber-950'
-              : isComando ? 'bg-red-600 text-white'
-              : isSalida ? 'bg-[#38bdf8] text-[#071019]'
-                : isNodo ? 'bg-[#38bdf8] text-[#071019]'
-                  : isVerde ? 'bg-[#1ce783] text-[#00140e]'
-                    : 'bg-slate-200 text-slate-700'
-          }`}>
-            {night ? 'Noche' : isComando ? 'Comando' : isSalida ? 'Salida' : isNodo ? 'Nodo' : isVerde ? 'Verde' : 'Claro'}
-          </span>
-        </button>
-        <button
-          type="button"
-          onClick={toggleFullscreen}
-          className={`${floatBtn} p-3 rounded-full hover:scale-105 transition-all`}
-          title={isFullscreen ? 'Salir de pantalla completa' : 'Pantalla completa'}
-          aria-label={isFullscreen ? 'Salir de pantalla completa' : 'Pantalla completa'}
-        >
-          {isFullscreen
-            ? <Minimize2 className={`w-5 h-5 ${night ? 'text-amber-100' : isComando ? 'text-red-300' : isNodo || isSalida ? 'text-[#67c8ff]' : isVerde ? 'text-[#1ce783]' : 'text-slate-800'}`} />
-            : <Maximize2 className={`w-5 h-5 ${night ? 'text-amber-100' : isComando ? 'text-red-300' : isNodo || isSalida ? 'text-[#67c8ff]' : isVerde ? 'text-[#1ce783]' : 'text-slate-800'}`} />}
-        </button>
-        {!isSalida && !isComando && (
-        <button
-          type="button"
-          onClick={toggleLayout}
-          className={`${floatBtn} p-3 rounded-full hover:scale-105 transition-all`}
-          title="Cambiar diseño"
-          aria-label="Cambiar diseño"
-        >
-          <SlidersHorizontal className={`w-4 h-4 ${night ? 'text-amber-300' : isNodo || isSalida ? 'text-[#67c8ff]' : isVerde ? 'text-[#1ce783]' : 'text-blue-600'}`} />
-        </button>
-        )}
-      </div>
+      <SalaToolsFab
+        look={look}
+        lookLabel={lookLabel}
+        onSelectLook={selectLook}
+        slug={data.slug}
+        onLock={lockSala}
+        isFullscreen={isFullscreen}
+        onFullscreen={toggleFullscreen}
+        showLayoutToggle={!isSalida && !isComando && !isCompania}
+        layout={layout}
+        onToggleLayout={toggleLayout}
+        chrome={floatBtn}
+        light={look === 'light'}
+        iconClass={night ? 'text-amber-300' : isComando ? 'text-red-300' : isCompania ? 'text-red-300' : isNodo || isSalida ? 'text-[#67c8ff]' : isVerde ? 'text-[#1ce783]' : 'text-slate-700'}
+      />
 
       {/* RENDERIZADO CONDICIONAL DE VISTAS */}
       {isSalida ? (
@@ -1028,6 +979,10 @@ export default function DispatchPublicPage() {
           data={data}
           emergency={visibleActiveEmergency}
         />
+      ) : isCompania ? (
+        <div className="flex-1 overflow-y-auto p-4 sm:p-6">
+          <SalaCompaniaLife slug={data.slug} variant="full" dark={look !== 'light'} />
+        </div>
       ) : layout === 'modern' ? (
         <PublicCompanyModernView 
           data={data} 
@@ -1262,6 +1217,10 @@ export default function DispatchPublicPage() {
           )}
           </div>
         </div>
+
+        {slug && (
+          <SalaCompaniaLife slug={slug} variant="compact" dark={look !== 'light'} />
+        )}
 
         <div className="grid lg:grid-cols-3 gap-5 items-start">
           <div className="lg:col-span-2 space-y-3">
