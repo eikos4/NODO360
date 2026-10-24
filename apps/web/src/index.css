@@ -146,7 +146,26 @@ html:not(.dark) {
     color: #ffffff !important;
   }
 
+  /* Dashboard: chips rojos y acentos no pueden heredar el remap de .text-white */
+  .dashboard-page .keep-on-color,
+  .dashboard-page .keep-on-color * {
+    color: #ffffff !important;
+  }
+
 }
+
+/* Landing pública: diseño propio. El tema de la app no debe reescribir su hero. */
+html:not(.dark) .nodo360-landing .text-white { color: #ffffff !important; }
+html:not(.dark) .nodo360-landing .text-slate-100 { color: #f1f5f9 !important; }
+html:not(.dark) .nodo360-landing .text-slate-200 { color: #e2e8f0 !important; }
+html:not(.dark) .nodo360-landing .text-slate-300 { color: #cbd5e1 !important; }
+html:not(.dark) .nodo360-landing .text-slate-400 { color: #94a3b8 !important; }
+html:not(.dark) .nodo360-landing .bg-slate-800 { background-color: #1e293b !important; }
+html:not(.dark) .nodo360-landing .bg-slate-900 { background-color: #0f172a !important; }
+html:not(.dark) .nodo360-landing .bg-slate-950 { background-color: #020617 !important; }
+html:not(.dark) .nodo360-landing .border-slate-600 { border-color: #475569 !important; }
+html:not(.dark) .nodo360-landing .border-slate-700 { border-color: #334155 !important; }
+html:not(.dark) .nodo360-landing .border-slate-800 { border-color: #1e293b !important; }
 
 /* Llamados: letras blancas sobre foto, celular y botones de color */
 html:not(.dark) .llamados-board .keep-on-color,
@@ -283,6 +302,18 @@ html:not(.dark) .nodo-enlace-page .text-cyan-700 { color: #0e7490 !important; }
 html:not(.dark) .nodo-enlace-page .keep-on-color,
 html:not(.dark) .nodo-enlace-page .keep-on-color * {
   color: #ffffff !important;
+}
+
+/* Tablero de compañía: botones de color siguen blancos en tema claro */
+html:not(.dark) .compania-intranet .keep-on-color,
+html:not(.dark) .compania-intranet .keep-on-color *,
+.compania-intranet-force-light .keep-on-color,
+.compania-intranet-force-light .keep-on-color * {
+  color: #ffffff !important;
+}
+html:not(.dark) .compania-intranet .keep-on-color .text-white\/75,
+.compania-intranet-force-light .keep-on-color .text-white\/75 {
+  color: rgba(255, 255, 255, 0.75) !important;
 }
 html:not(.dark) .nodo-enlace-page .keep-on-color .text-cyan-50 {
   color: #ecfeff !important;
@@ -1110,13 +1141,13 @@ html:not(.dark) .sala-public .keep-on-color *,
 html:not(.dark) .sala-salida .text-white,
 html:not(.dark) .sala-salida .keep-on-color,
 html:not(.dark) .sala-salida .keep-on-color *,
-html:not(.dark) .sala-comando .text-white,
-html:not(.dark) .sala-comando .keep-on-color,
-html:not(.dark) .sala-comando .keep-on-color *,
+html:not(.dark) .sala-comando:not(.sala-comando-light) .text-white,
+html:not(.dark) .sala-comando:not(.sala-comando-light) .keep-on-color,
+html:not(.dark) .sala-comando:not(.sala-comando-light) .keep-on-color *,
 .sala-salida .text-white,
 .sala-salida .keep-on-color,
-.sala-comando .text-white,
-.sala-comando .keep-on-color,
+.sala-comando:not(.sala-comando-light) .text-white,
+.sala-comando:not(.sala-comando-light) .keep-on-color,
 .companias-tv .text-white,
 .companias-tv .keep-on-color {
   color: #ffffff !important;
@@ -1483,6 +1514,32 @@ html:not(.dark) .sala-guardia .text-slate-600 {
   position: absolute;
   inset: 0;
   background: radial-gradient(ellipse at 80% 28%, transparent 34%, rgba(5, 11, 22, 0.22) 86%);
+}
+
+.sala-comando-light .sala-comando-hero {
+  opacity: 0.48;
+  filter: contrast(1.02) saturate(1.05) brightness(1.2);
+}
+
+.sala-comando-light .sala-comando-hero-shade {
+  background:
+    linear-gradient(to right, #f1f5f9 0%, #f1f5f9 34%, rgba(241, 245, 249, 0.9) 46%, rgba(241, 245, 249, 0.22) 68%, transparent 88%),
+    linear-gradient(to bottom, rgba(241, 245, 249, 0.94) 0%, rgba(241, 245, 249, 0.5) 16%, transparent 40%, rgba(241, 245, 249, 0.58) 86%, #e2e8f0 100%);
+}
+
+.sala-comando-light .sala-comando-hero-grade {
+  background:
+    radial-gradient(ellipse 50% 46% at 86% 20%, rgba(220, 38, 38, 0.08), transparent 70%),
+    radial-gradient(ellipse 30% 26% at 92% 8%, rgba(251, 191, 36, 0.06), transparent 58%);
+}
+
+.sala-comando-light .sala-comando-hero-vignette {
+  background: radial-gradient(ellipse at 80% 28%, transparent 34%, rgba(241, 245, 249, 0.18) 86%);
+}
+
+.sala-comando-light .keep-on-color,
+.sala-comando-light .keep-on-color * {
+  color: #ffffff !important;
 }
 
 @keyframes sala-comando-kenburns {

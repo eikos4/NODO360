@@ -17,7 +17,9 @@ const GOOGLE_MAPS_KEY = import.meta.env.VITE_GOOGLE_MAPS_API_KEY as string | und
 
 function ThemeProvider({ children }: { children: React.ReactNode }) {
   const theme = useThemeStore((s) => s.theme);
-  useEffect(() => { applyTheme(theme); }, [theme]);
+  const safeTheme = theme === 'light' ? 'light' : 'dark';
+  applyTheme(safeTheme);
+  useEffect(() => { applyTheme(safeTheme); }, [safeTheme]);
   return <>{children}</>;
 }
 

@@ -1,11 +1,17 @@
 import { FormEvent, useEffect, useMemo, useRef, useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { Check, Globe, Loader2, MessageSquare, Moon, Search, Send, Shield, Siren, Sun, Users, X } from 'lucide-react';
+import { Check, Copy, Globe, Loader2, MessageSquare, Moon, Phone, Search, Send, Shield, Siren, Sun, Users, X } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { api } from '../lib/api';
 import { cn } from '../lib/utils';
 import { useThemeStore } from '../store/themeStore';
 import { NodoEnlaceMark } from '../components/nodo-enlace/NodoEnlaceMark';
+import {
+  CHILE_REGIONS,
+  chileCatalogTotals,
+  listChileCuerpos,
+  matchChileCuerpo,
+} from '../lib/chile-bomberos';
 
 type Emergency = {
   id: string;
@@ -39,6 +45,7 @@ type CuerpoCard = {
   latestType: string | null;
   activeEmergencies: Emergency[];
   link: LinkCard | null;
+  onNodo?: boolean;
 };
 
 type Network = {
@@ -180,7 +187,37 @@ export default function NodoEnlacePage() {
   });
 
   const network = networkQ.data;
-  const selected = network?.cuerpos.find((c) => c.id === selectedId) ?? null;
+  const directory = useMemo(() => {
+    const live = network?.cuerpos ?? [];
+    const me = network?.me;
+    const pool = me ? [me, ...live] : live;
+    const used = new Set<string>();
+    const catalog = listChileCuerpos().flatMap((row) => {
+      const match = matchChileCuerpo(row, pool);
+      if (match && me && match.id === me.id) {
+        used.add(match.id);
+        return [];
+      }
+      if (match) used.add(match.id);
+      return [{
+        id: match?.id ?? `off:${row.key}`,
+        name: match?.name ?? row.name,
+        city: match?.city ?? row.city,
+        region: match?.region ?? row.region,
+        companyCount: match?.companyCount ?? row.companies,
+        activeCount: match?.activeCount ?? 0,
+        latestType: match?.latestType ?? null,
+        activeEmergencies: match?.activeEmergencies ?? [],
+        link: match?.link ?? null,
+        onNodo: Boolean(match),
+      } satisfies CuerpoCard];
+    });
+    const extras = live
+      .filter((row) => !used.has(row.id))
+      .map((row) => ({ ...row, onNodo: true as const }));
+    return [...catalog, ...extras];
+  }, [network?.cuerpos, network?.me]);
+  const selected = directory.find((c) => c.id === selectedId) ?? null;
   const linkId = selected?.link?.status === 'ACTIVE' || selected?.link?.status === 'PENDING'
     ? selected.link.id
     : null;
@@ -250,21 +287,35 @@ export default function NodoEnlacePage() {
 
   const filtered = useMemo(() => {
     const q = query.trim().toLowerCase();
-    return (network?.cuerpos ?? []).filter((c) => {
+    return directory.filter((c) => {
       if (!q) return true;
       return `${c.name} ${c.city} ${c.region}`.toLowerCase().includes(q);
     });
-  }, [network?.cuerpos, query]);
+  }, [directory, query]);
+
+  const grouped = useMemo(() => {
+    const order = CHILE_REGIONS.map((region) => region.name);
+    const map = new Map<string, CuerpoCard[]>();
+    for (const cuerpo of filtered) {
+      const list = map.get(cuerpo.region) ?? [];
+      list.push(cuerpo);
+      map.set(cuerpo.region, list);
+    }
+    return [...map.entries()].sort((a, b) => {
+      const ia = order.indexOf(a[0]);
+      const ib = order.indexOf(b[0]);
+      return (ia === -1 ? 999 : ia) - (ib === -1 ? 999 : ib);
+    });
+  }, [filtered]);
 
   const stats = useMemo(() => {
-    const others = network?.cuerpos ?? [];
     const me = network?.me;
-    const cuerpoCount = others.length + (me ? 1 : 0);
-    const emergencies = others.reduce((n, c) => n + c.activeCount, 0) + (me?.activeCount ?? 0);
-    const links = others.filter((c) => c.link?.status === 'ACTIVE').length;
-    const companies = others.reduce((n, c) => n + c.companyCount, 0) + (me?.companyCount ?? 0);
-    return { cuerpoCount, emergencies, links, companies };
-  }, [network]);
+    const catalog = chileCatalogTotals();
+    const onNodo = directory.filter((c) => c.onNodo !== false).length + (me ? 1 : 0);
+    const emergencies = directory.reduce((n, c) => n + c.activeCount, 0) + (me?.activeCount ?? 0);
+    const links = directory.filter((c) => c.link?.status === 'ACTIVE').length;
+    return { cuerpoCount: catalog.cuerpos, onNodo, emergencies, links, companies: catalog.companies };
+  }, [directory, network?.me]);
 
   const onSend = (e: FormEvent) => {
     e.preventDefault();
@@ -323,7 +374,7 @@ export default function NodoEnlacePage() {
                     className={cn('bg-transparent text-sm outline-none', t.ink)}
                   >
                     <option value="">Elegir cuerpo…</option>
-                    {network.cuerpos.map((c) => (
+                    {network.cuerpos.filter((c) => !c.id.startsWith('off:')).map((c) => (
                       <option key={c.id} value={c.id} className="text-slate-900">
                         {c.name}
                       </option>
@@ -385,7 +436,9 @@ export default function NodoEnlacePage() {
 
         <div className="mt-4 grid min-h-0 flex-1 grid-cols-1 lg:grid-cols-[300px_minmax(0,1fr)]">
           <aside ref={listRef} className="min-h-0 overflow-y-auto px-4 pb-4 sm:px-6 lg:pr-2">
-            <p className={cn('mb-3 text-[10px] font-black uppercase tracking-[0.22em]', t.soft)}>Cuerpos de bomberos</p>
+            <p className={cn('mb-3 text-[10px] font-black uppercase tracking-[0.22em]', t.soft)}>
+              {filtered.length} de {chileCatalogTotals().cuerpos} cuerpos
+            </p>
             <div className="space-y-1.5">
               {network?.me && (
                 <div className={cn('flex items-center gap-3 rounded-2xl border px-3 py-2.5', t.me)}>
@@ -408,35 +461,42 @@ export default function NodoEnlacePage() {
               )}
               {!networkQ.isLoading && filtered.length === 0 && (
                 <p className={cn('px-1 py-4 text-sm', t.muted)}>
-                  Todavía no hay otro cuerpo en Nodo360. Cuando se sume uno, aparece acá para pedir enlace.
+                  No hay un cuerpo con ese nombre. Probá ciudad o región.
                 </p>
               )}
-              {filtered.map((cuerpo) => {
-                const active = selectedId === cuerpo.id;
-                return (
-                  <button
-                    key={cuerpo.id}
-                    type="button"
-                    onClick={() => setSelectedId(cuerpo.id)}
-                    className={cn(
-                      'flex w-full items-center gap-3 rounded-2xl border px-3 py-2.5 text-left transition-colors',
-                      active ? t.selected : t.idle,
-                    )}
-                  >
-                    <span className={cn('grid h-8 w-8 shrink-0 place-items-center rounded-full', active ? 'keep-on-color bg-cyan-600 text-white' : t.iconIdle)}>
-                      <Shield className="h-4 w-4" />
-                    </span>
-                    <div className="min-w-0 flex-1">
-                      <p className="truncate text-sm font-semibold">{cuerpo.name}</p>
-                      <p className={cn('truncate text-[11px]', t.muted)}>
-                        {cuerpo.region || cuerpo.city}
-                        {cuerpo.activeCount > 0 ? ` · ${cuerpo.activeCount} emergencia` : ''}
-                      </p>
-                    </div>
-                    <StatusPill cuerpo={cuerpo} t={t} />
-                  </button>
-                );
-              })}
+              {grouped.map(([region, cuerpos]) => (
+                <div key={region} className="pt-2">
+                  <p className={cn('mb-1.5 px-1 text-[10px] font-black uppercase tracking-[0.18em]', t.soft)}>{region}</p>
+                  <div className="space-y-1.5">
+                    {cuerpos.map((cuerpo) => {
+                      const active = selectedId === cuerpo.id;
+                      return (
+                        <button
+                          key={cuerpo.id}
+                          type="button"
+                          onClick={() => setSelectedId(cuerpo.id)}
+                          className={cn(
+                            'flex w-full items-center gap-3 rounded-2xl border px-3 py-2.5 text-left transition-colors',
+                            active ? t.selected : t.idle,
+                          )}
+                        >
+                          <span className={cn('grid h-8 w-8 shrink-0 place-items-center rounded-full', active ? 'keep-on-color bg-cyan-600 text-white' : t.iconIdle)}>
+                            <Shield className="h-4 w-4" />
+                          </span>
+                          <div className="min-w-0 flex-1">
+                            <p className="truncate text-sm font-semibold">{cuerpo.name}</p>
+                            <p className={cn('truncate text-[11px]', t.muted)}>
+                              {cuerpo.city}
+                              {cuerpo.onNodo === false ? ' · No está en Nodo360' : cuerpo.activeCount > 0 ? ` · ${cuerpo.activeCount} emergencia` : ''}
+                            </p>
+                          </div>
+                          <StatusPill cuerpo={cuerpo} t={t} />
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
+              ))}
             </div>
           </aside>
 
@@ -488,17 +548,23 @@ export default function NodoEnlacePage() {
                     </p>
                     {selected.link?.note && <p className={cn('mt-1 text-xs', t.soft)}>{selected.link.note}</p>}
                   </div>
-                  <LinkActions
-                    t={t}
-                    cuerpo={selected}
-                    note={note}
-                    setNote={setNote}
-                    requesting={requestM.isPending}
-                    onRequest={() => requestM.mutate(selected.id)}
-                    onAccept={() => selected.link && acceptM.mutate(selected.link.id)}
-                    onClose={() => selected.link && closeM.mutate(selected.link.id)}
-                    onBack={() => setSelectedId(null)}
-                  />
+                  {selected.onNodo !== false ? (
+                    <LinkActions
+                      t={t}
+                      cuerpo={selected}
+                      note={note}
+                      setNote={setNote}
+                      requesting={requestM.isPending}
+                      onRequest={() => requestM.mutate(selected.id)}
+                      onAccept={() => selected.link && acceptM.mutate(selected.link.id)}
+                      onClose={() => selected.link && closeM.mutate(selected.link.id)}
+                      onBack={() => setSelectedId(null)}
+                    />
+                  ) : (
+                    <button type="button" onClick={() => setSelectedId(null)} className={cn('text-[11px] font-semibold uppercase tracking-wide', t.back)}>
+                      Volver
+                    </button>
+                  )}
                 </div>
 
                 {selected.link?.status === 'ACTIVE' && (
@@ -526,7 +592,9 @@ export default function NodoEnlacePage() {
                 )}
 
                 <div className="min-h-0 flex-1 space-y-3 overflow-y-auto px-4 py-4 sm:px-5">
-                  {selected.link?.status !== 'ACTIVE' ? (
+                  {selected.onNodo === false ? (
+                    <OffNodoPanel t={t} cuerpo={selected} />
+                  ) : selected.link?.status !== 'ACTIVE' ? (
                     <div className={cn('grid h-full place-items-center text-center text-sm', t.muted)}>
                       {selected.link?.status === 'PENDING'
                         ? selected.link.incoming
@@ -590,10 +658,10 @@ export default function NodoEnlacePage() {
             <div>
               <p className={cn('text-[10px] font-black uppercase tracking-[0.22em]', t.soft)}>Red nacional Nodo360</p>
               <div className="mt-2 flex flex-wrap gap-6">
-                <Stat n={stats.cuerpoCount} label="cuerpos" muted={t.soft} />
+                <Stat n={stats.cuerpoCount} label="cuerpos Chile" muted={t.soft} />
+                <Stat n={stats.onNodo} label="en Nodo360" muted={t.soft} />
                 <Stat n={stats.emergencies} label="emergencias" muted={t.soft} />
                 <Stat n={stats.links} label="enlaces" muted={t.soft} />
-                <Stat n={stats.companies} label="cuarteles" muted={t.soft} />
               </div>
             </div>
           </footer>
@@ -613,6 +681,9 @@ function Stat({ n, label, muted }: { n: number; label: string; muted: string }) 
 }
 
 function StatusPill({ cuerpo, t }: { cuerpo: CuerpoCard; t: ReturnType<typeof useEnlaceTone> }) {
+  if (cuerpo.onNodo === false) {
+    return <span className={cn('text-[10px] font-black uppercase tracking-wide', t.soft)}>Contactar</span>;
+  }
   if (cuerpo.link?.status === 'ACTIVE') {
     return <span className={cn('text-[10px] font-black uppercase tracking-wide', t.enlace)}>Enlace</span>;
   }
@@ -626,7 +697,49 @@ function StatusPill({ cuerpo, t }: { cuerpo: CuerpoCard; t: ReturnType<typeof us
   if (cuerpo.activeCount > 0) {
     return <Siren className="h-3.5 w-3.5 shrink-0 text-red-500" />;
   }
-  return null;
+  return <span className={cn('text-[10px] font-black uppercase tracking-wide', t.cyan)}>En Nodo</span>;
+}
+
+function inviteCopy(cuerpo: CuerpoCard) {
+  return `Comandante: hay que contactar al ${cuerpo.name} (${cuerpo.city}, ${cuerpo.region}) e invitarlos a entrar a Nodo360. Hoy no están en la red y no se puede abrir NodoEnlace con ellos.`;
+}
+
+function OffNodoPanel({ t, cuerpo }: { t: ReturnType<typeof useEnlaceTone>; cuerpo: CuerpoCard }) {
+  const copyInvite = async () => {
+    const text = inviteCopy(cuerpo);
+    try {
+      await navigator.clipboard.writeText(text);
+      toast.success('Mensaje copiado para el comandante');
+    } catch {
+      toast(text);
+    }
+  };
+
+  return (
+    <div className="grid h-full place-items-center px-2 py-6 text-center">
+      <div className="max-w-md">
+        <span className={cn('mx-auto mb-4 grid h-12 w-12 place-items-center rounded-full border', t.featureIcon)}>
+          <Phone className="h-5 w-5" />
+        </span>
+        <p className={cn('text-[11px] font-black uppercase tracking-[0.22em]', t.cyan)}>No está en Nodo360</p>
+        <h3 className="mt-2 text-xl font-black">{cuerpo.name}</h3>
+        <p className={cn('mt-3 text-sm leading-relaxed', t.heroBody)}>
+          Este cuerpo no existe en la red todavía. Dile al comandante que se ponga a contactar al {cuerpo.name} e invítelo a estar en Nodo360. Cuando se sumen, van a poder enlazarse y coordinar emergencias grandes por acá.
+        </p>
+        <button
+          type="button"
+          onClick={() => void copyInvite()}
+          className="keep-on-color mt-5 inline-flex items-center justify-center gap-2 rounded-full bg-cyan-600 px-5 py-2.5 text-sm font-semibold text-white"
+        >
+          <Copy className="h-4 w-4" />
+          Contactar
+        </button>
+        <p className={cn('mt-3 text-[11px] leading-relaxed', t.soft)}>
+          Copia el recado para el comandante: que llame a ese cuerpo y los invite a Nodo360.
+        </p>
+      </div>
+    </div>
+  );
 }
 
 function LinkActions({

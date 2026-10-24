@@ -2,8 +2,8 @@ import { useEffect, useMemo, useState } from 'react';
 import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import {
-  Bell, BookOpen, CheckCircle2, Clock, Cloud, CloudRain, CloudSun, Droplets, FileDown, Flag, HelpCircle, Image as ImageIcon, Loader2, LocateFixed, Map as MapIcon, Megaphone,
-  MapPin, MessageSquarePlus, Navigation, Radio, RefreshCw, Shield, Siren, Sun, Truck, Tv, Users, X, Zap,
+  Bell, BookOpen, CheckCircle2, ClipboardList, Clock, Cloud, CloudRain, CloudSun, Droplets, Eye, FileDown, Flag, Globe, HelpCircle, Image as ImageIcon, Loader2, LocateFixed, Map as MapIcon, Megaphone,
+  MapPin, MessageSquarePlus, Navigation, Phone, Radio, RefreshCw, Shield, ShieldAlert, Siren, Sun, Truck, Tv, Users, X, Zap,
 } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { AdvancedMarker, Map as GoogleMap, useMap } from '@vis.gl/react-google-maps';
@@ -311,18 +311,98 @@ function IdleHomeClock({ isDark }: { isDark: boolean }) {
   );
 }
 
-const IDLE_SHORTCUTS = [
-  { to: '/nodo-enlace', label: 'NodoEnlace', hint: 'Chat entre cuerpos', icon: NodoEnlaceMark },
+type ShortcutTone = 'emergency' | 'support' | 'enlace';
+type ShortcutItem = {
+  to: string;
+  label: string;
+  hint: string;
+  icon: typeof Bell | typeof NodoEnlaceMark;
+  tone?: ShortcutTone;
+};
+
+const EMERGENCY_SHORTCUTS: ShortcutItem[] = [
+  { to: '/central-llamados', label: 'Llamados', hint: 'Teléfono y 132', icon: Phone },
+  { to: '/central-express', label: 'Central Express', hint: 'Despacho rápido', icon: Zap },
   { to: '/nodo360-alarms', label: 'Nodo360 Alarms', hint: 'Despacho con mapa', icon: Bell },
   { to: '/despacho360', label: 'Despacho360', hint: 'Botonera completa', icon: Siren },
+  { to: '/nodo-command', label: 'NodoCommand', hint: 'Puesto de mando', icon: Flag },
+  { to: '/vision360-cuarteles', label: 'Vision360', hint: 'Cuarteles y compañías', icon: Eye },
+  { to: '/central-operativa', label: 'En vivo', hint: 'Radio y operativa', icon: Radio },
+  { to: '/dispatch/global', label: 'Global', hint: 'Carros y disponibilidad', icon: Globe },
+  { to: '/central-bitacora/registro', label: 'Bitácora botonera', hint: 'Registro en emergencia', icon: ClipboardList },
   { to: '/bitacora360', label: 'Bitácora360', hint: 'Fases e informe', icon: BookOpen },
+  { to: '/incidents', label: 'Emergencias', hint: 'Listado e historial', icon: ShieldAlert },
+];
+
+const SUPPORT_SHORTCUTS: ShortcutItem[] = [
   { to: '/operational-map', label: 'Mapa 360', hint: 'Terreno y recursos', icon: MapIcon },
   { to: '/hydrants', label: 'Hidrantes', hint: 'Inventario de agua', icon: Droplets },
-  { to: '/companias-tv', label: 'Muro TV', hint: 'Cuarteles en vivo', icon: Tv },
-  { to: '/central-express', label: 'Central Express', hint: 'Despacho rápido', icon: Zap },
+  { to: '/nodo-enlace', label: 'NodoEnlace', hint: 'Chat entre cuerpos', icon: NodoEnlaceMark, tone: 'enlace' },
   { to: '/central-avisos', label: 'Avisos a la app', hint: 'Mensaje a los celulares', icon: Megaphone },
+  { to: '/companias-tv', label: 'Muro TV', hint: 'Cuarteles en vivo', icon: Tv },
   { to: '/ayuda', label: 'Ayuda', hint: 'Guía NODO360', icon: HelpCircle },
-] as const;
+];
+
+function shortcutTileClass(tone: ShortcutTone, sceneBg: boolean, isDark: boolean) {
+  if (sceneBg) {
+    return 'keep-on-color border-white/20 bg-black/20 text-white hover:border-emerald-400/50 hover:bg-black/30 backdrop-blur-[2px]';
+  }
+  if (tone === 'enlace') {
+    return isDark
+      ? 'border-cyan-500/25 bg-cyan-500/5 hover:border-cyan-400/50 hover:bg-cyan-500/10'
+      : 'border-cyan-200 bg-cyan-50/70 hover:border-cyan-400 hover:bg-cyan-50 shadow-sm';
+  }
+  if (tone === 'emergency') {
+    return isDark
+      ? 'border-white/10 bg-white/[0.03] hover:border-red-500/40 hover:bg-red-500/10'
+      : 'border-slate-200 bg-white/80 hover:border-red-400 hover:bg-red-50 shadow-sm';
+  }
+  return isDark
+    ? 'border-white/10 bg-white/[0.03] hover:border-emerald-500/35 hover:bg-emerald-500/10'
+    : 'border-slate-200 bg-white/80 hover:border-emerald-400 hover:bg-emerald-50 shadow-sm';
+}
+
+function shortcutIconClass(tone: ShortcutTone, sceneBg: boolean, isDark: boolean) {
+  const dark = sceneBg || isDark;
+  if (tone === 'enlace') return dark ? 'text-cyan-300' : 'text-cyan-700';
+  if (tone === 'emergency') return dark ? 'text-red-400' : 'text-red-600';
+  return dark ? 'text-emerald-400' : 'text-emerald-600';
+}
+
+function ShortcutGrid({
+  items,
+  tone,
+  sceneBg,
+  isDark,
+  titleClass,
+  hintClass,
+}: {
+  items: ShortcutItem[];
+  tone: ShortcutTone;
+  sceneBg: boolean;
+  isDark: boolean;
+  titleClass: string;
+  hintClass: string;
+}) {
+  return (
+    <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5">
+      {items.map(({ to, label, hint, icon: Icon, tone: itemTone }) => {
+        const tileTone = itemTone ?? tone;
+        return (
+          <Link
+            key={to}
+            to={to}
+            className={`group rounded-2xl border p-3.5 transition ${shortcutTileClass(tileTone, sceneBg, isDark)}`}
+          >
+            <Icon className={`w-5 h-5 mb-2 ${shortcutIconClass(tileTone, sceneBg, isDark)}`} />
+            <p className={`text-sm font-bold leading-tight ${sceneBg ? 'text-white' : titleClass}`}>{label}</p>
+            <p className={`text-[11px] mt-0.5 ${sceneBg ? 'text-white/75' : hintClass}`}>{hint}</p>
+          </Link>
+        );
+      })}
+    </div>
+  );
+}
 
 function IdleHome({
   th,
@@ -444,36 +524,32 @@ function IdleHome({
             </button>
           </div>
 
-          <div className="mb-10">
-            <p className={`text-[10px] font-black uppercase tracking-widest mb-3 ${sceneBg ? 'keep-on-color text-white/80' : th.sectionLabel}`}>
-              Accesos directos
-            </p>
-            <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5">
-              {IDLE_SHORTCUTS.map(({ to, label, hint, icon: Icon }) => (
-                <Link
-                  key={to}
-                  to={to}
-                  className={`group rounded-2xl border p-3.5 transition ${
-                    sceneBg
-                      ? 'keep-on-color border-white/20 bg-black/20 text-white hover:border-emerald-400/50 hover:bg-black/30 backdrop-blur-[2px]'
-                      : isDark
-                        ? to === '/nodo-enlace'
-                          ? 'border-cyan-500/25 bg-cyan-500/5 hover:border-cyan-400/50 hover:bg-cyan-500/10'
-                          : 'border-white/10 bg-white/[0.03] hover:border-emerald-500/35 hover:bg-emerald-500/10'
-                        : to === '/nodo-enlace'
-                          ? 'border-cyan-200 bg-cyan-50/70 hover:border-cyan-400 hover:bg-cyan-50 shadow-sm'
-                          : 'border-slate-200 bg-white/80 hover:border-emerald-400 hover:bg-emerald-50 shadow-sm'
-                  }`}
-                >
-                  <Icon className={`w-5 h-5 mb-2 ${
-                    to === '/nodo-enlace'
-                      ? sceneBg || isDark ? 'text-cyan-300' : 'text-cyan-700'
-                      : sceneBg || isDark ? 'text-emerald-400' : 'text-emerald-600'
-                  }`} />
-                  <p className={`text-sm font-bold leading-tight ${sceneBg ? 'text-white' : th.title}`}>{label}</p>
-                  <p className={`text-[11px] mt-0.5 ${sceneBg ? 'text-white/75' : th.subtitle}`}>{hint}</p>
-                </Link>
-              ))}
+          <div className="mb-10 space-y-8">
+            <div>
+              <p className={`text-[10px] font-black uppercase tracking-widest mb-3 ${sceneBg ? 'keep-on-color text-white/80' : th.sectionLabel}`}>
+                En emergencia
+              </p>
+              <ShortcutGrid
+                items={EMERGENCY_SHORTCUTS}
+                tone="emergency"
+                sceneBg={sceneBg}
+                isDark={isDark}
+                titleClass={th.title}
+                hintClass={th.subtitle}
+              />
+            </div>
+            <div>
+              <p className={`text-[10px] font-black uppercase tracking-widest mb-3 ${sceneBg ? 'keep-on-color text-white/80' : th.sectionLabel}`}>
+                Apoyo
+              </p>
+              <ShortcutGrid
+                items={SUPPORT_SHORTCUTS}
+                tone="support"
+                sceneBg={sceneBg}
+                isDark={isDark}
+                titleClass={th.title}
+                hintClass={th.subtitle}
+              />
             </div>
           </div>
 

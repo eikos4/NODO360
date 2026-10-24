@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState, type ReactNode } from 'react';
 import {
-  BarChart3, Building2, Clock, Cloud, Droplets, Flame, Home, MapPin, Navigation,
-  Settings, Siren, Truck, Users, Volume2,
+  BarChart3, Building2, Clock, Cloud, Droplets, Flame, Home, MapPin, Moon, Navigation,
+  Settings, Siren, Sun, Truck, Users, Volume2,
 } from 'lucide-react';
 import PublicOsmMap, { PARRAL_CENTER, type OsmMarker } from '../map/PublicOsmMap';
 import type { PublicEmergency } from '../dispatch/DispatchEmergenciesPanel';
@@ -71,12 +71,146 @@ function codeDot(code: string) {
   return 'bg-slate-400';
 }
 
+export const COMANDO_THEME_KEY = 'nodo360_comando_board_theme';
+
+export function readComandoDark(fallback = true) {
+  try {
+    const stored = localStorage.getItem(COMANDO_THEME_KEY);
+    if (stored === 'light') return false;
+    if (stored === 'dark') return true;
+  } catch { /* ignore */ }
+  return fallback;
+}
+
+function persistComandoDark(next: boolean) {
+  try { localStorage.setItem(COMANDO_THEME_KEY, next ? 'dark' : 'light'); } catch { /* ignore */ }
+}
+
+function comandoTone(isDark: boolean) {
+  if (isDark) {
+    return {
+      page: 'sala-comando bg-[#050b16] text-white',
+      titleBox: 'bg-[#050b16]/70',
+      title: 'keep-on-color text-white drop-shadow-[0_2px_10px_rgba(0,0,0,0.85)]',
+      muted: 'keep-on-color text-white/80',
+      motto: 'keep-on-color text-white/70',
+      clock: 'keep-on-color text-white drop-shadow-[0_2px_10px_rgba(0,0,0,0.8)]',
+      date: 'keep-on-color text-white/75',
+      weather: 'border-white/15 bg-[#1a2b3f]',
+      weatherIcon: 'text-sky-300',
+      weatherVal: 'keep-on-color text-white',
+      weatherCity: 'keep-on-color text-white/75',
+      alertLive: 'border-red-500/35 bg-gradient-to-r from-red-950/85 via-red-900/35 to-transparent',
+      alertIdle: 'border-white/10 bg-black/35',
+      flameIdle: 'bg-white/10',
+      chipIdle: 'bg-white/10 text-white/50',
+      type: 'text-white/90',
+      address: 'text-white/75',
+      divider: 'bg-white/25',
+      section: 'keep-on-color text-white/70',
+      unit: 'bg-[#122033]',
+      unitRing: 'border-white/10',
+      unitPhoto: 'bg-[#1a2838]',
+      map: 'border-white/10 bg-[#0a1520]',
+      legend: 'border-white/10 bg-[#071018]/90 text-white/75',
+      route: 'bg-white/10 text-white hover:bg-white/20',
+      card: 'border-white/15 bg-[#152436]',
+      cardLabel: 'keep-on-color text-white/70',
+      alarmLive: 'border-red-500/45 bg-gradient-to-r from-red-700 to-red-900 shadow-[0_0_28px_rgba(220,38,38,0.28)] text-white',
+      alarmIdle: 'border-red-500/25 bg-red-950/40 text-white',
+      alarmSub: 'text-white/70',
+      link: 'text-sky-300',
+      histEmpty: 'text-white/40',
+      histRow: 'bg-white/5',
+      histTime: 'text-white/45',
+      histCode: 'text-white',
+      histType: 'text-white/85',
+      histAddr: 'text-white/40',
+      footer: 'border-white/15 bg-[#1a2b3f]',
+      footerNav: 'keep-on-color text-white/80',
+      footerHint: 'keep-on-color text-white/70',
+      kpi: 'border-white/15 bg-[#152436]',
+      kpiTitle: 'keep-on-color text-white',
+      kpiSub: 'keep-on-color text-white/70',
+      kpiCyan: 'bg-cyan-500/15 text-cyan-300',
+      kpiBlue: 'bg-sky-500/15 text-sky-300',
+      kpiSlate: 'bg-white/10 text-white/70',
+      themeBtn: 'border-white/15 bg-black/35 text-white hover:bg-black/55',
+      statLabel: 'keep-on-color text-white/85',
+      statVal: 'keep-on-color text-white',
+    };
+  }
+  return {
+    page: 'sala-comando sala-comando-light bg-slate-100 text-slate-900',
+    titleBox: 'bg-white/90 shadow-sm',
+    title: 'text-slate-900',
+    muted: 'text-slate-600',
+    motto: 'text-slate-500',
+    clock: 'text-slate-900',
+    date: 'text-slate-500',
+    weather: 'border-slate-200 bg-white shadow-sm',
+    weatherIcon: 'text-sky-600',
+    weatherVal: 'text-slate-900',
+    weatherCity: 'text-slate-500',
+    alertLive: 'border-red-200 bg-gradient-to-r from-red-50 via-red-50/80 to-transparent',
+    alertIdle: 'border-slate-200 bg-white shadow-sm',
+    flameIdle: 'bg-slate-100 text-slate-500',
+    chipIdle: 'bg-slate-100 text-slate-500',
+    type: 'text-slate-800',
+    address: 'text-slate-600',
+    divider: 'bg-slate-200',
+    section: 'text-slate-500',
+    unit: 'bg-white',
+    unitRing: 'border-slate-200',
+    unitPhoto: 'bg-slate-200',
+    map: 'border-slate-200 bg-white',
+    legend: 'border-slate-200 bg-white/95 text-slate-600 shadow-sm',
+    route: 'bg-slate-100 text-slate-800 hover:bg-slate-200',
+    card: 'border-slate-200 bg-white shadow-sm',
+    cardLabel: 'text-slate-500',
+    alarmLive: 'keep-on-color border-red-300 bg-gradient-to-r from-red-600 to-red-700 text-white shadow-red-200',
+    alarmIdle: 'border-red-200 bg-red-50 text-red-950',
+    alarmSub: 'text-red-700/80',
+    link: 'text-sky-700',
+    histEmpty: 'text-slate-400',
+    histRow: 'bg-slate-50',
+    histTime: 'text-slate-400',
+    histCode: 'text-slate-900',
+    histType: 'text-slate-700',
+    histAddr: 'text-slate-400',
+    footer: 'border-slate-200 bg-white shadow-sm',
+    footerNav: 'text-slate-600',
+    footerHint: 'text-slate-500',
+    kpi: 'border-slate-200 bg-white shadow-sm',
+    kpiTitle: 'text-slate-900',
+    kpiSub: 'text-slate-500',
+    kpiCyan: 'bg-cyan-50 text-cyan-700',
+    kpiBlue: 'bg-sky-50 text-sky-700',
+    kpiSlate: 'bg-slate-100 text-slate-600',
+    themeBtn: 'border-slate-200 bg-white text-slate-700 hover:bg-slate-50 shadow-sm',
+    statLabel: 'text-slate-700',
+    statVal: 'text-slate-900',
+  };
+}
+
 type Props = {
   data: PublicCentral;
   emergency: PublicEmergency | null;
+  isDark?: boolean;
+  onToggleTheme?: () => void;
 };
 
-export default function SalaComandoBoard({ data, emergency }: Props) {
+export default function SalaComandoBoard({ data, emergency, isDark: isDarkProp, onToggleTheme }: Props) {
+  const [localDark, setLocalDark] = useState(() => readComandoDark(true));
+  const isDark = isDarkProp ?? localDark;
+  const t = comandoTone(isDark);
+  const toggleTheme = onToggleTheme ?? (() => {
+    setLocalDark((prev) => {
+      const next = !prev;
+      persistComandoDark(next);
+      return next;
+    });
+  });
   const [now, setNow] = useState(new Date());
   const [tempC, setTempC] = useState<number | null>(null);
   const [logoBroken, setLogoBroken] = useState(false);
@@ -183,7 +317,7 @@ export default function SalaComandoBoard({ data, emergency }: Props) {
     : null;
 
   return (
-    <section className="sala-comando relative flex min-h-0 flex-1 flex-col overflow-hidden bg-[#050b16] text-white">
+    <section className={`relative flex min-h-0 flex-1 flex-col overflow-hidden ${t.page}`}>
       <div className="pointer-events-none absolute inset-0 overflow-hidden">
         {heroSrc ? (
           <img
@@ -213,34 +347,43 @@ export default function SalaComandoBoard({ data, emergency }: Props) {
                 <Siren className="h-7 w-7 text-red-400" />
               </div>
             )}
-            <div className="min-w-0 rounded-2xl bg-[#050b16]/70 px-3 py-1.5 backdrop-blur-sm">
-              <h1 className="keep-on-color truncate text-[22px] font-black leading-tight text-white drop-shadow-[0_2px_10px_rgba(0,0,0,0.85)] lg:text-[30px]">
+            <div className={`min-w-0 rounded-2xl px-3 py-1.5 backdrop-blur-sm ${t.titleBox}`}>
+              <h1 className={`truncate text-[22px] font-black leading-tight lg:text-[30px] ${t.title}`}>
                 {data.name}
               </h1>
-              <p className="keep-on-color mt-0.5 text-[13px] font-medium text-white/80">
+              <p className={`mt-0.5 text-[13px] font-medium ${t.muted}`}>
                 {[data.address?.split(',')[0]?.trim(), data.city].filter(Boolean).filter((v, i, a) => a.indexOf(v) === i).join(' · ')}
               </p>
             </div>
           </div>
 
-          <p className="keep-on-color hidden min-w-0 flex-1 pt-2 text-center text-[11px] font-semibold uppercase tracking-[0.28em] text-white/70 lg:block">
+          <p className={`hidden min-w-0 flex-1 pt-2 text-center text-[11px] font-semibold uppercase tracking-[0.28em] lg:block ${t.motto}`}>
             Disciplina · Servicio · Trabajo en equipo
           </p>
 
             <div className="flex shrink-0 items-start gap-3">
+            <button
+              type="button"
+              onClick={toggleTheme}
+              className={`mt-1 inline-flex items-center gap-1.5 rounded-full border px-3 py-1.5 text-[11px] font-bold uppercase tracking-wide ${t.themeBtn}`}
+              title={isDark ? 'Tema claro' : 'Tema oscuro'}
+            >
+              {isDark ? <Sun className="h-3.5 w-3.5" /> : <Moon className="h-3.5 w-3.5" />}
+              {isDark ? 'Claro' : 'Oscuro'}
+            </button>
             <div className="text-right">
-              <p className="keep-on-color font-mono text-[34px] font-black leading-none tabular-nums tracking-tight text-white drop-shadow-[0_2px_10px_rgba(0,0,0,0.8)] lg:text-[40px]">
+              <p className={`font-mono text-[34px] font-black leading-none tabular-nums tracking-tight lg:text-[40px] ${t.clock}`}>
                 {now.toLocaleTimeString('es-CL', { hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: false })}
               </p>
-              <p className="keep-on-color mt-1 text-[11px] capitalize text-white/75">
+              <p className={`mt-1 text-[11px] capitalize ${t.date}`}>
                 {now.toLocaleDateString('es-CL', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' })}
               </p>
             </div>
-            <div className="flex items-center gap-2 rounded-2xl border border-white/15 bg-[#1a2b3f] px-3 py-2">
-              <Cloud className="h-5 w-5 text-sky-300" />
+            <div className={`flex items-center gap-2 rounded-2xl border px-3 py-2 ${t.weather}`}>
+              <Cloud className={`h-5 w-5 ${t.weatherIcon}`} />
               <div>
-                <p className="keep-on-color text-lg font-black leading-none text-white">{tempC != null ? `${tempC}°C` : '—'}</p>
-                <p className="keep-on-color mt-0.5 text-[10px] text-white/75">{data.city}</p>
+                <p className={`text-lg font-black leading-none ${t.weatherVal}`}>{tempC != null ? `${tempC}°C` : '—'}</p>
+                <p className={`mt-0.5 text-[10px] ${t.weatherCity}`}>{data.city}</p>
               </div>
             </div>
           </div>
@@ -249,19 +392,17 @@ export default function SalaComandoBoard({ data, emergency }: Props) {
         <div className="grid min-h-0 flex-1 grid-cols-1 gap-4 lg:grid-cols-[minmax(0,1fr)_300px] xl:grid-cols-[minmax(0,1fr)_320px]">
           <div className="flex min-h-0 flex-col gap-3">
             <div className={`relative overflow-hidden rounded-3xl border px-5 py-4 ${
-              live
-                ? 'border-red-500/35 bg-gradient-to-r from-red-950/85 via-red-900/35 to-transparent'
-                : 'border-white/10 bg-black/35'
+              live ? t.alertLive : t.alertIdle
             }`}>
               <div className="flex items-center gap-4">
                 <div className={`flex h-[72px] w-[72px] shrink-0 items-center justify-center rounded-[22px] ${
-                  live ? 'bg-red-600 shadow-[0_0_28px_rgba(220,38,38,0.55)]' : 'bg-white/10'
+                  live ? 'keep-on-color bg-red-600 text-white shadow-[0_0_28px_rgba(220,38,38,0.55)]' : t.flameIdle
                 }`}>
-                  <Flame className="h-10 w-10 text-white" />
+                  <Flame className="h-10 w-10" />
                 </div>
                 <div className="min-w-0">
                   <span className={`inline-flex rounded-full px-3 py-0.5 text-[10px] font-black uppercase tracking-[0.18em] ${
-                    live ? 'bg-red-600 text-white' : 'bg-white/10 text-white/50'
+                    live ? 'keep-on-color bg-red-600 text-white' : t.chipIdle
                   }`}>
                     {live ? 'Emergencia en curso' : 'En cuartel'}
                   </span>
@@ -269,14 +410,14 @@ export default function SalaComandoBoard({ data, emergency }: Props) {
                     <span className="font-mono text-[42px] font-black leading-none tracking-tight lg:text-[52px]">
                       {live ? (emergencyCode || '10-X') : '—'}
                     </span>
-                    <span className="hidden h-10 w-px bg-white/25 sm:block" />
-                    <span className="text-xl font-bold uppercase tracking-wide text-white/90 lg:text-2xl">
+                    <span className={`hidden h-10 w-px sm:block ${t.divider}`} />
+                    <span className={`text-xl font-bold uppercase tracking-wide lg:text-2xl ${t.type}`}>
                       {typeLabel}
                     </span>
                   </p>
                   {live && emergency?.address && (
-                    <p className="mt-2 flex items-center gap-1.5 text-[15px] text-white/75">
-                      <MapPin className="h-4 w-4 text-red-400" />
+                    <p className={`mt-2 flex items-center gap-1.5 text-[15px] ${t.address}`}>
+                      <MapPin className="h-4 w-4 text-red-500" />
                       {emergency.address}
                     </p>
                   )}
@@ -290,23 +431,26 @@ export default function SalaComandoBoard({ data, emergency }: Props) {
                 title={going?.patent || '—'}
                 sub={going ? `${going.type}${going.model ? ` · ${going.model}` : ''}` : 'Sin carro'}
                 tone="cyan"
+                t={t}
               />
               <Kpi
                 icon={<Users className="h-5 w-5" />}
                 title={`${crewOut} ${live ? 'en salida' : 'disponible'}`}
                 sub={live ? 'Personal despachado' : 'Personal en sala'}
                 tone="blue"
+                t={t}
               />
               <Kpi
                 icon={<Clock className="h-5 w-5" />}
                 title={live ? elapsedHms(emergency?.dispatchedAt, now) : '00:00:00'}
                 sub="Tiempo desde despacho"
                 tone="slate"
+                t={t}
               />
             </div>
 
             <div>
-              <p className="keep-on-color mb-2 text-[11px] font-black uppercase tracking-[0.22em] text-white/70">Unidades despachadas</p>
+              <p className={`mb-2 text-[11px] font-black uppercase tracking-[0.22em] ${t.section}`}>Unidades despachadas</p>
               <div className="grid grid-cols-2 gap-3 xl:grid-cols-4">
                 {units.map((v, i) => {
                   const dispatched = dispatchedKeys.has(v.id) || dispatchedKeys.has(v.patent);
@@ -326,8 +470,8 @@ export default function SalaComandoBoard({ data, emergency }: Props) {
                   const ui = KIND_UI[shownKind];
                   const src = !brokenImg[v.id] ? publicMediaUrl(v.imageUrl) : null;
                   return (
-                    <article key={v.id} className={`overflow-hidden rounded-2xl border bg-[#122033] ${ui.ring}`}>
-                      <div className="relative h-[92px] overflow-hidden bg-[#1a2838]">
+                    <article key={v.id} className={`overflow-hidden rounded-2xl border ${t.unit} ${isDark ? ui.ring : t.unitRing}`}>
+                      <div className={`relative h-[92px] overflow-hidden ${t.unitPhoto}`}>
                         {src ? (
                           <img
                             src={src}
@@ -358,17 +502,17 @@ export default function SalaComandoBoard({ data, emergency }: Props) {
             </div>
 
             <div className="flex min-h-0 flex-1 flex-col">
-              <p className="keep-on-color mb-2 text-[11px] font-black uppercase tracking-[0.22em] text-white/70">Mapa en tiempo real</p>
-              <div className="relative min-h-[180px] flex-1 overflow-hidden rounded-3xl border border-white/10 bg-[#0a1520]">
+              <p className={`mb-2 text-[11px] font-black uppercase tracking-[0.22em] ${t.section}`}>Mapa en tiempo real</p>
+              <div className={`relative min-h-[180px] flex-1 overflow-hidden rounded-3xl border ${t.map}`}>
                 <PublicOsmMap
                   center={mapCenter}
                   focus={point}
                   zoom={point ? 14 : 13}
-                  theme="dark"
+                  theme={isDark ? 'dark' : 'light'}
                   className="h-full w-full"
                   markers={markers}
                 />
-                <div className="absolute left-3 top-3 w-[168px] rounded-2xl border border-white/10 bg-[#071018]/90 p-3 text-[11px] backdrop-blur-md">
+                <div className={`absolute left-3 top-3 w-[168px] rounded-2xl border p-3 text-[11px] backdrop-blur-md ${t.legend}`}>
                   <LegendDot color="bg-red-500" label="Emergencia actual" icon={<Flame className="h-3 w-3" />} />
                   <LegendDot color="bg-emerald-400" label="Unidades en ruta" icon={<Truck className="h-3 w-3" />} />
                   <LegendDot color="bg-cyan-300" label="Cuarteles" icon={<Home className="h-3 w-3" />} />
@@ -379,7 +523,7 @@ export default function SalaComandoBoard({ data, emergency }: Props) {
                       href={routeUrl}
                       target="_blank"
                       rel="noreferrer"
-                      className="mt-2 flex items-center justify-center gap-1.5 rounded-lg bg-white/10 py-1.5 text-[10px] font-bold uppercase tracking-wide text-white hover:bg-white/20"
+                      className={`mt-2 flex items-center justify-center gap-1.5 rounded-lg py-1.5 text-[10px] font-bold uppercase tracking-wide ${t.route}`}
                     >
                       <Navigation className="h-3 w-3" /> Ver ruta
                     </a>
@@ -390,53 +534,49 @@ export default function SalaComandoBoard({ data, emergency }: Props) {
           </div>
 
           <aside className="flex min-h-0 flex-col gap-3">
-            <div className="rounded-3xl border border-white/15 bg-[#152436] p-4">
-              <p className="keep-on-color mb-3 text-[11px] font-black uppercase tracking-[0.2em] text-white/70">Estado general</p>
+            <div className={`rounded-3xl border p-4 ${t.card}`}>
+              <p className={`mb-3 text-[11px] font-black uppercase tracking-[0.2em] ${t.cardLabel}`}>Estado general</p>
               <ul className="space-y-2.5">
-                <StatRow icon={<Truck className="h-4 w-4" />} iconBg="bg-emerald-500/15 text-emerald-300" label="Carros operativos" value={`${data.fleet.stats.operativo} / ${data.fleet.stats.total}`} />
-                <StatRow icon={<Users className="h-4 w-4" />} iconBg="bg-sky-500/15 text-sky-300" label="Personal disponible" value={String(data.roster.stats.available)} />
-                <StatRow icon={<Flame className="h-4 w-4" />} iconBg="bg-red-500/15 text-red-300" label="Emergencias hoy" value={String(todayCount || data.emergencyStats.active)} />
+                <StatRow icon={<Truck className="h-4 w-4" />} iconBg={isDark ? 'bg-emerald-500/15 text-emerald-300' : 'bg-emerald-50 text-emerald-700'} label="Carros operativos" value={`${data.fleet.stats.operativo} / ${data.fleet.stats.total}`} t={t} />
+                <StatRow icon={<Users className="h-4 w-4" />} iconBg={isDark ? 'bg-sky-500/15 text-sky-300' : 'bg-sky-50 text-sky-700'} label="Personal disponible" value={String(data.roster.stats.available)} t={t} />
+                <StatRow icon={<Flame className="h-4 w-4" />} iconBg={isDark ? 'bg-red-500/15 text-red-300' : 'bg-red-50 text-red-700'} label="Emergencias hoy" value={String(todayCount || data.emergencyStats.active)} t={t} />
               </ul>
             </div>
 
-            <div className={`rounded-3xl border px-4 py-3.5 ${
-              live
-                ? 'border-red-500/45 bg-gradient-to-r from-red-700 to-red-900 shadow-[0_0_28px_rgba(220,38,38,0.28)]'
-                : 'border-red-500/25 bg-red-950/40'
-            }`}>
+            <div className={`rounded-3xl border px-4 py-3.5 ${live ? t.alarmLive : t.alarmIdle}`}>
               <div className="flex items-center gap-3">
-                <Volume2 className="h-7 w-7 text-white" />
+                <Volume2 className="h-7 w-7" />
                 <div>
-                  <p className="text-[10px] font-black uppercase tracking-[0.18em] text-white/70">Sistema de alarmas</p>
+                  <p className={`text-[10px] font-black uppercase tracking-[0.18em] ${t.alarmSub}`}>Sistema de alarmas</p>
                   <p className="text-2xl font-black uppercase leading-none">Activo</p>
                 </div>
               </div>
             </div>
 
-            <div className="flex min-h-0 flex-1 flex-col rounded-3xl border border-white/15 bg-[#152436] p-4">
+            <div className={`flex min-h-0 flex-1 flex-col rounded-3xl border p-4 ${t.card}`}>
               <div className="mb-3 flex items-center justify-between">
-                <p className="keep-on-color text-[11px] font-black uppercase tracking-[0.2em] text-white/70">Últimas emergencias</p>
-                <span className="text-[11px] font-semibold text-sky-300">Ver todas</span>
+                <p className={`text-[11px] font-black uppercase tracking-[0.2em] ${t.cardLabel}`}>Últimas emergencias</p>
+                <span className={`text-[11px] font-semibold ${t.link}`}>Ver todas</span>
               </div>
               <ul className="min-h-0 flex-1 space-y-2 overflow-hidden">
                 {recent.length === 0 && (
-                  <li className="text-xs text-white/40">Sin historial reciente.</li>
+                  <li className={`text-xs ${t.histEmpty}`}>Sin historial reciente.</li>
                 )}
                 {recent.map((e) => {
                   const code = e.emergencyCodeId || e.code || '10-X';
                   const label = e.type?.split(' — ')[1] || e.type;
                   return (
-                    <li key={e.id} className="flex items-start gap-2.5 rounded-xl bg-white/5 px-2.5 py-2">
+                    <li key={e.id} className={`flex items-start gap-2.5 rounded-xl px-2.5 py-2 ${t.histRow}`}>
                       <span className={`mt-1.5 h-2 w-2 shrink-0 rounded-full ${codeDot(code)}`} />
                       <div className="min-w-0 flex-1">
-                        <p className="flex items-baseline gap-2 text-[11px] text-white/45">
+                        <p className={`flex items-baseline gap-2 text-[11px] ${t.histTime}`}>
                           <span className="font-mono">
                             {new Date(e.dispatchedAt).toLocaleTimeString('es-CL', { hour: '2-digit', minute: '2-digit', hour12: false })}
                           </span>
-                          <span className="font-bold text-white">{code}</span>
+                          <span className={`font-bold ${t.histCode}`}>{code}</span>
                         </p>
-                        <p className="truncate text-[12px] font-semibold text-white/85">{label}</p>
-                        <p className="truncate text-[11px] text-white/40">{e.address}</p>
+                        <p className={`truncate text-[12px] font-semibold ${t.histType}`}>{label}</p>
+                        <p className={`truncate text-[11px] ${t.histAddr}`}>{e.address}</p>
                       </div>
                     </li>
                   );
@@ -446,23 +586,23 @@ export default function SalaComandoBoard({ data, emergency }: Props) {
           </aside>
         </div>
 
-        <footer className="relative z-10 mt-3 flex items-center justify-between gap-4 rounded-2xl border border-white/15 bg-[#1a2b3f] px-4 py-3">
+        <footer className={`relative z-10 mt-3 flex items-center justify-between gap-4 rounded-2xl border px-4 py-3 ${t.footer}`}>
           <div className="flex items-center gap-2.5">
-            <span className="flex h-8 w-8 items-center justify-center rounded-lg bg-red-600 text-sm font-black text-white">N</span>
+            <span className="keep-on-color flex h-8 w-8 items-center justify-center rounded-lg bg-red-600 text-sm font-black text-white">N</span>
             <div>
-              <p className="keep-on-color text-sm font-black tracking-tight text-white">Nodo<span className="text-red-400">360</span></p>
-              <p className="keep-on-color text-[9px] uppercase tracking-[0.16em] text-white/75">Conecta · Coordina · Responde</p>
+              <p className={`text-sm font-black tracking-tight ${t.kpiTitle}`}>Nodo<span className="text-red-500">360</span></p>
+              <p className={`text-[9px] uppercase tracking-[0.16em] ${t.kpiSub}`}>Conecta · Coordina · Responde</p>
             </div>
           </div>
-          <nav className="keep-on-color hidden items-center gap-5 text-[10px] font-bold uppercase tracking-[0.14em] text-white/80 md:flex">
-            <span className="text-red-300">Sala de máquinas</span>
+          <nav className={`hidden items-center gap-5 text-[10px] font-bold uppercase tracking-[0.14em] md:flex ${t.footerNav}`}>
+            <span className="text-red-500">Sala de máquinas</span>
             <span className="inline-flex items-center gap-1.5"><Building2 className="h-3.5 w-3.5" /> Compañías</span>
             <span className="inline-flex items-center gap-1.5"><Users className="h-3.5 w-3.5" /> Personal</span>
             <span className="inline-flex items-center gap-1.5"><Droplets className="h-3.5 w-3.5" /> Hidrantes</span>
             <span className="inline-flex items-center gap-1.5"><BarChart3 className="h-3.5 w-3.5" /> Reportes</span>
             <span className="inline-flex items-center gap-1.5"><Settings className="h-3.5 w-3.5" /> Configuración</span>
           </nav>
-          <p className="keep-on-color hidden text-right text-[9px] uppercase tracking-[0.16em] text-white/70 lg:block">
+          <p className={`hidden text-right text-[9px] uppercase tracking-[0.16em] lg:block ${t.footerHint}`}>
             Tecnología al servicio<br />de quienes salvan vidas
           </p>
         </footer>
@@ -472,30 +612,26 @@ export default function SalaComandoBoard({ data, emergency }: Props) {
 }
 
 function Kpi({
-  icon, title, sub, tone,
-}: { icon: ReactNode; title: string; sub: string; tone: 'cyan' | 'blue' | 'slate' }) {
-  const iconWrap = tone === 'cyan'
-    ? 'bg-cyan-500/15 text-cyan-300'
-    : tone === 'blue'
-      ? 'bg-sky-500/15 text-sky-300'
-      : 'bg-white/10 text-white/70';
+  icon, title, sub, tone, t,
+}: { icon: ReactNode; title: string; sub: string; tone: 'cyan' | 'blue' | 'slate'; t: ReturnType<typeof comandoTone> }) {
+  const iconWrap = tone === 'cyan' ? t.kpiCyan : tone === 'blue' ? t.kpiBlue : t.kpiSlate;
   return (
-    <div className="flex items-center gap-3 rounded-2xl border border-white/15 bg-[#152436] px-3 py-2.5">
+    <div className={`flex items-center gap-3 rounded-2xl border px-3 py-2.5 ${t.kpi}`}>
       <span className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-xl ${iconWrap}`}>{icon}</span>
       <div className="min-w-0">
-        <p className="keep-on-color truncate font-mono text-[17px] font-black leading-none text-white">{title}</p>
-        <p className="keep-on-color mt-1 truncate text-[10px] uppercase tracking-wide text-white/70">{sub}</p>
+        <p className={`truncate font-mono text-[17px] font-black leading-none ${t.kpiTitle}`}>{title}</p>
+        <p className={`mt-1 truncate text-[10px] uppercase tracking-wide ${t.kpiSub}`}>{sub}</p>
       </div>
     </div>
   );
 }
 
-function StatRow({ icon, iconBg, label, value }: { icon: ReactNode; iconBg: string; label: string; value: string }) {
+function StatRow({ icon, iconBg, label, value, t }: { icon: ReactNode; iconBg: string; label: string; value: string; t: ReturnType<typeof comandoTone> }) {
   return (
     <li className="flex items-center gap-3">
       <span className={`flex h-9 w-9 items-center justify-center rounded-xl ${iconBg}`}>{icon}</span>
-      <span className="keep-on-color flex-1 text-[13px] text-white/85">{label}</span>
-      <span className="keep-on-color font-mono text-[18px] font-black text-white">{value}</span>
+      <span className={`flex-1 text-[13px] ${t.statLabel}`}>{label}</span>
+      <span className={`font-mono text-[18px] font-black ${t.statVal}`}>{value}</span>
     </li>
   );
 }

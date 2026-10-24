@@ -18,6 +18,7 @@ export type RadioChannelState = {
   listeners: number;
   participants: { userId: string; firstName: string; lastName: string; role: string }[];
   talker: { userId: string; socketId: string; speakerName: string; since: number } | null;
+  allowedTalkerIds?: string[];
   recent: RadioTx[];
 };
 

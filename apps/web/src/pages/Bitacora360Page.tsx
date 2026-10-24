@@ -9,6 +9,8 @@ import toast from 'react-hot-toast';
 import { api } from '../lib/api';
 import { useAuthStore } from '../store/authStore';
 import RadioPttPanel from '../components/radio/RadioPttPanel';
+import RadioTalkersPicker from '../components/radio/RadioTalkersPicker';
+import { hasAnyRole } from '../lib/roles';
 import PublicOsmMap, { PARRAL_CENTER, type OsmMarker } from '../components/map/PublicOsmMap';
 import Bitacora360CloseModal from '../components/dispatch/Bitacora360CloseModal';
 import { downloadEmergencyReport } from '../lib/pdf/downloadEmergencyReport';
@@ -420,6 +422,9 @@ export default function Bitacora360Page() {
                     })}
                   </ol>
                 </RadioPttPanel>
+              )}
+              {selectedList && hasAnyRole(user, 'OPERADOR_CENTRAL', 'COMANDANTE', 'CAPITAN', 'SUPER_ADMIN', 'KODESK') && (
+                <RadioTalkersPicker incidentId={selectedList.id} disabled={!!inc.closedAt} />
               )}
 
               <div className="flex items-center justify-between">

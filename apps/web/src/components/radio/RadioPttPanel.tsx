@@ -3,6 +3,7 @@ import { Mic, MicOff, Play, Radio, Users, Volume2 } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { api } from '../../lib/api';
 import { useAuthStore } from '../../store/authStore';
+import { hasAnyRole } from '../../lib/roles';
 import {
   getRadioSocket,
   incidentChannelId,
@@ -284,9 +285,15 @@ export default function RadioPttPanel({
     }
   }, [authToken, channelId, salaSlug, usingSala]);
 
+  const allowedIds = state?.allowedTalkerIds;
+  const listed = Array.isArray(allowedIds) ? Boolean(me?.id && allowedIds.includes(me.id)) : null;
+  const alwaysTalk = usingSala || hasAnyRole(me, 'OPERADOR_CENTRAL', 'SUPER_ADMIN', 'KODESK');
+  const mayTalk = alwaysTalk || listed === true || (listed === null && canTalk);
+  const blockedHint = talkHint || 'La central no habilitó este teléfono para hablar';
+
   const startPtt = useCallback(async () => {
     const ptt = pttRef.current;
-    if (!enabled || !canTalk || ptt.starting || ptt.recording || ptt.finishing || uploading) return;
+    if (!enabled || !mayTalk || ptt.starting || ptt.recording || ptt.finishing || uploading) return;
     ptt.starting = true;
     ptt.stopQueued = false;
     if (!authToken) {
@@ -342,7 +349,7 @@ export default function RadioPttPanel({
       stopTracks();
       toast.error('No se pudo acceder al micrófono');
     }
-  }, [authToken, channelId, canTalk, enabled, finishPtt, uploading, usingSala]);
+  }, [authToken, channelId, mayTalk, enabled, finishPtt, uploading, usingSala]);
 
   const talker = state?.talker;
   const isBusyOther = !!talker && holding === false;
@@ -350,8 +357,8 @@ export default function RadioPttPanel({
   const pttHandlers = {
     onPointerDown: (e: PointerEvent<HTMLButtonElement>) => {
       e.preventDefault();
-      if (!canTalk) {
-        toast.error(talkHint || 'Marca “Voy” para transmitir en el canal');
+      if (!mayTalk) {
+        toast.error(blockedHint);
         return;
       }
       try {
@@ -492,8 +499,8 @@ export default function RadioPttPanel({
             disabled={!enabled || !connected || uploading || (isBusyOther && !holding)}
             onPointerDown={(e) => {
               e.preventDefault();
-              if (!canTalk) {
-                toast.error(talkHint || 'Marca “Voy” para transmitir en el canal');
+              if (!mayTalk) {
+                toast.error(blockedHint);
                 return;
               }
               try {
@@ -519,7 +526,7 @@ export default function RadioPttPanel({
             {holding ? <Mic className="h-12 w-12 animate-pulse" /> : uploading ? <MicOff className="h-12 w-12 animate-pulse" /> : <Mic className="h-12 w-12" />}
           </button>
           <p className="mt-4 text-center text-sm font-medium text-slate-300">
-            {!canTalk
+            {!mayTalk
               ? (talkHint || 'Solo escucha')
               : holding
                 ? 'Hablando… suelta para enviar'
@@ -587,8 +594,8 @@ export default function RadioPttPanel({
         disabled={!enabled || !connected || uploading || (isBusyOther && !holding)}
         onPointerDown={(e) => {
           e.preventDefault();
-          if (!canTalk) {
-            toast.error(talkHint || 'Marca “Voy” para transmitir en el canal');
+          if (!mayTalk) {
+            toast.error(blockedHint);
             return;
           }
           try {
@@ -609,7 +616,7 @@ export default function RadioPttPanel({
           'radio-ptt-btn w-full select-none touch-none rounded-2xl py-5 flex flex-col items-center justify-center gap-2 font-black uppercase tracking-wider transition-all border-2',
           holding
             ? 'bg-red-600 border-red-400 text-white shadow-[0_0_28px_rgba(239,68,68,0.55)] scale-[1.02]'
-            : canTalk
+            : mayTalk
               ? isDark
                 ? 'bg-violet-600 border-violet-400 text-white hover:bg-violet-500 shadow-[0_0_18px_rgba(139,92,246,0.35)]'
                 : 'bg-violet-600 border-violet-700 text-white hover:bg-violet-700 shadow-md'
@@ -621,8 +628,8 @@ export default function RadioPttPanel({
       >
         {holding ? <Mic className="w-8 h-8 animate-pulse" /> : uploading ? <MicOff className="w-8 h-8 animate-pulse" /> : <Mic className="w-8 h-8" />}
         <span className="text-sm">
-          {!canTalk
-            ? (talkHint || 'Solo escucha — marca Voy para hablar')
+          {!mayTalk
+            ? (talkHint || 'Solo escucha — la central habilita 1 o 2 teléfonos')
             : holding
               ? 'Hablando… suelta para enviar'
               : uploading

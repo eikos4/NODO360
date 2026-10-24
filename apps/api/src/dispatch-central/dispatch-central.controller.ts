@@ -240,7 +240,7 @@ export class DispatchCentralController {
     @Body() dto: SetVehicleStatusDto,
     @Req() req: { user: Actor },
   ) {
-    return this.service.setVehicleStatus(id, dto.status, req.user);
+    return this.service.setVehicleStatus(id, dto, req.user);
   }
 
   @Get('central/config')

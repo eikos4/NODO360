@@ -31,9 +31,7 @@ export const navItems: NavItem[] = [
   { to: '/despacho360', label: 'Despacho360', icon: Siren, roles: ['SUPER_ADMIN', 'COMANDANTE', 'CAPITAN', 'OPERADOR_CENTRAL'] },
   { to: '/nodo360-alarms', label: 'Nodo360 Alarms', icon: Bell, roles: ['SUPER_ADMIN', 'COMANDANTE', 'CAPITAN', 'OPERADOR_CENTRAL'] },
   { to: '/central-express', label: 'Central Express', icon: Zap, roles: ['SUPER_ADMIN', 'COMANDANTE', 'CAPITAN', 'OPERADOR_CENTRAL'] },
-  { to: '/vision360-cuarteles', label: 'Vision360 Cuarteles', icon: Eye, roles: ['SUPER_ADMIN', 'COMANDANTE', 'CAPITAN', 'OPERADOR_CENTRAL'] },
-  { to: '/companias-tv', label: 'Muro compañías TV', icon: Tv, roles: ['SUPER_ADMIN', 'COMANDANTE', 'CAPITAN', 'OPERADOR_CENTRAL'] },
-  { to: '/central-despachos-parral', label: 'Central Parral', icon: Flame, roles: ['SUPER_ADMIN', 'COMANDANTE', 'CAPITAN', 'OPERADOR_CENTRAL'] },
+  { to: '/vision360-cuarteles', label: 'Vision360', icon: Eye, roles: ['SUPER_ADMIN', 'COMANDANTE', 'CAPITAN', 'OPERADOR_CENTRAL'] },
   { to: '/dispatch/global', label: 'Central Global', icon: Globe, roles: ['SUPER_ADMIN', 'COMANDANTE', 'CAPITAN', 'OPERADOR_CENTRAL', 'SECRETARIO'] },
   { to: '/dashboard',  label: 'Dashboard',   icon: LayoutDashboard, roles: ['ALL'] },
   { to: '/compania',   label: 'Mi compañía', icon: Home,            roles: ['KODESK', 'SUPER_ADMIN', 'COMANDANTE', 'CAPITAN', 'SECRETARIO', 'TESORERO', 'ENCARGADO_MATERIAL', 'AUDITOR', 'BOMBERO', 'BOMBERO_HONORARIO', 'BOMBERO_INICIAL', 'BOMBERO_PROFESIONAL'] },
@@ -62,6 +60,7 @@ export const navItems: NavItem[] = [
   { to: '/purchases',  label: 'Compras',      icon: ShoppingCart,    roles: ['SUPER_ADMIN', 'TESORERO', 'SECRETARIO', 'COMANDANTE'] },
   { to: '/finance',    label: 'Finanzas',     icon: DollarSign,      roles: ['SUPER_ADMIN', 'TESORERO', 'AUDITOR', 'COMANDANTE'] },
   { to: '/membership', label: 'Tesorería Social', icon: HandCoins,   roles: ['SUPER_ADMIN', 'TESORERO', 'SECRETARIO', 'COMANDANTE', 'AUDITOR', 'CAPITAN'] },
+  { to: '/companias-tv', label: 'Muro compañías TV', icon: Tv, roles: ['SUPER_ADMIN', 'COMANDANTE', 'CAPITAN', 'OPERADOR_CENTRAL'] },
 ];
 
 interface SidebarProps {

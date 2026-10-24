@@ -51,6 +51,8 @@ export class RadioService {
   private readonly talkers = new Map<string, ChannelTalker>();
   /** channelId → recent clips */
   private readonly history = new Map<string, RadioTransmission[]>();
+  /** incident channel → userIds autorizados por la centralista para PTT */
+  private readonly allowedTalkers = new Map<string, string[]>();
   private readonly hydrated = new Set<string>();
 
   constructor(private readonly prisma: PrismaService) {}
@@ -146,7 +148,190 @@ export class RadioService {
     });
   }
 
+  setAllowedTalkers(channelId: string, userIds: string[]) {
+    const unique = [...new Set(userIds.map((id) => String(id || '').trim()).filter(Boolean))].slice(0, 2);
+    this.allowedTalkers.set(channelId, unique);
+    return unique;
+  }
+
+  async loadAllowedTalkers(channelId: string) {
+    if (!channelId.startsWith('incident:')) {
+      this.allowedTalkers.set(channelId, []);
+      return [];
+    }
+    const incidentId = channelId.slice('incident:'.length);
+    try {
+      const rows = await this.prisma.$queryRaw<Array<{ radioTalkerIds: string[] | null }>>`
+        SELECT "radioTalkerIds" FROM "Incident" WHERE id = ${incidentId} LIMIT 1
+      `;
+      const ids = this.setAllowedTalkers(channelId, rows[0]?.radioTalkerIds ?? []);
+      return ids;
+    } catch {
+      this.allowedTalkers.set(channelId, []);
+      return [];
+    }
+  }
+
+  async allowedTalkerIds(channelId: string) {
+    if (this.allowedTalkers.has(channelId)) return this.allowedTalkers.get(channelId) ?? [];
+    return this.loadAllowedTalkers(channelId);
+  }
+
+  async incidentTalkers(incidentId: string) {
+    const channelId = RadioService.channelId('incident', incidentId);
+    const incident = await this.prisma.incident.findUnique({
+      where: { id: incidentId },
+      select: {
+        id: true,
+        companyId: true,
+        emergencyResponses: {
+          select: {
+            status: true,
+            user: {
+              select: {
+                id: true,
+                firstName: true,
+                lastName: true,
+                operativeNumber: true,
+                phone: true,
+                company: { select: { number: true } },
+              },
+            },
+          },
+        },
+        alarmNotifications: {
+          take: 1,
+          orderBy: { createdAt: 'desc' },
+          select: {
+            deliveries: {
+              select: {
+                user: {
+                  select: {
+                    id: true,
+                    firstName: true,
+                    lastName: true,
+                    operativeNumber: true,
+                    phone: true,
+                    company: { select: { number: true } },
+                  },
+                },
+              },
+            },
+          },
+        },
+      },
+    });
+    if (!incident) return null;
+
+    const allowedIds = await this.allowedTalkerIds(channelId);
+    const byUser = new Map<string, {
+      userId: string;
+      firstName: string;
+      lastName: string;
+      operativeNumber: number | null;
+      phone: string | null;
+      companyNumber: number | null;
+      response: string | null;
+    }>();
+
+    const touch = (
+      user: {
+        id: string;
+        firstName: string;
+        lastName: string;
+        operativeNumber: number | null;
+        phone: string | null;
+        company: { number: number } | null;
+      },
+      response?: string | null,
+    ) => {
+      const current = byUser.get(user.id);
+      if (current) {
+        if (response && !current.response) current.response = response;
+        return current;
+      }
+      const created = {
+        userId: user.id,
+        firstName: user.firstName,
+        lastName: user.lastName,
+        operativeNumber: user.operativeNumber ?? null,
+        phone: user.phone ?? null,
+        companyNumber: user.company?.number ?? null,
+        response: response ?? null,
+      };
+      byUser.set(user.id, created);
+      return created;
+    };
+
+    for (const delivery of incident.alarmNotifications[0]?.deliveries ?? []) {
+      if (delivery.user) touch(delivery.user);
+    }
+    for (const row of incident.emergencyResponses) {
+      if (row.user) touch(row.user, row.status);
+    }
+
+    if (allowedIds.length) {
+      const missing = allowedIds.filter((id) => !byUser.has(id));
+      if (missing.length) {
+        const extra = await this.prisma.user.findMany({
+          where: { id: { in: missing } },
+          select: {
+            id: true,
+            firstName: true,
+            lastName: true,
+            operativeNumber: true,
+            phone: true,
+            company: { select: { number: true } },
+          },
+        });
+        for (const user of extra) touch(user);
+      }
+    }
+
+    const rank = (status: string | null) => {
+      if (status === 'ON_SCENE' || status === 'LOCATION_MARKED') return 0;
+      if (status === 'GOING') return 1;
+      if (status) return 2;
+      return 3;
+    };
+
+    const candidates = [...byUser.values()].sort((a, b) => {
+      const allowedDelta = Number(allowedIds.includes(b.userId)) - Number(allowedIds.includes(a.userId));
+      if (allowedDelta) return allowedDelta;
+      const statusDelta = rank(a.response) - rank(b.response);
+      if (statusDelta) return statusDelta;
+      return `${a.lastName} ${a.firstName}`.localeCompare(`${b.lastName} ${b.firstName}`, 'es');
+    });
+
+    return {
+      incidentId,
+      maxTalkers: 2,
+      allowedUserIds: allowedIds,
+      allowed: candidates.filter((row) => allowedIds.includes(row.userId)),
+      candidates,
+    };
+  }
+
+  async saveIncidentTalkers(incidentId: string, userIds: string[]) {
+    const unique = [...new Set(userIds.map((id) => String(id || '').trim()).filter(Boolean))].slice(0, 2);
+    if (unique.length) {
+      const found = await this.prisma.user.count({ where: { id: { in: unique } } });
+      if (found !== unique.length) {
+        throw new Error('Uno de los teléfonos no existe');
+      }
+    }
+    await this.prisma.$executeRawUnsafe(
+      `UPDATE "Incident" SET "radioTalkerIds" = $1::text[] WHERE id = $2`,
+      unique,
+      incidentId,
+    );
+    const channelId = RadioService.channelId('incident', incidentId);
+    this.setAllowedTalkers(channelId, unique);
+    return this.incidentTalkers(incidentId);
+  }
+
   async hydrate(channelId: string) {
+    await this.loadAllowedTalkers(channelId);
     if (this.hydrated.has(channelId)) return;
     this.hydrated.add(channelId);
     try {
@@ -206,6 +391,7 @@ export class RadioService {
         operativeNumber: m.operativeNumber ?? null,
       })),
       talker: this.talkers.get(channelId) ?? null,
+      allowedTalkerIds: this.allowedTalkers.get(channelId) ?? [],
       recent: this.recent(channelId).slice(0, 12),
     };
   }

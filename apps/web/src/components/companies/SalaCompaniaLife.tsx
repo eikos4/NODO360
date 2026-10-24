@@ -4,6 +4,11 @@ import {
   Bell, Cake, CalendarDays, CheckCircle2, CheckSquare, Home, Megaphone, Plus, Sparkles, Users, X,
 } from 'lucide-react';
 import { salaAuthHeaders } from '../../lib/sala-auth';
+import CompaniaIntranet, {
+  CompaniaLifeModal,
+  type CompaniaBoard,
+  type LifePriority,
+} from '../compania/CompaniaIntranet';
 
 type Kind = 'ASEO' | 'TAREA' | 'REUNION' | 'RECORDATORIO' | 'CUMPLE';
 type Priority = 'LOW' | 'MEDIUM' | 'HIGH';
@@ -27,12 +32,7 @@ type LifeItem = {
   assignee: Person | null;
 };
 
-type Board = {
-  canEdit: boolean;
-  items: LifeItem[];
-  announcements: { id: string; title: string; content: string; eventDate: string | null; createdAt: string }[];
-  members: Person[];
-};
+type Board = CompaniaBoard;
 
 const KINDS: { id: Kind; label: string; icon: typeof CheckSquare }[] = [
   { id: 'TAREA', label: 'Tarea', icon: CheckSquare },
@@ -63,6 +63,17 @@ function nextBirthday(iso: string, now = new Date()) {
   return Math.round((next.getTime() - start.getTime()) / 86400000);
 }
 
+const BOARD_THEME_KEY = 'nodo360_compania_board_theme';
+
+function readBoardTheme(fallbackDark: boolean): boolean {
+  try {
+    const stored = localStorage.getItem(BOARD_THEME_KEY);
+    if (stored === 'light') return false;
+    if (stored === 'dark') return true;
+  } catch { /* ignore */ }
+  return fallbackDark;
+}
+
 type Props = {
   slug: string;
   variant?: 'compact' | 'full';
@@ -73,9 +84,10 @@ export default function SalaCompaniaLife({ slug, variant = 'compact', dark = fal
   const apiBase = import.meta.env.VITE_API_URL?.replace(/\/$/, '') || '/api';
   const qc = useQueryClient();
   const [modal, setModal] = useState<Kind | null>(null);
+  const [boardDark, setBoardDark] = useState(() => readBoardTheme(dark));
   const headers = salaAuthHeaders(slug);
 
-  const { data } = useQuery({
+  const { data, isLoading } = useQuery({
     queryKey: ['sala-life', slug],
     queryFn: async () => {
       const res = await fetch(`${apiBase}/dispatch/public/${slug}/life`, { headers });
@@ -98,7 +110,7 @@ export default function SalaCompaniaLife({ slug, variant = 'compact', dark = fal
   });
 
   const createMut = useMutation({
-    mutationFn: async (body: { kind: Kind; title: string; notes?: string; dueAt?: string; assigneeId?: string }) => {
+    mutationFn: async (body: { kind: Kind; title: string; notes?: string; dueAt?: string; assigneeId?: string; priority?: LifePriority }) => {
       const res = await fetch(`${apiBase}/dispatch/public/${slug}/life`, {
         method: 'POST',
         headers,
@@ -110,6 +122,14 @@ export default function SalaCompaniaLife({ slug, variant = 'compact', dark = fal
       qc.invalidateQueries({ queryKey: ['sala-life', slug] });
       setModal(null);
     },
+  });
+
+  const delMut = useMutation({
+    mutationFn: async (id: string) => {
+      const res = await fetch(`${apiBase}/dispatch/public/${slug}/life/${id}`, { method: 'DELETE', headers });
+      if (!res.ok) throw new Error('No se pudo borrar');
+    },
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['sala-life', slug] }),
   });
 
   const items = data?.items ?? [];
@@ -155,6 +175,54 @@ export default function SalaCompaniaLife({ slug, variant = 'compact', dark = fal
     ? 'border-white/10 bg-slate-900/70 text-white'
     : 'border-slate-200 bg-white text-slate-800';
   const muted = dark ? 'text-slate-400' : 'text-slate-500';
+
+  if (variant === 'full') {
+    if (isLoading) {
+      return (
+        <div className={`flex h-48 items-center justify-center ${boardDark ? 'bg-[#070b12]' : 'bg-slate-100'}`}>
+          <div className="h-10 w-10 animate-spin rounded-full border-2 border-red-500 border-t-transparent" />
+        </div>
+      );
+    }
+    if (!data?.company) {
+      return (
+        <p className={`px-6 py-10 text-center text-sm ${muted}`}>
+          No se pudo cargar el tablero de esta compañía.
+        </p>
+      );
+    }
+    return (
+      <div className={boardDark ? 'min-h-full bg-[#070b12] text-white' : 'min-h-full bg-slate-100 text-slate-900'}>
+        <CompaniaIntranet
+          data={data}
+          isDark={boardDark}
+          announcementHref={null}
+          documentsHref={null}
+          onCreate={setModal}
+          onToggle={(id, status) => patchMut.mutate({ id, status })}
+          onDelete={(id) => delMut.mutate(id)}
+          onToggleTheme={() => {
+            setBoardDark((prev) => {
+              const next = !prev;
+              try { localStorage.setItem(BOARD_THEME_KEY, next ? 'dark' : 'light'); } catch { /* ignore */ }
+              return next;
+            });
+          }}
+        />
+        {modal && (
+          <CompaniaLifeModal
+            kind={modal}
+            dark={boardDark}
+            members={data.members}
+            busy={createMut.isPending}
+            error={createMut.isError ? 'No se pudo publicar en este cuartel.' : null}
+            onClose={() => setModal(null)}
+            onSubmit={(body) => createMut.mutate(body)}
+          />
+        )}
+      </div>
+    );
+  }
 
   return (
     <section className={`rounded-2xl border p-4 ${card}`}>

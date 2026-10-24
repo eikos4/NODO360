@@ -300,31 +300,31 @@ export type CommandPoint = {
   longitude: number;
 };
 
+export type CommandHubIncident = {
+  id: string;
+  code: string;
+  type: string;
+  address: string;
+  description?: string | null;
+  status?: string;
+  dispatchedAt: string;
+  company: { id: string; name: string; number: number };
+  vehicles: { patent: string; type: string }[];
+  going: number;
+  onScene: number;
+};
+
 export type CommandHub = {
   posts: {
     id: string;
     status: 'ACTIVE' | 'CLOSED';
     openedAt: string;
     closedAt: string | null;
-    incident: {
-      id: string;
-      code: string;
-      type: string;
-      address: string;
-      status: string;
-      dispatchedAt: string;
-      company: { id: string; name: string; number: number };
-    };
+    incident: CommandHubIncident;
     command: { name: string; rank: string | null; assumedAt: string } | null;
+    resources: { id: string; label: string; type: string; status: string; companyName: string | null }[];
     resourceCount: number;
     sectorCount: number;
   }[];
-  eligibleIncidents: {
-    id: string;
-    code: string;
-    type: string;
-    address: string;
-    dispatchedAt: string;
-    company: { id: string; name: string; number: number };
-  }[];
+  eligibleIncidents: CommandHubIncident[];
 };

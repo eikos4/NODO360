@@ -3,7 +3,7 @@ import { Link, useNavigate, useParams } from 'react-router-dom';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import {
   AlertTriangle, ArrowLeftRight, BookOpen, CheckCircle2, ClipboardList, Clock, Crosshair, FileDown, Flag, Loader2,
-  LocateFixed, Maximize2, Minimize2, Plus, Radio, RefreshCw, Wifi, WifiOff, X,
+  LocateFixed, MapPin, Maximize2, Minimize2, Plus, Radio, RefreshCw, Shield, Truck, Users, Wifi, WifiOff, X,
 } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { api } from '../lib/api';
@@ -15,6 +15,7 @@ import NodoCommandGlobalResources from '../components/command/NodoCommandGlobalR
 import { chileResourceKey } from '../lib/chile-bomberos';
 import {
   CommandHub,
+  CommandHubIncident,
   CommandSnapshot,
   NOVELTY_CATEGORIES,
   REQUEST_PRIORITIES,
@@ -61,90 +62,224 @@ export default function NodoCommandPage() {
   return <CommandBoard incidentId={incidentId} />;
 }
 
+function companyLine(company?: { name: string; number: number } | null) {
+  if (!company) return 'Sin compañía';
+  return company.name || `${company.number}ª Compañía`;
+}
+
+function HubVehicleChips({
+  vehicles,
+  isDark,
+}: {
+  vehicles: { patent: string; type: string }[];
+  isDark: boolean;
+}) {
+  if (!vehicles.length) {
+    return <p className={`text-xs ${isDark ? 'text-slate-500' : 'text-slate-500'}`}>Sin carros asignados todavía.</p>;
+  }
+  return (
+    <div className="flex flex-wrap gap-1.5">
+      {vehicles.slice(0, 8).map((car) => (
+        <span
+          key={`${car.patent}-${car.type}`}
+          className={`inline-flex items-center gap-1 rounded-full border px-2 py-0.5 text-[11px] font-bold ${
+            isDark ? 'border-white/10 bg-white/5 text-slate-200' : 'border-slate-200 bg-white text-slate-700'
+          }`}
+        >
+          <Truck className="h-3 w-3 text-red-500" />
+          {car.patent}
+          {car.type ? <span className={isDark ? 'text-slate-400 font-semibold' : 'text-slate-500 font-semibold'}>· {car.type}</span> : null}
+        </span>
+      ))}
+      {vehicles.length > 8 && (
+        <span className={`text-[11px] font-semibold ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>+{vehicles.length - 8}</span>
+      )}
+    </div>
+  );
+}
+
 function CommandHubView() {
   const navigate = useNavigate();
+  const isDark = useThemeStore((s) => s.theme === 'dark');
+  const [now, setNow] = useState(() => Date.now());
   const { data, isLoading, refetch, isFetching } = useQuery({
     queryKey: ['command-posts'],
     queryFn: () => api.get<CommandHub>('/command-posts').then((r) => r.data),
     refetchInterval: 8000,
   });
 
+  useEffect(() => {
+    const t = window.setInterval(() => setNow(Date.now()), 1000);
+    return () => window.clearInterval(t);
+  }, []);
+
   const active = data?.posts.filter((p) => p.status === 'ACTIVE') ?? [];
   const closed = data?.posts.filter((p) => p.status === 'CLOSED') ?? [];
+  const eligible = data?.eligibleIncidents ?? [];
+  const carsOut = [
+    ...active.flatMap((p) => p.incident.vehicles ?? []),
+    ...eligible.flatMap((inc) => inc.vehicles ?? []),
+  ];
+  const uniqueCars = new Set(carsOut.map((car) => car.patent)).size;
+
+  const page = isDark ? 'bg-[#070b12] text-slate-100' : 'bg-slate-100 text-slate-900';
+  const card = isDark ? 'border-white/10 bg-slate-900/70' : 'border-slate-200 bg-white shadow-sm';
+  const muted = isDark ? 'text-slate-400' : 'text-slate-600';
+  const title = isDark ? 'text-white' : 'text-slate-900';
+  const label = isDark ? 'text-slate-500' : 'text-slate-500';
 
   return (
-    <div className="nodo-command-page flex-1 min-h-0 overflow-y-auto bg-slate-950 text-slate-100 p-4 md:p-6">
+    <div className={`nodo-command-page nodo-command-hub flex-1 min-h-0 overflow-y-auto p-4 md:p-6 ${page}`}>
       <div className="max-w-6xl mx-auto space-y-6">
-        <header className="flex items-start justify-between gap-3">
-          <div>
-            <p className="text-[10px] font-black uppercase tracking-[0.28em] text-red-400">NODO360</p>
-            <h1 className="text-2xl font-black tracking-tight">Puesto de Comando</h1>
-            <p className="text-sm text-slate-400 mt-1">
-              Tablero táctico para emergencias de gran magnitud. Constituye el puesto desde una emergencia activa.
-            </p>
+        <header className={`rounded-3xl border p-5 sm:p-6 ${card}`}>
+          <div className="flex items-start justify-between gap-3">
+            <div className="min-w-0">
+              <p className="text-[10px] font-black uppercase tracking-[0.28em] text-red-500">NODO360 · NodoCommand</p>
+              <h1 className={`mt-1 text-2xl sm:text-3xl font-black tracking-tight ${title}`}>Puesto de Comando</h1>
+              <p className={`mt-2 max-w-3xl text-sm leading-relaxed ${muted}`}>
+                Tablero táctico para emergencias grandes. Aquí se constituye el mando, se ven los carros que andan,
+                las compañías, los sectores y el mapa. No reemplaza el despacho: se usa cuando la emergencia ya está activa
+                y hay que dirigirla en terreno.
+              </p>
+            </div>
+            <button
+              type="button"
+              onClick={() => void refetch()}
+              className={`shrink-0 rounded-xl border p-2 ${isDark ? 'border-white/10 text-slate-300 hover:bg-white/5' : 'border-slate-200 bg-white text-slate-600 hover:bg-slate-50'}`}
+              title="Actualizar"
+            >
+              <RefreshCw className={`w-4 h-4 ${isFetching ? 'animate-spin' : ''}`} />
+            </button>
           </div>
-          <button
-            type="button"
-            onClick={() => void refetch()}
-            className="p-2 rounded-lg border border-white/10 text-slate-300 hover:bg-white/5"
-          >
-            <RefreshCw className={`w-4 h-4 ${isFetching ? 'animate-spin' : ''}`} />
-          </button>
+
+          <div className="mt-5 grid gap-2 sm:grid-cols-2 lg:grid-cols-4">
+            {[
+              { icon: Flag, title: '1. Elige la emergencia', text: 'Toma una alarma activa y constituye el puesto.' },
+              { icon: Shield, title: '2. Asume el mando', text: 'Queda registrado quién dirige y desde cuándo.' },
+              { icon: Truck, title: '3. Sigue los carros', text: 'Unidades, apoyo externo y quién va al lugar.' },
+              { icon: Radio, title: '4. Sectores y bitácora', text: 'Misiones, novedades y el informe al cerrar.' },
+            ].map((step) => (
+              <div key={step.title} className={`rounded-2xl border px-3 py-3 ${isDark ? 'border-white/10 bg-white/5' : 'border-slate-100 bg-slate-50'}`}>
+                <step.icon className="mb-2 h-4 w-4 text-red-500" />
+                <p className={`text-xs font-black ${title}`}>{step.title}</p>
+                <p className={`mt-1 text-[11px] leading-relaxed ${muted}`}>{step.text}</p>
+              </div>
+            ))}
+          </div>
         </header>
 
+        <section className="grid grid-cols-2 lg:grid-cols-4 gap-2.5">
+          {[
+            { label: 'Puestos activos', value: active.length, icon: Flag, tone: 'text-red-500' },
+            { label: 'Listas para constituir', value: eligible.length, icon: ClipboardList, tone: 'text-amber-500' },
+            { label: 'Carros en emergencia', value: uniqueCars, icon: Truck, tone: 'text-sky-500' },
+            { label: 'Cerrados', value: closed.length, icon: BookOpen, tone: isDark ? 'text-slate-300' : 'text-slate-600' },
+          ].map((kpi) => (
+            <div key={kpi.label} className={`rounded-2xl border px-4 py-3 ${card}`}>
+              <p className={`text-[10px] font-black uppercase tracking-widest ${label}`}>{kpi.label}</p>
+              <div className="mt-1 flex items-end justify-between gap-2">
+                <p className={`text-2xl font-black tabular-nums ${title}`}>{kpi.value}</p>
+                <kpi.icon className={`h-4 w-4 ${kpi.tone}`} />
+              </div>
+            </div>
+          ))}
+        </section>
+
         <section>
-          <h2 className="text-[10px] font-black uppercase tracking-widest text-slate-500 mb-2">Puestos activos</h2>
+          <h2 className={`text-[10px] font-black uppercase tracking-widest mb-2 ${label}`}>Puestos activos</h2>
           {isLoading ? (
-            <p className="text-sm text-slate-500">Cargando…</p>
+            <p className={`text-sm ${muted}`}>Cargando…</p>
           ) : active.length === 0 ? (
-            <p className="text-sm text-slate-500 rounded-2xl border border-white/10 px-4 py-6">
-              No hay puestos de comando activos.
+            <p className={`text-sm rounded-2xl border px-4 py-6 ${card} ${muted}`}>
+              No hay puestos de comando activos. Si la emergencia crece, constituyelo desde una alarma en curso.
             </p>
           ) : (
             <div className="grid md:grid-cols-2 gap-3">
-              {active.map((post) => (
-                <button
-                  key={post.id}
-                  type="button"
-                  onClick={() => navigate(`/nodo-command/${post.incident.id}`)}
-                  className="text-left rounded-2xl border border-red-500/30 bg-red-500/10 px-4 py-4 hover:bg-red-500/15"
-                >
-                  <p className="font-mono text-xs font-black text-red-300">{post.incident.code}</p>
-                  <p className="text-lg font-black">{post.incident.type}</p>
-                  <p className="text-xs text-slate-400 truncate">{post.incident.address}</p>
-                  <p className="text-xs mt-2 text-slate-300">
-                    Mando: {post.command ? `${post.command.rank ? `${post.command.rank} ` : ''}${post.command.name}` : 'Sin mando'}
-                  </p>
-                  <p className="text-[11px] text-slate-500 mt-1">
-                    {post.resourceCount} recursos · {post.sectorCount} sectores
-                  </p>
-                </button>
-              ))}
+              {active.map((post) => {
+                const cars = (post.resources?.length ? post.resources.map((r) => ({ patent: r.label, type: r.type })) : post.incident.vehicles) ?? [];
+                return (
+                  <button
+                    key={post.id}
+                    type="button"
+                    onClick={() => navigate(`/nodo-command/${post.incident.id}`)}
+                    className={`text-left rounded-2xl border px-4 py-4 transition ${
+                      isDark
+                        ? 'border-red-500/35 bg-red-500/10 hover:bg-red-500/15'
+                        : 'border-red-200 bg-red-50 hover:border-red-300 hover:bg-red-100/70'
+                    }`}
+                  >
+                    <div className="flex items-start justify-between gap-2">
+                      <p className="font-mono text-xs font-black text-red-500">{post.incident.code}</p>
+                      <span className="keep-on-color rounded-full bg-red-600 px-2 py-0.5 text-[10px] font-black uppercase tracking-wide text-white">
+                        En curso · {formatDuration(now - new Date(post.openedAt).getTime())}
+                      </span>
+                    </div>
+                    <p className={`mt-1 text-lg font-black leading-tight ${title}`}>{post.incident.type}</p>
+                    <p className={`mt-1 flex items-center gap-1 text-xs ${muted}`}>
+                      <MapPin className="h-3 w-3 shrink-0" />
+                      <span className="truncate">{post.incident.address}</span>
+                    </p>
+                    {post.incident.description ? (
+                      <p className={`mt-2 line-clamp-2 text-xs leading-relaxed ${muted}`}>{post.incident.description}</p>
+                    ) : null}
+                    <div className={`mt-3 grid grid-cols-2 gap-2 text-[11px] ${muted}`}>
+                      <p><span className="font-bold">Compañía:</span> {companyLine(post.incident.company)}</p>
+                      <p><span className="font-bold">Mando:</span> {post.command ? `${post.command.rank ? `${post.command.rank} ` : ''}${post.command.name}` : 'Sin mando'}</p>
+                      <p className="inline-flex items-center gap-1"><Users className="h-3 w-3" /> {post.incident.going ?? 0} van · {post.incident.onScene ?? 0} en lugar</p>
+                      <p>{post.resourceCount} recursos · {post.sectorCount} sectores</p>
+                    </div>
+                    <div className="mt-3">
+                      <p className={`mb-1.5 text-[10px] font-black uppercase tracking-widest ${label}`}>Carros que andan</p>
+                      <HubVehicleChips vehicles={cars} isDark={isDark} />
+                    </div>
+                    <p className="mt-3 text-[11px] font-black uppercase tracking-wide text-red-500">Abrir tablero →</p>
+                  </button>
+                );
+              })}
             </div>
           )}
         </section>
 
         <section>
-          <h2 className="text-[10px] font-black uppercase tracking-widest text-slate-500 mb-2">
+          <h2 className={`text-[10px] font-black uppercase tracking-widest mb-2 ${label}`}>
             Emergencias listas para constituir
           </h2>
-          {(data?.eligibleIncidents.length ?? 0) === 0 ? (
-            <p className="text-sm text-slate-500 rounded-2xl border border-white/10 px-4 py-6">
-              No hay emergencias activas sin puesto de comando.
+          {eligible.length === 0 ? (
+            <p className={`text-sm rounded-2xl border px-4 py-6 ${card} ${muted}`}>
+              No hay emergencias activas sin puesto. Cuando despachen una alarma, aparece acá para constituir el mando.
             </p>
           ) : (
             <div className="grid md:grid-cols-2 gap-3">
-              {data!.eligibleIncidents.map((inc) => (
+              {eligible.map((inc: CommandHubIncident) => (
                 <button
                   key={inc.id}
                   type="button"
                   onClick={() => navigate(`/nodo-command/${inc.id}`)}
-                  className="text-left rounded-2xl border border-white/10 bg-white/5 px-4 py-4 hover:bg-white/10"
+                  className={`text-left rounded-2xl border px-4 py-4 transition ${
+                    isDark ? 'border-white/10 bg-white/5 hover:bg-white/10' : `${card} hover:border-slate-300`
+                  }`}
                 >
-                  <p className="font-mono text-xs font-black text-red-400">{inc.code}</p>
-                  <p className="font-bold">{inc.type}</p>
-                  <p className="text-xs text-slate-400 truncate">{inc.address}</p>
-                  <p className="text-[11px] text-slate-900 dark:text-amber-300 mt-2 font-semibold">Constituir puesto de comando →</p>
+                  <div className="flex items-start justify-between gap-2">
+                    <p className="font-mono text-xs font-black text-red-500">{inc.code}</p>
+                    <span className={`text-[10px] font-black uppercase ${isDark ? 'text-amber-300' : 'text-amber-700'}`}>
+                      {formatDuration(now - new Date(inc.dispatchedAt).getTime())}
+                    </span>
+                  </div>
+                  <p className={`mt-1 font-black ${title}`}>{inc.type}</p>
+                  <p className={`mt-1 flex items-center gap-1 text-xs ${muted}`}>
+                    <MapPin className="h-3 w-3 shrink-0" />
+                    <span className="truncate">{inc.address}</span>
+                  </p>
+                  <p className={`mt-2 text-[11px] ${muted}`}>
+                    {companyLine(inc.company)} · {inc.going ?? 0} van · {inc.onScene ?? 0} en lugar
+                  </p>
+                  <div className="mt-3">
+                    <p className={`mb-1.5 text-[10px] font-black uppercase tracking-widest ${label}`}>Carros despachados</p>
+                    <HubVehicleChips vehicles={inc.vehicles ?? []} isDark={isDark} />
+                  </div>
+                  <p className={`mt-3 text-[11px] font-black uppercase tracking-wide ${isDark ? 'text-amber-300' : 'text-amber-700'}`}>
+                    Constituir puesto de comando →
+                  </p>
                 </button>
               ))}
             </div>
@@ -153,18 +288,24 @@ function CommandHubView() {
 
         {closed.length > 0 && (
           <section>
-            <h2 className="text-[10px] font-black uppercase tracking-widest text-slate-500 mb-2">Históricos</h2>
+            <h2 className={`text-[10px] font-black uppercase tracking-widest mb-2 ${label}`}>Históricos</h2>
             <div className="space-y-2">
               {closed.slice(0, 8).map((post) => (
                 <button
                   key={post.id}
                   type="button"
                   onClick={() => navigate(`/nodo-command/${post.incident.id}`)}
-                  className="w-full text-left rounded-xl border border-white/10 px-4 py-3 hover:bg-white/5"
+                  className={`w-full text-left rounded-xl border px-4 py-3 ${card}`}
                 >
-                  <span className="font-mono text-xs text-slate-400">{post.incident.code}</span>
-                  <span className="mx-2 text-slate-300">{post.incident.type}</span>
-                  <span className="text-[11px] text-slate-500">finalizado</span>
+                  <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
+                    <span className="font-mono text-xs text-red-500">{post.incident.code}</span>
+                    <span className={`font-semibold ${title}`}>{post.incident.type}</span>
+                    <span className={`text-[11px] ${muted}`}>{post.incident.address}</span>
+                    <span className={`ml-auto text-[11px] ${muted}`}>finalizado</span>
+                  </div>
+                  <div className="mt-2">
+                    <HubVehicleChips vehicles={post.incident.vehicles ?? []} isDark={isDark} />
+                  </div>
                 </button>
               ))}
             </div>

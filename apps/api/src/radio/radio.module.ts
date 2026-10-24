@@ -4,6 +4,7 @@ import { ConfigModule, ConfigService } from '@nestjs/config';
 import { PrismaModule } from '../prisma/prisma.module';
 import { DispatchCentralModule } from '../dispatch-central/dispatch-central.module';
 import { NotificationsModule } from '../notifications/notifications.module';
+import { RolesGuard } from '../auth/guards/roles.guard';
 import { RadioController } from './radio.controller';
 import { RadioGateway } from './radio.gateway';
 import { RadioService } from './radio.service';
@@ -23,7 +24,7 @@ import { RadioService } from './radio.service';
     }),
   ],
   controllers: [RadioController],
-  providers: [RadioService, RadioGateway],
+  providers: [RadioService, RadioGateway, RolesGuard],
   exports: [RadioService],
 })
 export class RadioModule {}

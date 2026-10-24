@@ -16,8 +16,6 @@ const TABS = [
   { to: '/nodo360-alarms', label: 'Nodo360 Alarms', icon: Bell },
   { to: '/central-express', label: 'Central Express', icon: Zap },
   { to: '/vision360-cuarteles', label: 'Vision360', icon: Eye },
-  { to: '/companias-tv', label: 'Muro compañías', icon: Tv },
-  { to: '/central-despachos-parral', label: 'Central Parral', icon: Flame },
   { to: '/central-operativa', label: 'En vivo', icon: Radio },
   { to: '/bitacora360', label: 'Bitácora360', icon: BookOpen },
   { to: '/central-bitacora/registro', label: 'Bitácora botonera', icon: ClipboardList },
@@ -26,6 +24,7 @@ const TABS = [
   { to: '/hydrants', label: 'Hidrantes', icon: Droplets },
   { to: '/incidents', label: 'Emergencias', icon: ShieldAlert },
   { to: '/central-avisos', label: 'Avisos a la app', icon: Megaphone },
+  { to: '/companias-tv', label: 'Muro compañías', icon: Tv },
 ] as const;
 
 export default function CentralOperatorBar() {

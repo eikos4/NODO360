@@ -8,10 +8,11 @@ import {
 } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
 import * as bcrypt from 'bcryptjs';
-import { EquipmentStatus, FleetLogType, DispatchSource, IncidentStatus, EmergencyResponseStatus } from '@prisma/client';
+import { EquipmentStatus, FleetLogType, DispatchSource, IncidentStatus, EmergencyResponseStatus, Prisma } from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
 import { StandbyAlertService } from './standby-alert.service';
 import { UpdateDispatchCentralDto } from './dto/update-dispatch-central.dto';
+import { SetVehicleStatusDto } from './dto/set-vehicle-status.dto';
 import { Actor, assertCompanyAccess, companyIdsForActor, companyIdsInCuerpo } from '../common/cuerpo-scope';
 import { assignedRoles } from '../common/user-roles';
 import { EmergencyBroadcaster } from '../emergency-realtime/emergency-broadcaster.service';
@@ -245,6 +246,7 @@ export class DispatchCentralService {
   }
 
   async getFleetForCompany(companyId: string) {
+    await this.restoreDueVehicles(companyId);
     const vehicles = await this.prisma.vehicle.findMany({
       where: { companyId },
       select: {
@@ -301,9 +303,11 @@ export class DispatchCentralService {
       }
     }
 
+    const holds = await this.loadVehicleHolds(vehicleIds);
     const mapped = vehicles.map((v) => {
       const latestFuel = latestFuelByVehicle.get(v.id);
       const fuelLevelPercent = this.estimateFuelLevel(v.type, latestFuel);
+      const hold = holds.get(v.id);
       return {
         id: v.id,
         companyId,
@@ -314,6 +318,8 @@ export class DispatchCentralService {
         type: v.type,
         status: v.status,
         statusLabel: VEHICLE_STATUS_LABELS[v.status],
+        unavailableReason: hold?.unavailableReason ?? null,
+        availableAt: hold?.availableAt ?? null,
         imageUrl: v.imageUrl,
         kilometers: v.kilometers ?? 0,
         lastMaintenanceAt: v.lastMaintenanceAt,
@@ -1774,16 +1780,51 @@ export class DispatchCentralService {
     };
   }
 
-  async setVehicleStatus(id: string, status: EquipmentStatus, actor: Actor) {
+  private async restoreDueVehicles(companyId?: string) {
+    if (companyId) {
+      await this.prisma.$executeRaw`
+        UPDATE "Vehicle"
+        SET status = 'OPERATIVO'::"EquipmentStatus", "unavailableReason" = NULL, "availableAt" = NULL
+        WHERE status <> 'OPERATIVO' AND "availableAt" IS NOT NULL AND "availableAt" <= NOW()
+          AND "companyId" = ${companyId}
+      `;
+      return;
+    }
+    await this.prisma.$executeRaw`
+      UPDATE "Vehicle"
+      SET status = 'OPERATIVO'::"EquipmentStatus", "unavailableReason" = NULL, "availableAt" = NULL
+      WHERE status <> 'OPERATIVO' AND "availableAt" IS NOT NULL AND "availableAt" <= NOW()
+    `;
+  }
+
+  private async loadVehicleHolds(ids: string[]) {
+    const empty = new Map<string, { unavailableReason: string | null; availableAt: Date | null }>();
+    if (ids.length === 0) return empty;
+    const rows = await this.prisma.$queryRaw<
+      { id: string; unavailableReason: string | null; availableAt: Date | null }[]
+    >`
+      SELECT id, "unavailableReason", "availableAt"
+      FROM "Vehicle"
+      WHERE id IN (${Prisma.join(ids)})
+    `;
+    return new Map(rows.map((row) => [row.id, row]));
+  }
+
+  async setVehicleStatus(id: string, dto: SetVehicleStatusDto, actor: Actor) {
     const vehicle = await this.prisma.vehicle.findUnique({
       where: { id },
       select: { id: true, companyId: true, patent: true, status: true },
     });
     if (!vehicle) throw new NotFoundException('Carro no encontrado');
     await assertCompanyAccess(this.prisma, actor, vehicle.companyId);
-    return this.prisma.vehicle.update({
+    const available = dto.status === 'OPERATIVO';
+    const availableAt = !available && dto.availableAt ? new Date(dto.availableAt) : null;
+    if (availableAt && Number.isNaN(availableAt.getTime())) {
+      throw new BadRequestException('Hora de vuelta no válida');
+    }
+    const updated = await this.prisma.vehicle.update({
       where: { id },
-      data: { status },
+      data: { status: dto.status },
       select: {
         id: true,
         companyId: true,
@@ -1791,6 +1832,17 @@ export class DispatchCentralService {
         status: true,
       },
     });
+    await this.prisma.$executeRaw`
+      UPDATE "Vehicle"
+      SET "unavailableReason" = ${available ? null : (dto.reason?.trim() || null)},
+          "availableAt" = ${available ? null : availableAt}
+      WHERE id = ${id}
+    `;
+    return {
+      ...updated,
+      unavailableReason: available ? null : (dto.reason?.trim() || null),
+      availableAt: available ? null : availableAt,
+    };
   }
 
   private async salaAuthorId(companyId: string) {

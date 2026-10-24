@@ -186,20 +186,20 @@ export class RadioGateway implements OnGatewayInit, OnGatewayConnection, OnGatew
 
   private async canTalkOnChannel(user: SocketUser, channelId: string): Promise<boolean> {
     if (user.isSala) return this.canAccessChannel(user, channelId);
-    if (hasAnyRole(user, 'OPERADOR_CENTRAL', 'COMANDANTE', 'CAPITAN', 'SUPER_ADMIN', 'KODESK')) {
+    if (hasAnyRole(user, 'OPERADOR_CENTRAL', 'SUPER_ADMIN', 'KODESK')) {
       return true;
     }
     if (!channelId.startsWith('incident:')) return false;
-    const incidentId = channelId.slice('incident:'.length);
-    const response = await this.prisma.incidentEmergencyResponse.findUnique({
-      where: { incidentId_userId: { incidentId, userId: user.userId } },
-      select: { status: true, locationMarkedAt: true },
+    const allowed = await this.radio.allowedTalkerIds(channelId);
+    return allowed.includes(user.userId);
+  }
+
+  broadcastChannel(channelId: string) {
+    this.server.to(channelId).emit('channel:state', this.radio.snapshot(channelId));
+    this.server.to(channelId).emit('talkers:updated', {
+      channelId,
+      allowedTalkerIds: this.radio.snapshot(channelId).allowedTalkerIds,
     });
-    return (
-      response?.status === 'GOING' ||
-      response?.status === 'ON_SCENE' ||
-      Boolean(response?.locationMarkedAt)
-    );
   }
 
   @SubscribeMessage('channel:join')
@@ -261,7 +261,7 @@ export class RadioGateway implements OnGatewayInit, OnGatewayConnection, OnGatew
       if (!joined?.ok) return joined;
     }
     if (!(await this.canTalkOnChannel(user, body.channelId))) {
-      return { ok: false, reason: 'Marcá VOY para transmitir' };
+      return { ok: false, reason: 'La central no habilitó este teléfono para hablar' };
     }
     const speakerName = formatRadioSpeaker(user.firstName, user.lastName, user.operativeNumber);
     const result = this.radio.tryPttStart(
@@ -317,7 +317,7 @@ export class RadioGateway implements OnGatewayInit, OnGatewayConnection, OnGatew
       if (!joined?.ok) return joined;
     }
     if (!(await this.canTalkOnChannel(user, body.channelId))) {
-      return { ok: false, reason: 'Marcá VOY para transmitir' };
+      return { ok: false, reason: 'La central no habilitó este teléfono para hablar' };
     }
     if (!isSafeRadioAudioUrl(body.audioUrl)) {
       return { ok: false, reason: 'Audio inválido' };

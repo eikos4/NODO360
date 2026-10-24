@@ -32,6 +32,7 @@ const IMMERSIVE_ROUTES = [
   '/central-llamados',
   '/nodo-command',
   '/nodo-enlace',
+  '/compania',
 ];
 
 export default function AppLayout() {
@@ -68,11 +69,17 @@ export default function AppLayout() {
         ? globalTheme === 'light'
           ? 'bg-slate-100'
           : 'bg-[#061018]'
+      : location.pathname.startsWith('/compania')
+        ? globalTheme === 'light'
+          ? 'bg-slate-100'
+          : 'bg-[#070b12]'
       : isImmersive && globalTheme === 'light'
         ? isDespacho360
           ? 'bg-white'
           : 'bg-slate-100'
-        : 'bg-slate-950';
+        : globalTheme === 'light'
+          ? 'bg-slate-100'
+          : 'bg-slate-950';
 
   useEffect(() => {
     if (isCentralOperator(user?.role)) return;

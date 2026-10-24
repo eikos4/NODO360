@@ -9,10 +9,37 @@ interface ThemeStore {
   setTheme: (t: Theme) => void;
 }
 
+function isTheme(value: unknown): value is Theme {
+  return value === 'dark' || value === 'light';
+}
+
+export function readStoredTheme(): Theme {
+  try {
+    const raw = localStorage.getItem('nodo360-theme');
+    if (!raw) return 'dark';
+    const parsed = JSON.parse(raw) as { state?: { theme?: unknown } };
+    return parsed.state?.theme === 'light' ? 'light' : 'dark';
+  } catch {
+    return 'dark';
+  }
+}
+
+export function applyTheme(theme: Theme) {
+  if (typeof document === 'undefined') return;
+  const root = document.documentElement;
+  const dark = theme === 'dark';
+  root.classList.toggle('dark', dark);
+  root.style.colorScheme = dark ? 'dark' : 'light';
+  root.dataset.theme = theme;
+}
+
+const initialTheme = typeof window !== 'undefined' ? readStoredTheme() : 'dark';
+if (typeof document !== 'undefined') applyTheme(initialTheme);
+
 export const useThemeStore = create<ThemeStore>()(
   persist(
     (set) => ({
-      theme: 'dark',
+      theme: initialTheme,
       toggleTheme: () =>
         set((s) => {
           const next = s.theme === 'dark' ? 'light' : 'dark';
@@ -20,19 +47,21 @@ export const useThemeStore = create<ThemeStore>()(
           return { theme: next };
         }),
       setTheme: (t) => {
-        applyTheme(t);
-        set({ theme: t });
+        const next = isTheme(t) ? t : 'dark';
+        applyTheme(next);
+        set({ theme: next });
       },
     }),
-    { name: 'nodo360-theme' }
-  )
+    {
+      name: 'nodo360-theme',
+      merge: (persisted, current) => {
+        const incoming = (persisted ?? {}) as Partial<ThemeStore>;
+        const theme = isTheme(incoming.theme) ? incoming.theme : current.theme;
+        return { ...current, ...incoming, theme };
+      },
+      onRehydrateStorage: () => (state) => {
+        applyTheme(state?.theme === 'light' ? 'light' : 'dark');
+      },
+    },
+  ),
 );
-
-export function applyTheme(theme: Theme) {
-  const root = document.documentElement;
-  if (theme === 'dark') {
-    root.classList.add('dark');
-  } else {
-    root.classList.remove('dark');
-  }
-}

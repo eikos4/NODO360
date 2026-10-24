@@ -32,7 +32,7 @@ export default function LandingPage() {
   }
 
   return (
-    <div className="min-h-screen bg-slate-50 font-sans selection:bg-red-500/30">
+    <div className="nodo360-landing min-h-screen bg-slate-50 font-sans selection:bg-red-500/30">
       <NavBar />
       <HeroSection />
       <StatsSection />

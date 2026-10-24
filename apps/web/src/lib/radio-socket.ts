@@ -5,6 +5,7 @@ export type RadioChannelState = {
   listeners: number;
   participants: { userId: string; firstName: string; lastName: string; role: string; operativeNumber?: number | null }[];
   talker: { userId: string; socketId: string; speakerName: string; since: number; operativeNumber?: number | null } | null;
+  allowedTalkerIds?: string[];
   recent: RadioTx[];
 };
 

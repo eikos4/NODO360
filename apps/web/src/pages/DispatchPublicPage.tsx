@@ -14,7 +14,7 @@ import EmergencyReturnCelebration from '../components/dispatch/EmergencyReturnCe
 import EmergencyBitacoraFinalizeModal from '../components/dispatch/EmergencyBitacoraFinalizeModal';
 import PublicCompanyModernView from '../components/companies/PublicCompanyModernView';
 import SalaSalidaBoard from '../components/companies/SalaSalidaBoard';
-import SalaComandoBoard from '../components/companies/SalaComandoBoard';
+import SalaComandoBoard, { readComandoDark, COMANDO_THEME_KEY } from '../components/companies/SalaComandoBoard';
 import SalaCompaniaLife from '../components/companies/SalaCompaniaLife';
 import SalaPinGate, { type SalaLockPreview } from '../components/dispatch/SalaPinGate';
 import { usePublicDispatchAlarm } from '../hooks/usePublicDispatchAlarm';
@@ -253,6 +253,7 @@ function CardPhoto({
 export default function DispatchPublicPage() {
   const { slug } = useParams<{ slug: string }>();
   const { look, night, isNodo, isVerde, isSalida, isComando, isCompania, select: selectLook, label: lookLabel } = useSalaNightMode();
+  const [comandoDark, setComandoDark] = useState(() => readComandoDark(true));
   const [searchParams] = useSearchParams();
   const th = look === 'night'
     ? SALA_NIGHT_THEME
@@ -872,10 +873,13 @@ export default function DispatchPublicPage() {
 
   const { roster, maquinistas, fleet, emergencyStats } = data;
   const hqImage = data.headquartersImageUrl || DEFAULT_HQ;
-  const darkChrome = night || isNodo || isVerde || isSalida || isComando || isCompania;
+  const comandoLight = isComando && !comandoDark;
+  const darkChrome = night || isNodo || isVerde || isSalida || (isComando && comandoDark) || isCompania;
   const qrUrl = `https://api.qrserver.com/v1/create-qr-code/?size=100x100&data=${encodeURIComponent(publicUrl)}&bgcolor=${th.qrBg}&color=${darkChrome ? 'ffffff' : '0f172a'}`;
   const floatBtn = night
     ? 'bg-[#16101c]/90 border border-amber-500/30 text-amber-100 shadow-xl shadow-amber-950/40'
+    : comandoLight
+      ? 'bg-white border border-slate-200 text-slate-800 shadow-xl'
     : isComando || isCompania
       ? 'bg-[#0b1524] border border-red-500/40 text-red-300 shadow-xl shadow-red-950/40'
       : isNodo || isSalida
@@ -885,7 +889,7 @@ export default function DispatchPublicPage() {
           : 'bg-white border border-slate-200 text-slate-800 shadow-xl';
 
   return (
-    <div className={`sala-public h-screen overflow-hidden flex flex-col transition-colors relative ${night ? 'sala-guardia' : ''} ${isSalida || isComando ? 'bg-[#071019] text-[#e7edf4]' : onEmergency ? th.pageEmergency : th.page}`}>
+    <div className={`sala-public h-screen overflow-hidden flex flex-col transition-colors relative ${night ? 'sala-guardia' : ''} ${isCompania || isComando ? '' : isSalida ? 'bg-[#071019] text-[#e7edf4]' : onEmergency ? th.pageEmergency : th.page}`}>
       {night && <SalaNightAtmosphere />}
       {/* Audio + alarma activa */}
       {!audioEnabled && (
@@ -958,8 +962,8 @@ export default function DispatchPublicPage() {
         layout={layout}
         onToggleLayout={toggleLayout}
         chrome={floatBtn}
-        light={look === 'light'}
-        iconClass={night ? 'text-amber-300' : isComando ? 'text-red-300' : isCompania ? 'text-red-300' : isNodo || isSalida ? 'text-[#67c8ff]' : isVerde ? 'text-[#1ce783]' : 'text-slate-700'}
+        light={look === 'light' || comandoLight}
+        iconClass={night ? 'text-amber-300' : comandoLight ? 'text-slate-700' : isComando ? 'text-red-300' : isCompania ? 'text-red-300' : isNodo || isSalida ? 'text-[#67c8ff]' : isVerde ? 'text-[#1ce783]' : 'text-slate-700'}
       />
 
       {/* RENDERIZADO CONDICIONAL DE VISTAS */}
@@ -978,9 +982,17 @@ export default function DispatchPublicPage() {
         <SalaComandoBoard
           data={data}
           emergency={visibleActiveEmergency}
+          isDark={comandoDark}
+          onToggleTheme={() => {
+            setComandoDark((prev) => {
+              const next = !prev;
+              try { localStorage.setItem(COMANDO_THEME_KEY, next ? 'dark' : 'light'); } catch { /* ignore */ }
+              return next;
+            });
+          }}
         />
       ) : isCompania ? (
-        <div className="flex-1 overflow-y-auto p-4 sm:p-6">
+        <div className="flex-1 min-h-0 overflow-y-auto">
           <SalaCompaniaLife slug={data.slug} variant="full" dark={look !== 'light'} />
         </div>
       ) : layout === 'modern' ? (

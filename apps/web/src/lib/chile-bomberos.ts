@@ -477,6 +477,51 @@ export function chileCatalogTotals() {
   return { cuerpos, companies, regions: CHILE_REGIONS.length };
 }
 
+export function foldChileName(value: string) {
+  return value
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .toLowerCase()
+    .replace(/cuerpo de bomberos de /g, '')
+    .replace(/bomberos de /g, '')
+    .replace(/[^a-z0-9]+/g, ' ')
+    .trim();
+}
+
+export type ChileCuerpoListing = {
+  key: string;
+  name: string;
+  city: string;
+  region: string;
+  regionId: string;
+  companies: number;
+};
+
+export function listChileCuerpos(): ChileCuerpoListing[] {
+  return CHILE_REGIONS.flatMap((region) =>
+    region.cuerpos.map((cuerpo) => ({
+      key: `${region.id}:${foldChileName(cuerpo.name)}`,
+      name: `Cuerpo de Bomberos de ${cuerpo.name}`,
+      city: cuerpo.name,
+      region: region.name,
+      regionId: region.id,
+      companies: cuerpo.companies,
+    })),
+  );
+}
+
+export function matchChileCuerpo<T extends { name: string; city?: string | null }>(
+  listing: Pick<ChileCuerpoListing, 'city' | 'name'>,
+  live: T[],
+) {
+  const key = foldChileName(listing.city || listing.name);
+  return live.find((row) => {
+    const name = foldChileName(row.name);
+    const city = foldChileName(row.city || '');
+    return name === key || city === key || name.endsWith(` ${key}`) || city.endsWith(` ${key}`);
+  });
+}
+
 export function chileResourceKey(institution: string, label: string) {
   return `${institution}|${label}`.toLowerCase();
 }

@@ -4,7 +4,9 @@ import {
   Controller,
   ForbiddenException,
   Get,
+  NotFoundException,
   Param,
+  Patch,
   Post,
   Req,
   UploadedFile,
@@ -12,12 +14,16 @@ import {
   UseInterceptors,
 } from '@nestjs/common';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
+import { RolesGuard } from '../auth/guards/roles.guard';
+import { Roles } from '../auth/decorators/roles.decorator';
 import { StorageService } from '../storage/storage.service';
 import { memoryUpload } from '../storage/upload.interceptor';
 import { RadioService } from './radio.service';
+import { RadioGateway } from './radio.gateway';
 import { PrismaService } from '../prisma/prisma.service';
 import { Actor, assertCompanyAccess } from '../common/cuerpo-scope';
 import { UploadRadioBase64Dto } from './dto/upload-radio-base64.dto';
+import { SetRadioTalkersDto } from './dto/set-radio-talkers.dto';
 import { DispatchCentralService } from '../dispatch-central/dispatch-central.service';
 import { HeaderRequest } from '../common/sala-token';
 
@@ -26,6 +32,7 @@ export class RadioController {
   constructor(
     private readonly storage: StorageService,
     private readonly radio: RadioService,
+    private readonly gateway: RadioGateway,
     private readonly prisma: PrismaService,
     private readonly dispatch: DispatchCentralService,
   ) {}
@@ -41,6 +48,38 @@ export class RadioController {
       recent: this.radio.recent(id),
       state: this.radio.snapshot(id),
     };
+  }
+
+  @Get('incidents/:incidentId/talkers')
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles('OPERADOR_CENTRAL', 'COMANDANTE', 'CAPITAN', 'SUPER_ADMIN', 'KODESK')
+  async getTalkers(@Param('incidentId') incidentId: string, @Req() req: { user: Actor }) {
+    await this.assertChannelAccess(req.user, RadioService.channelId('incident', incidentId));
+    const data = await this.radio.incidentTalkers(incidentId);
+    if (!data) throw new NotFoundException('Emergencia no encontrada');
+    return data;
+  }
+
+  @Patch('incidents/:incidentId/talkers')
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles('OPERADOR_CENTRAL', 'COMANDANTE', 'CAPITAN', 'SUPER_ADMIN', 'KODESK')
+  async setTalkers(
+    @Param('incidentId') incidentId: string,
+    @Body() body: SetRadioTalkersDto,
+    @Req() req: { user: Actor },
+  ) {
+    await this.assertChannelAccess(req.user, RadioService.channelId('incident', incidentId));
+    const ids = Array.isArray(body?.userIds) ? body.userIds : [];
+    if (ids.length > 2) {
+      throw new BadRequestException('Solo se pueden habilitar 1 o 2 teléfonos para hablar');
+    }
+    try {
+      const data = await this.radio.saveIncidentTalkers(incidentId, ids);
+      this.gateway.broadcastChannel(RadioService.channelId('incident', incidentId));
+      return data;
+    } catch (err) {
+      throw new BadRequestException((err as Error).message || 'No se pudo guardar');
+    }
   }
 
   @Post('upload')

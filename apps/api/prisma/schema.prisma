@@ -245,6 +245,8 @@ model Vehicle {
   companyId             String
   imageUrl              String?
   principalMaquinistaId String?
+  unavailableReason     String?
+  availableAt           DateTime?
   fleetLogs             FleetLog[]
   incidentVehicles      IncidentVehicle[]
   auditItems            InventoryAuditItem[]
@@ -293,6 +295,7 @@ model Incident {
   updatedAt                DateTime                           @updatedAt
   companyId                String
   supportCompanyIds        String[]                           @default([])
+  radioTalkerIds           String[]                           @default([])
   imageUrl                 String?
   dispatchNotes            String?
   dispatchSource           DispatchSource?                    @default(MANUAL)

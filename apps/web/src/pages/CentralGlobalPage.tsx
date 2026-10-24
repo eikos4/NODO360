@@ -3,7 +3,7 @@ import { api } from '../lib/api';
 import {
   Siren, LogOut, Settings, Volume2, VolumeX, Building2,
   Truck, Fuel, Users, MapPin, Search, CheckCircle2,
-  Sun, Moon, Droplets, UserCog, Plus, X,
+  Sun, Moon, Droplets, UserCog, Plus, X, Clock,
 } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { useThemeStore } from '../store/themeStore';
@@ -31,6 +31,12 @@ export default function CentralGlobalPage() {
   const [peopleTab, setPeopleTab] = useState<'roster' | 'maquinistas'>('roster');
   const [assignPick, setAssignPick] = useState<Record<string, string>>({});
   const [busyId, setBusyId] = useState<string | null>(null);
+  const [holdForm, setHoldForm] = useState<{
+    vehicle: any;
+    status: 'EN_REPARACION' | 'FUERA_DE_SERVICIO';
+    reason: string;
+    availableAt: string;
+  } | null>(null);
 
   const load = async () => {
     try {
@@ -125,8 +131,11 @@ export default function CentralGlobalPage() {
     }
   };
 
-  const handleVehicleStatus = async (vehicle: any, status: 'OPERATIVO' | 'EN_REPARACION' | 'FUERA_DE_SERVICIO') => {
-    if (vehicle.status === status) return;
+  const applyVehicleStatus = async (
+    vehicle: any,
+    status: 'OPERATIVO' | 'EN_REPARACION' | 'FUERA_DE_SERVICIO',
+    extra?: { reason?: string; availableAt?: string },
+  ) => {
     setBusyId(vehicle.id);
     setData((prev: any) => {
       if (!prev?.companies) return prev;
@@ -138,7 +147,13 @@ export default function CentralGlobalPage() {
             ...c.fleet,
             vehicles: c.fleet.vehicles.map((v: any) =>
               v.id === vehicle.id
-                ? { ...v, status, statusLabel: status === 'OPERATIVO' ? 'Operativo' : status === 'EN_REPARACION' ? 'En reparación' : 'Fuera de servicio' }
+                ? {
+                    ...v,
+                    status,
+                    statusLabel: status === 'OPERATIVO' ? 'Operativo' : status === 'EN_REPARACION' ? 'En reparación' : 'Fuera de servicio',
+                    unavailableReason: extra?.reason || null,
+                    availableAt: extra?.availableAt || null,
+                  }
                 : v,
             ),
           },
@@ -146,8 +161,17 @@ export default function CentralGlobalPage() {
       };
     });
     try {
-      await api.patch(`/dispatch/central/vehicles/${vehicle.id}/status`, { status });
-      toast.success(`${vehicle.patent} · ${status === 'OPERATIVO' ? 'operativo' : status === 'EN_REPARACION' ? 'en reparación' : 'fuera de servicio'}`);
+      await api.patch(`/dispatch/central/vehicles/${vehicle.id}/status`, {
+        status,
+        reason: extra?.reason || undefined,
+        availableAt: extra?.availableAt || undefined,
+      });
+      toast.success(
+        status === 'OPERATIVO'
+          ? `${vehicle.patent} vuelve a estar operativo`
+          : `${vehicle.patent} · ${status === 'EN_REPARACION' ? 'en reparación' : 'no disponible'}`,
+      );
+      setHoldForm(null);
       load();
     } catch {
       toast.error('No se pudo cambiar el estado del carro');
@@ -155,6 +179,27 @@ export default function CentralGlobalPage() {
     } finally {
       setBusyId(null);
     }
+  };
+
+  const handleVehicleStatus = (vehicle: any, status: 'OPERATIVO' | 'EN_REPARACION' | 'FUERA_DE_SERVICIO') => {
+    if (status === 'OPERATIVO') {
+      if (vehicle.status === 'OPERATIVO') return;
+      void applyVehicleStatus(vehicle, 'OPERATIVO');
+      return;
+    }
+    const toLocal = (iso?: string | null) => {
+      if (!iso) return '';
+      const d = new Date(iso);
+      if (Number.isNaN(d.getTime())) return '';
+      const pad = (n: number) => String(n).padStart(2, '0');
+      return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
+    };
+    setHoldForm({
+      vehicle,
+      status,
+      reason: vehicle.unavailableReason || '',
+      availableAt: toLocal(vehicle.availableAt),
+    });
   };
 
   const handleAssignVehicle = async (emergency: any, vehicleId: string, action: 'add' | 'remove') => {
@@ -659,6 +704,12 @@ export default function CentralGlobalPage() {
                           {v.principalMaquinista.maquinistaAvailable ? '' : ' · no hab.'}
                         </p>
                       )}
+                      {v.status !== 'OPERATIVO' && (v.unavailableReason || v.availableAt) && (
+                        <p className="mt-1 text-[10px] leading-snug text-amber-700 dark:text-amber-300">
+                          {v.unavailableReason || 'No disponible'}
+                          {v.availableAt ? ` · vuelve ${new Date(v.availableAt).toLocaleString('es-CL', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' })}` : ''}
+                        </p>
+                      )}
                       <div className="flex items-center justify-between mt-2 text-[10px] font-bold">
                         <span className="flex items-center gap-1 text-emerald-400"><Fuel className="w-3 h-3" /> {v.fuelLevelPercent ?? '—'}%</span>
                       </div>
@@ -830,6 +881,88 @@ export default function CentralGlobalPage() {
         </div>
 
       </div>
+
+      {holdForm && (
+        <div className="fixed inset-0 z-[80] flex items-end justify-center bg-black/55 p-3 sm:items-center" onClick={() => setHoldForm(null)}>
+          <form
+            onClick={(e) => e.stopPropagation()}
+            onSubmit={(e) => {
+              e.preventDefault();
+              void applyVehicleStatus(holdForm.vehicle, holdForm.status, {
+                reason: holdForm.reason.trim() || undefined,
+                availableAt: holdForm.availableAt || undefined,
+              });
+            }}
+            className="w-full max-w-md rounded-2xl border border-slate-200 bg-white p-5 text-slate-900 shadow-2xl dark:border-slate-700 dark:bg-[#0f172a] dark:text-white"
+          >
+            <div className="mb-3 flex items-start justify-between gap-3">
+              <div>
+                <p className="text-[11px] font-black uppercase tracking-wider text-amber-600">
+                  {holdForm.status === 'EN_REPARACION' ? 'En reparación' : 'No disponible'}
+                </p>
+                <h3 className="text-lg font-black">{holdForm.vehicle.patent}</h3>
+                <p className="text-xs text-slate-500">{holdForm.vehicle.companyName} · {holdForm.vehicle.type}</p>
+              </div>
+              <button type="button" onClick={() => setHoldForm(null)} className="text-slate-400 hover:text-red-500">
+                <X className="h-5 w-5" />
+              </button>
+            </div>
+            <p className="mb-3 text-sm text-slate-600 dark:text-slate-300">
+              Anotá por qué sale de servicio (viaje a otra ciudad, viaje del comandante, taller…) y a qué hora vuelve a estar operativo.
+            </p>
+            <div className="mb-3 flex flex-wrap gap-1.5">
+              {['Viaje a otra ciudad', 'Viaje del comandante', 'Taller / mecánica', 'Sin personal', 'Otro'].map((chip) => (
+                <button
+                  key={chip}
+                  type="button"
+                  onClick={() => setHoldForm((f) => f ? { ...f, reason: chip === 'Otro' ? '' : chip } : f)}
+                  className={`rounded-full px-2.5 py-1 text-[11px] font-bold ${
+                    holdForm.reason === chip
+                      ? 'bg-amber-500 text-amber-950'
+                      : 'bg-slate-100 text-slate-600 hover:bg-slate-200 dark:bg-slate-800 dark:text-slate-300'
+                  }`}
+                >
+                  {chip}
+                </button>
+              ))}
+            </div>
+            <label className="block text-[11px] font-bold uppercase text-slate-500">Motivo</label>
+            <textarea
+              value={holdForm.reason}
+              onChange={(e) => setHoldForm((f) => f ? { ...f, reason: e.target.value } : f)}
+              rows={3}
+              maxLength={240}
+              placeholder="Ej. Viaje a Linares con el comandante"
+              className="mt-1 w-full rounded-lg border border-slate-200 bg-slate-50 px-3 py-2 text-sm outline-none focus:border-amber-500 dark:border-slate-700 dark:bg-slate-900"
+            />
+            <label className="mt-3 flex items-center gap-1 text-[11px] font-bold uppercase text-slate-500">
+              <Clock className="h-3.5 w-3.5" /> Vuelve a estar disponible
+            </label>
+            <input
+              type="datetime-local"
+              value={holdForm.availableAt}
+              onChange={(e) => setHoldForm((f) => f ? { ...f, availableAt: e.target.value } : f)}
+              className="mt-1 w-full rounded-lg border border-slate-200 bg-slate-50 px-3 py-2 text-sm outline-none focus:border-amber-500 dark:border-slate-700 dark:bg-slate-900"
+            />
+            <div className="mt-4 flex gap-2">
+              <button
+                type="button"
+                onClick={() => void applyVehicleStatus(holdForm.vehicle, 'OPERATIVO')}
+                className="flex-1 rounded-xl border border-emerald-300 bg-emerald-50 py-2.5 text-sm font-bold text-emerald-800 hover:bg-emerald-100 dark:border-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-200"
+              >
+                Activar ahora
+              </button>
+              <button
+                type="submit"
+                disabled={busyId === holdForm.vehicle.id}
+                className="keep-on-color flex-1 rounded-xl bg-slate-800 py-2.5 text-sm font-bold text-white hover:bg-slate-700 disabled:opacity-50"
+              >
+                Guardar
+              </button>
+            </div>
+          </form>
+        </div>
+      )}
     </div>
   );
 }

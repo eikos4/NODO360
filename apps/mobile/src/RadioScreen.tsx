@@ -22,12 +22,23 @@ import type { EmergencyResponseStatus } from '@nodo360/shared';
 
 const MAX_MS = 15_000;
 
-function canTalkOnIncident(status: EmergencyResponseStatus | null, user?: { role?: string; roles?: string[] }) {
-  if (status === 'GOING' || status === 'ON_SCENE') return true;
+function isAlwaysTalkRole(user?: { role?: string; roles?: string[] }) {
   const roles = user?.roles?.length ? user.roles : [user?.role];
   return roles.some((role) =>
-    role === 'OPERADOR_CENTRAL' || role === 'COMANDANTE' || role === 'CAPITAN' || role === 'SUPER_ADMIN' || role === 'KODESK',
+    role === 'OPERADOR_CENTRAL' || role === 'SUPER_ADMIN' || role === 'KODESK',
   );
+}
+
+function canTalkOnIncident(
+  status: EmergencyResponseStatus | null,
+  user?: { id?: string; role?: string; roles?: string[] },
+  allowedTalkerIds?: string[] | null,
+) {
+  if (isAlwaysTalkRole(user)) return true;
+  if (Array.isArray(allowedTalkerIds)) {
+    return Boolean(user?.id && allowedTalkerIds.includes(user.id));
+  }
+  return status === 'GOING' || status === 'ON_SCENE';
 }
 
 function applyTx(tx: RadioTx): RadioTx {
@@ -79,7 +90,7 @@ export function RadioScreen({
     [incident],
   );
 
-  const canTalk = canTalkOnIncident(status, user);
+  const canTalk = canTalkOnIncident(status, user, state?.allowedTalkerIds);
 
   const playTx = useCallback(async (tx: RadioTx, force = false) => {
     if (!force && tx.userId === user.id) return;
@@ -493,7 +504,7 @@ export function RadioScreen({
         onPointerDown={(event) => {
           event.preventDefault();
           if (!canTalk) {
-            onNotice('Marcá VOY para hablar en el canal de emergencia');
+            onNotice('La central no habilitó este teléfono para hablar');
             return;
           }
           try {
@@ -525,7 +536,7 @@ export function RadioScreen({
       </button>
 
       {!canTalk && (
-        <p className="radio-hint">Para hablar, primero confirmá VOY o En el lugar. Mientras tanto podés escuchar.</p>
+        <p className="radio-hint">La centralista habilita 1 o 2 teléfonos para hablar. Mientras tanto podés escuchar.</p>
       )}
 
       <div className="radio-log">

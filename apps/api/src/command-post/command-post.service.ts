@@ -77,22 +77,32 @@ export class CommandPostService {
     const scope = await companyIdsForActor(this.prisma, actor);
     const companyFilter = scope ? { companyId: { in: scope } } : {};
 
+    const incidentSelect = {
+      id: true,
+      code: true,
+      type: true,
+      address: true,
+      description: true,
+      status: true,
+      dispatchedAt: true,
+      company: { select: { id: true, name: true, number: true } },
+      vehicles: {
+        select: { vehicle: { select: { patent: true, type: true } } },
+      },
+      emergencyResponses: { select: { status: true } },
+    } as const;
+
     const [posts, incidents] = await Promise.all([
       this.prisma.commandPost.findMany({
         where: { incident: companyFilter },
         include: {
-          incident: {
-            select: {
-              id: true,
-              code: true,
-              type: true,
-              address: true,
-              status: true,
-              dispatchedAt: true,
-              company: { select: { id: true, name: true, number: true } },
-            },
-          },
+          incident: { select: incidentSelect },
           commands: { orderBy: { assumedAt: 'desc' }, take: 1 },
+          resources: {
+            where: { withdrawnAt: null },
+            select: { id: true, label: true, type: true, status: true, companyName: true },
+            take: 16,
+          },
           _count: { select: { resources: true, sectors: true } },
         },
         orderBy: { openedAt: 'desc' },
@@ -100,18 +110,33 @@ export class CommandPostService {
       }),
       this.prisma.incident.findMany({
         where: { status: IncidentStatus.ACTIVE, commandPost: { is: null }, ...companyFilter },
-        select: {
-          id: true,
-          code: true,
-          type: true,
-          address: true,
-          dispatchedAt: true,
-          company: { select: { id: true, name: true, number: true } },
-        },
+        select: incidentSelect,
         orderBy: { dispatchedAt: 'desc' },
         take: 40,
       }),
     ]);
+
+    const mapIncident = (incident: (typeof incidents)[number] | (typeof posts)[number]['incident']) => {
+      const vehicles = incident.vehicles.map((row) => ({
+        patent: row.vehicle.patent,
+        type: row.vehicle.type,
+      }));
+      const going = incident.emergencyResponses.filter((row) => row.status && ACTIVE_RESPONSES.includes(row.status)).length;
+      const onScene = incident.emergencyResponses.filter((row) => row.status === EmergencyResponseStatus.ON_SCENE).length;
+      return {
+        id: incident.id,
+        code: incident.code,
+        type: incident.type,
+        address: incident.address,
+        description: incident.description,
+        status: 'status' in incident ? incident.status : IncidentStatus.ACTIVE,
+        dispatchedAt: incident.dispatchedAt,
+        company: incident.company,
+        vehicles,
+        going,
+        onScene,
+      };
+    };
 
     return {
       posts: posts.map((post) => ({
@@ -119,14 +144,21 @@ export class CommandPostService {
         status: post.status,
         openedAt: post.openedAt,
         closedAt: post.closedAt,
-        incident: post.incident,
+        incident: mapIncident(post.incident),
         command: post.commands[0]
           ? { name: post.commands[0].name, rank: post.commands[0].rank, assumedAt: post.commands[0].assumedAt }
           : null,
+        resources: post.resources.map((row) => ({
+          id: row.id,
+          label: row.label,
+          type: row.type,
+          status: row.status,
+          companyName: row.companyName,
+        })),
         resourceCount: post._count.resources,
         sectorCount: post._count.sectors,
       })),
-      eligibleIncidents: incidents,
+      eligibleIncidents: incidents.map(mapIncident),
     };
   }
 

@@ -2,7 +2,7 @@ import { useEffect, useMemo, useState, type ReactNode } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import {
-  CalendarDays, CheckCircle2, Cloud, CloudRain, CloudSun, Droplets, Maximize2, Minimize2, MapPin, Phone,
+  CalendarDays, CheckCircle2, Cloud, CloudRain, CloudSun, Droplets, Image as ImageIcon, ImageOff, Maximize2, Minimize2, MapPin, Phone,
   Shield, Siren, Smartphone, Sun, Truck, Users, Wind, XCircle, Clock, MessageSquare,
 } from 'lucide-react';
 import { api } from '../lib/api';
@@ -16,6 +16,7 @@ import type { CentralParralThemeTokens } from '../lib/central-parral-theme';
 import { useCentralSceneBackground } from '../lib/central-scene-backgrounds';
 
 const POLL_MS = 2_500;
+const LLAMADOS_FONDO_KEY = 'nodo360_llamados_fondo';
 
 type CallPerson = {
   userId: string;
@@ -198,6 +199,43 @@ export default function CentralLlamadosPage() {
         .llam-ring { animation: llam-ring 1.8s ease-in-out infinite; }
         .llam-bar { animation: llam-bar .8s ease-out both; }
         .llam-pipe { color: #0f172a; }
+        @keyframes llam-smoke {
+          0% { transform: translate3d(var(--sx), 28%, 0) scale(.72); opacity: 0; }
+          12% { opacity: var(--so); }
+          100% { transform: translate3d(calc(var(--sx) + var(--dx)), -46%, 0) scale(1.75); opacity: 0; }
+        }
+        @keyframes llam-ember {
+          0% { transform: translate3d(0, 8vh, 0) scale(1); opacity: 0; }
+          18% { opacity: 1; }
+          100% { transform: translate3d(var(--ex), -78vh, 0) scale(.25); opacity: 0; }
+        }
+        @keyframes llam-glow {
+          0%, 100% { opacity: .38; }
+          50% { opacity: .72; }
+        }
+        .llam-smoke-puff {
+          position: absolute;
+          bottom: -8%;
+          border-radius: 999px;
+          filter: blur(28px);
+          background: radial-gradient(circle, rgba(226,232,240,.34) 0%, rgba(148,163,184,.16) 42%, transparent 70%);
+          animation: llam-smoke var(--dur) linear infinite;
+          animation-delay: var(--del);
+        }
+        .llam-ember {
+          position: absolute;
+          bottom: 6%;
+          width: 5px;
+          height: 5px;
+          border-radius: 999px;
+          background: #fb923c;
+          box-shadow: 0 0 10px #f97316, 0 0 18px #dc2626;
+          animation: llam-ember var(--edur) ease-out infinite;
+          animation-delay: var(--edel);
+        }
+        .llam-glow {
+          animation: llam-glow 3.6s ease-in-out infinite;
+        }
       `}</style>
     </div>
   );
@@ -253,6 +291,68 @@ function useParralWeather() {
   return { tempC, code, wind, humidity, precip };
 }
 
+function readLlamadosPhotoOn() {
+  try {
+    return localStorage.getItem(LLAMADOS_FONDO_KEY) !== '0';
+  } catch {
+    return true;
+  }
+}
+
+const SMOKE_PUFFS = [
+  { sx: '-28%', dx: '12%', so: .42, dur: '16s', del: '0s', w: '42vw', h: '48vh', left: '8%' },
+  { sx: '-8%', dx: '18%', so: .34, dur: '19s', del: '-4s', w: '36vw', h: '42vh', left: '28%' },
+  { sx: '6%', dx: '-14%', so: .38, dur: '14s', del: '-8s', w: '48vw', h: '52vh', left: '46%' },
+  { sx: '18%', dx: '-10%', so: .3, dur: '21s', del: '-2s', w: '34vw', h: '40vh', left: '62%' },
+  { sx: '-4%', dx: '8%', so: .28, dur: '18s', del: '-11s', w: '40vw', h: '46vh', left: '18%' },
+  { sx: '10%', dx: '-16%', so: .36, dur: '15s', del: '-6s', w: '44vw', h: '50vh', left: '72%' },
+] as const;
+
+const SMOKE_EMBERS = [
+  { left: '18%', ex: '18px', edur: '7s', edel: '0s' },
+  { left: '34%', ex: '-22px', edur: '8.5s', edel: '-2s' },
+  { left: '51%', ex: '12px', edur: '6.4s', edel: '-1s' },
+  { left: '67%', ex: '-16px', edur: '9s', edel: '-3.5s' },
+  { left: '79%', ex: '8px', edur: '7.6s', edel: '-4s' },
+] as const;
+
+function LlamadosSmokeBackdrop() {
+  return (
+    <div className="pointer-events-none absolute inset-0 overflow-hidden bg-[#07080c]" aria-hidden>
+      <div className="llam-glow absolute inset-x-0 bottom-0 h-[42%] bg-[radial-gradient(80%_90%_at_50%_100%,rgba(185,28,28,.38),transparent_68%)]" />
+      <div className="absolute inset-0 bg-[radial-gradient(70%_50%_at_18%_100%,rgba(234,88,12,.16),transparent_55%)]" />
+      {SMOKE_PUFFS.map((puff, i) => (
+        <span
+          key={i}
+          className="llam-smoke-puff"
+          style={{
+            left: puff.left,
+            width: puff.w,
+            height: puff.h,
+            ['--sx' as string]: puff.sx,
+            ['--dx' as string]: puff.dx,
+            ['--so' as string]: String(puff.so),
+            ['--dur' as string]: puff.dur,
+            ['--del' as string]: puff.del,
+          }}
+        />
+      ))}
+      {SMOKE_EMBERS.map((ember, i) => (
+        <span
+          key={`e-${i}`}
+          className="llam-ember"
+          style={{
+            left: ember.left,
+            ['--ex' as string]: ember.ex,
+            ['--edur' as string]: ember.edur,
+            ['--edel' as string]: ember.edel,
+          }}
+        />
+      ))}
+    </div>
+  );
+}
+
 function WaitingState({
   now, fullscreen, onToggleFullscreen,
 }: {
@@ -275,16 +375,36 @@ function WaitingState({
   const dateLabel = now.toLocaleDateString('es-CL', { day: 'numeric', month: 'long', year: 'numeric' });
   const timeLabel = now.toLocaleTimeString('es-CL', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
   const [lat, lng] = PARRAL_CENTER;
-  const sceneSrc = useCentralSceneBackground(true);
+  const [showPhoto, setShowPhoto] = useState(readLlamadosPhotoOn);
+  const sceneSrc = useCentralSceneBackground(showPhoto);
+
+  const togglePhoto = () => {
+    setShowPhoto((on) => {
+      const next = !on;
+      try {
+        localStorage.setItem(LLAMADOS_FONDO_KEY, next ? '1' : '0');
+      } catch {
+        /* ignore */
+      }
+      return next;
+    });
+  };
 
   return (
-    <div className="llamados-idle relative h-full min-h-0 overflow-hidden">
-      <img
-        src={sceneSrc}
-        alt=""
-        className="absolute inset-0 h-full w-full object-cover"
-      />
-      <div className="absolute inset-0 bg-gradient-to-b from-black/50 via-black/10 to-black/15" />
+    <div className="llamados-idle relative h-full min-h-0 overflow-hidden bg-black">
+      {showPhoto ? (
+        <img
+          src={sceneSrc}
+          alt=""
+          className="absolute inset-0 h-full w-full object-cover"
+        />
+      ) : (
+        <LlamadosSmokeBackdrop />
+      )}
+      <div className={cn(
+        'absolute inset-0',
+        showPhoto ? 'bg-gradient-to-b from-black/50 via-black/10 to-black/15' : 'bg-gradient-to-b from-black/35 via-transparent to-black/25',
+      )} />
 
       <div className="relative z-10 flex h-full min-h-0 flex-col px-4 py-4 sm:px-6 sm:py-5">
         <div className="grid shrink-0 items-start gap-4 lg:grid-cols-[minmax(240px,1fr)_auto_minmax(240px,1fr)]">
@@ -343,6 +463,15 @@ function WaitingState({
               <p className="mt-1 text-sm font-semibold capitalize text-white/85">{dateLabel}</p>
               <p className="mt-2 font-mono text-4xl font-black tabular-nums leading-none xl:text-5xl">{timeLabel}</p>
             </div>
+            <button
+              type="button"
+              onClick={togglePhoto}
+              className="keep-on-color inline-flex items-center gap-1.5 rounded-xl border border-white/25 bg-white/10 px-3 py-2 text-[11px] font-black uppercase tracking-wide text-white backdrop-blur-md"
+              title={showPhoto ? 'Quitar imagen y dejar humo' : 'Volver a la foto del centro de comando'}
+            >
+              {showPhoto ? <ImageOff className="h-4 w-4" /> : <ImageIcon className="h-4 w-4" />}
+              {showPhoto ? 'Quitar imagen' : 'Fondo foto'}
+            </button>
             <button
               type="button"
               onClick={onToggleFullscreen}
